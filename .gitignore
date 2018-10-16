@@ -1,0 +1,16 @@
+.vs/
+bin/
+Debug/
+GeneratedFiles/
+include/
+install/
+lib/
+Release/
+x64/
+flim_mask.dat
+Havana3.pro.*
+Havana3.sln
+Havana3.vcxproj*
+Havana3.sdf
+Havana3.VC*
+.qmake.stash
