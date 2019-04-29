@@ -73,8 +73,8 @@ bool SignatecDAQ::initialize()
 	result = SetInternalAdcClockRatePX14(_board, AcqRate);
 	
 	// External Clock: Set acquisition rate : 170 MHz
-	// SetAdcClockSourcePX14(_board, PX14CLKSRC_EXTERNAL);
-	// result = SetExternalClockRatePX14(_board, 340.0);
+	/// SetAdcClockSourcePX14(_board, PX14CLKSRC_EXTERNAL);
+	/// result = SetExternalClockRatePX14(_board, 340.0);
 
 	if (SIG_SUCCESS != result)
 	{
@@ -85,9 +85,9 @@ bool SignatecDAQ::initialize()
 	// Trigger parameters
 	if (UseInternalTrigger)
 	{
-//		SetTriggerSourcePX14(_board, PX14TRIGSRC_INT_CH1); // Internal trigger: for debugging
-//		SetTriggerLevelAPX14(_board, 33024); // This value is changed according to environment
-//	    SetTriggerModePX14(_board, PX14TRIGMODE_POST_TRIGGER);
+///		SetTriggerSourcePX14(_board, PX14TRIGSRC_INT_CH1); // Internal trigger: for debugging
+///		SetTriggerLevelAPX14(_board, 33024); // This value is changed according to environment
+///	    SetTriggerModePX14(_board, PX14TRIGMODE_POST_TRIGGER);
 	}
 	else
 	{
@@ -112,9 +112,9 @@ bool SignatecDAQ::initialize()
 	// Allocate a DMA buffer that will receive PCI acquisition data. By 
 	//  allocating a DMA buffer, we can use the "fast" PX14400 library
 	//  transfer routines for highest performance
-	Sleep(500);
+	std::this_thread::sleep_for(std::chrono::milliseconds(500));
     result = BootBufCheckOutPX14(_board, BootTimeBufIdx, &dma_bufp, NULL);
-	//result = AllocateDmaBufferPX14(_board, getDataBufferSize() * 8, &dma_bufp); 
+	///result = AllocateDmaBufferPX14(_board, getDataBufferSize() * 8, &dma_bufp); 
 	if (SIG_SUCCESS != result)
 	{
 		dumpError(result, pPreamble);
@@ -287,7 +287,7 @@ void SignatecDAQ::run()
 
 		// Process previous chunk data while we're transfering to
 		// loop_counter > 1000 : to prevent FIFO overflow
-		// if ((loop_counter % 4 == 0 || loop_counter % 4 == 2) && loop_counter > 1000)
+		/// if ((loop_counter % 4 == 0 || loop_counter % 4 == 2) && loop_counter > 1000)
 		if ((loop_counter % 8 == 0 || loop_counter % 8 == 4) && loop_counter != 0)
 		{
 			if (loop_counter % 8 == 0)
@@ -402,7 +402,7 @@ void SignatecDAQ::dumpErrorSystem(int res, const char* pPreamble)
 	sprintf(pErr, "Error code (%d)", res);
 	strcat(msg, pErr);
 
-	//printf("%s\n", msg);
+	///printf("%s\n", msg);
 	SendStatusMessage(msg, true);
 
 	EndBufferedPciAcquisitionPX14(_board);

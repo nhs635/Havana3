@@ -127,6 +127,11 @@ bool ZaberStage::ConnectStage()
 					{
 						SendStatusMessage("pullback finished.", false);
 						DidMovedAbsolute();
+						SetRelevantWidgets(true);
+					}
+					if (received_msg[1] == 1)
+					{
+						SetRelevantWidgets(true);
 					}
 				}
 			}
@@ -171,7 +176,12 @@ void ZaberStage::StopWaitThread()
 
 void ZaberStage::Home()
 {
+#if (ZABER_HOME_OFFSET == 0)
 	zb_send(port, home);
+	SetRelevantWidgets(false);
+#else
+	MoveAbsoulte(0);
+#endif
 	SendStatusMessage("ZABER: Go home!!", false);
 }
 
@@ -180,15 +190,17 @@ void ZaberStage::Stop()
 {
 	zb_send(port, stop);
 	SendStatusMessage("ZABER: Halted the operation intentionally.", false);
+	SetRelevantWidgets(true);
 }
 
 
 void ZaberStage::MoveAbsoulte(double position)
 {	
-	int cmd_abs_dist = (int)round(1000.0 * position / 
+	int cmd_abs_dist = (int)round(1000.0 * (position + ZABER_HOME_OFFSET) /
 		(microstep_size * (double)max_micro_resolution / (double)micro_resolution) );
 	SetCommandData(cmd_abs_dist, move_absolute);
 	zb_send(port, move_absolute);
+	SetRelevantWidgets(false);
 
 	char msg[256];
 	sprintf(msg, "ZABER: Move absolute %d (%.1f mm)", cmd_abs_dist, position);

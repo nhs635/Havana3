@@ -61,7 +61,8 @@ SOURCES += Havana3/Havana3.cpp \
     Havana3/Viewer/QImageView.cpp \
     Havana3/Dialog/FlimCalibDlg.cpp \
     Havana3/Dialog/SaveResultDlg.cpp \
-    Havana3/Dialog/PulseReviewDlg.cpp
+    Havana3/Dialog/PulseReviewDlg.cpp \
+    Havana3/Dialog/LongitudinalViewDlg.cpp
 
 SOURCES += DataAcquisition/SignatecDAQ/SignatecDAQ.cpp \
     DataAcquisition/FLImProcess/FLImProcess.cpp \
@@ -71,8 +72,7 @@ SOURCES += DataAcquisition/SignatecDAQ/SignatecDAQ.cpp \
 
 SOURCES += MemoryBuffer/MemoryBuffer.cpp
 
-SOURCES += DeviceControl/ArduinoMCU/ArduinoMCU.cpp \
-    DeviceControl/FreqDivider/FreqDivider.cpp \
+SOURCES += DeviceControl/FreqDivider/FreqDivider.cpp \
     DeviceControl/PmtGainControl/PmtGainControl.cpp \
     DeviceControl/ElforlightLaser/ElforlightLaser.cpp \
     DeviceControl/AxsunControl/AxsunControl.cpp \
@@ -93,7 +93,8 @@ HEADERS += Havana3/Configuration.h \
     Havana3/Viewer/QImageView.h \
     Havana3/Dialog/FlimCalibDlg.h \
     Havana3/Dialog/SaveResultDlg.h \
-    Havana3/Dialog/PulseReviewDlg.h
+    Havana3/Dialog/PulseReviewDlg.h \
+    Havana3/Dialog/LongitudinalViewDlg.h
 
 HEADERS += DataAcquisition/SignatecDAQ/SignatecDAQ.h \
     DataAcquisition/FLImProcess/FLImProcess.h \
@@ -103,8 +104,7 @@ HEADERS += DataAcquisition/SignatecDAQ/SignatecDAQ.h \
 
 HEADERS += MemoryBuffer/MemoryBuffer.h
 
-HEADERS += DeviceControl/ArduinoMCU/ArduinoMCU.h \
-    DeviceControl/FreqDivider/FreqDivider.h \
+HEADERS += DeviceControl/FreqDivider/FreqDivider.h \
     DeviceControl/PmtGainControl/PmtGainControl.h \
     DeviceControl/ElforlightLaser/ElforlightLaser.h \
     DeviceControl/AxsunControl/AxsunControl.h \

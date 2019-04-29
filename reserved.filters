@@ -45,9 +45,6 @@
     <Filter Include="Havana3\Dialog">
       <UniqueIdentifier>{47343270-120d-41da-9fa5-7f259087f388}</UniqueIdentifier>
     </Filter>
-    <Filter Include="DeviceControl\ArduinoMCU">
-      <UniqueIdentifier>{676721b9-d553-4fd1-a7f9-409405cef62f}</UniqueIdentifier>
-    </Filter>
     <Filter Include="DeviceControl\AxsunControl">
       <UniqueIdentifier>{7494fa72-254f-4b00-a350-44fc3ff49ecb}</UniqueIdentifier>
     </Filter>
@@ -119,9 +116,6 @@
     <ClCompile Include="DeviceControl\ElforlightLaser\ElforlightLaser.cpp">
       <Filter>DeviceControl\ElforlightLaser</Filter>
     </ClCompile>
-    <ClCompile Include="DeviceControl\ArduinoMCU\ArduinoMCU.cpp">
-      <Filter>DeviceControl\ArduinoMCU</Filter>
-    </ClCompile>
     <ClCompile Include="DeviceControl\FaulhaberMotor\FaulhaberMotor.cpp">
       <Filter>DeviceControl\FaulhaberMotor</Filter>
     </ClCompile>
@@ -152,6 +146,9 @@
     <ClCompile Include="DeviceControl\PmtGainControl\PmtGainControl.cpp">
       <Filter>DeviceControl\PmtGainControl</Filter>
     </ClCompile>
+    <ClCompile Include="Havana3\Dialog\LongitudinalViewDlg.cpp">
+      <Filter>Havana3\Dialog</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="DeviceControl\QSerialComm.h">
@@ -172,9 +169,6 @@
     <ClInclude Include="DeviceControl\ElforlightLaser\ElforlightLaser.h">
       <Filter>DeviceControl\ElforlightLaser</Filter>
     </ClInclude>
-    <ClInclude Include="DeviceControl\ArduinoMCU\ArduinoMCU.h">
-      <Filter>DeviceControl\ArduinoMCU</Filter>
-    </ClInclude>
     <QtMoc Include="Havana3\Dialog\PulseReviewDlg.h">
       <Filter>Havana3\Dialog</Filter>
     </QtMoc>
@@ -183,6 +177,9 @@
     </QtMoc>
     <QtMoc Include="Havana3\QProcessingTab.h">
       <Filter>Havana3</Filter>
+    </QtMoc>
+    <QtMoc Include="Havana3\Dialog\LongitudinalViewDlg.h">
+      <Filter>Havana3\Dialog</Filter>
     </QtMoc>
   </ItemGroup>
   <ItemGroup>

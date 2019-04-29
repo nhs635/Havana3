@@ -91,8 +91,8 @@ bool MemoryBuffer::startRecording()
 	if (!m_bIsSaved && (m_nRecordedFrames != 0))
 	{
 		QMessageBox MsgBox;
-		MsgBox.setWindowTitle("Question");
-		MsgBox.setIcon(QMessageBox::Question);
+		MsgBox.setWindowTitle("Warning");
+		MsgBox.setIcon(QMessageBox::Warning);
 		MsgBox.setText("The previous recorded data is not saved.\nWhat would you like to do with this data?");
 		MsgBox.setStandardButtons(QMessageBox::Ignore | QMessageBox::Discard | QMessageBox::Cancel);
 		MsgBox.setDefaultButton(QMessageBox::Cancel);
@@ -298,15 +298,15 @@ void MemoryBuffer::write()
 			// FLIm pulse writing
 			buffer_flim = m_queueWritingFlimBuffer.front();
 			m_queueWritingFlimBuffer.pop();			
-			flimSamplesToWrite = m_pConfig->flimScans * (m_pConfig->flimAlines - m_pConfig->flimSyncAdjust);
-			res = file.write(reinterpret_cast<char*>(buffer_flim + m_pConfig->flimScans * m_pConfig->flimSyncAdjust), sizeof(uint16_t) * flimSamplesToWrite);
+			flimSamplesToWrite = m_pConfig->flimScans * (m_pConfig->flimAlines - INTRA_FRAME_SYNC);
+			res = file.write(reinterpret_cast<char*>(buffer_flim + m_pConfig->flimScans * INTRA_FRAME_SYNC), sizeof(uint16_t) * flimSamplesToWrite);
 			if (!(res == sizeof(uint16_t) * flimSamplesToWrite))
 			{
 				SendStatusMessage("Error occurred while writing...", true);
 				emit finishedWritingThread(true);
 				return;
 			}	
-			flimSamplesToWrite = m_pConfig->flimScans * m_pConfig->flimSyncAdjust;
+			flimSamplesToWrite = m_pConfig->flimScans * INTRA_FRAME_SYNC;
 			res = file.write(reinterpret_cast<char*>(buffer_flim), sizeof(uint16_t) * flimSamplesToWrite);
 			if (!(res == sizeof(uint16_t) * flimSamplesToWrite))
 			{

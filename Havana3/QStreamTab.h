@@ -36,6 +36,7 @@ public:
 	inline MainWindow* getMainWnd() const { return m_pMainWnd; }
     inline QOperationTab* getOperationTab() const { return m_pOperationTab; }
     inline QDeviceControlTab* getDeviceControlTab() const { return m_pDeviceControlTab; }
+	inline QVisualizationTab* getVisTab() const { return m_pVisualizationTab; }
 
 	inline size_t getFlimProcessingBufferQueueSize() const { return m_syncFlimProcessing.queue_buffer.size(); }
 	inline size_t getFlimVisualizationBufferQueueSize() const { return m_syncFlimVisualization.queue_buffer.size(); }

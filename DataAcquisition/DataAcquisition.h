@@ -22,6 +22,7 @@ public:
     virtual ~DataAcquisition();
 
 public:
+	inline SignatecDAQ* getDigitizer() const { return m_pDaq; }
     inline FLImProcess* getFLIm() const { return m_pFLIm; }
 	inline AxsunCapture* getAxsunCapture() const { return m_pAxsunCapture; }
 

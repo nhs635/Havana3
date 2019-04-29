@@ -17,8 +17,12 @@ public:
 	void DisconnectDevice();
 	void IncreasePower();
 	void DecreasePower();
+	void SendCommand(char* command); 
+	void MonitoringState(char* msg);
 
 public:
+	bool isLaserEnabled;
+	callback<double*> UpdateState;
 	callback2<const char*, bool> SendStatusMessage;
 
 private:

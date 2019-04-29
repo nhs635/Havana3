@@ -31,7 +31,7 @@ public:
     inline DataAcquisition* getDataAcq() const { return m_pDataAcquisition; }
 	inline MemoryBuffer* getMemBuff() const { return m_pMemoryBuffer; }
 	inline QProgressBar* getProgressBar() const { return m_pProgressBar; }
-	bool isAcquisitionButtonToggled() { return m_pToggleButton_Acquisition->isChecked(); }	
+	inline QPushButton* getAcquisitionButton() const { return m_pToggleButton_Acquisition; }
 	
 public:
 	void changedTab(bool change);
@@ -57,6 +57,7 @@ public:
 	// Data acquisition and memory operation object
     DataAcquisition* m_pDataAcquisition;
     MemoryBuffer* m_pMemoryBuffer;
+	bool m_pAcquisitionState;
 
 private:
 	// Layout

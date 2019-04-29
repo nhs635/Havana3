@@ -21,18 +21,19 @@ PulseReviewDlg::PulseReviewDlg(QWidget *parent) :
 	setWindowTitle("Pulse Review");
 
     // Set main window objects
-    m_pProcessingTab = (QProcessingTab*)parent;
-	m_pConfig = m_pProcessingTab->getResultTab()->getMainWnd()->m_pConfiguration;
-	m_pFLIm = m_pProcessingTab->getFLImProcess();
+    m_pVisualizationTab = (QVisualizationTab*)parent;
+	m_pConfig = m_pVisualizationTab->getResultTab()->getMainWnd()->m_pConfiguration;
+	m_pFLIm = m_pVisualizationTab->getResultTab()->getProcessingTab()->getFLImProcess();
 
 	// Create widgets
 	m_pScope_PulseView = new QScope({ 0, (double)m_pFLIm->_resize.crop_src.size(0) }, 
-		{ -(double)(int)m_pFLIm->_params.bg, (double)(int)(POWER_2(16) - m_pFLIm->_params.bg), }, 2, 2, 1, 1, 0, 0, "", "", false);
+		{ -(double)(int)m_pFLIm->_params.bg[1], (double)(int)(POWER_2(16) - m_pFLIm->_params.bg[1]), }, 2, 2, 1, 1, 0, 0, "", "", false);
 	m_pScope_PulseView->setMinimumHeight(200);
 	m_pScope_PulseView->getRender()->setGrid(8, 32, 1, true);
 	
 	m_pLabel_CurrentAline = new QLabel(this);
-	QString str; str.sprintf("Current A-line : %4d / %4d   ", 4, m_pFLIm->_resize.ny * 4);
+	QString str; str.sprintf("Current A-line : %4d / %4d (%3.2f deg)  ", 4 * (0 + 1), m_pFLIm->_resize.ny * 4,
+		360.0 * (double)(4 * 0) / (double)m_pVisualizationTab->getResultTab()->getProcessingTab()->getConfigTemp()->octAlines);
 	m_pLabel_CurrentAline->setText(str);
 	
 	m_pSlider_CurrentAline = new QSlider(this);
@@ -79,24 +80,23 @@ void PulseReviewDlg::keyPressEvent(QKeyEvent *e)
 
 void PulseReviewDlg::drawPulse(int aline)
 {
-	auto pVector = (m_pComboBox_PulseType->currentIndex() == 0) ? 
-		&m_pProcessingTab->getResultTab()->getVisualizationTab()->m_vectorPulseCrop :
-		&m_pProcessingTab->getResultTab()->getVisualizationTab()->m_vectorPulseMask;
-
-	QString str; str.sprintf("Current A-line : %4d / %4d   ", 4 * (aline + 1), m_pFLIm->_resize.ny * 4);
+	auto pVector = (m_pComboBox_PulseType->currentIndex() == 0) ? &m_pVisualizationTab->m_vectorPulseCrop : &m_pVisualizationTab->m_vectorPulseMask;
+	
+	QString str; str.sprintf("Current A-line : %4d / %4d (%3.2f deg)  ", 4 * (aline + 1), m_pFLIm->_resize.ny * 4, 
+		360.0 * (double)(4 * aline) / (double)m_pVisualizationTab->getResultTab()->getProcessingTab()->getConfigTemp()->octAlines);
 	m_pLabel_CurrentAline->setText(str);
 
-	m_pScope_PulseView->drawData(&pVector->at(m_pProcessingTab->getResultTab()->getVisualizationTab()->getCurrentFrame())(0, aline));
+	m_pScope_PulseView->drawData(&pVector->at(m_pVisualizationTab->getCurrentFrame())(0, aline));
 	
-	if (m_pProcessingTab->getResultTab()->getVisualizationTab()->getRectImageView()->isVisible())
+	if (m_pVisualizationTab->getRectImageView()->isVisible())
 	{
-		m_pProcessingTab->getResultTab()->getVisualizationTab()->getRectImageView()->setVerticalLine(1, 4 * aline);
-		m_pProcessingTab->getResultTab()->getVisualizationTab()->getRectImageView()->getRender()->update();
+		m_pVisualizationTab->getRectImageView()->setVerticalLine(1, 4 * aline);
+		m_pVisualizationTab->getRectImageView()->getRender()->update();
 	}
 	else
 	{
-		m_pProcessingTab->getResultTab()->getVisualizationTab()->getCircImageView()->setVerticalLine(1, 4 * aline);
-		m_pProcessingTab->getResultTab()->getVisualizationTab()->getCircImageView()->getRender()->update();
+		m_pVisualizationTab->getCircImageView()->setVerticalLine(1, 4 * aline);
+		m_pVisualizationTab->getCircImageView()->getRender()->update();
 	}
 }
 

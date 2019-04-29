@@ -5,6 +5,9 @@
 #include <Havana3/MainWindow.h>
 #include <Havana3/QStreamTab.h>
 #include <Havana3/QDeviceControlTab.h>
+#include <Havana3/QVisualizationTab.h>
+
+#include <Havana3/Dialog/FlimCalibDlg.h>
 
 #include <DataAcquisition/DataAcquisition.h>
 #include <DataAcquisition/ThreadManager.h>
@@ -15,7 +18,7 @@
 
 
 QOperationTab::QOperationTab(QWidget *parent) :
-    QDialog(parent)
+    QDialog(parent), m_pAcquisitionState(false)
 {
 	// Set main window objects
     m_pStreamTab = dynamic_cast<QStreamTab*>(parent);
@@ -31,6 +34,11 @@ QOperationTab::QOperationTab(QWidget *parent) :
 		QString qmsg = QString::fromUtf8(msg);
 		emit m_pStreamTab->sendStatusMessage(qmsg, is_error);
 	};
+
+	std::thread allocate_writing_buffer([&]() {
+		m_pMemoryBuffer->allocateWritingBuffer();
+	});
+	allocate_writing_buffer.detach();
 
     // Create widgets for acquisition / recording / saving operation
     m_pToggleButton_Acquisition = new QPushButton(this);
@@ -116,31 +124,40 @@ void QOperationTab::operateDataAcquisition(bool toggled)
             if (m_pDataAcquisition->StartAcquisition())
             {
                 m_pToggleButton_Acquisition->setText("Stop &Acquisition");
+				m_pToggleButton_Acquisition->setDisabled(true);
+				m_pToggleButton_Recording->setDisabled(true);
 
-                m_pToggleButton_Acquisition->setDisabled(true);
-                m_pToggleButton_Recording->setDisabled(true);
+				std::thread allocate_writing_buffer([&]() {
+					m_pMemoryBuffer->allocateWritingBuffer();
+				});
+				allocate_writing_buffer.detach();				
+								
+				// Set helical scanning control
+				m_pStreamTab->getDeviceControlTab()->setHelicalScanningControl(true);
 
-                std::thread allocate_writing_buffer([&]() {
-                    m_pMemoryBuffer->allocateWritingBuffer();
-                });
-                allocate_writing_buffer.detach();
+				// Set FLIm system control
+				std::this_thread::sleep_for(std::chrono::milliseconds(200)); 
+				m_pStreamTab->getDeviceControlTab()->setFlimControl(true);
+				if (!m_pStreamTab->getDeviceControlTab()->isFlimSystemInitialized())
+				{
+					m_pToggleButton_Acquisition->setChecked(false);
+					return;
+				}
 
-                // Set PX14 Control widgets
-                m_pStreamTab->getDeviceControlTab()->getPX14DigitizerControl()->setChecked(true);
+				// Set Axsun OCT system control
+				std::this_thread::sleep_for(std::chrono::milliseconds(200));
+				m_pStreamTab->getDeviceControlTab()->setAxsunControl(true);
+				if (!m_pStreamTab->getDeviceControlTab()->isOctSystemInitialized())
+				{
+					m_pToggleButton_Acquisition->setChecked(false);
+					return;
+				}				
 
-				/// Set Axsun Bg Control widgets
-				///if (m_pStreamTab->getDeviceControlTab()->getAxsunControl()->isChecked()
-				///	&& m_pStreamTab->getDeviceControlTab()->getAxsunImagingControl()->isChecked())
-				///{
-				///	//m_pStreamTab->getDeviceControlTab()->getAxsunBgSetControl()->setEnabled(false);
-				///	//m_pStreamTab->getDeviceControlTab()->getAxsunBgResetControl()->setEnabled(false);
-				///}
+				// Set guide-lines
+				m_pStreamTab->getVisTab()->setOuterSheathLines(true);
 
-				/// Set synchronization
-				///m_pStreamTab->getDeviceControlTab()->getFlimControl()->setChecked(true);
-
-				/// Set Axsun OCT control
-				///m_pStreamTab->getDeviceControlTab()->getAxsunControl()->setChecked(true);
+				// Set acquisition state
+				m_pAcquisitionState = true;
             }
             else
                 m_pToggleButton_Acquisition->setChecked(false); // When start acquisition is failed...
@@ -150,13 +167,20 @@ void QOperationTab::operateDataAcquisition(bool toggled)
     }
     else // Stop Data Acquisition
     {
-		/// Set Axsun OCT control
-		///if (m_pStreamTab->getDeviceControlTab()->getAxsunControl()->isChecked())
-		///	m_pStreamTab->getDeviceControlTab()->getAxsunControl()->setChecked(false);
+		// Set acquisition state
+		m_pAcquisitionState = false;
 
-		/// Set synchronization
-		///if (m_pStreamTab->getDeviceControlTab()->getFlimControl()->isChecked())
-		///	m_pStreamTab->getDeviceControlTab()->getFlimControl()->setChecked(false);
+		// Set guide-lines
+		m_pStreamTab->getVisTab()->setOuterSheathLines(false);
+
+		// Set helical scanning control
+		m_pStreamTab->getDeviceControlTab()->setHelicalScanningControl(false);
+
+		// Set Axsun OCT system control
+		m_pStreamTab->getDeviceControlTab()->setAxsunControl(false);
+
+		// Set FLim system control
+		m_pStreamTab->getDeviceControlTab()->setFlimControl(false);
 
         // Stop Thread Process
         m_pDataAcquisition->StopAcquisition();
@@ -166,16 +190,8 @@ void QOperationTab::operateDataAcquisition(bool toggled)
         m_pToggleButton_Acquisition->setText("Start &Acquisition");
         m_pToggleButton_Recording->setDisabled(true);
 
-        // Set PX14 Control widgets
-        m_pStreamTab->getDeviceControlTab()->getPX14DigitizerControl()->setChecked(false);
-
-		/// Set Axsun Bg Control widgets
-		///if (m_pStreamTab->getDeviceControlTab()->getAxsunControl()->isChecked()
-		///	&& m_pStreamTab->getDeviceControlTab()->getAxsunImagingControl()->isChecked())
-		///{
-		///	//m_pStreamTab->getDeviceControlTab()->getAxsunBgSetControl()->setEnabled(true);
-		///	//m_pStreamTab->getDeviceControlTab()->getAxsunBgResetControl()->setEnabled(true);
-		///}
+		// Close FLIm calib window
+		if (m_pStreamTab->getDeviceControlTab()->getFlimCalibDlg()) m_pStreamTab->getDeviceControlTab()->getFlimCalibDlg()->close();
     }
 }
 
@@ -228,7 +244,6 @@ void QOperationTab::operateDataSaving(bool toggled)
 			m_pToggleButton_Recording->setDisabled(true);
 			m_pToggleButton_Saving->setDisabled(true);
 			m_pProgressBar->setFormat("Writing recorded data... %p%");
-			//m_pStreamTab->getMainWnd()->m_pTabWidget->setCurrentIndex(1);
 		}
 		else
 			m_pToggleButton_Saving->setChecked(false);
@@ -238,8 +253,11 @@ void QOperationTab::operateDataSaving(bool toggled)
 
 void QOperationTab::setAcqRecEnable()
 {
-	m_pToggleButton_Acquisition->setEnabled(true); 
-	m_pToggleButton_Recording->setEnabled(true);
+	if (m_pToggleButton_Acquisition->isChecked())
+	{
+		m_pToggleButton_Acquisition->setEnabled(true);
+		m_pToggleButton_Recording->setEnabled(true);
+	}
 }
 
 void QOperationTab::setSaveButtonDefault(bool error)

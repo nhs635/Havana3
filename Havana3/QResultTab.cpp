@@ -5,6 +5,10 @@
 #include <Havana3/QProcessingTab.h>
 #include <Havana3/QVisualizationTab.h>
 
+#include <Havana3/Dialog/SaveResultDlg.h>
+#include <Havana3/Dialog/PulseReviewDlg.h>
+#include <Havana3/Dialog/LongitudinalViewDlg.h>
+
 
 QResultTab::QResultTab(QWidget *parent) :
 	QDialog(parent)
@@ -60,4 +64,8 @@ void QResultTab::changeTab(bool status)
 		m_pVisualizationTab->setWidgetsValue();
 	else // result -> stream
 		m_pProcessingTab->setWidgetsStatus();
+
+	if (m_pProcessingTab->getSaveResultDlg()) m_pProcessingTab->getSaveResultDlg()->close();
+	if (m_pVisualizationTab->getPulseReviewDlg()) m_pVisualizationTab->getPulseReviewDlg()->close();
+	if (m_pVisualizationTab->getLongitudinalViewDlg()) m_pVisualizationTab->getLongitudinalViewDlg()->close();
 }

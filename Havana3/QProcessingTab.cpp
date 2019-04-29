@@ -8,6 +8,7 @@
 
 #include <Havana3/Dialog/SaveResultDlg.h>
 #include <Havana3/Dialog/PulseReviewDlg.h>
+#include <Havana3/Dialog/LongitudinalViewDlg.h>
 
 #include <Havana3/Viewer/QImageView.h>
 
@@ -18,7 +19,8 @@
 
 
 QProcessingTab::QProcessingTab(QWidget *parent) :
-    QDialog(parent), m_pFLIm(nullptr), m_pSaveResultDlg(nullptr), m_pPulseReviewDlg(nullptr)
+    QDialog(parent),
+	m_pConfigTemp(nullptr), m_pFLIm(nullptr), m_pSaveResultDlg(nullptr) 
 {
 	// Set main window objects
     m_pResultTab = dynamic_cast<QResultTab*>(parent);
@@ -34,22 +36,7 @@ QProcessingTab::QProcessingTab(QWidget *parent) :
 	m_pPushButton_SaveResults->setFixedHeight(30);
 	m_pPushButton_SaveResults->setText("Save Results...");
 	m_pPushButton_SaveResults->setDisabled(true);
-
-	m_pPushButton_PulseReview = new QPushButton(this);
-	m_pPushButton_PulseReview->setFixedHeight(30);
-	m_pPushButton_PulseReview->setText("Pulse Review...");
-	m_pPushButton_PulseReview->setDisabled(true);
-	
-	/// Create widgets for user defined parameter
-	///m_pCheckBox_UserDefinedAlines = new QCheckBox(this);
-	///m_pCheckBox_UserDefinedAlines->setText("User-Defined nAlines");
-
-	///m_pLineEdit_UserDefinedAlines = new QLineEdit(this);
-	///m_pLineEdit_UserDefinedAlines->setText(QString::number(m_pConfig->octAlines));
-	///m_pLineEdit_UserDefinedAlines->setFixedWidth(30);
-	///m_pLineEdit_UserDefinedAlines->setAlignment(Qt::AlignCenter);
-	///m_pLineEdit_UserDefinedAlines->setDisabled(true);
-
+		
 	// Create progress bar
 	m_pProgressBar_PostProcessing = new QProgressBar(this);
 	m_pProgressBar_PostProcessing->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Fixed);
@@ -65,17 +52,8 @@ QProcessingTab::QProcessingTab(QWidget *parent) :
 
 	pHBoxLayout_Processing->addWidget(m_pPushButton_StartProcessing);
 	pHBoxLayout_Processing->addWidget(m_pPushButton_SaveResults);
-	pHBoxLayout_Processing->addWidget(m_pPushButton_PulseReview);
-
-	///QHBoxLayout *pHBoxLayout_UserDefined = new QHBoxLayout;
-	///pHBoxLayout_UserDefined->setSpacing(2);
-
-	///pHBoxLayout_UserDefined->addWidget(m_pCheckBox_UserDefinedAlines);
-	///pHBoxLayout_UserDefined->addWidget(m_pLineEdit_UserDefinedAlines);
-	///pHBoxLayout_UserDefined->addItem(new QSpacerItem(0, 0, QSizePolicy::Minimum, QSizePolicy::Fixed));
-
+	
     m_pVBoxLayout->addItem(pHBoxLayout_Processing);
-	///m_pVBoxLayout->addItem(pHBoxLayout_UserDefined);
     m_pVBoxLayout->addWidget(m_pProgressBar_PostProcessing);
     m_pVBoxLayout->addStretch(1);
 
@@ -85,9 +63,7 @@ QProcessingTab::QProcessingTab(QWidget *parent) :
 	// Connect signal and slot
 	connect(m_pPushButton_StartProcessing, SIGNAL(clicked(bool)), this, SLOT(startProcessing(void)));
 	connect(m_pPushButton_SaveResults, SIGNAL(clicked(bool)), this, SLOT(createSaveResultDlg()));
-	connect(m_pPushButton_PulseReview, SIGNAL(clicked(bool)), this, SLOT(createPulseReviewDlg()));
-	///connect(m_pCheckBox_UserDefinedAlines, SIGNAL(toggled(bool)), this, SLOT(enableUserDefinedAlines(bool)));
-
+	
 	connect(this, SIGNAL(processedSingleFrame(int)), m_pProgressBar_PostProcessing, SLOT(setValue(int)));
 	connect(this, SIGNAL(setWidgets(bool, Configuration*)), this, SLOT(setWidgetsEnabled(bool, Configuration*)));
 }
@@ -95,14 +71,12 @@ QProcessingTab::QProcessingTab(QWidget *parent) :
 QProcessingTab::~QProcessingTab()
 {
 	if (m_pSaveResultDlg) m_pSaveResultDlg->close();
-	if (m_pPulseReviewDlg) m_pPulseReviewDlg->close();
 }
 
 
 void QProcessingTab::setWidgetsStatus()
 {	
 	if (m_pSaveResultDlg) m_pSaveResultDlg->close();
-	if (m_pPulseReviewDlg) m_pPulseReviewDlg->close();
 }
 
 
@@ -124,47 +98,6 @@ void QProcessingTab::deleteSaveResultDlg()
 	m_pSaveResultDlg = nullptr;
 }
 
-void QProcessingTab::createPulseReviewDlg()
-{
-	if (m_pPulseReviewDlg == nullptr)
-	{
-		m_pPulseReviewDlg = new PulseReviewDlg(this);
-		connect(m_pPulseReviewDlg, SIGNAL(finished(int)), this, SLOT(deletePulseReviewDlg()));
-		m_pPulseReviewDlg->show();
-
-		m_pResultTab->getVisualizationTab()->getRectImageView()->setVLineChangeCallback([&](int aline) { m_pPulseReviewDlg->setCurrentAline(aline / 4); });
-		m_pResultTab->getVisualizationTab()->getRectImageView()->setVerticalLine(1, 0);
-		m_pResultTab->getVisualizationTab()->getRectImageView()->getRender()->update();
-
-		m_pResultTab->getVisualizationTab()->getCircImageView()->setRLineChangeCallback([&](int aline) { m_pPulseReviewDlg->setCurrentAline(aline / 4); });
-		m_pResultTab->getVisualizationTab()->getCircImageView()->setVerticalLine(1, 0);
-		m_pResultTab->getVisualizationTab()->getCircImageView()->getRender()->m_bRadial = true;
-		m_pResultTab->getVisualizationTab()->getCircImageView()->getRender()->m_rMax = m_pFLIm->_resize.ny * 4;
-		m_pResultTab->getVisualizationTab()->getCircImageView()->getRender()->update();
-	}
-	m_pPulseReviewDlg->raise();
-	m_pPulseReviewDlg->activateWindow();
-}
-
-void QProcessingTab::deletePulseReviewDlg()
-{
-	m_pResultTab->getVisualizationTab()->getRectImageView()->setVerticalLine(0);
-	m_pResultTab->getVisualizationTab()->getRectImageView()->getRender()->update();
-
-	m_pResultTab->getVisualizationTab()->getCircImageView()->setVerticalLine(0);
-	m_pResultTab->getVisualizationTab()->getCircImageView()->getRender()->update();
-
-	m_pPulseReviewDlg->deleteLater();
-	m_pPulseReviewDlg = nullptr;
-}
-
-
-///void QProcessingTab::enableUserDefinedAlines(bool checked)
-///{
-///	m_pLineEdit_UserDefinedAlines->setEnabled(checked);
-///}
-
-
 void QProcessingTab::setWidgetsEnabled(bool enabled, Configuration* pConfig)
 {
 	if (!pConfig)
@@ -172,19 +105,13 @@ void QProcessingTab::setWidgetsEnabled(bool enabled, Configuration* pConfig)
 
 	m_pPushButton_StartProcessing->setEnabled(enabled);
 	m_pPushButton_SaveResults->setEnabled(enabled);
-	m_pPushButton_PulseReview->setEnabled(enabled);
-
-	///m_pCheckBox_UserDefinedAlines->setEnabled(enabled);
-	///m_pLineEdit_UserDefinedAlines->setEnabled(enabled);
-	///if (!m_pCheckBox_UserDefinedAlines->isChecked())
-	///	m_pLineEdit_UserDefinedAlines->setEnabled(false);
-
+	
 	if (!enabled)
 	{
 		if (pConfig)
 		{
 			m_pProgressBar_PostProcessing->setFormat("External data processing... %p%");
-			m_pProgressBar_PostProcessing->setRange(0, pConfig->frames - 1);
+			m_pProgressBar_PostProcessing->setRange(0, pConfig->frames - 1 + INTER_FRAME_SYNC);
 		}
 		else
 		{
@@ -199,13 +126,13 @@ void QProcessingTab::setWidgetsEnabled(bool enabled, Configuration* pConfig)
 }
 
 
-
 void QProcessingTab::startProcessing()
 {
-	//m_pSlider_SelectFrame->setValue(0);
+	/// m_pSlider_SelectFrame->setValue(0);
 
 	if (m_pSaveResultDlg) m_pSaveResultDlg->close();
-	if (m_pPulseReviewDlg) m_pPulseReviewDlg->close();
+	if (getResultTab()->getVisualizationTab()->getPulseReviewDlg()) getResultTab()->getVisualizationTab()->getPulseReviewDlg()->close();
+	if (getResultTab()->getVisualizationTab()->getLongitudinalViewDlg()) getResultTab()->getVisualizationTab()->getLongitudinalViewDlg()->close();
 
 	// Get path to read
 	QString fileName = QFileDialog::getOpenFileName(nullptr, "Load external FLIm OCT data", "", "FLIm OCT raw data (*.data)");
@@ -229,44 +156,41 @@ void QProcessingTab::startProcessing()
 
 				QString iniName = fileTitle + ".ini";
 				QString maskName = fileTitle + ".flim_mask";
+				
+				if (m_pConfigTemp) delete m_pConfigTemp;
+				m_pConfigTemp = new Configuration;
 
-				static Configuration config;
-				config.getConfigFile(iniName);
-///				if (m_pCheckBox_UserDefinedAlines->isChecked())
-///				{
-///					config.nAlines = m_pLineEdit_UserDefinedAlines->text().toInt();
-///					config.nAlines4 = ((config.nAlines + 3) >> 2) << 2;
-///					config.nFrameSize = config.nChannels * config.nScans * config.nAlines;
-///				}
-				config.frames = (int)(file.size() / (sizeof(uint8_t) * (qint64)config.octFrameSize + sizeof(uint16_t) * (qint64)config.flimFrameSize));
+				m_pConfigTemp->getConfigFile(iniName);
+				m_pConfigTemp->frames = (int)(file.size() / (sizeof(uint8_t) * (qint64)m_pConfigTemp->octFrameSize + sizeof(uint16_t) * (qint64)m_pConfigTemp->flimFrameSize));
+				m_pConfigTemp->frames -= INTER_FRAME_SYNC;
 
-				/// printf("Start external image processing... (Total nFrame: %d)\n", config.frames);
+				/// printf("Start external image processing... (Total nFrame: %d)\n", m_pConfigTemp->frames);
 
 				// Set Widgets //////////////////////////////////////////////////////////////////////////////
-				emit setWidgets(false, &config);
-				emit m_pResultTab->getVisualizationTab()->setWidgets(false, &config);
+				emit setWidgets(false, m_pConfigTemp);
+				emit m_pResultTab->getVisualizationTab()->setWidgets(false, m_pConfigTemp);
 
 				// Set Buffers //////////////////////////////////////////////////////////////////////////////
-				m_pResultTab->getVisualizationTab()->setBuffers(&config);
+				m_pResultTab->getVisualizationTab()->setBuffers(m_pConfigTemp);
 				
-				m_syncDeinterleaving.allocate_queue_buffer(config.flimScans + config.octScans, config.octAlines, PROCESSING_BUFFER_SIZE);
-				m_syncFlimProcessing.allocate_queue_buffer(config.flimScans, config.flimAlines, PROCESSING_BUFFER_SIZE);
+				m_syncDeinterleaving.allocate_queue_buffer(m_pConfigTemp->flimScans + m_pConfigTemp->octScans, m_pConfigTemp->octAlines, PROCESSING_BUFFER_SIZE);
+				m_syncFlimProcessing.allocate_queue_buffer(m_pConfigTemp->flimScans, m_pConfigTemp->flimAlines, PROCESSING_BUFFER_SIZE);
 
 				// Set FLIm Object ///////////////////////////////////////////////////////////////////////////
 				if (m_pFLIm) delete m_pFLIm;
 				m_pFLIm = new FLImProcess;
-				m_pFLIm->setParameters(&config);
-				m_pFLIm->_resize(np::Uint16Array2(config.flimScans, config.flimAlines), m_pFLIm->_params);
+				m_pFLIm->setParameters(m_pConfigTemp);
+				m_pFLIm->_resize(np::Uint16Array2(m_pConfigTemp->flimScans, m_pConfigTemp->flimAlines), m_pFLIm->_params);
 				m_pFLIm->loadMaskData(maskName);
 
 				// Get external data ////////////////////////////////////////////////////////////////////////
-				std::thread load_data([&]() { loadingRawData(&file, &config); });
+				std::thread load_data([&]() { loadingRawData(&file, m_pConfigTemp); });
 
 				// Data DeInterleaving //////////////////////////////////////////////////////////////////////
-				std::thread deinterleave([&]() { deinterleaving(&config); });
+				std::thread deinterleave([&]() { deinterleaving(m_pConfigTemp); });
 
 				// FLIm Process /////////////////////////////////////////////////////////////////////////////
-				std::thread flim_proc([&]() { flimProcessing(m_pFLIm, &config); });
+				std::thread flim_proc([&]() { flimProcessing(m_pFLIm, m_pConfigTemp); });
 
 				// Wait for threads end /////////////////////////////////////////////////////////////////////
 				load_data.join();
@@ -281,8 +205,8 @@ void QProcessingTab::startProcessing()
 				m_syncFlimProcessing.deallocate_queue_buffer();
 
 				// Reset Widgets /////////////////////////////////////////////////////////////////////////////
-				setWidgets(true, &config);
-				m_pResultTab->getVisualizationTab()->setWidgets(true, &config);
+				setWidgets(true, m_pConfigTemp);
+				m_pResultTab->getVisualizationTab()->setWidgets(true, m_pConfigTemp);
 
 				// Visualization /////////////////////////////////////////////////////////////////////////////
 				m_pResultTab->getVisualizationTab()->visualizeEnFaceMap(true);
@@ -298,12 +222,10 @@ void QProcessingTab::startProcessing()
 }
 
 
-
 void QProcessingTab::loadingRawData(QFile* pFile, Configuration* pConfig)
 {
 	int frameCount = 0;
-
-	while (frameCount < pConfig->frames)
+	while (frameCount < pConfig->frames + INTER_FRAME_SYNC)
 	{
 		// Get buffers from threading queues
 		uint8_t* frame_data = nullptr;
@@ -336,7 +258,7 @@ void QProcessingTab::deinterleaving(Configuration* pConfig)
 	QVisualizationTab* pVisTab = m_pResultTab->getVisualizationTab();
 
 	int frameCount = 0;
-	while (frameCount < pConfig->frames)
+	while (frameCount < pConfig->frames + INTER_FRAME_SYNC)
 	{
 		// Get the buffer from the previous sync Queue
 		uint8_t* frame_ptr = m_syncDeinterleaving.Queue_sync.pop();
@@ -361,8 +283,9 @@ void QProcessingTab::deinterleaving(Configuration* pConfig)
 				{
 					// Data deinterleaving
 					memcpy(pulse_ptr, frame_ptr, sizeof(uint16_t) * pConfig->flimFrameSize);
-					memcpy(pVisTab->m_vectorOctImage.at(frameCount).raw_ptr(),
-						frame_ptr + sizeof(uint16_t) * pConfig->flimFrameSize, sizeof(uint8_t) * pConfig->octFrameSize);
+					if (frameCount >= INTER_FRAME_SYNC)
+						memcpy(pVisTab->m_vectorOctImage.at(frameCount - INTER_FRAME_SYNC).raw_ptr(),
+							frame_ptr + sizeof(uint16_t) * pConfig->flimFrameSize, sizeof(uint8_t) * pConfig->octFrameSize);
 					frameCount++;
 
 					// Push the buffers to sync Queues
@@ -396,33 +319,36 @@ void QProcessingTab::flimProcessing(FLImProcess* pFLIm, Configuration* pConfig)
 	///file.open(QIODevice::WriteOnly);
 
 	int frameCount = 0;
-	while (frameCount < pConfig->frames)
+	while (frameCount < pConfig->frames + INTER_FRAME_SYNC)
 	{
 		// Get the buffer from the previous sync Queue
 		uint16_t* pulse_data = m_syncFlimProcessing.Queue_sync.pop();
 		if (pulse_data != nullptr)
 		{
-			// FLIM Process
-			np::Uint16Array2 pulse(pulse_data, pConfig->flimScans, pConfig->flimAlines);
-			(*pFLIm)(itn, md, ltm, pulse);
-			
-			// Copy for Pulse Review
-			np::Array<float, 2> crop(pFLIm->_resize.nx, pFLIm->_resize.ny);
-			np::Array<float, 2> mask(pFLIm->_resize.nx, pFLIm->_resize.ny);
-			memcpy(crop, pFLIm->_resize.crop_src, crop.length() * sizeof(float));
-			memcpy(mask, pFLIm->_resize.mask_src, mask.length() * sizeof(float));
-			pVisTab->m_vectorPulseCrop.push_back(crop);
-			pVisTab->m_vectorPulseMask.push_back(mask);
+			if (frameCount < pConfig->frames)
+			{
+				// FLIM Process
+				np::Uint16Array2 pulse(pulse_data, pConfig->flimScans, pConfig->flimAlines);
+				(*pFLIm)(itn, md, ltm, pulse);
 
-			///file.write(reinterpret_cast<const char*>(pFLIm->_resize.filt_src.raw_ptr()), sizeof(float) * pFLIm->_resize.nsite);
+				// Copy for Pulse Review
+				np::Array<float, 2> crop(pFLIm->_resize.nx, pFLIm->_resize.ny);
+				np::Array<float, 2> mask(pFLIm->_resize.nx, pFLIm->_resize.ny);
+				memcpy(crop, pFLIm->_resize.crop_src, crop.length() * sizeof(float));
+				memcpy(mask, pFLIm->_resize.mask_src, mask.length() * sizeof(float));
+				pVisTab->m_vectorPulseCrop.push_back(crop);
+				pVisTab->m_vectorPulseMask.push_back(mask);
 
-			// Copy for Intensity & Lifetime
-			memcpy(&pVisTab->m_intensityMap.at(0)(0, frameCount), &itn(0, 1), sizeof(float) * pConfig->flimAlines);
-			memcpy(&pVisTab->m_intensityMap.at(1)(0, frameCount), &itn(0, 2), sizeof(float) * pConfig->flimAlines);
-			memcpy(&pVisTab->m_intensityMap.at(2)(0, frameCount), &itn(0, 3), sizeof(float) * pConfig->flimAlines);
-			memcpy(&pVisTab->m_lifetimeMap.at(0)(0, frameCount), &ltm(0, 0), sizeof(float) * pConfig->flimAlines);
-			memcpy(&pVisTab->m_lifetimeMap.at(1)(0, frameCount), &ltm(0, 1), sizeof(float) * pConfig->flimAlines);
-			memcpy(&pVisTab->m_lifetimeMap.at(2)(0, frameCount), &ltm(0, 2), sizeof(float) * pConfig->flimAlines);
+				///file.write(reinterpret_cast<const char*>(pFLIm->_resize.filt_src.raw_ptr()), sizeof(float) * pFLIm->_resize.nsite);
+
+				// Copy for Intensity & Lifetime			
+				memcpy(&pVisTab->m_intensityMap.at(0)(0, frameCount), &itn(0, 1), sizeof(float) * pConfig->flimAlines);
+				memcpy(&pVisTab->m_intensityMap.at(1)(0, frameCount), &itn(0, 2), sizeof(float) * pConfig->flimAlines);
+				memcpy(&pVisTab->m_intensityMap.at(2)(0, frameCount), &itn(0, 3), sizeof(float) * pConfig->flimAlines);
+				memcpy(&pVisTab->m_lifetimeMap.at(0)(0, frameCount), &ltm(0, 0), sizeof(float) * pConfig->flimAlines);
+				memcpy(&pVisTab->m_lifetimeMap.at(1)(0, frameCount), &ltm(0, 1), sizeof(float) * pConfig->flimAlines);
+				memcpy(&pVisTab->m_lifetimeMap.at(2)(0, frameCount), &ltm(0, 2), sizeof(float) * pConfig->flimAlines);
+			}
 			emit processedSingleFrame(frameCount++);
 
 			// Return (push) the buffer to the previous threading queue

@@ -67,7 +67,7 @@ void FlimCalibDlg::createPulseView()
     m_pScope_PulseView->getRender()->m_bMaskUse = false;
     m_pScope_PulseView->setMinimumHeight(180);
     m_pScope_PulseView->getRender()->setGrid(8, 32, 1, true);
-    m_pScope_PulseView->setDcLine(m_pFLIm->_params.bg);
+    m_pScope_PulseView->setDcLine(m_pFLIm->_params.bg[1]);
 
     m_pStart = &m_pScope_PulseView->getRender()->m_start;
     m_pEnd = &m_pScope_PulseView->getRender()->m_end;
@@ -132,14 +132,24 @@ void FlimCalibDlg::createCalibWidgets()
     pGridLayout_PulseView->setSpacing(2);
 
     // Create widgets for FLIM calibration
+	m_pSlider_PX14DcOffset = new QSlider(this);
+	m_pSlider_PX14DcOffset->setOrientation(Qt::Horizontal);
+	m_pSlider_PX14DcOffset->setFixedWidth(110);
+	m_pSlider_PX14DcOffset->setRange(0, 4095);
+	m_pSlider_PX14DcOffset->setValue(m_pConfig->px14DcOffset);
+
+	m_pLabel_PX14DcOffset = new QLabel(QString("Set DC Offset (%1)").arg(m_pConfig->px14DcOffset, 4, 10), this);
+	m_pLabel_PX14DcOffset->setFixedWidth(110);
+	m_pLabel_PX14DcOffset->setBuddy(m_pSlider_PX14DcOffset);
+
     m_pPushButton_CaptureBackground = new QPushButton(this);
     m_pPushButton_CaptureBackground->setText("Capture Background");
     m_pLineEdit_Background = new QLineEdit(this);
-    m_pLineEdit_Background->setText(QString::number(m_pFLIm->_params.bg, 'f', 2));
+    m_pLineEdit_Background->setText(QString::number(m_pFLIm->_params.bg[1], 'f', 2));
     m_pLineEdit_Background->setFixedWidth(60);
     m_pLineEdit_Background->setAlignment(Qt::AlignCenter);
 		
-    m_pLabel_ChStart = new QLabel("Channel Start", this);
+    m_pLabel_ChStart = new QLabel("Channel Start  ", this);
     m_pLabel_DelayTimeOffset = new QLabel("Delay Time Offset", this);
 
     m_pLabel_Ch[0] = new QLabel("Ch 0 (IRF)", this);
@@ -186,11 +196,14 @@ void FlimCalibDlg::createCalibWidgets()
     // Set layout
     QHBoxLayout *pHBoxLayout_Background = new QHBoxLayout;
     pHBoxLayout_Background->setSpacing(2);
+	pHBoxLayout_Background->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed));
+	pHBoxLayout_Background->addWidget(m_pLabel_PX14DcOffset);
+	pHBoxLayout_Background->addWidget(m_pSlider_PX14DcOffset);
+	pHBoxLayout_Background->addWidget(new QLabel("   ", this));
     pHBoxLayout_Background->addWidget(m_pPushButton_CaptureBackground);
     pHBoxLayout_Background->addWidget(m_pLineEdit_Background);
 	
-    pGridLayout_PulseView->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed), 0, 0, 1, 3);
-    pGridLayout_PulseView->addItem(pHBoxLayout_Background, 0, 3, 1, 3);
+    pGridLayout_PulseView->addItem(pHBoxLayout_Background, 0, 0, 1, 6);
     pGridLayout_PulseView->addItem(new QSpacerItem(0, 0, QSizePolicy::Fixed, QSizePolicy::Fixed), 0, 6);
 
     pGridLayout_PulseView->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed), 2, 0);
@@ -213,6 +226,7 @@ void FlimCalibDlg::createCalibWidgets()
     m_pVBoxLayout->addItem(pGridLayout_PulseView);
 
     // Connect
+	connect(m_pSlider_PX14DcOffset, SIGNAL(valueChanged(int)), this, SLOT(setPX14DcOffset(int)));
     connect(m_pPushButton_CaptureBackground, SIGNAL(clicked(bool)), this, SLOT(captureBackground()));
     connect(m_pLineEdit_Background, SIGNAL(textChanged(const QString &)), this, SLOT(captureBackground(const QString &)));
     connect(m_pSpinBox_ChStart[0], SIGNAL(valueChanged(double)), this, SLOT(resetChStart0(double)));
@@ -280,7 +294,7 @@ void FlimCalibDlg::createHistogram()
 
     m_pHistogramLifetime = new Histogram(N_BINS, m_pConfig->flimAlines);
 
-    m_pColorbar_FluLifetime = new QImageView(ColorTable::colortable(m_pConfig->flimLifetimeColorTable), 256, 1, false);
+    m_pColorbar_FluLifetime = new QImageView(ColorTable::colortable(LIFETIME_COLORTABLE), 256, 1, false);
     m_pColorbar_FluLifetime->drawImage(color);
     m_pColorbar_FluLifetime->getRender()->setFixedSize(250, 10);
 
@@ -361,7 +375,7 @@ void FlimCalibDlg::drawRoiPulse(FLImProcess* pFLIm, int aline)
     }
 
     // ROI pulse
-    ippsAddC_32f_I(pFLIm->_params.bg, data.raw_ptr(), data.length());
+    ippsAddC_32f_I(pFLIm->_params.bg[1], data.raw_ptr(), data.length());
     m_pScope_PulseView->drawData(&data(0, aline), pFLIm->_resize.pMask);
 
     // Histogram
@@ -380,7 +394,7 @@ void FlimCalibDlg::drawRoiPulse(FLImProcess* pFLIm, int aline)
     m_pLabel_FluLifetimeMin->setText(QString::number(m_pConfig->flimLifetimeRange[m_pConfig->flimEmissionChannel - 1].min, 'f', 1));
     m_pLabel_FluLifetimeMax->setText(QString::number(m_pConfig->flimLifetimeRange[m_pConfig->flimEmissionChannel - 1].max, 'f', 1));
 
-    m_pColorbar_FluLifetime->resetColormap(ColorTable::colortable(m_pConfig->flimLifetimeColorTable));
+    m_pColorbar_FluLifetime->resetColormap(ColorTable::colortable(LIFETIME_COLORTABLE));
 	
     Ipp32f mean, stdev;
     auto res = ippsMeanStdDev_32f(scanIntensity, m_pConfig->flimAlines, &mean, &stdev, ippAlgHintFast);
@@ -576,6 +590,15 @@ void FlimCalibDlg::removeMask()
 }
 
 
+void FlimCalibDlg::setPX14DcOffset(int offset)
+{
+	DataAcquisition *pDataAcq = m_pDeviceControlTab->getStreamTab()->getOperationTab()->m_pDataAcquisition;
+	pDataAcq->SetDcOffset(offset);
+	
+	m_pConfig->px14DcOffset = offset;
+	m_pLabel_PX14DcOffset->setText(QString("Set DC Offset (%1)").arg(m_pConfig->px14DcOffset, 4, 10));
+}
+
 void FlimCalibDlg::captureBackground()
 {
     Ipp32f bg;
@@ -590,8 +613,8 @@ void FlimCalibDlg::captureBackground(const QString &str)
 {
     float bg = str.toFloat();
 	
-    m_pFLIm->_params.bg = bg;
-    m_pConfig->flimBg = bg;
+    m_pFLIm->_params.bg[1] = bg;
+    m_pConfig->flimBg[1] = bg;
 
     m_pScope_PulseView->setDcLine(bg);
 

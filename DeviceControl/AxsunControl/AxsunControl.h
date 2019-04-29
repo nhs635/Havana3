@@ -63,6 +63,7 @@ public:
     bool setVDLLength(float position);
     bool setClockDelay(unsigned long delay);
     bool setDecibelRange(double min_dB, double max_dB);
+	bool getDeviceState();
 
 private:
     bool writeFPGARegSingleBit(unsigned long regNum, int bitNum, bool set);

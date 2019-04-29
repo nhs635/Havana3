@@ -11,7 +11,7 @@
 #include <Common/array.h>
 #include <Common/callback.h>
 
-class QProcessingTab;
+class QVisualizationTab;
 class FLImProcess;
 
 
@@ -42,7 +42,7 @@ signals:
 // Variables ////////////////////////////////////////////
 private:	
 	Configuration* m_pConfig;
-	QProcessingTab* m_pProcessingTab;
+	QVisualizationTab* m_pVisualizationTab;
 	FLImProcess* m_pFLIm;
 
 private:

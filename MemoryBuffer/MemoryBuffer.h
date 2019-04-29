@@ -35,12 +35,12 @@ public:
     // Data saving (save wrote data to hard disk)
     bool startSaving();
 
-	//// Circulation
-	//void circulation(int nFramesToCirc);
+	/// Circulation
+	///void circulation(int nFramesToCirc);
 
-	//// Buffer operation
-	//uint16_t* pop_front();
-	//void push_back(uint16_t* buffer);
+	/// Buffer operation
+	///uint16_t* pop_front();
+	///void push_back(uint16_t* buffer);
 
 private: // writing threading operation
 	void write();

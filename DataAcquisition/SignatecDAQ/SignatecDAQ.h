@@ -8,6 +8,7 @@
 
 #include <iostream>
 #include <thread>
+#include <chrono>
 
 #define MAX_MSG_LENGTH 2000
 
@@ -26,6 +27,7 @@ public:
 	callback2<const char*, bool> SendStatusMessage;
 	
 public:
+	inline bool is_initialized() const { return !_dirty; }
 	bool initialize();
 	bool set_init();
 	int getBootTimeBuffer(int idx);

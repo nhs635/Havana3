@@ -52,7 +52,8 @@ QStreamTab::QStreamTab(QWidget *parent) :
 
     m_pGroupBox_DeviceControlTab = new QGroupBox();
     m_pGroupBox_DeviceControlTab->setLayout(m_pDeviceControlTab->getLayout());
-    m_pGroupBox_DeviceControlTab->setStyleSheet("QGroupBox{padding-top:15px; margin-top:-15px}");
+    m_pGroupBox_DeviceControlTab->setTitle("  Device Control  ");
+    m_pGroupBox_DeviceControlTab->setStyleSheet("QGroupBox { padding-top: 20px; margin-top: -10px; } QGroupBox::title { subcontrol-origin: margin; left: 8px; top: 2px; }");
     m_pGroupBox_DeviceControlTab->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     m_pGroupBox_DeviceControlTab->setFixedWidth(341);
 
@@ -112,10 +113,9 @@ void QStreamTab::changeTab(bool status)
 		m_pOperationTab->setWidgetsStatus();
 		m_pDeviceControlTab->setControlsStatus();
 	}
-}
 
-//#include <iostream>
-//#include <chrono>
+	if (m_pDeviceControlTab->getFlimCalibDlg()) m_pDeviceControlTab->getFlimCalibDlg()->close();
+}
 
 void QStreamTab::setFlimAcquisitionCallback()
 {
@@ -143,14 +143,8 @@ void QStreamTab::setFlimAcquisitionCallback()
 
             if (pulse_ptr != nullptr)
             {
-				//std::chrono::system_clock::time_point StartTime = std::chrono::system_clock::now();
-
                 // Body
                 memcpy(pulse_ptr, frame_ptr, sizeof(uint16_t) * m_pConfig->flimFrameSize);
-				
-				//std::chrono::system_clock::time_point EndTime = std::chrono::system_clock::now();
-				//std::chrono::microseconds micro = std::chrono::duration_cast<std::chrono::microseconds>(EndTime - StartTime);
-				//printf("[Data Transfer] %d microsec\n", micro.count());
 
                 // Push the buffer to sync Queue
                 m_syncFlimProcessing.Queue_sync.push(pulse_ptr);
@@ -177,14 +171,8 @@ void QStreamTab::setFlimAcquisitionCallback()
 
 				if (pulse_ptr != nullptr)
 				{
-					//std::chrono::system_clock::time_point StartTime = std::chrono::system_clock::now();
-
 					// Body (Copying the frame data)
 					memcpy(pulse_ptr, frame.raw_ptr(), sizeof(uint16_t) * m_pConfig->flimFrameSize);
-					
-					//std::chrono::system_clock::time_point EndTime = std::chrono::system_clock::now();
-					//std::chrono::microseconds micro = std::chrono::duration_cast<std::chrono::microseconds>(EndTime - StartTime);
-					//printf("[Data Recording] %d microsec\n", micro.count());
 
 					// Push to the copy queue for copying transfered data in copy thread
 					pMemBuff->m_syncFlimBuffering.Queue_sync.push(pulse_ptr);
@@ -209,7 +197,6 @@ void QStreamTab::setFlimAcquisitionCallback()
 		emit sendStatusMessage(qmsg, is_error);
     });
 }
-
 
 void QStreamTab::setFlimProcessingCallback()
 {
@@ -248,17 +235,13 @@ void QStreamTab::setFlimProcessingCallback()
 				for (int i = 0; i < 11; i++)
 				{
 					float* pValue = flim_ptr + i * m_pConfig->flimAlines;
-					std::rotate(pValue, pValue + m_pConfig->flimSyncAdjust, pValue + m_pConfig->flimAlines);
+					std::rotate(pValue, pValue + INTRA_FRAME_SYNC, pValue + m_pConfig->flimAlines);
 				}
 
 				// Transfer to FLIm calibration dlg
 				if (m_pDeviceControlTab->getFlimCalibDlg())
 					emit m_pDeviceControlTab->getFlimCalibDlg()->plotRoiPulse(pFLIm, 0);
-
-				//std::chrono::system_clock::time_point EndTime = std::chrono::system_clock::now();
-				//std::chrono::microseconds micro = std::chrono::duration_cast<std::chrono::microseconds>(EndTime - StartTime);
-				//printf("[FLIm Process] %d microsec\n", micro.count());
-
+				
 				// Push the buffers to sync Queues
 				m_syncFlimVisualization.Queue_sync.push(flim_ptr);
 				//m_syncVisualization.n_exec++;
@@ -319,14 +302,8 @@ void QStreamTab::setOctProcessingCallback()
 
 			if (oct_ptr != nullptr)
 			{
-				//std::chrono::system_clock::time_point StartTime = std::chrono::system_clock::now();
-
 				// Body
 				memcpy(oct_ptr, frame_ptr, sizeof(uint8_t) * m_pConfig->octFrameSize);
-				
-				//std::chrono::system_clock::time_point EndTime = std::chrono::system_clock::now();
-				//std::chrono::microseconds micro = std::chrono::duration_cast<std::chrono::microseconds>(EndTime - StartTime);
-				//printf("[OCT Process] %d microsec\n", micro.count());
 
 				// Push the buffer to sync Queue
 				m_syncOctVisualization.Queue_sync.push(oct_ptr);
@@ -353,14 +330,8 @@ void QStreamTab::setOctProcessingCallback()
 
 				if (oct_ptr != nullptr)
 				{
-					//std::chrono::system_clock::time_point StartTime = std::chrono::system_clock::now();
-
 					// Body (Copying the frame data)
 					memcpy(oct_ptr, frame.raw_ptr(), sizeof(uint8_t) * m_pConfig->octFrameSize);
-					
-					//std::chrono::system_clock::time_point EndTime = std::chrono::system_clock::now();
-					//std::chrono::microseconds micro = std::chrono::duration_cast<std::chrono::microseconds>(EndTime - StartTime);
-					//printf("[OCT Recording] %d microsec\n", micro.count());
 
 					// Push to the copy queue for copying transfered data in copy thread
 					pMemBuff->m_syncOctBuffering.Queue_sync.push(oct_ptr);
@@ -380,7 +351,6 @@ void QStreamTab::setOctProcessingCallback()
 	});
 }
 
-
 void QStreamTab::setVisualizationCallback()
 {
     // Visualization Signal Objects ///////////////////////////////////////////////////////////////////////////////////////////
@@ -391,10 +361,8 @@ void QStreamTab::setVisualizationCallback()
 		uint8_t* oct_data = m_syncOctVisualization.Queue_sync.pop();
 		if ((flim_data != nullptr) && (oct_data != nullptr))
         {
-			//std::chrono::system_clock::time_point StartTime = std::chrono::system_clock::now();
-
             // Body
-            if (m_pOperationTab->isAcquisitionButtonToggled()) // Only valid if acquisition is running
+            if (m_pOperationTab->getAcquisitionButton()->isChecked()) // Only valid if acquisition is running
             {
 				// Draw A-lines
 				m_pVisualizationTab->m_visImage = np::Uint8Array2(oct_data, m_pConfig->octScans, m_pConfig->octAlines);
@@ -405,10 +373,6 @@ void QStreamTab::setVisualizationCallback()
 				emit m_pVisualizationTab->drawImage(m_pVisualizationTab->m_visImage.raw_ptr(),
 					m_pVisualizationTab->m_visIntensity.raw_ptr(), m_pVisualizationTab->m_visLifetime.raw_ptr());
             }
-
-			//std::chrono::system_clock::time_point EndTime = std::chrono::system_clock::now();
-			//std::chrono::microseconds micro = std::chrono::duration_cast<std::chrono::microseconds>(EndTime - StartTime);
-			//printf("[Visualization] %d microsec\n", micro.count());
 
             // Return (push) the buffer to the previous threading queue
 			{

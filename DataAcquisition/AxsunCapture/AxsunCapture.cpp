@@ -307,31 +307,28 @@ void AxsunCapture::dumpCaptureError(int32_t res, const char* pPreamble)
 
 
 
-
-//
-//
-//bool AxsunCapture::saveImages(const char* filepath)
-//{
-//    //int32_t result;
-//    //const char* pPreamble = "[Axsun Capture] Failed to save recorded imaages: ";
-//
-//    //if (false) //(bypassMode == jpeg_compressed) || (bypassMode == dynamic_range_reduced))
-//    //{
-//    //    DidWriteImage();
-//    //}
-//    //else
-//    //{
-//    //    uint32_t packets_written = 0;
-//    //    result = axSaveFile(filepath, 0, &packets_written);
-//    //    if (result != CAPTURE_OK)
-//    //    {
-//    //        dumpCaptureError(result, pPreamble);
-//    //        return false;
-//    //    }
-//    //}
-//
-//    //printf("[Axsun Capture] Recorded images are successfully saved.\n[%s]\n", filepath);
-//
-//    return true;
-//}
+///bool AxsunCapture::saveImages(const char* filepath)
+///{
+///    //int32_t result;
+///    //const char* pPreamble = "[Axsun Capture] Failed to save recorded imaages: ";
+///
+///    //if (false) //(bypassMode == jpeg_compressed) || (bypassMode == dynamic_range_reduced))
+///    //{
+///    //    DidWriteImage();
+///    //}
+///    //else
+///    //{
+///    //    uint32_t packets_written = 0;
+///    //    result = axSaveFile(filepath, 0, &packets_written);
+///    //    if (result != CAPTURE_OK)
+///    //    {
+///    //        dumpCaptureError(result, pPreamble);
+///    //        return false;
+///    //    }
+///    //}
+///
+///    //printf("[Axsun Capture] Recorded images are successfully saved.\n[%s]\n", filepath);
+///
+///    return true;
+///}
 

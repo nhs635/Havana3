@@ -24,10 +24,11 @@ using ImgObjVector = std::vector<ImageObject*>;
 
 struct CrossSectionCheckList
 {
-	bool bRect, bCirc;
-	bool bRectResize, bCircResize;
+	bool bRect, bCirc, bLongi;
+	bool bRectResize, bCircResize, bLongiResize;
 	int nRectWidth, nRectHeight;
 	int nCircDiameter;
+	int nLongiWidth, nLongiHeight;
 	bool bCh[3];
 	bool bMulti;
 };
@@ -58,8 +59,16 @@ private:
 private slots:
 	void saveCrossSections();
 	void saveEnFaceMaps();
+	void setRange();
+	void checkRectImage(bool);
+	void checkCircImage(bool);
+	void checkLongiImage(bool);
 	void enableRectResize(bool);
 	void enableCircResize(bool);
+	void enableLongiResize(bool);
+	void checkResizeValue();
+	void checkChannels();
+	void checkEnFaceOptions();
 	void setWidgetsEnabled(bool);
 
 signals:
@@ -83,10 +92,15 @@ private:
 
 private:
 	int m_nSavedFrames;
+	
+public:
+	bool m_bIsSaving;
+	Qt::TransformationMode m_defaultTransformation;
 
 private: // for threading operation
 	Queue<ImgObjVector*> m_syncQueueConverting;
 	Queue<ImgObjVector*> m_syncQueueRectWriting;
+	Queue<ImgObjVector*> m_syncQueueLongitudinal;
 	Queue<ImgObjVector*> m_syncQueueCircularizing;
 	Queue<ImgObjVector*> m_syncQueueCircWriting;
 
@@ -100,11 +114,20 @@ private:
 	QCheckBox* m_pCheckBox_CircImage;
 	QCheckBox* m_pCheckBox_ResizeCircImage;
 	QLineEdit* m_pLineEdit_CircDiameter;
+	QCheckBox* m_pCheckBox_LongiImage;
+	QCheckBox* m_pCheckBox_ResizeLongiImage;
+	QLineEdit* m_pLineEdit_LongiWidth;
+	QLineEdit* m_pLineEdit_LongiHeight;
 
 	QCheckBox* m_pCheckBox_CrossSectionCh1;
 	QCheckBox* m_pCheckBox_CrossSectionCh2;
 	QCheckBox* m_pCheckBox_CrossSectionCh3;
-	QCheckBox* m_pCheckBox_Multichannel;
+	QCheckBox* m_pCheckBox_IntensityWeighting;
+
+	// Set Range
+	QLabel* m_pLabel_Range;
+	QLineEdit* m_pLineEdit_RangeStart;
+	QLineEdit* m_pLineEdit_RangeEnd;
 
 	// Save En Face Maps
 	QPushButton* m_pPushButton_SaveEnFaceMaps;

@@ -31,6 +31,7 @@ public:
 
 public:
     callback<void> DidMovedAbsolute;
+	callback<bool> SetRelevantWidgets;
 	callback2<const char*, bool> SendStatusMessage;
 
 private:

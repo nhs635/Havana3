@@ -12,7 +12,6 @@
 class QResultTab;
 class Configuration;
 
-class PulseReviewDlg;
 class SaveResultDlg;
 
 class FLImProcess;
@@ -30,10 +29,10 @@ public:
 // Methods //////////////////////////////////////////////
 public:
     inline QVBoxLayout* getLayout() const { return m_pVBoxLayout; }
+	inline Configuration* getConfigTemp() const { return m_pConfigTemp; }
     inline QResultTab* getResultTab() const { return m_pResultTab; }
 	inline FLImProcess* getFLImProcess() const { return m_pFLIm; }
 	inline SaveResultDlg* getSaveResultDlg() const { return m_pSaveResultDlg; }
-	inline PulseReviewDlg* getPulseReviewDlg() const { return m_pPulseReviewDlg; }
 	inline QProgressBar* getProgressBar() const { return m_pProgressBar_PostProcessing; }
 	
 public:
@@ -42,10 +41,7 @@ public:
 private slots: 
 	void createSaveResultDlg();
 	void deleteSaveResultDlg();
-	void createPulseReviewDlg();
-	void deletePulseReviewDlg();
 
-	///void enableUserDefinedAlines(bool);
 	void setWidgetsEnabled(bool enabled, Configuration* pConfig);
 
 	void startProcessing();
@@ -66,10 +62,10 @@ private:
 private:	
     QResultTab* m_pResultTab;
     Configuration* m_pConfig;
+	Configuration* m_pConfigTemp;
 	FLImProcess* m_pFLIm;
 	
 	SaveResultDlg *m_pSaveResultDlg;
-	PulseReviewDlg *m_pPulseReviewDlg;
 	
 public:
 	QString m_path;
@@ -85,11 +81,7 @@ private:
 	// Data loading & writing widgets
 	QPushButton *m_pPushButton_StartProcessing;
 	QPushButton *m_pPushButton_SaveResults;
-	QPushButton *m_pPushButton_PulseReview;
-
-	///QCheckBox *m_pCheckBox_UserDefinedAlines;
-	///QLineEdit *m_pLineEdit_UserDefinedAlines;
-
+	
 	QProgressBar *m_pProgressBar_PostProcessing;
 };
 

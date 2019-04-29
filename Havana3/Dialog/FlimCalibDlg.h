@@ -122,6 +122,7 @@ public slots : // widgets
     void addMask();
     void removeMask();
 
+	void setPX14DcOffset(int);
     void captureBackground();
     void captureBackground(const QString &);
 
@@ -168,6 +169,9 @@ private:
     QPushButton *m_pPushButton_RemoveMask;
 
     // Widgets for FLIM calibration widgets
+	QLabel *m_pLabel_PX14DcOffset;
+	QSlider *m_pSlider_PX14DcOffset;
+
     QPushButton *m_pPushButton_CaptureBackground;
     QLineEdit *m_pLineEdit_Background;
 

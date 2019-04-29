@@ -16,78 +16,82 @@ FLImProcess::~FLImProcess()
 
 void FLImProcess::operator() (FloatArray2& intensity, FloatArray2& mean_delay, FloatArray2& lifetime, Uint16Array2& pulse)
 {
-	//std::chrono::system_clock::time_point StartTime = std::chrono::system_clock::now();
+	///std::chrono::system_clock::time_point StartTime = std::chrono::system_clock::now();
 
     // 1. Crop and resize pulse data
     _resize(pulse, _params);
 	
-	//std::chrono::system_clock::time_point EndTime1 = std::chrono::system_clock::now();
-	//std::chrono::microseconds micro = std::chrono::duration_cast<std::chrono::microseconds>(EndTime1 - StartTime);
-	//printf("[Resize] %d microsec\n", micro.count());
+	///std::chrono::system_clock::time_point EndTime1 = std::chrono::system_clock::now();
+	///std::chrono::microseconds micro = std::chrono::duration_cast<std::chrono::microseconds>(EndTime1 - StartTime);
+	///printf("[Resize] %d microsec\n", micro.count());
 
     // 2. Get intensity
     _intensity(_resize);
     memcpy(intensity, _intensity.intensity, sizeof(float) * _intensity.intensity.length());
 
-	//std::chrono::system_clock::time_point EndTime2 = std::chrono::system_clock::now();
-	//micro = std::chrono::duration_cast<std::chrono::microseconds>(EndTime2 - EndTime1);
-	//printf("[Intensity] %d microsec\n", micro.count());
+	///std::chrono::system_clock::time_point EndTime2 = std::chrono::system_clock::now();
+	///micro = std::chrono::duration_cast<std::chrono::microseconds>(EndTime2 - EndTime1);
+	///printf("[Intensity] %d microsec\n", micro.count());
 
     // 3. Get lifetime
     _lifetime(_resize, _params, intensity);
     memcpy(mean_delay, _lifetime.mean_delay, sizeof(float) * _lifetime.mean_delay.length());
 	memcpy(lifetime, _lifetime.lifetime, sizeof(float) * _lifetime.lifetime.length());
 
-	//std::chrono::system_clock::time_point EndTime3 = std::chrono::system_clock::now();
-	//micro = std::chrono::duration_cast<std::chrono::microseconds>(EndTime3 - EndTime2);
-	//printf("[Lifetime] %d microsec\n", micro.count());
+	///std::chrono::system_clock::time_point EndTime3 = std::chrono::system_clock::now();
+	///micro = std::chrono::duration_cast<std::chrono::microseconds>(EndTime3 - EndTime2);
+	///printf("[Lifetime] %d microsec\n", micro.count());
 }
 
-//void FLImProcess::getResize(Uint16Array2& pulse)
-//{
-//	//std::chrono::system_clock::time_point StartTime = std::chrono::system_clock::now();
-//
-//	//// 1. Crop and resize pulse data
-//	//_resize(pulse, _params);
-//
-//	//std::chrono::system_clock::time_point EndTime1 = std::chrono::system_clock::now();
-//	//std::chrono::microseconds micro = std::chrono::duration_cast<std::chrono::microseconds>(EndTime1 - StartTime);
-//	////printf("[Resize] %d microsec\n", micro.count());
-//}
-//
-//void FLImProcess::getIntensity(FloatArray2& intensity)
-//{
-//	//std::chrono::system_clock::time_point StartTime = std::chrono::system_clock::now();
-//
-//	//// 2. Get intensity
-//	//_intensity(_resize);
-//	//memcpy(intensity, _intensity.intensity, sizeof(float) * _intensity.intensity.length());
-//
-//	//std::chrono::system_clock::time_point EndTime = std::chrono::system_clock::now();
-//	//std::chrono::microseconds micro = std::chrono::duration_cast<std::chrono::microseconds>(EndTime - StartTime);
-//	////printf("[Intensity] %d microsec\n", micro.count());
-//}
-//
-//void FLImProcess::getLifetime(FloatArray2& mean_delay, FloatArray2& lifetime)
-//{
-//	//std::chrono::system_clock::time_point StartTime = std::chrono::system_clock::now();
-//
-//	//// 3. Get lifetime
-//	//_lifetime(_resize, _params, _intensity.intensity);
-//	//memcpy(mean_delay, _lifetime.mean_delay, sizeof(float) * _lifetime.mean_delay.length());
-//	//memcpy(lifetime, _lifetime.lifetime, sizeof(float) * _lifetime.lifetime.length());
-//
-//	//std::chrono::system_clock::time_point EndTime = std::chrono::system_clock::now();
-//	//std::chrono::microseconds micro = std::chrono::duration_cast<std::chrono::microseconds>(EndTime - StartTime);
-//	////printf("[Lifetime] %d microsec\n", micro.count());
-//}
+///void FLImProcess::getResize(Uint16Array2& pulse)
+///{
+///	//std::chrono::system_clock::time_point StartTime = std::chrono::system_clock::now();
+///
+///	//// 1. Crop and resize pulse data
+///	//_resize(pulse, _params);
+///
+///	//std::chrono::system_clock::time_point EndTime1 = std::chrono::system_clock::now();
+///	//std::chrono::microseconds micro = std::chrono::duration_cast<std::chrono::microseconds>(EndTime1 - StartTime);
+///	////printf("[Resize] %d microsec\n", micro.count());
+///}
+///
+///void FLImProcess::getIntensity(FloatArray2& intensity)
+///{
+///	//std::chrono::system_clock::time_point StartTime = std::chrono::system_clock::now();
+///
+///	//// 2. Get intensity
+///	//_intensity(_resize);
+///	//memcpy(intensity, _intensity.intensity, sizeof(float) * _intensity.intensity.length());
+///
+///	//std::chrono::system_clock::time_point EndTime = std::chrono::system_clock::now();
+///	//std::chrono::microseconds micro = std::chrono::duration_cast<std::chrono::microseconds>(EndTime - StartTime);
+///	////printf("[Intensity] %d microsec\n", micro.count());
+///}
+///
+///void FLImProcess::getLifetime(FloatArray2& mean_delay, FloatArray2& lifetime)
+///{
+///	//std::chrono::system_clock::time_point StartTime = std::chrono::system_clock::now();
+///
+///	//// 3. Get lifetime
+///	//_lifetime(_resize, _params, _intensity.intensity);
+///	//memcpy(mean_delay, _lifetime.mean_delay, sizeof(float) * _lifetime.mean_delay.length());
+///	//memcpy(lifetime, _lifetime.lifetime, sizeof(float) * _lifetime.lifetime.length());
+///
+///	//std::chrono::system_clock::time_point EndTime = std::chrono::system_clock::now();
+///	//std::chrono::microseconds micro = std::chrono::duration_cast<std::chrono::microseconds>(EndTime - StartTime);
+///	////printf("[Lifetime] %d microsec\n", micro.count());
+///}
 
 
 
 
 void FLImProcess::setParameters(Configuration* pConfig)
 {
-    _params.bg = pConfig->flimBg;
+	_params.bg[0] = pConfig->flimBg[0];
+    _params.bg[1] = pConfig->flimBg[1];
+
+	if ((_params.bg[0] == 0.0f) && (_params.bg[1] != 0.0f))
+		_params.bg[0] = _params.bg[1] - 1200;
 
     _params.samp_intv = 1000.0f / (float)PX14_ADC_RATE;
     _params.width_factor = 2.0f;

@@ -42,7 +42,7 @@ using namespace np;
 
 struct FLIM_PARAMS
 {
-    float bg;
+    float bg[2];
 
     float samp_intv = 1.0f;
     float width_factor = 2.0f;
@@ -146,7 +146,9 @@ public:
         }
 
         // 3. BG subtraction
-        ippsSubC_32f_I(pParams.bg, crop_src.raw_ptr(), crop_src.length());
+		int irf_offset = pParams.ch_start_ind[1] - pParams.ch_start_ind[0];
+		ippiSubC_32f_C1IR(pParams.bg[0], &crop_src(0, 0), sizeof(float) * crop_src.size(0), { irf_offset, crop_src.size(1) });
+		ippiSubC_32f_C1IR(pParams.bg[1], &crop_src(irf_offset, 0), sizeof(float) * crop_src.size(0), { crop_src.size(0) - irf_offset, crop_src.size(1) });
 
         // 4. Remove artifact manually (smart artifact removal method)
         ///int ch_ind4[5]; memcpy(ch_ind4, pParams.ch_start_ind, sizeof(int) * 5);

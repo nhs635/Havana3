@@ -45,7 +45,7 @@ bool AxsunControl::initialize()
 		dumpControlError(result, pPreamble);
 		return false;
 	}
-	Sleep(1000);
+	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
 	// Connect Device (DAQ, Laser)
 	unsigned long deviceNum = 0;
@@ -598,6 +598,64 @@ bool AxsunControl::setDecibelRange(double min_dB, double max_dB)
 
 
     return true;
+}
+
+bool AxsunControl::getDeviceState()
+{
+	HRESULT result;
+	unsigned long retvallong;
+	const char* pPreamble = "[Axsun Control] Failed to get device state: ";
+
+	result = m_pAxsunOCTControl->ConnectToOCTDevice(LASER_DEVICE, &m_bIsConnected);
+	if (result != S_OK)
+	{
+		dumpControlError(result, pPreamble);
+		return false;
+	}
+
+	if (m_bIsConnected == CONNECTED)
+	{
+		//unsigned long laser_time;
+		//result = m_pAxsunOCTControl->GetLaserOnTime(&laser_time, &retvallong);
+		//if (result != S_OK)
+		//{
+		//	dumpControlError(result, pPreamble);
+		//	return false;
+		//}
+
+		//unsigned long rawVal;
+		//float scaledVal;
+		//BSTR temp; temp = _bstr_t("test");
+		////result = m_pAxsunOCTControl->Get GetLowSpeedADOneChannel(5, &rawVal, &scaledVal, &temp);
+		//if (result != S_OK)
+		//{
+		//	dumpControlError(result, pPreamble);
+		//	return false;
+		//}		
+		//printf("[%d] %d %f %s\n", laser_time, rawVal, scaledVal, temp);
+
+		//unsigned long delay0;
+		//result = m_pAxsunOCTControl->SetClockDelay(delay, &retvallong);
+		//if (result != S_OK)
+		//{
+		//	dumpControlError(result, pPreamble);
+		//	return false;
+		//}
+		//result = m_pAxsunOCTControl->GetClockDelay(&delay0, &retvallong);
+
+		//char msg[256];
+		//sprintf(msg, "[Axsun Control] Clock delay is set to %.3f nsec [%d].", CLOCK_GAIN * (double)delay + CLOCK_OFFSET, delay0);
+		//SendStatusMessage(msg, false);
+	}
+	else
+	{
+		result = 80;
+		dumpControlError(result, pPreamble);
+		SendStatusMessage("[Axsun Control] Unable to connect to the devices.", false);
+		return false;
+	}
+
+	return true;
 }
 
 

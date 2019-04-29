@@ -40,3 +40,5 @@ Havana3.VC*
 /*** Update History ***/
 - 1801016 Havana3 v1.1.0
   (The first release!!)
+- 1900429 Havana3 v1.2.1
+  (Aurios Medical Final Version 훈련소 가기 전...)

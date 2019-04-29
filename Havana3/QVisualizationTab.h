@@ -20,6 +20,9 @@ class QResultTab;
 
 class QImageView;
 
+class PulseReviewDlg;
+class LongitudinalViewDlg;
+
 
 class QVisualizationTab : public QDialog
 {
@@ -33,13 +36,18 @@ public:
 // Methods //////////////////////////////////////////////
 public:
     inline QVBoxLayout* getLayout() const { return m_pVBoxLayout; }
+	inline QStreamTab* getStreamTab() const { return m_pStreamTab; }
+	inline QResultTab* getResultTab() const { return m_pResultTab; }
     inline QGroupBox* getVisualizationWidgetsBox() const { return m_pGroupBox_VisualizationWidgets; }
 	inline QGroupBox* getEnFaceWidgetsBox() const { return m_pGroupBox_EnFaceWidgets; }
 	inline QImageView* getRectImageView() const { return m_pImageView_RectImage; }
 	inline QImageView* getCircImageView() const { return m_pImageView_CircImage; }
-	inline int getCurrentFrame() const { return m_pSlider_SelectFrame->value(); }
-    inline int getFlimSyncAdjust() const { return m_pSlider_FlimSyncAdjust->value(); }
+	inline PulseReviewDlg* getPulseReviewDlg() const { return m_pPulseReviewDlg; }
+	inline LongitudinalViewDlg* getLongitudinalViewDlg() const { return m_pLongitudinalViewDlg; }
+	inline void setCurrentFrame(int frame) { m_pSlider_SelectFrame->setValue(frame); }
+    inline int getCurrentFrame() const { return m_pSlider_SelectFrame->value(); }
 	inline bool getIntensityRatioMode() const { return m_pCheckBox_IntensityRatio->isChecked(); }
+	inline bool isIntensityWeighted() const { return m_pCheckBox_IntensityWeightedLifetimeMap->isChecked(); }
 
 public:
 	void setWidgetsValue();
@@ -52,6 +60,8 @@ private:
 
 public:
 	void setBuffers(Configuration* pConfig);
+	void setOctDecibelContrastWidgets(bool enabled);
+	void setOuterSheathLines(bool setting);
 
 public slots:
 	void setWidgetsEnabled(bool enabled, Configuration* pConfig);
@@ -66,16 +76,17 @@ private slots:
 	
 	void enableIntensityRatioMode(bool);
 	void changeIntensityRatioRef(int);
-	void enableHsvEnhancingMode(bool);
+	void enableIntensityWeightingMode(bool);
     void changeEmissionChannel(int);
-    void changeLifetimeColorTable(int);
-	void setFlimInterFrameSync(const QString &);
-    void setFlimSyncAdjust(int);
     void adjustFlimContrast();
+	void createPulseReviewDlg();
+	void deletePulseReviewDlg();
 
-    void changeVisImage(bool);
-    void changeOctColorTable(int);
+    void changeViewMode(int);
+	void adjustDecibelRange();
 	void adjustOctGrayContrast();
+	void createLongitudinalViewDlg();
+	void deleteLongitudinalViewDlg();
 
 signals:
 	void setWidgets(bool enabled, Configuration* pConfig);
@@ -108,7 +119,7 @@ public: // for post processing
 	std::vector<np::FloatArray2> m_vectorPulseCrop;
 	std::vector<np::FloatArray2> m_vectorPulseMask;
 
-private:
+public:
 	// Image visualization buffers
 	ImageObject *m_pImgObjRectImage;
 	ImageObject *m_pImgObjCircImage;
@@ -118,7 +129,7 @@ private:
 	np::Uint8Array2 m_visOctProjection;
 	ImageObject *m_pImgObjIntensityMap;
 	ImageObject *m_pImgObjLifetimeMap;
-	ImageObject *m_pImgObjHsvEnhancedMap;
+	ImageObject *m_pImgObjIntensityWeightedLifetimeMap;
 
 public:
 	circularize* m_pCirc;
@@ -151,18 +162,10 @@ private:
     QLabel *m_pLabel_EmissionChannel;
     QComboBox *m_pComboBox_EmissionChannel;
 
-    QLabel *m_pLabel_LifetimeColorTable;
-    QComboBox *m_pComboBox_LifetimeColorTable;
-
 	QCheckBox *m_pCheckBox_IntensityRatio;
 	QComboBox *m_pComboBox_IntensityRef;
 
-	QCheckBox *m_pCheckBox_HsvEnhancedMap;
-
-	QLabel *m_pLabel_FlimInterFrameSync;
-	QLineEdit *m_pLineEdit_FlimInterFrameSync;
-    QLabel *m_pLabel_FlimSyncAdjust;
-    QSlider *m_pSlider_FlimSyncAdjust;
+	QCheckBox *m_pCheckBox_IntensityWeightedLifetimeMap;
 
     QLabel *m_pLabel_NormIntensity;
     QLabel *m_pLabel_Lifetime;
@@ -172,18 +175,28 @@ private:
     QLineEdit *m_pLineEdit_LifetimeMin;
     QImageView *m_pImageView_IntensityColorbar;
     QImageView *m_pImageView_LifetimeColorbar;
+	
+	QPushButton *m_pPushButton_PulseReview;
+	PulseReviewDlg *m_pPulseReviewDlg;
 
     // OCT visualization option widgets
     QGroupBox *m_pGroupBox_OctVisualization;
 
-    QCheckBox *m_pCheckBox_CircularizeImage;
-
-    QLabel *m_pLabel_OctColorTable;
-    QComboBox *m_pComboBox_OctColorTable;
+	QRadioButton *m_pRadioButton_CircularView;
+	QRadioButton *m_pRadioButton_RectangularView;
+	QButtonGroup *m_pButtonGroup_ViewMode;
 
     QLineEdit *m_pLineEdit_OctGrayMax;
     QLineEdit *m_pLineEdit_OctGrayMin;
     QImageView *m_pImageView_OctGrayColorbar;
+	
+	QPushButton *m_pPushButton_LongitudinalView;
+	LongitudinalViewDlg *m_pLongitudinalViewDlg;
+	
+	QLabel *m_pLabel_DecibelRange;
+	QLineEdit *m_pLineEdit_DecibelMax;
+	QLineEdit *m_pLineEdit_DecibelMin;
+	QImageView *m_pImageView_Colorbar;
 
 	// En face widgets
 	QGroupBox *m_pGroupBox_EnFaceWidgets;

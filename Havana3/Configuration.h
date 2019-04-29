@@ -1,7 +1,7 @@
 #ifndef CONFIGURATION_H
 #define CONFIGURATION_H
 
-#define VERSION						"1.1.0"
+#define VERSION						"1.2.1"
 
 #define POWER_2(x)					(1 << x)
 #define NEAR_2_POWER(x)				(int)(1 << (int)ceil(log2(x)))
@@ -14,48 +14,47 @@
 #define FLIM_SCANS                  512
 #define FLIM_ALINES                 256
 
-#define ELFORLIGHT_PORT				"COM1"
+#define ELFORLIGHT_PORT				"COM14"
 
-#define NI_ENABLE
-#ifndef NI_ENABLE
-#define ARDUINO_PORT                "COM7"
+#define NI_ENABLE 
 
-#define ARDUINO_DAC_STEP_SIZE       1.0871282380072 / 4095.0 // 18 08 22 calibrated
-#define ARDUINO_DAC_OFFSET          0.000147069107748655 // 18 08 22 calibrated     
-#else
+#ifdef NI_ENABLE
 #define NI_PMT_GAIN_CHANNEL		    "Dev2/ao1" // 13
-#define NI_FLIM_TRIG_CHANNEL		"Dev2/ctr0" // PFI4 (6)
+#define NI_FLIM_TRIG_CHANNEL		"Dev2/ctr1" // PFI5 (7) // 100k/4 Hz
 #define NI_FLIM_TRIG_SOURCE			"/Dev2/PFI2"
-#define NI_AXSUN_TRIG_CHANNEL		"Dev2/ctr1" // PFI5 (7)
+#define NI_AXSUN_TRIG_CHANNEL		"Dev2/ctr0" // PFI4 (6) // 100k/1024 Hz
 #define NI_AXSUN_TRIG_SOURCE		"/Dev2/PFI3"
 #endif
 
 ///////////////////////// OCT Setup /////////////////////////
-#define OCT_SCANS                   1024
+#define OCT_SCANS                   1024 // The number of Samples in a single OCT A-line
 #define OCT_ALINES                  FLIM_ALINES * 4
 
-#define VERTICAL_MIRRORING
+#define CLOCK_DELAY					10
+
+//#define VERTICAL_MIRRORING
 
 ///#define OCT_DEFAULT_BACKGROUND      "bg.bin"
 
 /////////////////// Pullback Device Setup ///////////////////
-#define ZABER_PORT					"COM2"
+#define ZABER_PORT					"COM1"
 #define ZABER_MAX_MICRO_RESOLUTION  64 // BENCHTOP_MODE ? 128 : 64;
 #define ZABER_MICRO_RESOLUTION		64
-#define ZABER_CONVERSION_FACTOR		1.0 / 9.375 //1.0 / 9.375 // BENCHTOP_MODE ? 1.0 / 9.375 : 1.6384;
-#define ZABER_MICRO_STEPSIZE		0.49609375 // 0.09921875 //  micro-meter ///
+#define ZABER_CONVERSION_FACTOR		1.6384 //1.0 / 9.375 // BENCHTOP_MODE ? 1.0 / 9.375 : 1.6384;
+#define ZABER_MICRO_STEPSIZE		0.09921875 //  micro-meter /// 0.49609375 // 
+#define ZABER_HOME_OFFSET			0 // mm
 
 #define FAULHABER_PORT				"COM13"
 #define FAULHABER_POSITIVE_ROTATION false
 
 
 //////////////// Thread & Buffer Processing /////////////////
-#define PROCESSING_BUFFER_SIZE		200
+#define PROCESSING_BUFFER_SIZE		50
 
 #ifdef _DEBUG
 #define WRITING_BUFFER_SIZE			100
 #else
-#define WRITING_BUFFER_SIZE	        1000
+#define WRITING_BUFFER_SIZE	        2000
 #endif
 
 ///////////////////// FLIm Processing ///////////////////////
@@ -66,8 +65,14 @@
 #define INTENSITY_THRES				0.001f
 
 /////////////////////// Visualization ///////////////////////
-#define RING_THICKNESS				70
+#define RING_THICKNESS				100
+
+#define OCT_COLORTABLE              0 // gray
 #define INTENSITY_COLORTABLE		6 // fire
+#define LIFETIME_COLORTABLE         16 // hsv1 ==> Viewer/QImageView.cpp
+
+#define INTER_FRAME_SYNC			9 // Frames
+#define INTRA_FRAME_SYNC			30 // A-lines
 
 #define RENEWAL_COUNT				10
 #define PIXEL_RESOLUTION			5.7 // micrometer
@@ -91,12 +96,16 @@ struct Range
 #include <Common/callback.h>
 
 
-static int ratio_index[3][2] = { { 2, 3 },{ 1, 3 },{ 1, 2 } };
+static int ratio_index[3][2] = { { 2, 3 }, { 1, 3 }, { 1, 2 } };
 
 class Configuration
 {
 public:
-    explicit Configuration() {}
+    explicit Configuration() 
+	{
+		memset(flimBg, 0, sizeof(float) * 2);
+	}
+
 	~Configuration() {}
 
 public:
@@ -114,7 +123,8 @@ public:
         octFrameSize = octScans * octAlines;
 
         // FLIm processing
-		flimBg = settings.value("flimBg").toFloat();
+		flimBg[0] = settings.value("flimBg0").toFloat();
+		flimBg[1] = settings.value("flimBg").toFloat();
 		flimWidthFactor = settings.value("flimWidthFactor").toFloat();
 		for (int i = 0; i < 4; i++)
 		{
@@ -125,8 +135,6 @@ public:
 		
         // Visualization
         flimEmissionChannel = settings.value("flimEmissionChannel").toInt();
-        flimLifetimeColorTable = settings.value("flimLifetimeColorTable").toInt();
-		flimSyncInterFrame = settings.value("flimSyncInterFrame").toInt();
 		for (int i = 0; i < 3; i++)
 		{
 			flimIntensityRatioRefIdx[i] = settings.value(QString("flimIntensityRatioRefIdx_Ch%1").arg(i + 1)).toInt();
@@ -141,19 +149,13 @@ public:
 				flimIntensityRatioRange[i][j].max = settings.value(QString("flimIntensityRatioRangeMax_Ch%1_%2").arg(i + 1).arg(ratio_index[i][j])).toFloat();
 				flimIntensityRatioRange[i][j].min = settings.value(QString("flimIntensityRatioRangeMin_Ch%1_%2").arg(i + 1).arg(ratio_index[i][j])).toFloat();
 			}
-		}
-		octColorTable = settings.value("octColorTable").toInt();
+        }
 		octGrayRange.max = settings.value("octGrayRangeMax").toInt();
 		octGrayRange.min = settings.value("octGrayRangeMin").toInt();
 
 		// Device control
-		flimSyncAdjust = settings.value("flimSyncAdjust").toInt();
-        pmtGainVoltageLevel = settings.value("pmtGainVoltageLevel").toInt();
 		pmtGainVoltage = settings.value("pmtGainVoltage").toFloat(); 
         px14DcOffset = settings.value("px14DcOffset").toInt();
-		axsunDisComA2 = settings.value("axsunDisComA2").toInt();
-		axsunDisComA3 = settings.value("axsunDisComA3").toInt();
-		axsunClockDelay = settings.value("axsunClockDelay").toInt();
 		axsunVDLLength = settings.value("axsunVDLLength").toFloat();
 		axsunDbRange.max = settings.value("axsunDbRangeMax").toFloat();
 		axsunDbRange.min = settings.value("axsunDbRangeMin").toFloat();
@@ -176,7 +178,8 @@ public:
 		settings.setValue("octAlines", octAlines);
 
 		// FLIm processing
-		settings.setValue("flimBg", QString::number(flimBg, 'f', 2));
+		settings.setValue("flimBg0", QString::number(flimBg[0], 'f', 2));
+		settings.setValue("flimBg", QString::number(flimBg[1], 'f', 2));
 		settings.setValue("flimWidthFactor", QString::number(flimWidthFactor, 'f', 2));
 		for (int i = 0; i < 4; i++)
 		{
@@ -186,9 +189,7 @@ public:
 		}
 
 		// Visualization
-		settings.setValue("flimEmissionChannel", flimEmissionChannel);
-		settings.setValue("flimLifetimeColorTable", flimLifetimeColorTable);
-		settings.setValue("flimSyncInterFrame", flimSyncInterFrame);
+        settings.setValue("flimEmissionChannel", flimEmissionChannel);
 		for (int i = 0; i < 3; i++)
 		{
 			settings.setValue(QString("flimIntensityRatioRefIdx_Ch%1").arg(i + 1), flimIntensityRatioRefIdx[i]);
@@ -204,18 +205,12 @@ public:
 				settings.setValue(QString("flimIntensityRatioRangeMin_Ch%1_%2").arg(i + 1).arg(ratio_index[i][j]), QString::number(flimIntensityRatioRange[i][j].min, 'f', 1));
 			}
 		}
-        settings.setValue("octColorTable", octColorTable);
 		settings.setValue("octGrayRangeMax", octGrayRange.max);
 		settings.setValue("octGrayRangeMin", octGrayRange.min);
 
 		// Device control
-		settings.setValue("flimSyncAdjust", flimSyncAdjust);
-        settings.setValue("pmtGainVoltageLevel", pmtGainVoltageLevel);
 		settings.setValue("pmtGainVoltage", QString::number(pmtGainVoltage, 'f', 3));
         settings.setValue("px14DcOffset", px14DcOffset);
-		settings.setValue("axsunDisComA2", axsunDisComA2);
-		settings.setValue("axsunDisComA3", axsunDisComA3);
-		settings.setValue("axsunClockDelay", axsunClockDelay);
 		settings.setValue("axsunVDLLength", QString::number(axsunVDLLength, 'f', 2));
 		settings.setValue("axsunDbRangeMax", QString::number(axsunDbRange.max, 'f', 1));
 		settings.setValue("axsunDbRangeMin", QString::number(axsunDbRange.min, 'f', 1));
@@ -240,30 +235,22 @@ public:
     int octScans, octAlines, octFrameSize;
 
     // FLIm processing
-	float flimBg;
+	float flimBg[2];
 	float flimWidthFactor;
 	int flimChStartInd[4];
     float flimDelayOffset[3];
 	
 	// Visualization    
     int flimEmissionChannel;
-    int flimLifetimeColorTable;
-	int flimSyncInterFrame;
     Range<float> flimIntensityRange[3];
     Range<float> flimLifetimeRange[3];
 	int flimIntensityRatioRefIdx[3];
 	Range<float> flimIntensityRatioRange[3][3];
-	int octColorTable;
 	Range<int> octGrayRange;
 
 	// Device control
-	int flimSyncAdjust;
-    int pmtGainVoltageLevel;
 	float pmtGainVoltage;
     int px14DcOffset;
-	int axsunDisComA2;
-	int axsunDisComA3;
-	int axsunClockDelay;
 	float axsunVDLLength;
 	Range<float> axsunDbRange;
 	int zaberPullbackSpeed;

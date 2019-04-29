@@ -7,13 +7,13 @@
 ColorTable::ColorTable()
 {
 	// Color table list	
-	m_cNameVector.push_back("gray");
+	m_cNameVector.push_back("gray"); // 0
 	m_cNameVector.push_back("invgray");
 	m_cNameVector.push_back("sepia");
 	m_cNameVector.push_back("jet");
 	m_cNameVector.push_back("parula");
-	m_cNameVector.push_back("hot");
-	m_cNameVector.push_back("fire");
+	m_cNameVector.push_back("hot"); // 5
+	m_cNameVector.push_back("fire"); // 6
 	m_cNameVector.push_back("hsv");
 	m_cNameVector.push_back("smart");
 	m_cNameVector.push_back("bor");
@@ -24,6 +24,8 @@ ColorTable::ColorTable()
 	m_cNameVector.push_back("lifetime2");
 	m_cNameVector.push_back("vessel");
 	m_cNameVector.push_back("hsv1");
+	m_cNameVector.push_back("magenta"); // 17
+	m_cNameVector.push_back("blue_hot"); // 18
 	// 새로운 파일 이름 추가 하기
 
 	for (int i = 0; i < m_cNameVector.size(); i++)
@@ -59,6 +61,7 @@ QImageView::QImageView(ColorTable::colortable ctable, int width, int height, boo
 	
     // Set image size
     m_width = width;
+    m_width4 = ((width + 3) >> 2) << 2;
     m_height = height;
 	
     // Create layout
@@ -79,7 +82,7 @@ QImageView::QImageView(ColorTable::colortable ctable, int width, int height, boo
 		m_pRenderImage->m_pImage->setColorTable(m_colorTable.m_colorTableVector.at(ctable));
 	}
 	else
-		m_pRenderImage->m_pImage = new QImage(m_width, m_height, QImage::Format_RGB888);
+        m_pRenderImage->m_pImage = new QImage(m_width, m_height, QImage::Format_RGB888);
 
 	memset(m_pRenderImage->m_pImage->bits(), 0, m_pRenderImage->m_pImage->byteCount());
 
@@ -113,6 +116,7 @@ void QImageView::resetSize(int width, int height)
 {
 	// Set image size
 	m_width = width;
+    m_width4 = ((width + 3) >> 2) << 2;
 	m_height = height;	
 
 	// Create QImage object
@@ -134,7 +138,7 @@ void QImageView::resetSize(int width, int height)
 			m_pRenderImage->m_pImage->setColor(i, rgb[i]);
 	}
 	else
-		m_pRenderImage->m_pImage = new QImage(m_width, m_height, QImage::Format_RGB888);
+        m_pRenderImage->m_pImage = new QImage(m_width, m_height, QImage::Format_RGB888);
 
 	memset(m_pRenderImage->m_pImage->bits(), 0, m_pRenderImage->m_pImage->byteCount());
 
@@ -189,6 +193,13 @@ void QImageView::setCircle(int len, ...)
 	va_end(ap);
 }
 
+void QImageView::setContour(int len, uint16_t* pContour)
+{
+    m_pRenderImage->m_contour = np::Uint16Array(len);
+    if (len > 0)
+        memcpy(m_pRenderImage->m_contour.raw_ptr(), pContour, sizeof(uint16_t) * len);
+}
+
 void QImageView::setHLineChangeCallback(const std::function<void(int)> &slot) 
 { 
 	m_pRenderImage->DidChangedHLine.clear();
@@ -229,8 +240,11 @@ void QImageView::drawImage(uint8_t* pImage)
 
 void QImageView::drawRgbImage(uint8_t* pImage)
 {		
-	QImage *pImg = new QImage(pImage, m_width, m_height, QImage::Format_RGB888);
-	m_pRenderImage->m_pImage = std::move(pImg);
+    QImage *pImg = new QImage(pImage, m_width4, m_height, QImage::Format_RGB888);
+    if (m_width4 == m_width)
+        m_pRenderImage->m_pImage = std::move(pImg);
+    else
+        memcpy(m_pRenderImage->m_pImage->bits(), pImg->copy(0, 0, m_width, m_height).bits(), m_pRenderImage->m_pImage->byteCount());
 	m_pRenderImage->update();
 }
 
@@ -240,22 +254,22 @@ void QImageView::drawRgbImage(uint8_t* pImage)
 QRenderImage::QRenderImage(QWidget *parent) :
 	QWidget(parent), m_pImage(nullptr), m_colorLine(0xff0000),
 	m_bMeasureDistance(false), m_nClicked(0),
-	m_hLineLen(0), m_vLineLen(0), m_circLen(0), m_bRadial(false)
+    m_hLineLen(0), m_vLineLen(0), m_circLen(0), m_bRadial(false), m_bDiametric(false)
 {
 	m_pHLineInd = new int[10];
-	m_pVLineInd = new int[10];
+    m_pVLineInd = new int[10];
 }
 
 QRenderImage::~QRenderImage()
 {
 	delete m_pHLineInd;
-	delete m_pVLineInd;
+    delete m_pVLineInd;
 }
 
 void QRenderImage::paintEvent(QPaintEvent *)
 {
     QPainter painter(this);
-	painter.setRenderHint(QPainter::Antialiasing, true);
+	painter.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform, true);
 
     // Area size
     int w = this->width();
@@ -280,18 +294,38 @@ void QRenderImage::paintEvent(QPaintEvent *)
 		if (!m_bRadial)
 		{
 			p1.setX((double)(m_pVLineInd[i] * w) / (double)m_pImage->width()); p1.setY(0.0);
-			p2.setX((double)(m_pVLineInd[i] * w) / (double)m_pImage->width()); p2.setY((double)h);
+			p2.setX((double)(m_pVLineInd[i] * w) / (double)m_pImage->width()); p2.setY((double)h);			
 		}
 		else
 		{			
 			int circ_x = (double)(w / 2) + (double)(w / 2) * cos((double)m_pVLineInd[i] / (double)m_rMax * IPP_2PI);
 			int circ_y = (double)(h / 2) - (double)(h / 2) * sin((double)m_pVLineInd[i] / (double)m_rMax * IPP_2PI);
 			p1.setX(w / 2); p1.setY(h / 2);
-			p2.setX(circ_x); p2.setY(circ_y);
+			p2.setX(circ_x); p2.setY(circ_y);			
 		}
 
 		painter.setPen(m_colorLine);
 		painter.drawLine(p1, p2);
+
+		if (m_bDiametric)
+		{
+			QPointF p1, p2;
+			if (!m_bRadial)
+			{
+				p1.setX((double)((m_pVLineInd[i] + m_pImage->width() / 2) * w) / (double)m_pImage->width()); p1.setY(0.0);
+				p2.setX((double)((m_pVLineInd[i] + m_pImage->width() / 2) * w) / (double)m_pImage->width()); p2.setY((double)h);
+			}
+			else
+			{
+				int circ_x = (double)(w / 2) + (double)(w / 2) * cos((double)(m_pVLineInd[i] + m_rMax / 2) / (double)m_rMax * IPP_2PI);
+				int circ_y = (double)(h / 2) - (double)(h / 2) * sin((double)(m_pVLineInd[i] + m_rMax / 2) / (double)m_rMax * IPP_2PI);
+				p1.setX(w / 2); p1.setY(h / 2);
+				p2.setX(circ_x); p2.setY(circ_y);
+			}
+
+			painter.setPen(m_colorLine);
+			painter.drawLine(p1, p2);
+		}
 	}
 	for (int i = 0; i < m_circLen; i++)
 	{
@@ -301,7 +335,22 @@ void QRenderImage::paintEvent(QPaintEvent *)
 		painter.setPen(m_colorLine);
 		painter.drawEllipse(center, radius, radius);
 	}
+    if (m_contour.length() != 0)
+    {
+        QPen pen; pen.setColor(Qt::green);
+        painter.setPen(pen);
+        for (int i = 0; i < m_contour.length() - 1; i++)
+        {
+            QPointF x0, x1;
+            x0.setX((float)(i) / (float)m_contour.length() * (float)w);
+            x0.setY((float)(m_contour[i]) / (float)m_pImage->height() * (float)h);
+            x1.setX((float)(i + 1) / (float)m_contour.length() * w);
+            x1.setY((float)(m_contour[i + 1]) / (float)m_pImage->height() * (float)h);
 
+            painter.drawLine(x0, x1);
+        }
+    }
+	
 	// Measure distance
 	if (m_bMeasureDistance)
 	{
@@ -322,13 +371,14 @@ void QRenderImage::paintEvent(QPaintEvent *)
 				painter.drawLine(p[0], p[1]);
 				
 				// Euclidean distance
-				double dist = PIXEL_RESOLUTION * sqrt((p[0].x() - p[1].x()) * (p[0].x() - p[1].x())
+				double dist = sqrt((p[0].x() - p[1].x()) * (p[0].x() - p[1].x())
 					+ (p[0].y() - p[1].y()) * (p[0].y() - p[1].y())) * (double)m_pImage->height() / (double)this->height();
-				printf("Measured distance: %.1f\n", dist);
+				dist *= PIXEL_RESOLUTION;
+				//printf("Measured distance: %.1f um\n", dist);
 
 				QFont font; font.setBold(true);
 				painter.setFont(font);
-				painter.drawText((p[0] + p[1]) / 2, QString::number(dist, 'f', 1));
+				painter.drawText((p[0] + p[1]) / 2, QString("%1 um").arg(dist, 0, 'f', 1));
 			}
 		}
 	}
@@ -337,7 +387,6 @@ void QRenderImage::paintEvent(QPaintEvent *)
 void QRenderImage::mousePressEvent(QMouseEvent *e)
 {
 	QPoint p = e->pos();
-
 	if (m_hLineLen == 1)
 	{
 		m_pHLineInd[0] = m_pImage->height() - (int)((double)(p.y() * m_pImage->height()) / (double)this->height());

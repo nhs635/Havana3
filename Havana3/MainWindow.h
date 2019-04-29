@@ -28,8 +28,12 @@ public:
 protected:
     void closeEvent(QCloseEvent *e);
 
+public:
+	void updateFlimLaserState(double* state);
+
 private slots:
     void onTimer();
+	void onTimerDiagnostic();
 	void onTimerSync();
     void changedTab(int);
 
@@ -38,7 +42,7 @@ public:
     Configuration* m_pConfiguration;
 
 private:
-    QTimer *m_pTimer, *m_pTimerSync;
+    QTimer *m_pTimer, *m_pTimerDiagnostic, *m_pTimerSync;
 
 private:
     Ui::MainWindow *ui;
@@ -53,6 +57,8 @@ public:
     QResultTab *m_pResultTab;
 
     // Status bar
+	QLabel *m_pStatusLabel_FlimDiagnostic;
+	QLabel *m_pStatusLabel_OctDiagnostic;
     QLabel *m_pStatusLabel_ImagePos;
 	QLabel *m_pStatusLabel_SyncStatus;
 };
