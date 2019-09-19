@@ -1,7 +1,7 @@
 #ifndef CONFIGURATION_H
 #define CONFIGURATION_H
 
-#define VERSION						"1.2.1"
+#define VERSION						"1.2.1.1"
 
 #define POWER_2(x)					(1 << x)
 #define NEAR_2_POWER(x)				(int)(1 << (int)ceil(log2(x)))
@@ -16,7 +16,7 @@
 
 #define ELFORLIGHT_PORT				"COM14"
 
-#define NI_ENABLE 
+//#define NI_ENABLE 
 
 #ifdef NI_ENABLE
 #define NI_PMT_GAIN_CHANNEL		    "Dev2/ao1" // 13
@@ -71,7 +71,7 @@
 #define INTENSITY_COLORTABLE		6 // fire
 #define LIFETIME_COLORTABLE         16 // hsv1 ==> Viewer/QImageView.cpp
 
-#define INTER_FRAME_SYNC			9 // Frames
+#define INTER_FRAME_SYNC			9  // Frames
 #define INTRA_FRAME_SYNC			30 // A-lines
 
 #define RENEWAL_COUNT				10
@@ -152,6 +152,10 @@ public:
         }
 		octGrayRange.max = settings.value("octGrayRangeMax").toInt();
 		octGrayRange.min = settings.value("octGrayRangeMin").toInt();
+		
+		// Additional synchronization parameters
+		intraFrameSync = settings.value("flimSyncAdjust").toInt();
+		interFrameSync = settings.value("flimSyncInterFrame").toInt();
 
 		// Device control
 		pmtGainVoltage = settings.value("pmtGainVoltage").toFloat(); 
@@ -248,6 +252,10 @@ public:
 	Range<float> flimIntensityRatioRange[3][3];
 	Range<int> octGrayRange;
 
+	// Additional synchronization parameters
+	int intraFrameSync;
+	int interFrameSync;
+
 	// Device control
 	float pmtGainVoltage;
     int px14DcOffset;
@@ -256,7 +264,7 @@ public:
 	int zaberPullbackSpeed;
 	int zaberPullbackLength;
     int faulhaberRpm;
-
+	
 	// Message callback
 	callback<const char*> msgHandle;
 };

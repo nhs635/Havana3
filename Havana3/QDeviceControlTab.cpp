@@ -822,6 +822,8 @@ void QDeviceControlTab::startFlimAsynchronization(bool toggled)
 		m_pToggleButton_SynchronizedPulsedLaser->setEnabled(true);
 		m_pToggleButton_SynchronizedPulsedLaser->setStyleSheet("QPushButton { background-color:#ff0000; }");
 	}
+#else
+	(void)toggled;
 #endif
 }
 
@@ -930,6 +932,8 @@ void QDeviceControlTab::startFlimSynchronization(bool toggled)
 			m_pToggleButton_AsynchronizedPulsedLaser->setStyleSheet("QPushButton { background-color:#ff0000; }");
 		}
 	}
+#else
+	(void)toggled;
 #endif
 }
 
@@ -988,6 +992,8 @@ void QDeviceControlTab::applyPmtGainVoltage(bool toggled)
 		m_pLineEdit_PmtGainVoltage->setEnabled(true);
 		m_pLabel_PmtGainVoltage->setEnabled(true);
 	}	
+#else
+	(void)toggled;
 #endif
 }
 

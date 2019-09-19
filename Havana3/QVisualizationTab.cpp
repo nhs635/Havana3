@@ -49,7 +49,7 @@ QVisualizationTab::QVisualizationTab(bool is_streaming, QWidget *parent) :
 
     // Create image view
     m_pImageView_RectImage = new QImageView(ColorTable::colortable(OCT_COLORTABLE), m_pConfig->octAlines, m_pConfig->octScans, true);
-    m_pImageView_RectImage->setFixedSize(875, 875);
+    m_pImageView_RectImage->setMinimumSize(875, 875);
     m_pImageView_RectImage->setSquare(true);
 	if (is_streaming)
 		m_pImageView_RectImage->setMovedMouseCallback([&] (QPoint& p) { m_pStreamTab->getMainWnd()->m_pStatusLabel_ImagePos->setText(QString("(%1, %2)").arg(p.x(), 4).arg(p.y(), 4)); });
@@ -58,7 +58,7 @@ QVisualizationTab::QVisualizationTab(bool is_streaming, QWidget *parent) :
 	m_pImageView_RectImage->hide();
 
 	m_pImageView_CircImage = new QImageView(ColorTable::colortable(OCT_COLORTABLE), 2 * m_pConfig->octScans, 2 * m_pConfig->octScans, true);
-    m_pImageView_CircImage->setFixedSize(875, 875);
+    m_pImageView_CircImage->setMinimumSize(875, 875);
     m_pImageView_CircImage->setSquare(true);
 	if (is_streaming)
 		m_pImageView_CircImage->setMovedMouseCallback([&](QPoint& p) { m_pStreamTab->getMainWnd()->m_pStatusLabel_ImagePos->setText(QString("(%1, %2)").arg(p.x(), 4).arg(p.y(), 4)); });
@@ -818,6 +818,7 @@ void QVisualizationTab::visualizeEnFaceMap(bool scaling)
 			// Scaling FLIM map
 			IppiSize roi_flimproj = { m_intensityMap.at(0).size(0), m_intensityMap.at(0).size(1) };
 			
+			// Intensity map
 			if (!m_pCheckBox_IntensityRatio->isChecked())
 			{
 				ippiScale_32f8u_C1R(m_intensityMap.at(m_pComboBox_EmissionChannel->currentIndex()), sizeof(float) * roi_flimproj.width,
@@ -826,6 +827,7 @@ void QVisualizationTab::visualizeEnFaceMap(bool scaling)
 					m_pConfig->flimIntensityRange[m_pConfig->flimEmissionChannel - 1].max);
 				ippiMirror_8u_C1IR(m_pImgObjIntensityMap->arr.raw_ptr(), sizeof(uint8_t) * roi_flimproj.width, roi_flimproj, ippAxsHorizontal);
 			}
+			// Intensity ratio map
 			else
 			{
 				int num = m_pConfig->flimEmissionChannel - 1;
@@ -844,19 +846,10 @@ void QVisualizationTab::visualizeEnFaceMap(bool scaling)
 				ippsMul_8u_ISfs(den_zero, m_pImgObjIntensityMap->arr.raw_ptr(), den_zero.length(), 0);
 				ippiMirror_8u_C1IR(m_pImgObjIntensityMap->arr.raw_ptr(), sizeof(uint8_t) * roi_flimproj.width, roi_flimproj, ippAxsHorizontal);
 			}
+
             (*m_pMedfiltIntensityMap)(m_pImgObjIntensityMap->arr.raw_ptr());
 			
-			///memcpy(&m_pImgObjIntensityMap->arr(0, 0), &m_pImgObjIntensityMap->arr(0, INTER_FRAME_SYNC),
-			///	m_pImgObjIntensityMap->arr.size(0) * (m_pImgObjIntensityMap->arr.size(1) - INTER_FRAME_SYNC));
-			///memset(&m_pImgObjIntensityMap->arr(0, m_pImgObjIntensityMap->arr.size(1) - INTER_FRAME_SYNC), 0,
-			///	m_pImgObjIntensityMap->arr.size(0) * INTER_FRAME_SYNC);
-		
-            ///for (int i = 0; i < roi_flimproj.height; i++)
-            ///{
-            ///    uint8_t* pImg = m_pImgObjIntensityMap->arr.raw_ptr() + i * roi_flimproj.width;
-            ///    std::rotate(pImg, pImg + INTRA_FRAME_SYNC, pImg + roi_flimproj.width);
-            ///}
-
+			// Lifetime map
 			ippiScale_32f8u_C1R(m_lifetimeMap.at(m_pComboBox_EmissionChannel->currentIndex()), sizeof(float) * roi_flimproj.width,
 				m_pImgObjLifetimeMap->arr.raw_ptr(), sizeof(uint8_t) * roi_flimproj.width, roi_flimproj, 
 				m_pConfig->flimLifetimeRange[m_pConfig->flimEmissionChannel - 1].min, 
@@ -864,18 +857,8 @@ void QVisualizationTab::visualizeEnFaceMap(bool scaling)
 			ippiMirror_8u_C1IR(m_pImgObjLifetimeMap->arr.raw_ptr(), sizeof(uint8_t) * roi_flimproj.width, roi_flimproj, ippAxsHorizontal);
 
 			(*m_pMedfiltLifetimeMap)(m_pImgObjLifetimeMap->arr.raw_ptr());
-		
-			///memcpy(&m_pImgObjLifetimeMap->arr(0, 0), &m_pImgObjLifetimeMap->arr(0, INTER_FRAME_SYNC),
-			///	m_pImgObjLifetimeMap->arr.size(0) * (m_pImgObjLifetimeMap->arr.size(1) - INTER_FRAME_SYNC));
-			///memset(&m_pImgObjLifetimeMap->arr(0, m_pImgObjLifetimeMap->arr.size(1) - INTER_FRAME_SYNC), 0,
-			///	m_pImgObjLifetimeMap->arr.size(0) * INTER_FRAME_SYNC);
-	
-            ///for (int i = 0; i < roi_flimproj.height; i++)
-            ///{
-            ///    uint8_t* pImg = m_pImgObjLifetimeMap->arr.raw_ptr() + i * roi_flimproj.width;
-            ///    std::rotate(pImg, pImg + INTRA_FRAME_SYNC, pImg + roi_flimproj.width);
-            ///}
-
+			
+			// RGB conversion
 			m_pImgObjLifetimeMap->convertRgb();
 
 			///*************************************************************************************************************************************************************************///

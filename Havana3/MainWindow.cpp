@@ -81,7 +81,7 @@ MainWindow::MainWindow(QWidget *parent) :
 
     ui->centralWidget->setLayout(m_pGridLayout);
 
-    this->setFixedSize(1280, 994);
+    this->setMinimumSize(1280, 994);
 
     // Connect signal and slot
     connect(m_pTimer, SIGNAL(timeout()), this, SLOT(onTimer()));

@@ -111,7 +111,7 @@ void QProcessingTab::setWidgetsEnabled(bool enabled, Configuration* pConfig)
 		if (pConfig)
 		{
 			m_pProgressBar_PostProcessing->setFormat("External data processing... %p%");
-			m_pProgressBar_PostProcessing->setRange(0, pConfig->frames - 1 + INTER_FRAME_SYNC);
+			m_pProgressBar_PostProcessing->setRange(0, pConfig->frames - 1);
 		}
 		else
 		{
@@ -162,7 +162,7 @@ void QProcessingTab::startProcessing()
 
 				m_pConfigTemp->getConfigFile(iniName);
 				m_pConfigTemp->frames = (int)(file.size() / (sizeof(uint8_t) * (qint64)m_pConfigTemp->octFrameSize + sizeof(uint16_t) * (qint64)m_pConfigTemp->flimFrameSize));
-				m_pConfigTemp->frames -= INTER_FRAME_SYNC;
+				m_pConfigTemp->frames -= m_pConfigTemp->interFrameSync;
 
 				/// printf("Start external image processing... (Total nFrame: %d)\n", m_pConfigTemp->frames);
 
@@ -225,7 +225,7 @@ void QProcessingTab::startProcessing()
 void QProcessingTab::loadingRawData(QFile* pFile, Configuration* pConfig)
 {
 	int frameCount = 0;
-	while (frameCount < pConfig->frames + INTER_FRAME_SYNC)
+	while (frameCount < pConfig->frames + pConfig->interFrameSync)
 	{
 		// Get buffers from threading queues
 		uint8_t* frame_data = nullptr;
@@ -258,7 +258,7 @@ void QProcessingTab::deinterleaving(Configuration* pConfig)
 	QVisualizationTab* pVisTab = m_pResultTab->getVisualizationTab();
 
 	int frameCount = 0;
-	while (frameCount < pConfig->frames + INTER_FRAME_SYNC)
+	while (frameCount < pConfig->frames + pConfig->interFrameSync)
 	{
 		// Get the buffer from the previous sync Queue
 		uint8_t* frame_ptr = m_syncDeinterleaving.Queue_sync.pop();
@@ -283,8 +283,8 @@ void QProcessingTab::deinterleaving(Configuration* pConfig)
 				{
 					// Data deinterleaving
 					memcpy(pulse_ptr, frame_ptr, sizeof(uint16_t) * pConfig->flimFrameSize);
-					if (frameCount >= INTER_FRAME_SYNC)
-						memcpy(pVisTab->m_vectorOctImage.at(frameCount - INTER_FRAME_SYNC).raw_ptr(),
+					if (frameCount >= pConfig->interFrameSync)
+						memcpy(pVisTab->m_vectorOctImage.at(frameCount - pConfig->interFrameSync).raw_ptr(),
 							frame_ptr + sizeof(uint16_t) * pConfig->flimFrameSize, sizeof(uint8_t) * pConfig->octFrameSize);
 					frameCount++;
 
@@ -319,7 +319,7 @@ void QProcessingTab::flimProcessing(FLImProcess* pFLIm, Configuration* pConfig)
 	///file.open(QIODevice::WriteOnly);
 
 	int frameCount = 0;
-	while (frameCount < pConfig->frames + INTER_FRAME_SYNC)
+	while (frameCount < pConfig->frames + pConfig->interFrameSync)
 	{
 		// Get the buffer from the previous sync Queue
 		uint16_t* pulse_data = m_syncFlimProcessing.Queue_sync.pop();
@@ -327,8 +327,15 @@ void QProcessingTab::flimProcessing(FLImProcess* pFLIm, Configuration* pConfig)
 		{
 			if (frameCount < pConfig->frames)
 			{
+				// Pulse array definition
+				np::Uint16Array2 pulse_temp(pulse_data, pConfig->flimScans, pConfig->flimAlines);
+				np::Uint16Array2 pulse(pConfig->flimScans, pConfig->flimAlines);
+
+				// Additional intra frame synchronization process by pulse circulating
+				memcpy(&pulse(0, 0), &pulse_temp(0, pConfig->intraFrameSync), sizeof(uint16_t) * pulse.size(0) * (pulse.size(1) - pConfig->intraFrameSync));
+				memcpy(&pulse(0, pulse.size(1) - pConfig->intraFrameSync), &pulse_temp(0, 0), sizeof(uint16_t) * pulse.size(0) * pConfig->intraFrameSync);
+
 				// FLIM Process
-				np::Uint16Array2 pulse(pulse_data, pConfig->flimScans, pConfig->flimAlines);
 				(*pFLIm)(itn, md, ltm, pulse);
 
 				// Copy for Pulse Review

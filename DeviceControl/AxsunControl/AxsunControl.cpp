@@ -603,7 +603,7 @@ bool AxsunControl::setDecibelRange(double min_dB, double max_dB)
 bool AxsunControl::getDeviceState()
 {
 	HRESULT result;
-	unsigned long retvallong;
+	//unsigned long retvallong;
 	const char* pPreamble = "[Axsun Control] Failed to get device state: ";
 
 	result = m_pAxsunOCTControl->ConnectToOCTDevice(LASER_DEVICE, &m_bIsConnected);

@@ -236,6 +236,7 @@ void QStreamTab::setFlimProcessingCallback()
 				{
 					float* pValue = flim_ptr + i * m_pConfig->flimAlines;
 					std::rotate(pValue, pValue + INTRA_FRAME_SYNC, pValue + m_pConfig->flimAlines);
+					// 일단은 circ shifting 형식으로 작업하지만, 최초 frame에서 밀어서 전체적으로 다 밀리는 형식으로 되야할 것임.
 				}
 
 				// Transfer to FLIm calibration dlg

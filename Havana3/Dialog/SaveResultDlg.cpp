@@ -288,12 +288,14 @@ void SaveResultDlg::saveCrossSections()
 			np::Uint8Array2 intensity = np::Uint8Array2(roi_flimproj.width, roi_flimproj.height);
 			np::Uint8Array2 lifetime = np::Uint8Array2(roi_flimproj.width, roi_flimproj.height);
 
+			// Intensity map
 			if (!m_pVisTab->getIntensityRatioMode())
 			{
 				ippiScale_32f8u_C1R(m_pVisTab->m_intensityMap.at(i), sizeof(float) * roi_flimproj.width,
 					intensity.raw_ptr(), sizeof(uint8_t) * roi_flimproj.width, roi_flimproj,
 					m_pConfig->flimIntensityRange[i].min, m_pConfig->flimIntensityRange[i].max);
 			}
+			// Intensity ratio map
 			else
 			{
 				int num = i;
@@ -312,37 +314,16 @@ void SaveResultDlg::saveCrossSections()
 				ippsMul_8u_ISfs(den_zero, intensity.raw_ptr(), den_zero.length(), 0);
 			}
 
-			(*m_pVisTab->m_pMedfiltIntensityMap)(intensity.raw_ptr());
-			if (INTER_FRAME_SYNC < intensity.size(1))
-			{
-				memcpy(&intensity(0, INTER_FRAME_SYNC), &intensity(0, 0), intensity.size(0) * (intensity.size(1) - INTER_FRAME_SYNC));
-				memset(&intensity(0, 0), 0, intensity.size(0) * INTER_FRAME_SYNC);
-			}
+			(*m_pVisTab->m_pMedfiltIntensityMap)(intensity.raw_ptr());		
 
-            for (int i = 0; i < roi_flimproj.height; i++)
-            {
-                uint8_t* pImg = intensity.raw_ptr() + i * roi_flimproj.width;
-                std::rotate(pImg, pImg + INTRA_FRAME_SYNC, pImg + roi_flimproj.width);
-            }
-
-
+			// Lifetime map
 			ippiScale_32f8u_C1R(m_pVisTab->m_lifetimeMap.at(i), sizeof(float) * roi_flimproj.width,
 				lifetime.raw_ptr(), sizeof(uint8_t) * roi_flimproj.width, roi_flimproj, 
 				m_pConfig->flimLifetimeRange[i].min, m_pConfig->flimLifetimeRange[i].max);
 
 			(*m_pVisTab->m_pMedfiltLifetimeMap)(lifetime.raw_ptr());
-			if (INTER_FRAME_SYNC < lifetime.size(1))
-			{
-				memcpy(&lifetime(0, INTER_FRAME_SYNC), &lifetime(0, 0), lifetime.size(0) * (lifetime.size(1) - INTER_FRAME_SYNC));
-				memset(&lifetime(0, 0), 0, lifetime.size(0) * INTER_FRAME_SYNC);
-			}
 
-            for (int i = 0; i < roi_flimproj.height; i++)
-            {
-                uint8_t* pImg = lifetime.raw_ptr() + i * roi_flimproj.width;
-                std::rotate(pImg, pImg + INTRA_FRAME_SYNC, pImg + roi_flimproj.width);
-            }
-
+			// Push to the queue
 			intensityMap.push_back(intensity);
 			lifetimeMap.push_back(lifetime);			
 		}	
@@ -426,19 +407,7 @@ void SaveResultDlg::saveEnFaceMaps()
 					{
 						np::FloatArray2 intensity_map(m_pVisTab->m_intensityMap.at(i).size(0), m_pVisTab->m_intensityMap.at(i).size(1));
 						memcpy(intensity_map.raw_ptr(), m_pVisTab->m_intensityMap.at(i).raw_ptr(), sizeof(float) * m_pVisTab->m_intensityMap.at(i).length());
-						if (INTER_FRAME_SYNC < intensity_map.size(1))
-						{
-							memcpy(&intensity_map(0, INTER_FRAME_SYNC), &intensity_map(0, 0),
-								sizeof(float) * intensity_map.size(0) * (intensity_map.size(1) - INTER_FRAME_SYNC));
-							memset(&intensity_map(0, 0), 0, sizeof(float) * intensity_map.size(0) * INTER_FRAME_SYNC);
-						}
-
-						for (int i = 0; i < intensity_map.size(1); i++)
-						{
-							float* pImg = intensity_map.raw_ptr() + i * intensity_map.size(0);
-							std::rotate(pImg, pImg + INTRA_FRAME_SYNC, pImg + intensity_map.size(0));
-						}
-
+						
 						fileIntensity.write(reinterpret_cast<char*>(&intensity_map(0, start - 1)), sizeof(float) * intensity_map.size(0) * (end - start + 1));
 						fileIntensity.close();
 					}
@@ -448,18 +417,6 @@ void SaveResultDlg::saveEnFaceMaps()
 					{
 						np::FloatArray2 lifetime_map(m_pVisTab->m_lifetimeMap.at(i).size(0), m_pVisTab->m_lifetimeMap.at(i).size(1));
 						memcpy(lifetime_map.raw_ptr(), m_pVisTab->m_lifetimeMap.at(i).raw_ptr(), sizeof(float) * m_pVisTab->m_lifetimeMap.at(i).length());
-						if (INTER_FRAME_SYNC < lifetime_map.size(1))
-						{
-							memcpy(&lifetime_map(0, INTER_FRAME_SYNC), &lifetime_map(0, 0),
-								sizeof(float) * lifetime_map.size(0) * (lifetime_map.size(1) - INTER_FRAME_SYNC));
-							memset(&lifetime_map(0, 0), 0, sizeof(float) * lifetime_map.size(0) * INTER_FRAME_SYNC);
-						}
-
-						for (int i = 0; i < lifetime_map.size(1); i++)
-						{
-							float* pImg = lifetime_map.raw_ptr() + i * lifetime_map.size(0);
-							std::rotate(pImg, pImg + INTRA_FRAME_SYNC, pImg + lifetime_map.size(0));
-						}
 
 						fileLifetime.write(reinterpret_cast<char*>(&lifetime_map(0, start - 1)), sizeof(float) * lifetime_map.size(0) * (end - start + 1));
 						fileLifetime.close();
@@ -501,19 +458,7 @@ void SaveResultDlg::saveEnFaceMaps()
 					ippiMirror_8u_C1IR(imgObjIntensity.arr.raw_ptr(), sizeof(uint8_t) * roi_flimproj.width, roi_flimproj, ippAxsHorizontal);
 
 					(*m_pVisTab->m_pMedfiltIntensityMap)(imgObjIntensity.arr.raw_ptr());
-					if (INTER_FRAME_SYNC < imgObjIntensity.arr.size(1))
-					{
-						memcpy(&imgObjIntensity.arr(0, 0), &imgObjIntensity.arr(0, INTER_FRAME_SYNC),
-							imgObjIntensity.arr.size(0) * (imgObjIntensity.arr.size(1) - INTER_FRAME_SYNC));
-						memset(&imgObjIntensity.arr(0, imgObjIntensity.arr.size(1) - INTER_FRAME_SYNC), 0,
-							imgObjIntensity.arr.size(0) * INTER_FRAME_SYNC);
-					}
 
-                    for (int i = 0; i < roi_flimproj.height; i++)
-                    {
-                        uint8_t* pImg = imgObjIntensity.arr.raw_ptr() + i * roi_flimproj.width;
-                        std::rotate(pImg, pImg + INTRA_FRAME_SYNC, pImg + roi_flimproj.width);
-                    }
 					imgObjIntensity.qindeximg.copy(0, roi_flimproj.height - end, roi_flimproj.width, end - start + 1)
 						.save(enFacePath + QString("intensity_range[%1 %2]_ch%3_[%4 %5].bmp").arg(start).arg(end).arg(i + 1)
 						.arg(m_pConfig->flimIntensityRange[i].min, 2, 'f', 1).arg(m_pConfig->flimIntensityRange[i].max, 2, 'f', 1), "bmp");
@@ -538,19 +483,7 @@ void SaveResultDlg::saveEnFaceMaps()
 						ippiMirror_8u_C1IR(imgObjIntensityRatio.arr.raw_ptr(), sizeof(uint8_t) * roi_flimproj.width, roi_flimproj, ippAxsHorizontal);
 
 						(*m_pVisTab->m_pMedfiltIntensityMap)(imgObjIntensityRatio.arr.raw_ptr());
-						if (INTER_FRAME_SYNC < imgObjIntensityRatio.arr.size(1))
-						{
-							memcpy(&imgObjIntensityRatio.arr(0, 0), &imgObjIntensityRatio.arr(0, INTER_FRAME_SYNC),
-								imgObjIntensityRatio.arr.size(0) * (imgObjIntensityRatio.arr.size(1) - INTER_FRAME_SYNC));
-							memset(&imgObjIntensityRatio.arr(0, imgObjIntensityRatio.arr.size(1) - INTER_FRAME_SYNC), 0,
-								imgObjIntensityRatio.arr.size(0) * INTER_FRAME_SYNC);
-						}
 
-                        for (int i = 0; i < roi_flimproj.height; i++)
-                        {
-                            uint8_t* pImg = imgObjIntensityRatio.arr.raw_ptr() + i * roi_flimproj.width;
-                            std::rotate(pImg, pImg + INTRA_FRAME_SYNC, pImg + roi_flimproj.width);
-                        }
 						imgObjIntensityRatio.qindeximg.copy(0, roi_flimproj.height - end, roi_flimproj.width, end - start + 1)
 							.save(enFacePath + QString("intensity_ratio_range[%1 %2]_ch%3_%4_[%5 %6].bmp").arg(start).arg(end).arg(num + 1).arg(den + 1)
 							.arg(m_pConfig->flimIntensityRatioRange[num][j].min, 2, 'f', 1)
@@ -564,19 +497,7 @@ void SaveResultDlg::saveEnFaceMaps()
 					ippiMirror_8u_C1IR(imgObjLifetime.arr.raw_ptr(), sizeof(uint8_t) * roi_flimproj.width, roi_flimproj, ippAxsHorizontal);
 
 					(*m_pVisTab->m_pMedfiltLifetimeMap)(imgObjLifetime.arr.raw_ptr());
-					if (INTER_FRAME_SYNC < imgObjLifetime.arr.size(1))
-					{
-						memcpy(&imgObjLifetime.arr(0, 0), &imgObjLifetime.arr(0, INTER_FRAME_SYNC),
-							imgObjLifetime.arr.size(0) * (imgObjLifetime.arr.size(1) - INTER_FRAME_SYNC));
-						memset(&imgObjLifetime.arr(0, imgObjLifetime.arr.size(1) - INTER_FRAME_SYNC), 0,
-							imgObjLifetime.arr.size(0) * INTER_FRAME_SYNC);
-					}
 
-                    for (int i = 0; i < roi_flimproj.height; i++)
-                    {
-                        uint8_t* pImg = imgObjLifetime.arr.raw_ptr() + i * roi_flimproj.width;
-                        std::rotate(pImg, pImg + INTRA_FRAME_SYNC, pImg + roi_flimproj.width);
-                    }
 					imgObjLifetime.qindeximg.copy(0, roi_flimproj.height - end, roi_flimproj.width, end - start + 1)
 						.save(enFacePath + QString("lifetime_range[%1 %2]_ch%3_[%4 %5].bmp").arg(start).arg(end).arg(i + 1)
 						.arg(m_pConfig->flimLifetimeRange[i].min, 2, 'f', 1).arg(m_pConfig->flimLifetimeRange[i].max, 2, 'f', 1), "bmp");

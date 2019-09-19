@@ -238,28 +238,28 @@ bool MemoryBuffer::startSaving()
 	return true;
 }
 
-//void MemoryBuffer::circulation(int nFramesToCirc)
-//{
-//	for (int i = 0; i < nFramesToCirc; i++)
-//	{
-//		uint16_t* buffer = m_queueWritingBuffer.front();
-//		m_queueWritingBuffer.pop();
-//		m_queueWritingBuffer.push(buffer);
-//	}
-//}
-//
-//uint16_t* MemoryBuffer::pop_front()
-//{
-//	uint16_t* buffer = m_queueWritingBuffer.front();
-//	m_queueWritingBuffer.pop();
-//
-//	return buffer;
-//}
-//
-//void MemoryBuffer::push_back(uint16_t* buffer)
-//{
-//	m_queueWritingBuffer.push(buffer);
-//}
+///void MemoryBuffer::circulation(int nFramesToCirc)
+///{
+///	for (int i = 0; i < nFramesToCirc; i++)
+///	{
+///		uint16_t* buffer = m_queueWritingBuffer.front();
+///		m_queueWritingBuffer.pop();
+///		m_queueWritingBuffer.push(buffer);
+///	}
+///}
+///
+///uint16_t* MemoryBuffer::pop_front()
+///{
+///	uint16_t* buffer = m_queueWritingBuffer.front();
+///	m_queueWritingBuffer.pop();
+///
+///	return buffer;
+///}
+///
+///void MemoryBuffer::push_back(uint16_t* buffer)
+///{
+///	m_queueWritingBuffer.push(buffer);
+///}
 
 
 void MemoryBuffer::write()
@@ -289,11 +289,19 @@ void MemoryBuffer::write()
 		m_queueWritingOctBuffer.push(buffer_oct);
 	}
 
+	// Buffer rotation for inter-frame synchronization
+	for (int i = 0; i < INTER_FRAME_SYNC; i++)
+	{
+		buffer_oct = m_queueWritingOctBuffer.front();
+		m_queueWritingOctBuffer.pop();
+		m_queueWritingOctBuffer.push(buffer_oct);
+	}
+
 	// Writing
 	QFile file(m_fileName);
 	if (file.open(QIODevice::WriteOnly))
 	{
-		for (int i = 0; i < m_nRecordedFrames; i++)
+		for (int i = 0; i < m_nRecordedFrames - INTER_FRAME_SYNC; i++)
 		{
 			// FLIm pulse writing
 			buffer_flim = m_queueWritingFlimBuffer.front();
@@ -329,7 +337,7 @@ void MemoryBuffer::write()
 			m_queueWritingOctBuffer.push(buffer_oct);
 
 			emit wroteSingleFrame(i);
-			//printf("\r%dth frame is wrote... [%3.2f%%]", i + 1, 100 * (double)(i + 1) / (double)m_nRecordedFrames);
+			///printf("\r%dth frame is wrote... [%3.2f%%]", i + 1, 100 * (double)(i + 1) / (double)m_nRecordedFrames);
 		}
 		file.close();
 	}
@@ -339,6 +347,14 @@ void MemoryBuffer::write()
 		return;
 	}
 	m_bIsSaved = true;
+
+	// Buffer rotation for inter-frame synchronization
+	for (int i = 0; i < INTER_FRAME_SYNC; i++)
+	{
+		buffer_flim = m_queueWritingFlimBuffer.front();
+		m_queueWritingFlimBuffer.pop();
+		m_queueWritingFlimBuffer.push(buffer_flim);
+	}
 
 	// Move files
 	QString fileTitle, filePath;
