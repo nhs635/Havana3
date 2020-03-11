@@ -29,7 +29,7 @@ QVisualizationTab::QVisualizationTab(bool is_streaming, QWidget *parent) :
 	m_pImgObjRectImage(nullptr), m_pImgObjCircImage(nullptr), m_pImgObjIntensity(nullptr), m_pImgObjLifetime(nullptr),
 	m_pImgObjIntensityMap(nullptr), m_pImgObjLifetimeMap(nullptr), m_pImgObjIntensityWeightedLifetimeMap(nullptr), 
 	m_pPulseReviewDlg(nullptr), m_pLongitudinalViewDlg(nullptr),
-	m_pCirc(nullptr), m_pMedfilt(nullptr), m_pMedfiltIntensityMap(nullptr), m_pMedfiltLifetimeMap(nullptr)
+	m_pCirc(nullptr), m_pMedfilt(nullptr), m_pMedfiltIntensityMap(nullptr), m_pMedfiltLifetimeMap(nullptr), m_pAnn(nullptr)
 {
     // Set configuration objects
 	if (is_streaming)
@@ -54,7 +54,10 @@ QVisualizationTab::QVisualizationTab(bool is_streaming, QWidget *parent) :
 	if (is_streaming)
 		m_pImageView_RectImage->setMovedMouseCallback([&] (QPoint& p) { m_pStreamTab->getMainWnd()->m_pStatusLabel_ImagePos->setText(QString("(%1, %2)").arg(p.x(), 4).arg(p.y(), 4)); });
 	else
+	{
 		m_pImageView_RectImage->setMovedMouseCallback([&](QPoint& p) { m_pResultTab->getMainWnd()->m_pStatusLabel_ImagePos->setText(QString("(%1, %2)").arg(p.x(), 4).arg(p.y(), 4)); });
+		m_pImageView_RectImage->getRender()->m_bCanBeMagnified = true;
+	}
 	m_pImageView_RectImage->hide();
 
 	m_pImageView_CircImage = new QImageView(ColorTable::colortable(OCT_COLORTABLE), 2 * m_pConfig->octScans, 2 * m_pConfig->octScans, true);
@@ -63,11 +66,15 @@ QVisualizationTab::QVisualizationTab(bool is_streaming, QWidget *parent) :
 	if (is_streaming)
 		m_pImageView_CircImage->setMovedMouseCallback([&](QPoint& p) { m_pStreamTab->getMainWnd()->m_pStatusLabel_ImagePos->setText(QString("(%1, %2)").arg(p.x(), 4).arg(p.y(), 4)); });
 	else
+	{
 		m_pImageView_CircImage->setMovedMouseCallback([&](QPoint& p) { m_pResultTab->getMainWnd()->m_pStatusLabel_ImagePos->setText(QString("(%1, %2)").arg(p.x(), 4).arg(p.y(), 4)); });
+		m_pImageView_CircImage->setWheelMouseCallback([&]() { m_pToggleButton_MeasureDistance->setChecked(false); });
+		m_pImageView_CircImage->getRender()->m_bCanBeMagnified = true;
+	}
 
 
 	QLabel *pNullLabel = new QLabel("", this);
-	pNullLabel->setFixedWidth(875);
+	pNullLabel->setMinimumWidth(875);
 	pNullLabel->setFixedHeight(0);
 	pNullLabel->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
 
@@ -109,6 +116,7 @@ QVisualizationTab::QVisualizationTab(bool is_streaming, QWidget *parent) :
     m_pGroupBox_VisualizationWidgets->setTitle("  Visualization Options  ");
     m_pGroupBox_VisualizationWidgets->setStyleSheet("QGroupBox { padding-top: 18px; margin-top: -10px; } QGroupBox::title { subcontrol-origin: margin; left: 8px; top: 2px; }");
 	m_pGroupBox_VisualizationWidgets->setFixedWidth(341);
+	m_pGroupBox_VisualizationWidgets->setEnabled(is_streaming);
 
     QVBoxLayout *pVBoxLayout = new QVBoxLayout;
     pVBoxLayout->setSpacing(1);
@@ -231,6 +239,7 @@ void QVisualizationTab::createFlimVisualizationOptionTab(bool is_streaming)
     m_pGroupBox_FlimVisualization->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Fixed);
 	m_pGroupBox_FlimVisualization->setTitle("  FLIm Visualization  ");
 	m_pGroupBox_FlimVisualization->setStyleSheet("QGroupBox { padding-top: 15px; margin-top: -10px; } QGroupBox::title { subcontrol-origin: margin; left: 8px; top: 2px; }");
+	m_pGroupBox_FlimVisualization->setEnabled(is_streaming);
     QGridLayout *pGridLayout_FlimVisualization = new QGridLayout;
     pGridLayout_FlimVisualization->setSpacing(3);
 
@@ -272,6 +281,11 @@ void QVisualizationTab::createFlimVisualizationOptionTab(bool is_streaming)
 		m_pPushButton_PulseReview->setText("Pulse Review...");
 		m_pPushButton_PulseReview->setFixedWidth(110);
 		m_pPushButton_PulseReview->setEnabled(is_streaming);
+
+		// Create widgets for FLIm based classification 
+		m_pCheckBox_Classification = new QCheckBox(this);
+		m_pCheckBox_Classification->setText("Classification");
+		m_pCheckBox_Classification->setDisabled(true);
 	}
 
 	if (is_streaming)
@@ -326,7 +340,9 @@ void QVisualizationTab::createFlimVisualizationOptionTab(bool is_streaming)
 	if (!is_streaming)
 	{
 		pGridLayout_FlimVisualization2->setSpacing(3);
-		pGridLayout_FlimVisualization2->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed), 0, 0, 1, 3);
+		pGridLayout_FlimVisualization2->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed), 0, 0);
+		pGridLayout_FlimVisualization2->addWidget(m_pCheckBox_Classification, 0, 1);
+		pGridLayout_FlimVisualization2->addWidget(new QLabel(" ", this), 0, 2);
 		pGridLayout_FlimVisualization2->addWidget(m_pCheckBox_IntensityRatio, 0, 3);
 		pGridLayout_FlimVisualization2->addWidget(m_pComboBox_IntensityRef, 0, 4);
 
@@ -377,6 +393,7 @@ void QVisualizationTab::createFlimVisualizationOptionTab(bool is_streaming)
 		connect(m_pComboBox_IntensityRef, SIGNAL(currentIndexChanged(int)), this, SLOT(changeIntensityRatioRef(int)));
 		connect(m_pCheckBox_IntensityWeightedLifetimeMap, SIGNAL(toggled(bool)), this, SLOT(enableIntensityWeightingMode(bool)));
 		connect(m_pPushButton_PulseReview, SIGNAL(clicked(bool)), this, SLOT(createPulseReviewDlg()));
+		connect(m_pCheckBox_Classification, SIGNAL(toggled(bool)), this, SLOT(enableClassification(bool)));
 	}
 	else
 	{
@@ -394,6 +411,7 @@ void QVisualizationTab::createOctVisualizationOptionTab(bool is_streaming)
     m_pGroupBox_OctVisualization->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Fixed);
 	m_pGroupBox_OctVisualization->setTitle("  OCT Visualization  ");
 	m_pGroupBox_OctVisualization->setStyleSheet("QGroupBox { padding-top: 20px; margin-top: -10px; } QGroupBox::title { subcontrol-origin: margin; left: 8px; top: 2px; }");
+	m_pGroupBox_OctVisualization->setEnabled(is_streaming);
     QGridLayout *pGridLayout_OctVisualization = new QGridLayout;
     pGridLayout_OctVisualization->setSpacing(3);
 
@@ -416,6 +434,24 @@ void QVisualizationTab::createOctVisualizationOptionTab(bool is_streaming)
 		m_pPushButton_LongitudinalView = new QPushButton(this);
 		m_pPushButton_LongitudinalView->setText("Longitudinal View (z-r)...");
 		m_pPushButton_LongitudinalView->setEnabled(is_streaming);
+	}
+
+	// Create widgets for OCT cross section rotation
+	if (!is_streaming)
+	{
+		m_pScrollBar_Rotation = new QScrollBar(this);
+		m_pScrollBar_Rotation->setOrientation(Qt::Horizontal);
+		m_pScrollBar_Rotation->setRange(0, m_pConfig->octAlines - 1);
+		m_pScrollBar_Rotation->setSingleStep(1);
+		m_pScrollBar_Rotation->setPageStep(m_pScrollBar_Rotation->maximum() / 10);
+		m_pScrollBar_Rotation->setFocusPolicy(Qt::StrongFocus);
+		m_pScrollBar_Rotation->setDisabled(true);
+
+		QString str; str.sprintf("Rotation %4d / %4d ", 0, m_pConfig->octAlines - 1);
+		m_pLabel_Rotation = new QLabel(str, this);
+		m_pLabel_Rotation->setBuddy(m_pScrollBar_Rotation);
+		m_pLabel_Rotation->setFixedWidth(110);
+		m_pLabel_Rotation->setDisabled(true);
 	}
 
 	// Create line edit widgets for OCT contrast adjustment
@@ -471,6 +507,15 @@ void QVisualizationTab::createOctVisualizationOptionTab(bool is_streaming)
 	{
 		pGridLayout_OctVisualization->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed), 1, 0);
 		pGridLayout_OctVisualization->addWidget(m_pPushButton_LongitudinalView, 1, 1, 1, 2);
+
+		QHBoxLayout *pHBoxLayout_Rotation = new QHBoxLayout;
+		pHBoxLayout_Rotation->setSpacing(1);
+
+		pHBoxLayout_Rotation->addWidget(m_pLabel_Rotation);
+		pHBoxLayout_Rotation->addWidget(m_pScrollBar_Rotation);
+
+		pGridLayout_OctVisualization->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed), 2, 0);
+		pGridLayout_OctVisualization->addItem(pHBoxLayout_Rotation, 2, 1, 1, 2);
 	}
 
     m_pGroupBox_OctVisualization->setLayout(pGridLayout_OctVisualization);
@@ -480,6 +525,7 @@ void QVisualizationTab::createOctVisualizationOptionTab(bool is_streaming)
 	if (!is_streaming) connect(m_pPushButton_LongitudinalView, SIGNAL(clicked(bool)), this, SLOT(createLongitudinalViewDlg()));
 	if (is_streaming) connect(m_pLineEdit_DecibelMax, SIGNAL(textEdited(const QString &)), this, SLOT(adjustDecibelRange()));
 	if (is_streaming) connect(m_pLineEdit_DecibelMin, SIGNAL(textEdited(const QString &)), this, SLOT(adjustDecibelRange()));
+	if (!is_streaming) connect(m_pScrollBar_Rotation, SIGNAL(valueChanged(int)), this, SLOT(rotateImage(int)));
 }
 
 void QVisualizationTab::createEnFaceMapTab()
@@ -722,6 +768,14 @@ void QVisualizationTab::setWidgetsEnabled(bool enabled, Configuration* pConfig)
 		m_pImageView_RectImage->setUpdatesEnabled(enabled);
 		m_pImageView_CircImage->setEnabled(enabled);
 		m_pImageView_CircImage->setUpdatesEnabled(enabled);
+		if (enabled)
+		{
+			if (m_pResultTab)
+			{
+				m_pImageView_RectImage->setMagnDefault();
+				m_pImageView_CircImage->setMagnDefault();
+			}
+		}
 
 		m_pImageView_OctProjection->setEnabled(enabled);
 		m_pImageView_OctProjection->setUpdatesEnabled(enabled);
@@ -742,6 +796,7 @@ void QVisualizationTab::setWidgetsEnabled(bool enabled, Configuration* pConfig)
 	}
 
 	// Navigation widgets
+	m_pGroupBox_VisualizationWidgets->setEnabled(enabled);
 	m_pToggleButton_MeasureDistance->setEnabled(false);
 	m_pLabel_SelectFrame->setEnabled(enabled);
 	if (pConfig)
@@ -768,6 +823,7 @@ void QVisualizationTab::setWidgetsEnabled(bool enabled, Configuration* pConfig)
 	}
 
 	// FLIm visualization widgets
+	m_pGroupBox_FlimVisualization->setEnabled(enabled);
 	m_pLabel_EmissionChannel->setEnabled(enabled);
 	m_pComboBox_EmissionChannel->setEnabled(enabled);
 	
@@ -778,6 +834,7 @@ void QVisualizationTab::setWidgetsEnabled(bool enabled, Configuration* pConfig)
 		m_pComboBox_IntensityRef->setEnabled(false);
 	m_pCheckBox_IntensityWeightedLifetimeMap->setEnabled(enabled);
 	m_pPushButton_PulseReview->setEnabled(enabled);
+	m_pCheckBox_Classification->setEnabled(enabled);
 
 	m_pLineEdit_IntensityMax->setEnabled(enabled);
 	m_pLineEdit_IntensityMin->setEnabled(enabled);
@@ -785,6 +842,7 @@ void QVisualizationTab::setWidgetsEnabled(bool enabled, Configuration* pConfig)
 	m_pLineEdit_LifetimeMin->setEnabled(enabled);
 
 	// OCT visualization widgets
+	m_pGroupBox_OctVisualization->setEnabled(enabled);
 	m_pRadioButton_CircularView->setEnabled(enabled);
 	m_pRadioButton_RectangularView->setEnabled(enabled);
 	
@@ -792,6 +850,14 @@ void QVisualizationTab::setWidgetsEnabled(bool enabled, Configuration* pConfig)
 	m_pLineEdit_OctGrayMin->setEnabled(enabled);
 
 	m_pPushButton_LongitudinalView->setEnabled(enabled);
+
+	QString str; str.sprintf("Rotation %4d / %4d ", 0, pConfig->octAlines - 1);
+	m_pLabel_Rotation->setText(str);
+	m_pLabel_Rotation->setEnabled(enabled);
+
+	m_pScrollBar_Rotation->setRange(0, pConfig->octAlines - 1);
+	m_pScrollBar_Rotation->setValue(0);
+	m_pScrollBar_Rotation->setEnabled(enabled);
 
 	// En face widgets
 	m_pLabel_OctProjection->setEnabled(enabled);
@@ -815,6 +881,18 @@ void QVisualizationTab::visualizeEnFaceMap(bool scaling)
 				roi_proj, m_pConfig->octGrayRange.min, m_pConfig->octGrayRange.max);
 			ippiMirror_8u_C1IR(m_visOctProjection, sizeof(uint8_t) * roi_proj.width, roi_proj, ippAxsHorizontal);
 
+			// Rotation - OCT projection map
+			int shift = m_pScrollBar_Rotation->value();
+			if (shift > 0)
+			{
+				int roi_proj_width_non4 = m_pImageView_RectImage->getRender()->m_pImage->width();
+				for (int i = 0; i < roi_proj.height; i++)
+				{
+					uint8_t* pImg = m_visOctProjection.raw_ptr() + i * roi_proj.width;
+					std::rotate(pImg, pImg + shift, pImg + roi_proj_width_non4);
+				}
+			}
+
 			// Scaling FLIM map
 			IppiSize roi_flimproj = { m_intensityMap.at(0).size(0), m_intensityMap.at(0).size(1) };
 			
@@ -825,7 +903,6 @@ void QVisualizationTab::visualizeEnFaceMap(bool scaling)
 					m_pImgObjIntensityMap->arr.raw_ptr(), sizeof(uint8_t) * roi_flimproj.width, roi_flimproj,
 					m_pConfig->flimIntensityRange[m_pConfig->flimEmissionChannel - 1].min,
 					m_pConfig->flimIntensityRange[m_pConfig->flimEmissionChannel - 1].max);
-				ippiMirror_8u_C1IR(m_pImgObjIntensityMap->arr.raw_ptr(), sizeof(uint8_t) * roi_flimproj.width, roi_flimproj, ippAxsHorizontal);
 			}
 			// Intensity ratio map
 			else
@@ -844,11 +921,21 @@ void QVisualizationTab::visualizeEnFaceMap(bool scaling)
 					m_pConfig->flimIntensityRatioRange[num][m_pConfig->flimIntensityRatioRefIdx[num]].min,
 					m_pConfig->flimIntensityRatioRange[num][m_pConfig->flimIntensityRatioRefIdx[num]].max);
 				ippsMul_8u_ISfs(den_zero, m_pImgObjIntensityMap->arr.raw_ptr(), den_zero.length(), 0);
-				ippiMirror_8u_C1IR(m_pImgObjIntensityMap->arr.raw_ptr(), sizeof(uint8_t) * roi_flimproj.width, roi_flimproj, ippAxsHorizontal);
 			}
 
+			ippiMirror_8u_C1IR(m_pImgObjIntensityMap->arr.raw_ptr(), sizeof(uint8_t) * roi_flimproj.width, roi_flimproj, ippAxsHorizontal);
             (*m_pMedfiltIntensityMap)(m_pImgObjIntensityMap->arr.raw_ptr());
-			
+
+			// Rotation - FLIM Intensity map
+			if (shift > 0)
+			{
+				for (int i = 0; i < roi_flimproj.height; i++)
+				{
+					uint8_t* pImg = m_pImgObjIntensityMap->arr.raw_ptr() + i * roi_flimproj.width;
+					std::rotate(pImg, pImg + shift / 4, pImg + roi_flimproj.width);
+				}
+			}
+
 			// Lifetime map
 			ippiScale_32f8u_C1R(m_lifetimeMap.at(m_pComboBox_EmissionChannel->currentIndex()), sizeof(float) * roi_flimproj.width,
 				m_pImgObjLifetimeMap->arr.raw_ptr(), sizeof(uint8_t) * roi_flimproj.width, roi_flimproj, 
@@ -857,6 +944,16 @@ void QVisualizationTab::visualizeEnFaceMap(bool scaling)
 			ippiMirror_8u_C1IR(m_pImgObjLifetimeMap->arr.raw_ptr(), sizeof(uint8_t) * roi_flimproj.width, roi_flimproj, ippAxsHorizontal);
 
 			(*m_pMedfiltLifetimeMap)(m_pImgObjLifetimeMap->arr.raw_ptr());
+
+			// Rotation - FLIM Lifetime map
+			if (shift > 0)
+			{
+				for (int i = 0; i < roi_flimproj.height; i++)
+				{
+					uint8_t* pImg = m_pImgObjLifetimeMap->arr.raw_ptr() + i * roi_flimproj.width;
+					std::rotate(pImg, pImg + shift / 4, pImg + roi_flimproj.width);
+				}
+			}
 			
 			// RGB conversion
 			m_pImgObjLifetimeMap->convertRgb();
@@ -869,9 +966,9 @@ void QVisualizationTab::visualizeEnFaceMap(bool scaling)
 			///printf("lifet: %f %f\n", mean, std);
 			///*************************************************************************************************************************************************************************///
 
+			// Intensity-weight lifetime map
 			if (m_pCheckBox_IntensityWeightedLifetimeMap->isChecked())
 			{
-				// Non HSV intensity-weight map
 				ColorTable temp_ctable;
 				ImageObject tempImgObj(m_pImgObjIntensityWeightedLifetimeMap->getWidth(), m_pImgObjIntensityWeightedLifetimeMap->getHeight(), temp_ctable.m_colorTableVector.at(ColorTable::gray));
 
@@ -881,11 +978,76 @@ void QVisualizationTab::visualizeEnFaceMap(bool scaling)
 
 				ippsMul_8u_Sfs(m_pImgObjLifetimeMap->qrgbimg.bits(), tempImgObj.qrgbimg.bits(), m_pImgObjIntensityWeightedLifetimeMap->qrgbimg.bits(), tempImgObj.qrgbimg.byteCount(), 8);
 			}
+
+			// FLIM-based classification map (neural network)
+			if (m_pCheckBox_Classification->isChecked())
+			{
+				// Ch1, ch2 lifetime and intensity ratio
+				np::FloatArray2 ch1_lifetime(m_lifetimeMap.at(0).size(0), m_lifetimeMap.at(0).size(1));
+				np::FloatArray2 ch2_lifetime(m_lifetimeMap.at(1).size(0), m_lifetimeMap.at(1).size(1));
+				np::FloatArray2 ch1_intensity(m_intensityMap.at(0).size(0), m_intensityMap.at(0).size(1));
+				np::FloatArray2 ch2_intensity(m_intensityMap.at(1).size(0), m_intensityMap.at(1).size(1));
+				np::FloatArray2 intensity_ratio(m_intensityMap.at(1).size(0), m_intensityMap.at(1).size(1));
+
+				memcpy(ch1_lifetime.raw_ptr(), m_lifetimeMap.at(0).raw_ptr(), sizeof(float) * m_lifetimeMap.at(0).length());
+				memcpy(ch2_lifetime.raw_ptr(), m_lifetimeMap.at(1).raw_ptr(), sizeof(float) * m_lifetimeMap.at(1).length());
+				memcpy(ch1_intensity.raw_ptr(), m_intensityMap.at(0).raw_ptr(), sizeof(float) * m_intensityMap.at(0).length());
+				memcpy(ch2_intensity.raw_ptr(), m_intensityMap.at(1).raw_ptr(), sizeof(float) * m_intensityMap.at(1).length());
+
+				(*m_pMedfiltLifetimeMap)(ch1_lifetime.raw_ptr());
+				(*m_pMedfiltLifetimeMap)(ch2_lifetime.raw_ptr());
+				(*m_pMedfiltIntensityMap)(ch1_intensity.raw_ptr());
+				(*m_pMedfiltIntensityMap)(ch2_intensity.raw_ptr());
+
+				ippsDiv_32f(ch1_intensity.raw_ptr(), ch2_intensity.raw_ptr(), intensity_ratio.raw_ptr(), intensity_ratio.length());
+
+				// Make ann object
+				int w = ch1_lifetime.size(0), h = ch1_lifetime.size(1);
+
+				if (m_pAnn) delete m_pAnn;
+				m_pAnn = new ann(w, h, m_pConfig->clfAnnXNode, m_pConfig->clfAnnHNode, m_pConfig->clfAnnYNode);
+
+				(*m_pAnn)(ch1_lifetime, ch2_lifetime, intensity_ratio);
+
+				// Rotation - FLIM Classification map
+				if (shift > 0)
+				{
+					for (int i = 0; i < roi_flimproj.height; i++)
+					{
+						uint8_t* pImg = m_pAnn->GetClfMapPtr() + i * 3 * roi_flimproj.width;
+						std::rotate(pImg, pImg + 3 * int(shift / 4), pImg + 3 * roi_flimproj.width);
+					}
+				}
+
+				// Classification map
+				memcpy(m_pImgObjIntensityWeightedLifetimeMap->qrgbimg.bits(), m_pAnn->GetClfMapPtr(), m_pImgObjIntensityWeightedLifetimeMap->qrgbimg.byteCount());
+
+				// Intensity weighting
+				if (m_pCheckBox_IntensityWeightedLifetimeMap->isChecked())
+				{
+					ColorTable temp_ctable;
+					ImageObject tempImgObj(m_pImgObjIntensityWeightedLifetimeMap->getWidth(), m_pImgObjIntensityWeightedLifetimeMap->getHeight(), temp_ctable.m_colorTableVector.at(ColorTable::gray));
+
+					memcpy(tempImgObj.qindeximg.bits(), m_pImgObjIntensityMap->arr.raw_ptr(), tempImgObj.qindeximg.byteCount());
+					tempImgObj.convertRgb();
+
+					ippsMul_8u_ISfs(tempImgObj.qrgbimg.bits(), m_pImgObjIntensityWeightedLifetimeMap->qrgbimg.bits(), tempImgObj.qrgbimg.byteCount(), 8);
+				}
+
+				//ColorTable temp_ctable;
+				//ImageObject tempImgObj(m_pImgObjIntensityWeightedLifetimeMap->getWidth(), m_pImgObjIntensityWeightedLifetimeMap->getHeight(), temp_ctable.m_colorTableVector.at(ColorTable::clf));
+
+				//memcpy(tempImgObj.qindeximg.bits(), m_pAnn->GetClfMapPtr(), tempImgObj.qindeximg.byteCount());
+				//tempImgObj.convertRgb();
+
+				//memcpy(m_pImgObjIntensityWeightedLifetimeMap->qrgbimg.bits(), tempImgObj.qrgbimg.bits(), tempImgObj.qrgbimg.byteCount());
+			}
 		}
 
 		emit paintOctProjection(m_visOctProjection);
 		emit paintIntensityMap(m_pImgObjIntensityMap->arr.raw_ptr());
-		emit paintLifetimeMap((!m_pCheckBox_IntensityWeightedLifetimeMap->isChecked()) ? m_pImgObjLifetimeMap->qrgbimg.bits() : m_pImgObjIntensityWeightedLifetimeMap->qrgbimg.bits());
+		emit paintLifetimeMap((!m_pCheckBox_IntensityWeightedLifetimeMap->isChecked() && !m_pCheckBox_Classification->isChecked()) ? 
+								m_pImgObjLifetimeMap->qrgbimg.bits() : m_pImgObjIntensityWeightedLifetimeMap->qrgbimg.bits());
 	}
 }
 
@@ -933,6 +1095,18 @@ void QVisualizationTab::visualizeImage(int frame)
 			m_pImgObjRectImage->arr.raw_ptr(), roi_oct.width * sizeof(uint8_t), roi_oct, (float)m_pConfig->octGrayRange.min, (float)m_pConfig->octGrayRange.max);
 		(*m_pMedfilt)(m_pImgObjRectImage->arr.raw_ptr());
 
+		// Rotation - OCT Image
+		int shift = m_pScrollBar_Rotation->value();
+		if (shift > 0)
+		{
+			int roi_oct_height_non4 = m_pImageView_RectImage->getRender()->m_pImage->width();
+			for (int i = 0; i < roi_oct.width; i++)
+			{
+				uint8_t* pImg = m_pImgObjRectImage->arr.raw_ptr() + i * roi_oct.height;
+				std::rotate(pImg, pImg + shift, pImg + roi_oct_height_non4);
+			}
+		}
+
 		// FLIM Visualization		
 		uint8_t* rectIntensity = &m_pImgObjIntensityMap->arr(0, m_pImgObjIntensityMap->arr.size(1) - 1 - frame);
 		uint8_t* rectLifetime = &m_pImgObjLifetimeMap->arr(0, m_pImgObjLifetimeMap->arr.size(1) - 1 - frame);
@@ -977,12 +1151,12 @@ void QVisualizationTab::constructRgbImage(ImageObject *rectObj, ImageObject *cir
 	lftObj->convertScaledRgb();
 
 	// Paste FLIM color ring to RGB rect image
-	if ((m_pStreamTab != nullptr) || (!m_pCheckBox_IntensityWeightedLifetimeMap->isChecked()))
+	if ((m_pStreamTab != nullptr) || (!m_pCheckBox_IntensityWeightedLifetimeMap->isChecked() && !m_pCheckBox_Classification->isChecked()))
 	{
 		memcpy(rectObj->qrgbimg.bits() + 3 * rectObj->arr.size(0) * (rectObj->arr.size(1) - 2 * RING_THICKNESS), intObj->qrgbimg.bits(), intObj->qrgbimg.byteCount());
 		memcpy(rectObj->qrgbimg.bits() + 3 * rectObj->arr.size(0) * (rectObj->arr.size(1) - 1 * RING_THICKNESS), lftObj->qrgbimg.bits(), lftObj->qrgbimg.byteCount());
 	}
-	else // HSV Enhancing in ResultTab
+	else // Intensity weighting or classification in ResultTab
 	{
 		ImageObject hsvObj(lftObj->getWidth(), 1, lftObj->getColorTable());
 		memcpy(hsvObj.qrgbimg.bits(),
@@ -993,9 +1167,9 @@ void QVisualizationTab::constructRgbImage(ImageObject *rectObj, ImageObject *cir
 		for (int i = 0; i < (int)(RING_THICKNESS); i++)
 			memcpy(rectObj->qrgbimg.bits() + 3 * rectObj->arr.size(0) * (rectObj->arr.size(1) - i - 1), hsvObj.qrgbimg.bits(), hsvObj.qrgbimg.byteCount());
 	}
-
-	// Rect View
+		
 	int id = m_pButtonGroup_ViewMode->checkedId();
+	// Circ View
 	if (id == CIRCULAR_VIEW)
 	{
 		np::Uint8Array2 rect_temp(rectObj->qrgbimg.bits(), 3 * rectObj->arr.size(0), rectObj->arr.size(1));
@@ -1004,6 +1178,7 @@ void QVisualizationTab::constructRgbImage(ImageObject *rectObj, ImageObject *cir
 		// Draw image
 		if (m_pImageView_CircImage->isEnabled()) m_pImageView_CircImage->drawImage(circObj->qrgbimg.bits());
 	}
+	// Rect View
 	else if (id == RECTANGULAR_VIEW)
 	{
 		// Draw image
@@ -1207,6 +1382,8 @@ void QVisualizationTab::createPulseReviewDlg()
 	m_pPulseReviewDlg->activateWindow();
 
 	m_pPushButton_LongitudinalView->setDisabled(true);
+	m_pToggleButton_MeasureDistance->setChecked(false);
+	m_pToggleButton_MeasureDistance->setDisabled(true);
 }
 
 void QVisualizationTab::deletePulseReviewDlg()
@@ -1221,6 +1398,35 @@ void QVisualizationTab::deletePulseReviewDlg()
 	m_pPulseReviewDlg = nullptr;
 
 	m_pPushButton_LongitudinalView->setEnabled(true);
+	m_pToggleButton_MeasureDistance->setEnabled(true);
+}
+
+void QVisualizationTab::enableClassification(bool toggled)
+{
+	if (!toggled)
+		m_pLabel_LifetimeMap->setText(QString::fromLocal8Bit("FLIm Ch%1 Lifetime Map (еш-z) (nsec)").arg(m_pConfig->flimEmissionChannel));
+	else
+		m_pLabel_LifetimeMap->setText(QString::fromLocal8Bit("FLIm-based Classification Map (еш-z)"));
+
+	// Set enable state of associated widgets 	
+	if (toggled) m_pCheckBox_IntensityWeightedLifetimeMap->setChecked(false);
+	if (toggled) m_pCheckBox_IntensityRatio->setChecked(false);
+64	//m_pCheckBox_IntensityWeightedLifetimeMap->setEnabled(!toggled);
+	m_pLabel_EmissionChannel->setEnabled(!toggled);
+	m_pComboBox_EmissionChannel->setEnabled(!toggled);
+	m_pCheckBox_IntensityRatio->setEnabled(!toggled);
+	//m_pLineEdit_IntensityMax->setEnabled(!toggled);
+	//m_pLineEdit_IntensityMin->setEnabled(!toggled);
+	m_pLineEdit_LifetimeMax->setEnabled(!toggled);
+	m_pLineEdit_LifetimeMin->setEnabled(!toggled);
+	if (toggled)
+		m_pImageView_LifetimeColorbar->resetColormap(ColorTable::colortable::clf);
+	else
+		m_pImageView_LifetimeColorbar->resetColormap(ColorTable::colortable(LIFETIME_COLORTABLE));
+	
+	// Only result tab function
+	visualizeEnFaceMap(true);
+	visualizeImage(m_pSlider_SelectFrame->value());
 }
 
 
@@ -1303,6 +1509,8 @@ void QVisualizationTab::createLongitudinalViewDlg()
 	m_pLongitudinalViewDlg->activateWindow();
 
 	m_pPushButton_PulseReview->setDisabled(true);
+	m_pToggleButton_MeasureDistance->setChecked(false);
+	m_pToggleButton_MeasureDistance->setDisabled(true);
 }
 
 void QVisualizationTab::deleteLongitudinalViewDlg()
@@ -1319,4 +1527,14 @@ void QVisualizationTab::deleteLongitudinalViewDlg()
 	m_pLongitudinalViewDlg = nullptr;
 
 	m_pPushButton_PulseReview->setEnabled(true);
+	m_pToggleButton_MeasureDistance->setEnabled(true);
+}
+
+void QVisualizationTab::rotateImage(int shift)
+{
+	QString str; str.sprintf("Rotation %4d / %4d ", shift, m_pScrollBar_Rotation->maximum());
+	m_pLabel_Rotation->setText(str);
+
+	visualizeEnFaceMap(true);
+	visualizeImage(m_pSlider_SelectFrame->value());
 }

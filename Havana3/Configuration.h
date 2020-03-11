@@ -1,7 +1,7 @@
 #ifndef CONFIGURATION_H
 #define CONFIGURATION_H
 
-#define VERSION						"1.2.1.1"
+#define VERSION						"1.2.2"
 
 #define POWER_2(x)					(1 << x)
 #define NEAR_2_POWER(x)				(int)(1 << (int)ceil(log2(x)))
@@ -32,7 +32,7 @@
 
 #define CLOCK_DELAY					10
 
-//#define VERTICAL_MIRRORING
+#define VERTICAL_MIRRORING
 
 ///#define OCT_DEFAULT_BACKGROUND      "bg.bin"
 
@@ -69,7 +69,7 @@
 
 #define OCT_COLORTABLE              0 // gray
 #define INTENSITY_COLORTABLE		6 // fire
-#define LIFETIME_COLORTABLE         16 // hsv1 ==> Viewer/QImageView.cpp
+#define LIFETIME_COLORTABLE         14 // hsv1 ==> Viewer/QImageView.cpp
 
 #define INTER_FRAME_SYNC			9  // Frames
 #define INTRA_FRAME_SYNC			30 // A-lines
@@ -103,7 +103,9 @@ class Configuration
 public:
     explicit Configuration() 
 	{
-		memset(flimBg, 0, sizeof(float) * 2);
+		flimBg[0] = 0.0f;;
+		flimBg[1] = 0.0f;;
+		//memset(flimBg, 0, sizeof(float) * 2);
 	}
 
 	~Configuration() {}
@@ -132,6 +134,11 @@ public:
 			if (i != 0)
 				flimDelayOffset[i - 1] = settings.value(QString("flimDelayOffset_%1").arg(i)).toFloat();
 		}
+
+		// FLIM classification
+		clfAnnXNode = settings.value("clfAnnXNode").toInt();
+		clfAnnHNode = settings.value("clfAnnHNode").toInt();
+		clfAnnYNode = settings.value("clfAnnYNode").toInt();
 		
         // Visualization
         flimEmissionChannel = settings.value("flimEmissionChannel").toInt();
@@ -149,6 +156,9 @@ public:
 				flimIntensityRatioRange[i][j].max = settings.value(QString("flimIntensityRatioRangeMax_Ch%1_%2").arg(i + 1).arg(ratio_index[i][j])).toFloat();
 				flimIntensityRatioRange[i][j].min = settings.value(QString("flimIntensityRatioRangeMin_Ch%1_%2").arg(i + 1).arg(ratio_index[i][j])).toFloat();
 			}
+
+			float temp = settings.value(QString("flimIntensityComp_%1").arg(i + 1)).toFloat();
+			flimIntensityComp[i] = (temp == 0.0f) ? 1.0f : temp;			
         }
 		octGrayRange.max = settings.value("octGrayRangeMax").toInt();
 		octGrayRange.min = settings.value("octGrayRangeMin").toInt();
@@ -243,6 +253,11 @@ public:
 	float flimWidthFactor;
 	int flimChStartInd[4];
     float flimDelayOffset[3];
+
+	// FLIm classification
+	int clfAnnXNode;
+	int clfAnnHNode;
+	int clfAnnYNode;
 	
 	// Visualization    
     int flimEmissionChannel;
@@ -250,6 +265,7 @@ public:
     Range<float> flimLifetimeRange[3];
 	int flimIntensityRatioRefIdx[3];
 	Range<float> flimIntensityRatioRange[3][3];
+	float flimIntensityComp[3];
 	Range<int> octGrayRange;
 
 	// Additional synchronization parameters

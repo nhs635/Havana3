@@ -97,6 +97,10 @@ void LongitudinalViewDlg::setWidgets(bool enabled)
 
 void LongitudinalViewDlg::drawLongitudinalImage(int aline)
 {	
+	// Specified A line
+	int aline0 = aline + m_pVisualizationTab->getCurrentRotation();
+	int aline1 = aline0 % (m_pProcessingTab->getConfigTemp()->octAlines / 2);
+
 	// Make longitudinal - OCT
 	IppiSize roi_longi = { m_pImgObjOctLongiImage->getHeight(), m_pImgObjOctLongiImage->getWidth() };
 	
@@ -106,9 +110,9 @@ void LongitudinalViewDlg::drawLongitudinalImage(int aline)
 		[&](const tbb::blocked_range<size_t>& r) {
 		for (size_t i = r.begin(); i != r.end(); ++i)
 		{
-			memcpy(&scale_temp(0, (int)i), &m_pVisualizationTab->m_vectorOctImage.at((int)i)(0, aline), sizeof(uint8_t) * m_pProcessingTab->getConfigTemp()->octScans);
+			memcpy(&scale_temp(0, (int)i), &m_pVisualizationTab->m_vectorOctImage.at((int)i)(0, aline1), sizeof(uint8_t) * m_pProcessingTab->getConfigTemp()->octScans);
 			memcpy(&scale_temp(m_pProcessingTab->getConfigTemp()->octScans, (int)i),
-				&m_pVisualizationTab->m_vectorOctImage.at((int)i)(0, m_pProcessingTab->getConfigTemp()->octAlines / 2 + aline), sizeof(uint8_t) * m_pProcessingTab->getConfigTemp()->octScans);
+				&m_pVisualizationTab->m_vectorOctImage.at((int)i)(0, m_pProcessingTab->getConfigTemp()->octAlines / 2 + aline1), sizeof(uint8_t) * m_pProcessingTab->getConfigTemp()->octScans);
 			ippsFlip_8u_I(&scale_temp(0, (int)i), m_pProcessingTab->getConfigTemp()->octScans);
 		}
 	});
@@ -116,6 +120,8 @@ void LongitudinalViewDlg::drawLongitudinalImage(int aline)
 	ippsConvert_8u32f(scale_temp.raw_ptr(), longi_temp.raw_ptr(), scale_temp.length());
 	ippiScale_32f8u_C1R(longi_temp.raw_ptr(), roi_longi.width * sizeof(float),
 		scale_temp.raw_ptr(), roi_longi.width * sizeof(uint8_t), roi_longi, m_pConfig->octGrayRange.min, m_pConfig->octGrayRange.max);
+	if (aline0 > (m_pProcessingTab->getConfigTemp()->octAlines / 2))
+		ippiMirror_8u_C1IR(scale_temp.raw_ptr(), sizeof(uint8_t) * roi_longi.width, roi_longi, ippAxsVertical);
 	ippiTranspose_8u_C1R(scale_temp.raw_ptr(), roi_longi.width * sizeof(uint8_t), m_pImgObjOctLongiImage->arr.raw_ptr(), roi_longi.height * sizeof(uint8_t), roi_longi);
 	(*m_pMedfilt)(m_pImgObjOctLongiImage->arr.raw_ptr());
 	
@@ -145,20 +151,55 @@ void LongitudinalViewDlg::drawLongitudinalImage(int aline)
 	
 	if (!m_pVisualizationTab->isIntensityWeighted())
 	{
-		m_pImgObjIntensity->convertNonScaledRgb();
-		m_pImgObjLifetime->convertNonScaledRgb();
+		if (!m_pVisualizationTab->isClassification())
+		{
+			m_pImgObjIntensity->convertNonScaledRgb();
+			m_pImgObjLifetime->convertNonScaledRgb();
 
-		memcpy(m_pImgObjOctLongiImage->qrgbimg.bits(), m_pImgObjLifetime->qrgbimg.bits(), m_pImgObjLifetime->qrgbimg.byteCount() / 2);
-		memcpy(m_pImgObjOctLongiImage->qrgbimg.bits() + 3 * m_pImgObjOctLongiImage->arr.size(0) * RING_THICKNESS, m_pImgObjIntensity->qrgbimg.bits(), m_pImgObjIntensity->qrgbimg.byteCount() / 2);
+			memcpy(m_pImgObjOctLongiImage->qrgbimg.bits(), m_pImgObjLifetime->qrgbimg.bits(), m_pImgObjLifetime->qrgbimg.byteCount() / 2);
+			memcpy(m_pImgObjOctLongiImage->qrgbimg.bits() + 3 * m_pImgObjOctLongiImage->arr.size(0) * RING_THICKNESS, m_pImgObjIntensity->qrgbimg.bits(), m_pImgObjIntensity->qrgbimg.byteCount() / 2);
 
-		memcpy(m_pImgObjOctLongiImage->qrgbimg.bits() + 3 * m_pImgObjOctLongiImage->arr.size(0) * (m_pImgObjOctLongiImage->arr.size(1) - 2 * RING_THICKNESS),
-			m_pImgObjIntensity->qrgbimg.bits() + m_pImgObjIntensity->qrgbimg.byteCount() / 2, m_pImgObjIntensity->qrgbimg.byteCount() / 2);
-		memcpy(m_pImgObjOctLongiImage->qrgbimg.bits() + 3 * m_pImgObjOctLongiImage->arr.size(0) * (m_pImgObjOctLongiImage->arr.size(1) - 1 * RING_THICKNESS),
-			m_pImgObjLifetime->qrgbimg.bits() + m_pImgObjLifetime->qrgbimg.byteCount() / 2, m_pImgObjLifetime->qrgbimg.byteCount() / 2);
+			memcpy(m_pImgObjOctLongiImage->qrgbimg.bits() + 3 * m_pImgObjOctLongiImage->arr.size(0) * (m_pImgObjOctLongiImage->arr.size(1) - 2 * RING_THICKNESS),
+				m_pImgObjIntensity->qrgbimg.bits() + m_pImgObjIntensity->qrgbimg.byteCount() / 2, m_pImgObjIntensity->qrgbimg.byteCount() / 2);
+			memcpy(m_pImgObjOctLongiImage->qrgbimg.bits() + 3 * m_pImgObjOctLongiImage->arr.size(0) * (m_pImgObjOctLongiImage->arr.size(1) - 1 * RING_THICKNESS),
+				m_pImgObjLifetime->qrgbimg.bits() + m_pImgObjLifetime->qrgbimg.byteCount() / 2, m_pImgObjLifetime->qrgbimg.byteCount() / 2);
+		}
+		else
+		{
+			// Classification map
+			//ColorTable temp_ctable;
+			//ImageObject tempImgObj(m_pImgObjIntensityWeightedLifetime->getWidth(), m_pImgObjIntensityWeightedLifetime->getHeight(), temp_ctable.m_colorTableVector.at(ColorTable::clf));
+
+			tbb::parallel_for(tbb::blocked_range<size_t>(0, (size_t)(m_pProcessingTab->getConfigTemp()->frames)),
+				[&](const tbb::blocked_range<size_t>& r) {
+				for (size_t i = r.begin(); i != r.end(); ++i)
+				{
+					//tempImgObj.arr((int)i, 0) = m_pVisualizationTab->m_pAnn->GetClfMapPtr()(aline / 4, (int)(m_pProcessingTab->getConfigTemp()->frames - i - 1));
+					//tempImgObj.arr((int)i, RING_THICKNESS) = m_pVisualizationTab->m_pAnn->GetClfMapPtr()(m_pProcessingTab->getConfigTemp()->flimAlines / 2 + aline / 4, (int)(m_pProcessingTab->getConfigTemp()->frames - i - 1));
+				}
+			});
+			tbb::parallel_for(tbb::blocked_range<size_t>(1, (size_t)(RING_THICKNESS)),
+				[&](const tbb::blocked_range<size_t>& r) {
+				for (size_t i = r.begin(); i != r.end(); ++i)
+				{
+					//memcpy(&tempImgObj.arr(0, (int)i), &tempImgObj.arr(0, 0), sizeof(uint8_t) * tempImgObj.arr.size(0));
+					//memcpy(&tempImgObj.arr(0, (int)(i + RING_THICKNESS)), &tempImgObj.arr(0, RING_THICKNESS), sizeof(uint8_t) * tempImgObj.arr.size(0));
+				}
+			});
+
+			//memcpy(tempImgObj.qindeximg.bits(), m_pAnn->GetClfMapPtr(), tempImgObj.qindeximg.byteCount());
+			//tempImgObj.convertRgb();
+
+			//memcpy(m_pImgObjIntensityWeightedLifetime->qrgbimg.bits(), tempImgObj.qrgbimg.bits(), tempImgObj.qrgbimg.byteCount());
+
+			memcpy(m_pImgObjOctLongiImage->qrgbimg.bits(), m_pImgObjIntensityWeightedLifetime->qrgbimg.bits(), m_pImgObjIntensityWeightedLifetime->qrgbimg.byteCount() / 2);
+			memcpy(m_pImgObjOctLongiImage->qrgbimg.bits() + 3 * m_pImgObjOctLongiImage->arr.size(0) * (m_pImgObjOctLongiImage->arr.size(1) - 1 * RING_THICKNESS),
+				m_pImgObjIntensityWeightedLifetime->qrgbimg.bits() + m_pImgObjIntensityWeightedLifetime->qrgbimg.byteCount() / 2, m_pImgObjIntensityWeightedLifetime->qrgbimg.byteCount() / 2);
+		}
 	}
 	else
 	{
-		// Non HSV intensity-weight map
+		// intensity-weight lifetime map
 		ColorTable temp_ctable;
 		ImageObject tempImgObj(m_pImgObjIntensityWeightedLifetime->getWidth(), m_pImgObjIntensityWeightedLifetime->getHeight(), temp_ctable.m_colorTableVector.at(ColorTable::gray));
 

@@ -345,6 +345,10 @@ void QProcessingTab::flimProcessing(FLImProcess* pFLIm, Configuration* pConfig)
 				memcpy(mask, pFLIm->_resize.mask_src, mask.length() * sizeof(float));
 				pVisTab->m_vectorPulseCrop.push_back(crop);
 				pVisTab->m_vectorPulseMask.push_back(mask);
+				
+				// Intensity compensation
+				for (int i = 0; i < 3; i++)
+					ippsDivC_32f_I(pConfig->flimIntensityComp[i], &itn(0, i + 1), pConfig->flimAlines);
 
 				///file.write(reinterpret_cast<const char*>(pFLIm->_resize.filt_src.raw_ptr()), sizeof(float) * pFLIm->_resize.nsite);
 

@@ -314,12 +314,31 @@ void SaveResultDlg::saveCrossSections()
 				ippsMul_8u_ISfs(den_zero, intensity.raw_ptr(), den_zero.length(), 0);
 			}
 
+			int shift = m_pVisTab->getCurrentRotation();
+			if (shift > 0)
+			{
+				for (int i = 0; i < roi_flimproj.height; i++)
+				{
+					uint8_t* pImg = intensity.raw_ptr() + i * roi_flimproj.width;
+					std::rotate(pImg, pImg + shift / 4, pImg + roi_flimproj.width);
+				}
+			}
+
 			(*m_pVisTab->m_pMedfiltIntensityMap)(intensity.raw_ptr());		
 
 			// Lifetime map
 			ippiScale_32f8u_C1R(m_pVisTab->m_lifetimeMap.at(i), sizeof(float) * roi_flimproj.width,
 				lifetime.raw_ptr(), sizeof(uint8_t) * roi_flimproj.width, roi_flimproj, 
 				m_pConfig->flimLifetimeRange[i].min, m_pConfig->flimLifetimeRange[i].max);
+
+			if (shift > 0)
+			{
+				for (int i = 0; i < roi_flimproj.height; i++)
+				{
+					uint8_t* pImg = lifetime.raw_ptr() + i * roi_flimproj.width;
+					std::rotate(pImg, pImg + shift / 4, pImg + roi_flimproj.width);
+				}
+			}
 
 			(*m_pVisTab->m_pMedfiltLifetimeMap)(lifetime.raw_ptr());
 
@@ -387,6 +406,8 @@ void SaveResultDlg::saveEnFaceMaps()
 		
 		int start = m_pLineEdit_RangeStart->text().toInt();
 		int end = m_pLineEdit_RangeEnd->text().toInt();
+		int width_non4 = m_pVisTab->getRectImageView()->getRender()->m_pImage->width();
+		int shift = m_pVisTab->getCurrentRotation();
 
 		// Set Widgets //////////////////////////////////////////////////////////////////////////////
 		emit setWidgets(false);
@@ -402,12 +423,23 @@ void SaveResultDlg::saveEnFaceMaps()
 			{
 				if (checkList.bCh[i])
 				{
+					IppiSize roi_flim = { m_pVisTab->m_intensityMap.at(i).size(0), m_pVisTab->m_intensityMap.at(i).size(1) };
+
 					QFile fileIntensity(enFacePath + QString("intensity_range[%1 %2]_ch%3.enface").arg(start).arg(end).arg(i + 1));
 					if (false != fileIntensity.open(QIODevice::WriteOnly))
 					{
 						np::FloatArray2 intensity_map(m_pVisTab->m_intensityMap.at(i).size(0), m_pVisTab->m_intensityMap.at(i).size(1));
 						memcpy(intensity_map.raw_ptr(), m_pVisTab->m_intensityMap.at(i).raw_ptr(), sizeof(float) * m_pVisTab->m_intensityMap.at(i).length());
 						
+						if (shift > 0)
+						{
+							for (int i = 0; i < roi_flim.height; i++)
+							{
+								float* pImg = intensity_map.raw_ptr() + i * roi_flim.width;
+								std::rotate(pImg, pImg + shift, pImg + roi_flim.width);
+							}
+						}
+
 						fileIntensity.write(reinterpret_cast<char*>(&intensity_map(0, start - 1)), sizeof(float) * intensity_map.size(0) * (end - start + 1));
 						fileIntensity.close();
 					}
@@ -417,6 +449,15 @@ void SaveResultDlg::saveEnFaceMaps()
 					{
 						np::FloatArray2 lifetime_map(m_pVisTab->m_lifetimeMap.at(i).size(0), m_pVisTab->m_lifetimeMap.at(i).size(1));
 						memcpy(lifetime_map.raw_ptr(), m_pVisTab->m_lifetimeMap.at(i).raw_ptr(), sizeof(float) * m_pVisTab->m_lifetimeMap.at(i).length());
+
+						if (shift > 0)
+						{
+							for (int i = 0; i < roi_flim.height; i++)
+							{
+								float* pImg = lifetime_map.raw_ptr() + i * roi_flim.width;
+								std::rotate(pImg, pImg + shift, pImg + roi_flim.width);
+							}
+						}
 
 						fileLifetime.write(reinterpret_cast<char*>(&lifetime_map(0, start - 1)), sizeof(float) * lifetime_map.size(0) * (end - start + 1));
 						fileLifetime.close();
@@ -429,6 +470,21 @@ void SaveResultDlg::saveEnFaceMaps()
 				QFile fileOctMaxProj(enFacePath + QString("oct_max_projection_range[%1 %2].enface").arg(start).arg(end));
 				if (false != fileOctMaxProj.open(QIODevice::WriteOnly))
 				{
+					IppiSize roi_proj = { width_non4, m_pVisTab->m_octProjection.size(1) };
+
+					np::Uint8Array2 octProj(roi_proj.width, roi_proj.height);
+					ippiCopy_8u_C1R(m_pVisTab->m_octProjection.raw_ptr(), sizeof(float) * m_pVisTab->m_octProjection.size(0),
+						octProj.raw_ptr(), sizeof(float) * octProj.size(0), roi_proj);
+
+					if (shift > 0)
+					{
+						for (int i = 0; i < roi_proj.height; i++)
+						{
+							uint8_t* pImg = octProj.raw_ptr() + i * roi_proj.width;
+							std::rotate(pImg, pImg + shift, pImg + roi_proj.width);
+						}
+					}
+
 					fileOctMaxProj.write(reinterpret_cast<char*>(&m_pVisTab->m_octProjection(0, start - 1)), sizeof(uint8_t) * m_pVisTab->m_octProjection.size(0) * (end - start + 1));
 					fileOctMaxProj.close();
 				}
@@ -835,6 +891,18 @@ void SaveResultDlg::scaling(std::vector<np::Uint8Array2>& vectorOctImage,
 		ippiScale_32f8u_C1R(scale_temp.raw_ptr(), roi_oct.width * sizeof(float),
 			pImgObjVec->at(0)->arr.raw_ptr(), roi_oct.width * sizeof(uint8_t), roi_oct, (float)m_pConfig->octGrayRange.min, (float)m_pConfig->octGrayRange.max);
 		(*m_pVisTab->m_pMedfilt)(pImgObjVec->at(0)->arr.raw_ptr());
+
+		// Rotation - OCT Image
+		int shift = m_pVisTab->getCurrentRotation();
+		if (shift)
+		{
+			int roi_oct_height_non4 = m_pVisTab->getRectImageView()->getRender()->m_pImage->width();
+			for (int i = 0; i < roi_oct.width; i++)
+			{
+				uint8_t* pImg = pImgObjVec->at(0)->arr.raw_ptr() + i * roi_oct.height;
+				std::rotate(pImg, pImg + shift, pImg + roi_oct_height_non4);
+			}
+		}
 		
 		// FLIM Visualization		
 		IppiSize roi_flim = { roi_oct.height / 4, 1 };

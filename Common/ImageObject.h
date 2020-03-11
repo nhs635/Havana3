@@ -16,7 +16,7 @@
 class ImageObject
 {
 public:
-	ImageObject(int _width, int _height, QVector<QRgb> _colortable)
+	ImageObject(int _width, int _height, QVector<QRgb> _colortable, float gamma = 1.0f)
 	{
 		width = _width;
 		height = _height;
@@ -24,6 +24,11 @@ public:
 
 		qindeximg = QImage(width, height, QImage::Format_Indexed8);
 		qindeximg.setColorCount(256);
+
+		QVector<uint> colortable1;
+		for (int i = 0; i < 256; i++)
+			colortable1.push_back(colortable.at((int)roundf(255.0f * powf((float)i / 255.0f, gamma))));
+		colortable = colortable1;
 		qindeximg.setColorTable(colortable);
 
 		qrgbimg = QImage(width, height, QImage::Format_RGB888);
@@ -41,12 +46,11 @@ public:
 public:
 	int getWidth() const { return width; }
 	int getHeight() const { return height; }
-        const QVector<QRgb> getColorTable() const { return colortable; }
+    const QVector<QRgb> getColorTable() const { return colortable; }
 
 	void convertRgb()
 	{
-		qrgbimg = QImage(width, height, QImage::Format_RGB888);
-		np::Uint8Array2 rgbarr(qrgbimg.bits(), 3 * width, height);
+		np::Uint8Array2 rgbarr(3 * width, height);
 
 		tbb::parallel_for(tbb::blocked_range<size_t>(0, (size_t)height),
 			[&](const tbb::blocked_range<size_t>& r) {
@@ -61,6 +65,8 @@ public:
 				}
 			}
 		});
+
+		memcpy(qrgbimg.bits(), rgbarr.raw_ptr(), sizeof(uint8_t) * 3 * width * height);
 	}
 
 	void convertScaledRgb()

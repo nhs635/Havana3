@@ -44,3 +44,5 @@ Havana3.VC*
   (Aurios Medical Final Version 훈련소 가기 전...)
 - 190919 Havana3 v1.2.1.1
   (Inter & intra frame synchronization)
+- 200311 Havana3 v1.2.2
+  (Minor error corrected)

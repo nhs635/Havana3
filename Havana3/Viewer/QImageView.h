@@ -20,7 +20,7 @@ public:
 
 public:
 	enum colortable { gray = 0, inv_gray, sepia, jet, parula, hot, fire, hsv, 
-		smart, blueorange, cool, gem, greenfireblue, ice, lifetime2, vessel, hsv1, magenta, blue_hot }; // 새로 만든 colortable 이름 추가하기
+		smart, blueorange, cool, gem, greenfireblue, ice, lifetime2, vessel, hsv1, magenta, blue_hot, clf }; // 새로 만든 colortable 이름 추가하기
 	QVector<QString> m_cNameVector;
 	ColorTableVector m_colorTableVector;
 };
@@ -57,14 +57,14 @@ public:
 	void setVerticalLine(int len, ...);
 	void setCircle(int len, ...);
     void setContour(int len, uint16_t* pContour);
+	void setMagnDefault();
 
 	void setHLineChangeCallback(const std::function<void(int)> &slot);
 	void setVLineChangeCallback(const std::function<void(int)> &slot);
 	void setRLineChangeCallback(const std::function<void(int)> &slot);
-
-public:
 	void setMovedMouseCallback(const std::function<void(QPoint&)> &slot);
 	void setDoubleClickedMouseCallback(const std::function<void(void)> &slot);
+	void setWheelMouseCallback(const std::function<void(void)> &slot);
 
 public slots:
 	void drawImage(uint8_t* pImage);
@@ -99,7 +99,8 @@ protected:
 	void mousePressEvent(QMouseEvent *);
 	void mouseDoubleClickEvent(QMouseEvent *);
 	void mouseMoveEvent(QMouseEvent *);
-
+	void wheelEvent(QWheelEvent *);
+	
 public:
     QImage *m_pImage;
 
@@ -108,6 +109,9 @@ public:
     int m_circLen;
 	bool m_bRadial;
 	bool m_bDiametric;
+	bool m_bCanBeMagnified;
+	QRect m_rectMagnified;
+	float m_fMagnLevel;
 	int m_rMax;
 	QColor m_colorLine;
 
@@ -122,6 +126,7 @@ public:
 	callback<int> DidChangedRLine;
 	callback<void> DidDoubleClickedMouse;
 	callback<QPoint&> DidMovedMouse;
+	callback<void> DidWheelMouse;
 };
 
 

@@ -11,6 +11,7 @@
 #include <Common/medfilt.h>
 #include <Common/ImageObject.h>
 #include <Common/basic_functions.h>
+#include <Common/ann.h>
 
 #include <iostream>
 #include <vector>
@@ -46,8 +47,10 @@ public:
 	inline LongitudinalViewDlg* getLongitudinalViewDlg() const { return m_pLongitudinalViewDlg; }
 	inline void setCurrentFrame(int frame) { m_pSlider_SelectFrame->setValue(frame); }
     inline int getCurrentFrame() const { return m_pSlider_SelectFrame->value(); }
+	inline int getCurrentRotation() const { return m_pScrollBar_Rotation->value(); }
 	inline bool getIntensityRatioMode() const { return m_pCheckBox_IntensityRatio->isChecked(); }
 	inline bool isIntensityWeighted() const { return m_pCheckBox_IntensityWeightedLifetimeMap->isChecked(); }
+	inline bool isClassification() const { return m_pCheckBox_Classification->isChecked(); }
 
 public:
 	void setWidgetsValue();
@@ -81,12 +84,14 @@ private slots:
     void adjustFlimContrast();
 	void createPulseReviewDlg();
 	void deletePulseReviewDlg();
+	void enableClassification(bool);
 
     void changeViewMode(int);
 	void adjustDecibelRange();
 	void adjustOctGrayContrast();
 	void createLongitudinalViewDlg();
 	void deleteLongitudinalViewDlg();
+	void rotateImage(int);
 
 signals:
 	void setWidgets(bool enabled, Configuration* pConfig);
@@ -136,6 +141,7 @@ public:
 	medfilt* m_pMedfilt;	
 	medfilt* m_pMedfiltIntensityMap;
 	medfilt* m_pMedfiltLifetimeMap;
+	ann* m_pAnn;
 
 private:
     // Layout
@@ -179,6 +185,8 @@ private:
 	QPushButton *m_pPushButton_PulseReview;
 	PulseReviewDlg *m_pPulseReviewDlg;
 
+	QCheckBox *m_pCheckBox_Classification;;
+
     // OCT visualization option widgets
     QGroupBox *m_pGroupBox_OctVisualization;
 
@@ -192,6 +200,9 @@ private:
 	
 	QPushButton *m_pPushButton_LongitudinalView;
 	LongitudinalViewDlg *m_pLongitudinalViewDlg;
+
+	QLabel *m_pLabel_Rotation;
+	QScrollBar *m_pScrollBar_Rotation;
 	
 	QLabel *m_pLabel_DecibelRange;
 	QLineEdit *m_pLineEdit_DecibelMax;

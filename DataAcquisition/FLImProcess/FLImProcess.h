@@ -317,7 +317,7 @@ public:
             for (int j = 0; j < intensity.size(0); j++)
             {
                 intensity(j, i) = 0;
-                if (resize.saturated(j, i) < 2)
+                if (resize.saturated(j, i) < 4)
                     ippsSum_32f(&resize.ext_src(offset, j), resize.pulse_roi_length, &intensity(j, i), ippAlgHintFast);
             }
         }
