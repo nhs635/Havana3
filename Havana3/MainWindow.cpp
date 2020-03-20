@@ -148,11 +148,11 @@ void MainWindow::onTimerSync()
 	size_t ov_bfn = m_pStreamTab->getOctVisualizationBufferQueueSize();
 	m_pStatusLabel_SyncStatus->setText(QString("[Sync] FP#: %1 / FV#: %2 / OV#: %3").arg(fp_bfn, 3).arg(fv_bfn, 3).arg(ov_bfn, 3));
 
-	if ((fp_bfn < PROCESSING_BUFFER_SIZE - 5) || (fv_bfn < PROCESSING_BUFFER_SIZE - 5) || (ov_bfn < PROCESSING_BUFFER_SIZE - 5))
-	{
-		emit m_pStreamTab->sendStatusMessage("Synchronization failed. Please re-start the acquisition.", true);
-		m_pStreamTab->getOperationTab()->setAcquisitionButton(false);
-	}
+	//if ((fp_bfn < PROCESSING_BUFFER_SIZE - 5) || (fv_bfn < PROCESSING_BUFFER_SIZE - 5) || (ov_bfn < PROCESSING_BUFFER_SIZE - 5))
+	//{
+	//	emit m_pStreamTab->sendStatusMessage("Synchronization failed. Please re-start the acquisition.", true);
+	//	m_pStreamTab->getOperationTab()->setAcquisitionButton(false);
+	//}
 }
 
 void MainWindow::changedTab(int index)

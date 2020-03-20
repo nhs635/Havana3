@@ -214,14 +214,14 @@ void AxsunCapture::captureRun()
 	// Request & display images
 	uint32_t loop_counter = 0; 
 
-	image_data_out = np::Uint8Array2(image_height, 10 * image_width); // 10 frame buffers
+	image_data_out = np::Uint8Array2(image_height, 4 * image_width); // 4 frame buffers
 	uint8_t *cur_section = nullptr;
 	uint8_t *prev_section = nullptr;
 	
 	ULONG dwTickStart = 0, dwTickLastUpdate;
 
-	uint64_t bytesAcquired = 0;
-	uint32_t frameIndex = 0;
+	uint64_t bytesAcquired = 0, bytesAcquiredUpdate = 0;
+	uint32_t frameIndex = 0, frameIndexUpdate = 0;
 	
 	capture_running = true;
     while (capture_running)
@@ -232,7 +232,7 @@ void AxsunCapture::captureRun()
         if (result == CAPTURE_OK)
         {
 			// Determine where new data transfer data will go.
-			cur_section = &image_data_out(0, image_width * (loop_counter++ % 10));
+			cur_section = &image_data_out(0, image_width * (loop_counter % 4));
 
 			// if the image exists in the main image buffer, request for it to be rendered directly to the OpenGL window			
 			if (width > image_width) required_buffer_size = height * image_width;
@@ -240,10 +240,11 @@ void AxsunCapture::captureRun()
 				required_buffer_size, 1, req_mode, &force_trig_status, &trig_too_fast_status);
 			if (result == CAPTURE_OK)
 			{
-				prev_section = &image_data_out(0, (loop_counter % 10) * image_width);
+				//prev_section = &image_data_out(0, image_width * (loop_counter % 4));
 			
-				np::Uint8Array2 frame(prev_section, image_height, image_width);
+				np::Uint8Array2 frame(cur_section, image_height, image_width);
 				DidAcquireData(frameIndex++, frame);
+				frameIndexUpdate++;
 
 				// Acquisition Status
 				if (!dwTickStart)
@@ -251,26 +252,33 @@ void AxsunCapture::captureRun()
 
 				// Update counters
 				bytesAcquired += height * width;
-				//loop_counter++;
+				bytesAcquiredUpdate += height * width;
+				loop_counter++;
 
 				// Periodically update progress
 				ULONG dwTickNow = GetTickCount();
 				if (dwTickNow - dwTickLastUpdate > 5000)
 				{
-					double dRate;
+					double dRate, dRateUpdate;
 
-					dwTickLastUpdate = dwTickNow;
 					ULONG dwElapsed = dwTickNow - dwTickStart;
+					ULONG dwElapsedUpdate = dwTickNow - dwTickLastUpdate;
+					dwTickLastUpdate = dwTickNow;
 
 					if (dwElapsed)
 					{
-						dRate = (bytesAcquired / 1000.0) / (dwElapsed);
+						dRate = double(bytesAcquired / 1024.0 / 1024.0) / double(dwElapsed / 1000.0);
+						dRateUpdate = double(bytesAcquiredUpdate / 1024.0 / 1024.0) / double(dwElapsedUpdate / 1000.0);
 
 						char msg[256];
-						sprintf(msg, "[Image#] %5d [Data Rate] %3.2f MB/s [Frame Rate] %.2f fps [%d %d]",
-							frameIndex, dRate, (double)frameIndex / (double)(dwElapsed) * 1000.0, force_trig_status, trig_too_fast_status);
+						sprintf(msg, "[Image#] %5d [Data Rate] %3.2f MiB/s [Frame Rate] %.2f fps [%d %d]",
+							frameIndex, dRateUpdate, (double)frameIndexUpdate / (double)(dwElapsedUpdate) * 1000.0, force_trig_status, trig_too_fast_status);
 						SendStatusMessage(msg, false);
 					}
+
+					// Reset
+					frameIndexUpdate = 0;
+					bytesAcquiredUpdate = 0;
 				}
 			}
         }

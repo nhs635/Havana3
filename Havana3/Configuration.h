@@ -32,12 +32,12 @@
 
 #define CLOCK_DELAY					10
 
-#define VERTICAL_MIRRORING
+//#define VERTICAL_MIRRORING
 
 ///#define OCT_DEFAULT_BACKGROUND      "bg.bin"
 
 /////////////////// Pullback Device Setup ///////////////////
-#define ZABER_PORT					"COM1"
+#define ZABER_PORT					"\\\\.\\COM15"
 #define ZABER_MAX_MICRO_RESOLUTION  64 // BENCHTOP_MODE ? 128 : 64;
 #define ZABER_MICRO_RESOLUTION		64
 #define ZABER_CONVERSION_FACTOR		1.6384 //1.0 / 9.375 // BENCHTOP_MODE ? 1.0 / 9.375 : 1.6384;
@@ -49,7 +49,7 @@
 
 
 //////////////// Thread & Buffer Processing /////////////////
-#define PROCESSING_BUFFER_SIZE		50
+#define PROCESSING_BUFFER_SIZE		80
 
 #ifdef _DEBUG
 #define WRITING_BUFFER_SIZE			100
@@ -69,10 +69,10 @@
 
 #define OCT_COLORTABLE              0 // gray
 #define INTENSITY_COLORTABLE		6 // fire
-#define LIFETIME_COLORTABLE         14 // hsv1 ==> Viewer/QImageView.cpp
+#define LIFETIME_COLORTABLE         16 // hsv1 ==> Viewer/QImageView.cpp
 
-#define INTER_FRAME_SYNC			9  // Frames
-#define INTRA_FRAME_SYNC			30 // A-lines
+#define INTER_FRAME_SYNC			10//9  // Frames
+#define INTRA_FRAME_SYNC			0//30 // A-lines
 
 #define RENEWAL_COUNT				10
 #define PIXEL_RESOLUTION			5.7 // micrometer

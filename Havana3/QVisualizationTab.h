@@ -50,6 +50,7 @@ public:
 	inline int getCurrentRotation() const { return m_pScrollBar_Rotation->value(); }
 	inline bool getIntensityRatioMode() const { return m_pCheckBox_IntensityRatio->isChecked(); }
 	inline bool isIntensityWeighted() const { return m_pCheckBox_IntensityWeightedLifetimeMap->isChecked(); }
+	inline ImageObject* getImgObjIntensityWeightedLifetimeMap() const { return m_pImgObjIntensityWeightedLifetimeMap; }
 	inline bool isClassification() const { return m_pCheckBox_Classification->isChecked(); }
 
 public:

@@ -83,9 +83,9 @@ bool AxsunControl::initialize()
 	SysFreeString(systemTypeString);
 
 	// Image_Sync Setting (LVCMOS)
-	if (writeFPGARegSingleBit(2, 11, false) != true) return false;
-	if (writeFPGARegSingleBit(2, 9, true) != true) return false;
-	if (writeFPGARegSingleBit(2, 10, true) != true) return false;
+	if (writeFPGARegSingleBit(2, 11, false) != true) return false; // external image sync
+	if (writeFPGARegSingleBit(2, 9, true) != true) return false;   // LVCMOS input (X)
+	if (writeFPGARegSingleBit(2, 10, true) != true) return false;  
 	if (result != S_OK)
 	{
 		dumpControlError(result, pPreamble);

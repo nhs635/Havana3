@@ -54,7 +54,7 @@ public: ////////////////////////////////////////////////////////////////////////
     inline QStreamTab* getStreamTab() const { return m_pStreamTab; }
 	inline ZaberStage* getZaberStage() const { return m_pZaberStage; }
 	inline bool isFlimSystemInitialized() const {
-		return (m_pFlimFreqDivider != nullptr) && (m_pAxsunFreqDivider != nullptr) && (m_pElforlightLaser != nullptr);
+        return (m_pFlimFreqDivider != nullptr) && (m_pElforlightLaser != nullptr); //  && (m_pAxsunFreqDivider != nullptr)
 	}
 	inline bool isOctSystemInitialized() const { return (m_pAxsunControl != nullptr); }
     inline FlimCalibDlg* getFlimCalibDlg() const { return m_pFlimCalibDlg; }   

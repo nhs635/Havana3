@@ -262,9 +262,9 @@ void SignatecDAQ::run()
 	px14_sample_t *prev_chunkp = nullptr;	
 	ULONG dwTickStart = 0, dwTickLastUpdate;
 
-    unsigned long long SamplesAcquired = 0;
+	unsigned long long BytesAcquired = 0, BytesAcquiredUpdate = 0;
 
-	unsigned int frameIndex = 0;
+	unsigned int frameIndex = 0, frameIndexUpdate = 0;
 	
 	_running = true;
 	while (_running)
@@ -298,6 +298,7 @@ void SignatecDAQ::run()
 			// Callback
 			np::Uint16Array2 frame(prev_chunkp, nChannels * nScans, nAlines);
 			DidAcquireData(frameIndex++, frame); // Callback function			
+			frameIndexUpdate++;
 		}
 		
 		// Wait for the asynchronous DMA transfer to complete so we can loop 
@@ -328,21 +329,24 @@ void SignatecDAQ::run()
 			dwTickStart = dwTickLastUpdate = GetTickCount();
 
 		// Update counters
-		SamplesAcquired += getDataBufferSize();
+		BytesAcquired += sizeof(uint16_t) * getDataBufferSize();
+		BytesAcquiredUpdate += sizeof(uint16_t) * getDataBufferSize();
 		loop_counter++;
 
 		// Periodically update progress
 		ULONG dwTickNow = GetTickCount();
 		if (dwTickNow - dwTickLastUpdate > 5000)
 		{
-			double dRate;
+			double dRate, dRateUpdate;
 
-			dwTickLastUpdate = dwTickNow;
 			ULONG dwElapsed = dwTickNow - dwTickStart;
+			ULONG dwElapsedUpdate = dwTickNow - dwTickLastUpdate;
+			dwTickLastUpdate = dwTickNow;
 
 			if (dwElapsed)
 			{
-				dRate = (SamplesAcquired / 1000000.0) / (dwElapsed / 1000.0);
+				dRate = (BytesAcquired / 1024.0 / 1024.0) / (dwElapsed / 1000.0);
+				dRateUpdate = (BytesAcquiredUpdate / 1024.0 / 1024.0) / (dwElapsedUpdate / 1000.0);
 
 				unsigned h = 0, m = 0, s = 0;
 				if (dwElapsed >= 1000)
@@ -359,9 +363,14 @@ void SignatecDAQ::run()
 				}
 
 				char msg[MAX_MSG_LENGTH];
-				sprintf(msg, "[Elapsed Time] %u:%02u:%02u [DAQ Rate] %3.2f MS/s [Frame Rate] %.2f fps", h, m, s, dRate, (double)frameIndex / (double)(dwElapsed) * 1000.0);
+				sprintf(msg, "[Elapsed Time] %u:%02u:%02u [DAQ Rate] %3.2f MiB/s [Frame Rate] %.2f fps", h, m, s, 
+					dRateUpdate, (double)frameIndexUpdate / (double)(dwElapsedUpdate) * 1000.0);
 				SendStatusMessage(msg, false);
 			}
+
+			// reset
+			BytesAcquiredUpdate = 0;
+			frameIndexUpdate = 0;
 		}
 	}
 

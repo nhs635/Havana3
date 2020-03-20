@@ -1411,7 +1411,7 @@ void QVisualizationTab::enableClassification(bool toggled)
 	// Set enable state of associated widgets 	
 	if (toggled) m_pCheckBox_IntensityWeightedLifetimeMap->setChecked(false);
 	if (toggled) m_pCheckBox_IntensityRatio->setChecked(false);
-64	//m_pCheckBox_IntensityWeightedLifetimeMap->setEnabled(!toggled);
+	//m_pCheckBox_IntensityWeightedLifetimeMap->setEnabled(!toggled);
 	m_pLabel_EmissionChannel->setEnabled(!toggled);
 	m_pComboBox_EmissionChannel->setEnabled(!toggled);
 	m_pCheckBox_IntensityRatio->setEnabled(!toggled);

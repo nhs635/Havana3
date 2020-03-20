@@ -863,7 +863,7 @@ void QDeviceControlTab::startFlimSynchronization(bool toggled)
 		m_pAxsunFreqDivider->slow = 1024;
 
 		// Initializing
-		if ((!m_pFlimFreqDivider->initialize()) || (!m_pAxsunFreqDivider->initialize()))
+		if (!m_pFlimFreqDivider->initialize() || !m_pAxsunFreqDivider->initialize())
 		{
 			m_pToggleButton_SynchronizedPulsedLaser->setChecked(false);
 			return;
@@ -1178,10 +1178,10 @@ void QDeviceControlTab::connectAxsunControl(bool toggled)
 			// Default VDL Length
 			m_pAxsunControl->setVDLHome();
 			std::thread vdl_length([&]() {
-				std::this_thread::sleep_for(std::chrono::milliseconds(1500));
-				m_pAxsunControl->setVDLLength(m_pConfig->axsunVDLLength);
+				//std::this_thread::sleep_for(std::chrono::milliseconds(1500));
+				//m_pAxsunControl->setVDLLength(m_pConfig->axsunVDLLength);
 
-				std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+				//std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 				if (m_pStreamTab->getOperationTab()->getAcquisitionButton()->isChecked())
 					setVDLWidgets(true);
 			});

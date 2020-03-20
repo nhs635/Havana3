@@ -133,13 +133,13 @@ void QOperationTab::operateDataAcquisition(bool toggled)
 				allocate_writing_buffer.detach();				
 								
 				// Set helical scanning control
-				m_pStreamTab->getDeviceControlTab()->setHelicalScanningControl(true);
+				//m_pStreamTab->getDeviceControlTab()->setHelicalScanningControl(true);
 
 				// Set FLIm system control
 				std::this_thread::sleep_for(std::chrono::milliseconds(200)); 
 				m_pStreamTab->getDeviceControlTab()->setFlimControl(true);
 				if (!m_pStreamTab->getDeviceControlTab()->isFlimSystemInitialized())
-				{
+                {
 					m_pToggleButton_Acquisition->setChecked(false);
 					return;
 				}
@@ -174,7 +174,7 @@ void QOperationTab::operateDataAcquisition(bool toggled)
 		m_pStreamTab->getVisTab()->setOuterSheathLines(false);
 
 		// Set helical scanning control
-		m_pStreamTab->getDeviceControlTab()->setHelicalScanningControl(false);
+		//m_pStreamTab->getDeviceControlTab()->setHelicalScanningControl(false);
 
 		// Set Axsun OCT system control
 		m_pStreamTab->getDeviceControlTab()->setAxsunControl(false);

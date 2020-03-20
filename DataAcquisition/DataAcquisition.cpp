@@ -52,7 +52,7 @@ bool DataAcquisition::InitializeAcquistion()
 
 	m_pAxsunCapture->image_height = m_pConfig->octScans;
 	m_pAxsunCapture->image_width = m_pConfig->octAlines;
-
+	
     // Initialization for DAQ
     if (!(m_pDaq->set_init()))
     {
