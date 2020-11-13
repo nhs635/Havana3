@@ -9,8 +9,8 @@
 
 class QStreamTab;
 
-class ZaberStage;
-class FaulhaberMotor;
+class PullbackMotor;
+class RotaryMotor;
 
 class FreqDivider;
 class PmtGainControl;
@@ -52,7 +52,7 @@ public: ////////////////////////////////////////////////////////////////////////
 public: ////////////////////////////////////////////////////////////////////////////////////////////////
     inline QVBoxLayout* getLayout() const { return m_pVBoxLayout; }
     inline QStreamTab* getStreamTab() const { return m_pStreamTab; }
-	inline ZaberStage* getZaberStage() const { return m_pZaberStage; }
+	inline PullbackMotor* getPullbackMotor() const { return m_pPullbackMotor; }
 	inline bool isFlimSystemInitialized() const {
         return (m_pFlimFreqDivider != nullptr) && (m_pElforlightLaser != nullptr); //  && (m_pAxsunFreqDivider != nullptr)
 	}
@@ -67,9 +67,9 @@ private: ///////////////////////////////////////////////////////////////////////
 public: ////////////////////////////////////////////////////////////////////////////////////////////////
 	// Helical Scanning Control
 	void setHelicalScanningControl(bool);
-	bool isZaberStageEnabled() { return m_pZaberStage != nullptr; }
+	bool isPullbackMotorEnabled() { return m_pPullbackMotor != nullptr; }
 	void pullback() { moveAbsolute(); }
-	bool isFaulhaberMotorEnabled() { return m_pFaulhaberMotor != nullptr; }
+	bool isRotaryMotorEnabled() { return m_pRotaryMotor != nullptr; }
 	void stopMotor() { rotate(false); }
 
 	// FLIm Control
@@ -85,16 +85,16 @@ private slots: /////////////////////////////////////////////////////////////////
     // Helical Scanning Control
 	void initializeHelicalScanning(bool);
 
-	bool connectZaberStage(bool);
+	bool connectPullbackMotor(bool);
 	void moveAbsolute();
 	void setTargetSpeed(const QString &);
-	void changeZaberPullbackLength(const QString &);
+	void changePullbackLength(const QString &);
 	void home();
 	void stop();
 
-	bool connectFaulhaberMotor(bool);
+	bool connectRotaryMotor(bool);
 	void rotate(bool);
-	void changeFaulhaberRpm(const QString &);
+	void changeRotaryRpm(const QString &);
 
     // FLIm System Control Initialization
     void initializeFlimSystem(bool);
@@ -130,11 +130,9 @@ signals:
 
 // Variables ////////////////////////////////////////////
 private: ////////////////////////////////////////////////////////////////////////////////////////////////
-    // Zaber Stage Control
-	ZaberStage* m_pZaberStage;
-
-	// Faulhaber Motor Control
-	FaulhaberMotor* m_pFaulhaberMotor;
+    // Pullback & Rotary Motor Control
+	PullbackMotor* m_pPullbackMotor;
+	RotaryMotor* m_pRotaryMotor;
 
 	// NI DAQ class for PMT Gain Control & FLIm Synchronization Control
 	FreqDivider* m_pFlimFreqDivider;
@@ -157,7 +155,7 @@ private: ///////////////////////////////////////////////////////////////////////
 	QGroupBox *m_pGroupBox_AxsunOctControl;
 	QGroupBox *m_pGroupBox_HelicalScanningControl;
 	
-	// Widgets for Zaber pullback stage control
+	// Widgets for Faulhaber pullback stage control
 	QLabel *m_pLabel_PullbackSpeed;
 	QLineEdit *m_pLineEdit_PullbackSpeed;
 	QLabel *m_pLabel_PullbackSpeedUnit;

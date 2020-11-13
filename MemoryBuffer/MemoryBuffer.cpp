@@ -119,13 +119,13 @@ bool MemoryBuffer::startRecording()
 
     // Pullback
 	m_pDeviceControlTab = m_pOperationTab->getStreamTab()->getDeviceControlTab();
-    if (m_pDeviceControlTab->isZaberStageEnabled())
+    if (m_pDeviceControlTab->isPullbackMotorEnabled())
     {
-        m_pDeviceControlTab->getZaberStage()->DidMovedAbsolute += [&]() {
-            // Finish recording when the pullback is finished.
-            m_bIsRecording = false;
-            m_pOperationTab->setRecordingButton(false);
-        };
+        //m_pDeviceControlTab->getPullbackMotor()->DidMovedAbsolute += [&]() {  // Need modification
+        //    // Finish recording when the pullback is finished.
+        //    m_bIsRecording = false;
+        //    m_pOperationTab->setRecordingButton(false);
+        //};
         m_pDeviceControlTab->pullback();
     }
 	

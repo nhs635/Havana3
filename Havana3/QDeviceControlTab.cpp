@@ -13,8 +13,8 @@
 #include <DeviceControl/PmtGainControl/PmtGainControl.h>
 #include <DeviceControl/ElforlightLaser/ElforlightLaser.h>
 #include <DeviceControl/AxsunControl/AxsunControl.h>
-#include <DeviceControl/ZaberStage/ZaberStage.h>
-#include <DeviceControl/FaulhaberMotor/FaulhaberMotor.h>
+#include <DeviceControl/FaulhaberMotor/PullbackMotor.h>
+#include <DeviceControl/FaulhaberMotor/RotaryMotor.h>
 
 #include <DataAcquisition/DataAcquisition.h>
 #include <DataAcquisition/SignatecDAQ/SignatecDAQ.h>
@@ -29,7 +29,7 @@
 
 QDeviceControlTab::QDeviceControlTab(QWidget *parent) :
     QDialog(parent), 
-	m_pZaberStage(nullptr), m_pFaulhaberMotor(nullptr),
+	m_pPullbackMotor(nullptr), m_pRotaryMotor(nullptr),
 	m_pFlimFreqDivider(nullptr), m_pAxsunFreqDivider(nullptr), m_pPmtGainControl(nullptr),
 	m_pElforlightLaser(nullptr), m_pFlimCalibDlg(nullptr),
     m_pAxsunControl(nullptr)
@@ -87,7 +87,7 @@ void QDeviceControlTab::createHelicalScanningControl()
 	// Create widgets for pullback stage control
 	m_pLineEdit_PullbackSpeed = new QLineEdit(m_pGroupBox_HelicalScanningControl);
 	m_pLineEdit_PullbackSpeed->setFixedWidth(25);
-	m_pLineEdit_PullbackSpeed->setText(QString::number(m_pConfig->zaberPullbackSpeed));
+	m_pLineEdit_PullbackSpeed->setText(QString::number(m_pConfig->pullbackSpeed));
 	m_pLineEdit_PullbackSpeed->setAlignment(Qt::AlignCenter);
 	m_pLineEdit_PullbackSpeed->setDisabled(true);
 	m_pLabel_PullbackSpeed = new QLabel("Pullback Speed", m_pGroupBox_HelicalScanningControl);
@@ -98,7 +98,7 @@ void QDeviceControlTab::createHelicalScanningControl()
 
 	m_pLineEdit_PullbackLength = new QLineEdit(m_pGroupBox_HelicalScanningControl);
 	m_pLineEdit_PullbackLength->setFixedWidth(25);
-	m_pLineEdit_PullbackLength->setText(QString::number(m_pConfig->zaberPullbackLength));
+	m_pLineEdit_PullbackLength->setText(QString::number(m_pConfig->pullbackLength));
 	m_pLineEdit_PullbackLength->setAlignment(Qt::AlignCenter);
 	m_pLineEdit_PullbackLength->setDisabled(true);
 	m_pLabel_PullbackLength = new QLabel("Pullback Length", m_pGroupBox_HelicalScanningControl);
@@ -122,7 +122,7 @@ void QDeviceControlTab::createHelicalScanningControl()
 	// Create widgets for Faulhaber motor control	
 	m_pLineEdit_RPM = new QLineEdit(m_pGroupBox_HelicalScanningControl);
 	m_pLineEdit_RPM->setFixedWidth(35);
-	m_pLineEdit_RPM->setText(QString::number(m_pConfig->faulhaberRpm));
+	m_pLineEdit_RPM->setText(QString::number(m_pConfig->rotaryRpm));
 	m_pLineEdit_RPM->setAlignment(Qt::AlignCenter);
 	m_pLineEdit_RPM->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
 	m_pLineEdit_RPM->setDisabled(true);
@@ -179,12 +179,12 @@ void QDeviceControlTab::createHelicalScanningControl()
 	connect(m_pGroupBox_HelicalScanningControl, SIGNAL(toggled(bool)), this, SLOT(initializeHelicalScanning(bool)));
 
 	connect(m_pLineEdit_PullbackSpeed, SIGNAL(textChanged(const QString &)), this, SLOT(setTargetSpeed(const QString &)));
-	connect(m_pLineEdit_PullbackLength, SIGNAL(textChanged(const QString &)), this, SLOT(changeZaberPullbackLength(const QString &)));
+	connect(m_pLineEdit_PullbackLength, SIGNAL(textChanged(const QString &)), this, SLOT(changePullbackLength(const QString &)));
 	connect(m_pPushButton_Pullback, SIGNAL(clicked(bool)), this, SLOT(moveAbsolute()));
 	connect(m_pPushButton_Home, SIGNAL(clicked(bool)), this, SLOT(home()));
 	connect(m_pPushButton_PullbackStop, SIGNAL(clicked(bool)), this, SLOT(stop()));
 
-	connect(m_pLineEdit_RPM, SIGNAL(textChanged(const QString &)), this, SLOT(changeFaulhaberRpm(const QString &)));
+	connect(m_pLineEdit_RPM, SIGNAL(textChanged(const QString &)), this, SLOT(changeRotaryRpm(const QString &)));
 	connect(m_pToggleButton_Rotate, SIGNAL(toggled(bool)), this, SLOT(rotate(bool)));
 }
 
@@ -390,37 +390,37 @@ void QDeviceControlTab::initializeHelicalScanning(bool toggled)
 {
 	if (toggled)
 	{
-		// Zaber Pullback Stage Connection Check
-		if (connectZaberStage(true))
-		{
-			// Set enable true for Zaber stage control widgets
-			m_pLabel_PullbackSpeed->setEnabled(true);
-			m_pLineEdit_PullbackSpeed->setEnabled(true);
-			m_pLabel_PullbackSpeedUnit->setEnabled(true);
-			m_pLabel_PullbackLength->setEnabled(true);
-			m_pLineEdit_PullbackLength->setEnabled(true);
-			m_pLabel_PullbackLengthUnit->setEnabled(true);
-			m_pPushButton_Pullback->setEnabled(true);
-			m_pPushButton_Home->setEnabled(true);
-			m_pPushButton_PullbackStop->setEnabled(true);
-			m_pPushButton_Pullback->setStyleSheet("QPushButton { background-color:#ff0000; }");
-		}
+		// Faulhaber Pullback Motor Connection Check
+		//if (connectPullbackMotor(true))
+		//{
+		//	// Set enable true for pullback motor control widgets
+		//	m_pLabel_PullbackSpeed->setEnabled(true);
+		//	m_pLineEdit_PullbackSpeed->setEnabled(true);
+		//	m_pLabel_PullbackSpeedUnit->setEnabled(true);
+		//	m_pLabel_PullbackLength->setEnabled(true);
+		//	m_pLineEdit_PullbackLength->setEnabled(true);
+		//	m_pLabel_PullbackLengthUnit->setEnabled(true);
+		//	m_pPushButton_Pullback->setEnabled(true);
+		//	m_pPushButton_Home->setEnabled(true);
+		//	m_pPushButton_PullbackStop->setEnabled(true);
+		//	m_pPushButton_Pullback->setStyleSheet("QPushButton { background-color:#ff0000; }");
+		//}
 		///else
 		///{
 		///	m_pGroupBox_HelicalScanningControl->setChecked(false);
 		///	return;
 		///}
 
-		// Faulhaber Rotation Motor Connection Check
-		if (connectFaulhaberMotor(true))
-		{
-			// Set enable true for Faulhaber motor control widgets
-			m_pLabel_RotationSpeed->setEnabled(true);
-			m_pLineEdit_RPM->setEnabled(true);
-			m_pLabel_RPM->setEnabled(true);
-			m_pToggleButton_Rotate->setEnabled(true);
-			m_pToggleButton_Rotate->setStyleSheet("QPushButton { background-color:#ff0000; }");
-		}
+		// Faulhaber Rotary Motor Connection Check
+		//if (connectRotaryMotor(true))
+		//{
+		//	// Set enable true for Faulhaber motor control widgets
+		//	m_pLabel_RotationSpeed->setEnabled(true);
+		//	m_pLineEdit_RPM->setEnabled(true);
+		//	m_pLabel_RPM->setEnabled(true);
+		//	m_pToggleButton_Rotate->setEnabled(true);
+		//	m_pToggleButton_Rotate->setStyleSheet("QPushButton { background-color:#ff0000; }");
+		//}
 		///else
 		///{
 		///	m_pGroupBox_HelicalScanningControl->setChecked(false);
@@ -429,7 +429,7 @@ void QDeviceControlTab::initializeHelicalScanning(bool toggled)
 	}
 	else
 	{
-		// Set enable false for Zaber stage control widgets
+		// Set enable false for Faulhaber pullback motor control widgets
 		m_pLabel_PullbackSpeed->setEnabled(false);
 		m_pLineEdit_PullbackSpeed->setEnabled(false);
 		m_pLabel_PullbackSpeedUnit->setEnabled(false);
@@ -441,7 +441,7 @@ void QDeviceControlTab::initializeHelicalScanning(bool toggled)
 		m_pPushButton_PullbackStop->setEnabled(false);
 		m_pPushButton_Pullback->setStyleSheet("QPushButton { background-color:#353535; }");
 
-		// Set enable false for Faulhaber motor control widgets
+		// Set enable false for Faulhaber rotary motor control widgets
 		if (m_pToggleButton_Rotate->isChecked()) m_pToggleButton_Rotate->setChecked(false);
 		m_pToggleButton_Rotate->setEnabled(false);
 		m_pToggleButton_Rotate->setStyleSheet("QPushButton { background-color:#353535; }");
@@ -450,121 +450,20 @@ void QDeviceControlTab::initializeHelicalScanning(bool toggled)
 		m_pLabel_RPM->setEnabled(false);
 
 		// Disconnect devices
-		connectZaberStage(false);
-		connectFaulhaberMotor(false);
+		//connectPullbackMotor(false);
+		connectRotaryMotor(false);
 	}
 }
 
-bool QDeviceControlTab::connectZaberStage(bool toggled)
+bool QDeviceControlTab::connectPullbackMotor(bool toggled)
 {
 	if (toggled)
 	{
-		// Create Zaber stage control objects
-		if (!m_pZaberStage)
+		// Create Faulhaber pullback motor control objects
+		if (!m_pPullbackMotor)
 		{
-			m_pZaberStage = new ZaberStage;
-			m_pZaberStage->SendStatusMessage += [&](const char* msg, bool is_error) {
-				QString qmsg = QString::fromUtf8(msg);
-				qmsg.replace('\n', ' ');
-				emit m_pStreamTab->sendStatusMessage(qmsg, is_error);
-			};
-		}
-
-		// Connect stage
-		if (!(m_pZaberStage->ConnectStage()))
-		{
-			m_pZaberStage->SendStatusMessage("Zaber pullback stage is not connected!", true);
-
-			delete m_pZaberStage;
-			m_pZaberStage = nullptr;
-
-			return false;
-		}
-
-		// Set target speed first
-		m_pZaberStage->SetTargetSpeed((double)m_pConfig->zaberPullbackSpeed);
-	}
-	else
-	{
-		if (m_pZaberStage)
-		{
-			// Stop Wait Thread
-			m_pZaberStage->StopWaitThread();
-
-			// Disconnect the Stage
-			m_pZaberStage->DisconnectStage();
-
-			// Delete Zaber stage control objects
-			delete m_pZaberStage;
-			m_pZaberStage = nullptr;
-		}
-	}
-
-	return true;
-}
-
-void QDeviceControlTab::moveAbsolute()
-{
-	m_pZaberStage->SetRelevantWidgets.clear();
-	m_pZaberStage->SetRelevantWidgets += [&](bool enabled) {
-		///m_pLabel_PullbackSpeed->setEnabled(enabled);
-		m_pLineEdit_PullbackSpeed->setEnabled(enabled);
-		m_pLabel_PullbackSpeedUnit->setEnabled(enabled);
-
-		///m_pLabel_PullbackLength->setEnabled(enabled);
-		m_pLineEdit_PullbackLength->setEnabled(enabled);
-		m_pLabel_PullbackLengthUnit->setEnabled(enabled);
-
-		m_pPushButton_Pullback->setEnabled(enabled);
-		m_pPushButton_Home->setEnabled(enabled);
-		m_pPushButton_Pullback->setStyleSheet(enabled ? "QPushButton { background-color:#ff0000; }" : "QPushButton { background-color:#00ff00; }");
-	};
-	m_pZaberStage->MoveAbsoulte((double)m_pConfig->zaberPullbackLength);
-}
-
-void QDeviceControlTab::setTargetSpeed(const QString & str)
-{
-	m_pZaberStage->SetTargetSpeed(str.toDouble());
-	m_pConfig->zaberPullbackSpeed = str.toInt();
-}
-
-void QDeviceControlTab::changeZaberPullbackLength(const QString &str)
-{
-	m_pConfig->zaberPullbackLength = str.toInt();
-}
-
-void QDeviceControlTab::home()
-{
-	m_pZaberStage->SetRelevantWidgets.clear();
-	m_pZaberStage->SetRelevantWidgets += [&](bool enabled) {
-		///m_pLabel_PullbackSpeed->setEnabled(enabled);
-		m_pLineEdit_PullbackSpeed->setEnabled(enabled);
-		m_pLabel_PullbackSpeedUnit->setEnabled(enabled);
-
-		///m_pLabel_PullbackLength->setEnabled(enabled);
-		m_pLineEdit_PullbackLength->setEnabled(enabled);
-		m_pLabel_PullbackLengthUnit->setEnabled(enabled);
-
-		m_pPushButton_Pullback->setEnabled(enabled);
-		m_pPushButton_Home->setEnabled(enabled);
-	};
-	m_pZaberStage->Home();
-}
-
-void QDeviceControlTab::stop()
-{
-	m_pZaberStage->Stop();
-}
-
-bool QDeviceControlTab::connectFaulhaberMotor(bool toggled)
-{
-	if (toggled)
-	{
-		// Create Faulhaber motor control objects
-		if (!m_pFaulhaberMotor)
-		{
-			m_pFaulhaberMotor = new FaulhaberMotor;
-			m_pFaulhaberMotor->SendStatusMessage += [&](const char* msg, bool is_error) {
+			m_pPullbackMotor = new PullbackMotor;
+			m_pPullbackMotor->SendStatusMessage += [&](const char* msg, bool is_error) {
 				QString qmsg = QString::fromUtf8(msg);
 				qmsg.replace('\n', ' ');
 				emit m_pStreamTab->sendStatusMessage(qmsg, is_error);
@@ -572,26 +471,144 @@ bool QDeviceControlTab::connectFaulhaberMotor(bool toggled)
 		}
 
 		// Connect the motor
-		if (!(m_pFaulhaberMotor->ConnectDevice()))
+		if (!(m_pPullbackMotor->ConnectDevice()))
 		{
-			m_pFaulhaberMotor->SendStatusMessage("Faulhaber rotation motor is not connected!", true);
+			m_pPullbackMotor->SendStatusMessage("Faulhaber pullback motor is not connected!", true);
 
-			delete m_pFaulhaberMotor;
-			m_pFaulhaberMotor = nullptr;
+			delete m_pPullbackMotor;
+			m_pPullbackMotor = nullptr;
+
+			return false;
+		}
+		else
+		{
+			m_pPullbackMotor->EnableMotor();
+			this->home();
+		}
+	}
+	else
+	{
+		if (m_pPullbackMotor)
+		{
+			// Disconnect the motor
+			m_pPullbackMotor->DisableMotor();
+			m_pPullbackMotor->DisconnectDevice();
+
+			// Delete Faulhaber motor control objects
+			delete m_pPullbackMotor;
+			m_pPullbackMotor = nullptr;
+		}
+	}
+	
+	return true;
+}
+
+void QDeviceControlTab::moveAbsolute()
+{
+	// Set widgets
+	m_pLabel_PullbackSpeed->setDisabled(true);
+	m_pLabel_PullbackSpeedUnit->setDisabled(true);
+	m_pLineEdit_PullbackSpeed->setDisabled(true);
+
+	m_pLabel_PullbackLength->setDisabled(true);
+	m_pLabel_PullbackLengthUnit->setDisabled(true);
+	m_pLineEdit_PullbackLength->setDisabled(true);
+
+	m_pPushButton_Home->setDisabled(true);
+	
+	m_pPushButton_Pullback->setStyleSheet("QPushButton { background-color:#00ff00; }");
+
+	// Pullback
+	m_pPullbackMotor->RotateMotor(-int(m_pConfig->pullbackSpeed * GEAR_RATITO));
+
+	// Pullback end condition
+	double duration = (double)(m_pConfig->pullbackLength) / (double)(m_pConfig->pullbackSpeed);
+	std::thread stop([&, duration]() {
+		std::this_thread::sleep_for(std::chrono::milliseconds(int(1000 * 2)));// duration)));
+		this->stop();
+	});
+	stop.detach();
+}
+
+void QDeviceControlTab::setTargetSpeed(const QString & str)
+{
+	m_pConfig->pullbackSpeed = str.toInt();
+}
+
+void QDeviceControlTab::changePullbackLength(const QString &str)
+{
+	m_pConfig->pullbackLength = str.toInt();
+}
+
+void QDeviceControlTab::home()
+{
+	m_pPullbackMotor->RotateMotor(int(20 * GEAR_RATITO));
+}
+
+void QDeviceControlTab::stop()
+{
+	// Stop pullback motor
+	m_pPullbackMotor->StopMotor();
+
+	// Stop rotary motor
+	if (m_pToggleButton_Rotate->isChecked())
+	{
+		m_pToggleButton_Rotate->setChecked(false);
+
+		m_pGroupBox_HelicalScanningControl->setChecked(false);
+		m_pGroupBox_HelicalScanningControl->setChecked(true);
+	}
+
+	// Set widgets
+	m_pLabel_PullbackSpeed->setEnabled(true);
+	m_pLabel_PullbackSpeedUnit->setEnabled(true);
+	m_pLineEdit_PullbackSpeed->setEnabled(true);
+
+	m_pLabel_PullbackLength->setEnabled(true);
+	m_pLabel_PullbackLengthUnit->setEnabled(true);
+	m_pLineEdit_PullbackLength->setEnabled(true);
+
+	m_pPushButton_Home->setEnabled(true);
+
+	m_pPushButton_Pullback->setStyleSheet("QPushButton { background-color:#ff0000; }");
+}
+
+bool QDeviceControlTab::connectRotaryMotor(bool toggled)
+{
+	if (toggled)
+	{
+		// Create Faulhaber rotary motor control objects
+		if (!m_pRotaryMotor)
+		{
+			m_pRotaryMotor = new RotaryMotor;
+			m_pRotaryMotor->SendStatusMessage += [&](const char* msg, bool is_error) {
+				QString qmsg = QString::fromUtf8(msg);
+				qmsg.replace('\n', ' ');
+				emit m_pStreamTab->sendStatusMessage(qmsg, is_error);
+			};
+		}
+
+		// Connect the motor
+		if (!(m_pRotaryMotor->ConnectDevice()))
+		{
+			m_pRotaryMotor->SendStatusMessage("Faulhaber rotary motor is not connected!", true);
+
+			delete m_pRotaryMotor;
+			m_pRotaryMotor = nullptr;
 
 			return false;
 		}
 	}
 	else
 	{
-		if (m_pFaulhaberMotor)
+		if (m_pRotaryMotor)
 		{
 			// Disconnect the motor
-			m_pFaulhaberMotor->DisconnectDevice();
+			m_pRotaryMotor->DisconnectDevice();
 
 			// Delete Faulhaber motor control objects
-			delete m_pFaulhaberMotor;
-			m_pFaulhaberMotor = nullptr;
+			delete m_pRotaryMotor;
+			m_pRotaryMotor = nullptr;
 		}
 	}
 
@@ -600,7 +617,7 @@ bool QDeviceControlTab::connectFaulhaberMotor(bool toggled)
 
 void QDeviceControlTab::rotate(bool toggled)
 {
-	m_pFaulhaberMotor->RotateMotor(toggled ? m_pConfig->faulhaberRpm : 0);
+	m_pRotaryMotor->RotateMotor(toggled ? m_pConfig->rotaryRpm : 0);
 	
 	m_pLineEdit_RPM->setDisabled(toggled);
 	m_pLabel_RPM->setDisabled(toggled);
@@ -609,9 +626,9 @@ void QDeviceControlTab::rotate(bool toggled)
 	m_pToggleButton_Rotate->setText(toggled ? "Stop" : "Rotate");
 }
 
-void QDeviceControlTab::changeFaulhaberRpm(const QString &str)
+void QDeviceControlTab::changeRotaryRpm(const QString &str)
 {
-	m_pConfig->faulhaberRpm = str.toInt();
+	m_pConfig->rotaryRpm = str.toInt();
 }
 
 void QDeviceControlTab::setHelicalScanningControl(bool toggled)
@@ -1161,14 +1178,14 @@ void QDeviceControlTab::connectAxsunControl(bool toggled)
 			m_pAxsunControl->DidTransferArray += [&](int i) {
 				emit transferAxsunArray(i);
 			};		
-
+			
 			// Initialize the Axsun OCT control
 			if (!(m_pAxsunControl->initialize()))
 			{
 				m_pGroupBox_AxsunOctControl->setChecked(false);
 				return;
 			}
-
+			
 			// Default Bypass Mode
 			m_pAxsunControl->setBypassMode(bypass_mode::jpeg_compressed);
 		
@@ -1246,9 +1263,9 @@ void QDeviceControlTab::connectAxsunControl(bool toggled)
 		m_pToggleButton_LightSource->setStyleSheet("QPushButton { background-color:#353535; }");
 		m_pToggleButton_LiveImaging->setStyleSheet("QPushButton { background-color:#353535; }");
 		
-		m_pLabel_VDLLength->setDisabled(true);
-		m_pSpinBox_VDLLength->setDisabled(true);
-		m_pPushButton_VDLHome->setDisabled(true);
+		//m_pLabel_VDLLength->setDisabled(true);
+		//m_pSpinBox_VDLLength->setDisabled(true);
+		//m_pPushButton_VDLHome->setDisabled(true);
 
 		m_pStreamTab->getVisTab()->setOctDecibelContrastWidgets(false);
 

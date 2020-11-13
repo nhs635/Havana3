@@ -34,8 +34,8 @@ void FLImProcess::operator() (FloatArray2& intensity, FloatArray2& mean_delay, F
 	///printf("[Intensity] %d microsec\n", micro.count());
 
     // 3. Get lifetime
-    _lifetime(_resize, _params, intensity);
-    memcpy(mean_delay, _lifetime.mean_delay, sizeof(float) * _lifetime.mean_delay.length());
+    _lifetime(_resize, _params, intensity);	
+	memcpy(mean_delay, _lifetime.mean_delay, sizeof(float) * _lifetime.mean_delay.length());
 	memcpy(lifetime, _lifetime.lifetime, sizeof(float) * _lifetime.lifetime.length());
 
 	///std::chrono::system_clock::time_point EndTime3 = std::chrono::system_clock::now();
@@ -87,12 +87,7 @@ void FLImProcess::operator() (FloatArray2& intensity, FloatArray2& mean_delay, F
 
 void FLImProcess::setParameters(Configuration* pConfig)
 {
-	_params.bg[0] = pConfig->flimBg[0];
-    _params.bg[1] = pConfig->flimBg[1];
-
-	if ((_params.bg[0] == 0.0f) && (_params.bg[1] != 0.0f))
-		_params.bg[0] = _params.bg[1] - 1200;
-
+	_params.bg = pConfig->flimBg;
     _params.samp_intv = 1000.0f / (float)PX14_ADC_RATE;
     _params.width_factor = 2.0f;
 
@@ -136,13 +131,13 @@ void FLImProcess::loadMaskData(QString maskpath)
             {
                 start_count++;
                 if (start_count < 5)
-                        _resize.start_ind[start_count - 1] = i - 1;
+                        _resize.start_ind[start_count - 1] = i + 1;
             }
             if (_resize.pMask[i + 1] - _resize.pMask[i] == 1)
             {
                 end_count++;
                 if (end_count < 5)
-                        _resize.end_ind[end_count - 1] = i;
+                        _resize.end_ind[end_count - 1] = i - 2;
             }
         }
 

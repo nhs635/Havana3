@@ -38,14 +38,17 @@ bool ElforlightLaser::ConnectDevice()
 				static int j = 0;
 				
 				for (int i = 0; i < (int)len; i++)
+				{
 					msg[j++] = buffer[i];
-				
+					if (j > 255) j = 0;
+				}
+
 				if ((buffer[len - 1] == '\x11') || (buffer[len - 3] == 'r'))
 				{
 					msg[j] = '\0';
 
 					// j: length of msg, (60~80: '?' / 5~20: '+' or '-' or 'E' or 'R')
-					if ((j < 80) && (j > 60))
+					if ((j > 60) && (j <= 80))
 						MonitoringState(msg);
 					else if (j <= 60)
 						SendStatusMessage(msg, false);
@@ -137,29 +140,42 @@ void ElforlightLaser::MonitoringState(char* msg)
 
 	// Split message
 	QStringList msg_list = message.split("\n");
-	QStringList current_msg_list = msg_list[1].split(" "); 
-	QStringList diode_msg_list = msg_list[2].split(" "); 
-	QStringList chipset_msg_list = msg_list[3].split(" "); 
+	if (msg_list.length() > 3)
+	{
+		QStringList current_msg_list = msg_list[1].split(" ");
+		QStringList diode_msg_list = msg_list[2].split(" ");
+		QStringList chipset_msg_list = msg_list[3].split(" ");
 
-	// Sine fitting coefficients
-	double a0 = 5.006;
-	double b0 = 0.002488;
-	double c0 = 7.83e-17;
+		// Sine fitting coefficients
+		double a0 = 5.006;
+		double b0 = 0.002488;
+		double c0 = 7.83e-17;
 
-	// Gaussian fitting coefficients
-	double a1 = 237.0; 
-	double b1 = 3164.0;
-	double c1 = 1778.0;
+		// Gaussian fitting coefficients
+		double a1 = 237.0;
+		double b1 = 3164.0;
+		double c1 = 1778.0;
 
-	// Monitoring value
-	double is = a0 * sin(b0 * current_msg_list[2].toDouble() + c0); // Diode Current Set
-	double id = a0 * sin(b0 * current_msg_list[4].toDouble() + c0); // Diode Current Monitor
-	double ds = a1 * exp(-pow((diode_msg_list[2].toDouble() - b1) / c1, 2)); // Diode Temperature Set
-	double dm = a1 * exp(-pow((diode_msg_list[4].toDouble() - b1) / c1, 2)); // Diode Temperature Monitor
-	double cs = a1 * exp(-pow((chipset_msg_list[2].toDouble() - b1) / c1, 2)); // Chipset Temperature Set
-	double cm = a1 * exp(-pow((chipset_msg_list[4].toDouble() - b1) / c1, 2)); // Chipset Temperature Monitor
+		// Monitoring value
+		double is = 0.0, id = 0.0, ds = 0.0, dm = 0.0, cs = 0.0, cm = 0.0;
+		if (current_msg_list.length() > 4)
+		{
+			is = a0 * sin(b0 * current_msg_list[2].toDouble() + c0); // Diode Current Set
+			id = a0 * sin(b0 * current_msg_list[4].toDouble() + c0); // Diode Current Monitor
+		}
+		if (diode_msg_list.length() > 4)
+		{
+			ds = a1 * exp(-pow((diode_msg_list[2].toDouble() - b1) / c1, 2)); // Diode Temperature Set
+			dm = a1 * exp(-pow((diode_msg_list[4].toDouble() - b1) / c1, 2)); // Diode Temperature Monitor
+		}
+		if (chipset_msg_list.length() > 4)
+		{
+			cs = a1 * exp(-pow((chipset_msg_list[2].toDouble() - b1) / c1, 2)); // Chipset Temperature Set
+			cm = a1 * exp(-pow((chipset_msg_list[4].toDouble() - b1) / c1, 2)); // Chipset Temperature Monitor
+		}
 
-	// Update state
-	double state[6] = { is, id, ds, dm, cs, cm };
-	UpdateState(state);
+		// Update state
+		double state[6] = { is, id, ds, dm, cs, cm };
+		UpdateState(state);
+	}
 }

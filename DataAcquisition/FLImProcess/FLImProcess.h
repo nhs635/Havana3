@@ -42,7 +42,7 @@ using namespace np;
 
 struct FLIM_PARAMS
 {
-    float bg[2];
+    float bg;
 
     float samp_intv = 1.0f;
     float width_factor = 2.0f;
@@ -125,70 +125,76 @@ public:
         int _nx = pParams.ch_start_ind[4] - pParams.ch_start_ind[0];
         if ((nx != _nx) || !initiated)
             initialize(pParams, _nx, FLIM_SPLINE_FACTOR, src.size(1));
+		int roi_len = (int)round(pulse_roi_length / ActualFactor);
 
         // 1. Crop ROI
         int offset = pParams.ch_start_ind[0]; // + pParams.pre_trig;
         ippiConvert_16u32f_C1R(&src(offset, 0), sizeof(uint16_t) * src.size(0),
                                crop_src.raw_ptr(), sizeof(float) * crop_src.size(0), srcSize);
 
-        // 2. Determine whether saturated
-        ippsThreshold_32f(crop_src.raw_ptr(), sat_src.raw_ptr(), sat_src.length(), 65531, ippCmpLess);
-        ippsSubC_32f_I(65531, sat_src.raw_ptr(), sat_src.length());
-        int roi_len = (int)round(pulse_roi_length / ActualFactor);
-        for (int i = 1; i < 4; i++)
-        {
-            for (int j = 0; j < ny; j++)
-            {
-                saturated(j, i) = 0;
-                offset = pParams.ch_start_ind[i] - pParams.ch_start_ind[0];
-                ippsSum_32f(&sat_src(offset, j), roi_len, &saturated(j, i), ippAlgHintFast);
-            }
-        }
+        // 2. BG subtraction
+		ippsSubC_32f_I(pParams.bg, crop_src.raw_ptr(), crop_src.length());
 
-        // 3. BG subtraction
-		int irf_offset = pParams.ch_start_ind[1] - pParams.ch_start_ind[0];
-		ippiSubC_32f_C1IR(pParams.bg[0], &crop_src(0, 0), sizeof(float) * crop_src.size(0), { irf_offset, crop_src.size(1) });
-		ippiSubC_32f_C1IR(pParams.bg[1], &crop_src(irf_offset, 0), sizeof(float) * crop_src.size(0), { crop_src.size(0) - irf_offset, crop_src.size(1) });
-
-        // 4. Remove artifact manually (smart artifact removal method)
         ///int ch_ind4[5]; memcpy(ch_ind4, pParams.ch_start_ind, sizeof(int) * 5);
         ///int dc_determine_len = 5;
 
+		// Parallel-for loop
         memcpy(mask_src.raw_ptr(), crop_src.raw_ptr(), sizeof(float) * mask_src.length());
         tbb::parallel_for(tbb::blocked_range<size_t>(0, (size_t)ny),
             [&](const tbb::blocked_range<size_t>& r) {
             for (size_t i = r.begin(); i != r.end(); ++i)
             {
+				float max_val; int max_ind;
+
+				// 3. Jitter compensation - is it valid?
+				int cpos = 4, rpos = 4;
+				ippsMaxIndx_32f(&mask_src(0, (int)i), start_ind[0], &max_val, &cpos);
+
+				int offset = cpos - rpos;
+				if (offset < 0) offset += mask_src.size(0);
+				std::rotate(&mask_src(0, (int)i), &mask_src(offset, (int)i), &mask_src(mask_src.size(0) - 1, (int)i));
+
                 ///int end_ind4[4]; memcpy(end_ind4, ch_ind4 + 1, sizeof(int) * 4);
                 ///ippsSubC_32s_ISfs(ch_ind4[0], end_ind4, 4, 0);
-
+				
+				// 4. Remove artifact manually (smart artifact removal method)
                 for (int ch = 0; ch < 4; ch++)
                 {
                     if (start_ind[ch])
                     {
                         if (ch == 0)
-                            ippsMul_32f_I(pMask, &mask_src(0, (int)i), end_ind[ch] + 1);
+							ippsSet_32f(0.0f, &mask_src(start_ind[ch], (int)i), end_ind[ch] - start_ind[ch] + 1);
                         else
                         {
-                            float max_val; int max_ind;
-                            ippsMaxIndx_32f(&mask_src(start_ind[ch], (int)i), end_ind[ch] - start_ind[ch] + 1, &max_val, &max_ind);
-                            max_ind += start_ind[ch] - 1;
-                            ///end_ind4[ch - 1] = max_ind - 4;
-                            ippsSet_32f(0.0f, &mask_src(max_ind - 3, (int)i), 9);
+							ippsMaxIndx_32f(&mask_src(start_ind[ch], (int)i), end_ind[ch] - start_ind[ch] + 1, &max_val, &max_ind);
+							max_ind += start_ind[ch] - 1;
+							///end_ind4[ch - 1] = max_ind - 4;
+							ippsSet_32f(0.0f, &mask_src(max_ind - 2, (int)i), 7);
                         }
                     }
                 }
+				
+				// 5. Determine whether saturated
+				int thres = 31000;
+				ippsThreshold_32f(&mask_src(0, (int)i), &sat_src(0, (int)i), sat_src.size(0), thres, ippCmpLess);
+				ippsSubC_32f_I(thres, &sat_src(0, (int)i), sat_src.size(0));
+				for (int j = 1; j < 4; j++)
+				{
+					saturated((int)i, j) = 0;
+					offset = pParams.ch_start_ind[j] - pParams.ch_start_ind[0];
+					ippsSum_32f(&sat_src(offset, (int)i), roi_len, &saturated((int)i, j), ippAlgHintFast);
+				}
+				
+				/// 5. DC level auto-adjustment
+				///				for (int ch = 1; ch < 4; ch++)
+				///				{
+				///					float dc_level;
+				///					ippsMean_32f(&mask_src(end_ind4[ch] - dc_determine_len, (int)i), dc_determine_len, &dc_level, ippAlgHintFast);
+				///					if (mask_src.size(0) == (ch_ind4[4] - ch_ind4[0]))
+				///						ippsSubC_32f_I(dc_level, &mask_src(ch_ind4[ch] - ch_ind4[0], (int)i), ch_ind4[ch + 1] - ch_ind4[ch]);
+				///				}
 
-				// 5. DC level auto-adjustment
-///				for (int ch = 1; ch < 4; ch++)
-///				{
-///					float dc_level;
-///					ippsMean_32f(&mask_src(end_ind4[ch] - dc_determine_len, (int)i), dc_determine_len, &dc_level, ippAlgHintFast);
-///					if (mask_src.size(0) == (ch_ind4[4] - ch_ind4[0]))
-///						ippsSubC_32f_I(dc_level, &mask_src(ch_ind4[ch] - ch_ind4[0], (int)i), ch_ind4[ch + 1] - ch_ind4[ch]);
-///				}
-
-                // 5. Up-sampling by cubic natural spline interpolation
+                // 6. Up-sampling by cubic natural spline interpolation
                 DFTaskPtr task1 = nullptr;
 
                 dfsNewTask1D(&task1, nx, x, DF_UNIFORM_PARTITION, 1, &mask_src(0, (int)i), DF_MATRIX_STORAGE_ROWS);
@@ -198,7 +204,7 @@ public:
                                  DF_NO_APRIORI_INFO, &ext_src(0, (int)i), DF_MATRIX_STORAGE_ROWS, NULL);
                 dfDeleteTask(&task1);
 
-                // 6. Software broadening by FIR Gaussian filtering
+                // 7. Software broadening by FIR Gaussian filtering
                 _filter(&filt_src(0, (int)i), &ext_src(0, (int)i), (int)i);
             }
         });

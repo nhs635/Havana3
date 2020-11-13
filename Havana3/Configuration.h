@@ -1,7 +1,7 @@
 #ifndef CONFIGURATION_H
 #define CONFIGURATION_H
 
-#define VERSION						"1.2.2"
+#define VERSION						"1.3.0"
 
 #define POWER_2(x)					(1 << x)
 #define NEAR_2_POWER(x)				(int)(1 << (int)ceil(log2(x)))
@@ -14,16 +14,16 @@
 #define FLIM_SCANS                  512
 #define FLIM_ALINES                 256
 
-#define ELFORLIGHT_PORT				"COM14"
+#define ELFORLIGHT_PORT				"COM3"
 
-//#define NI_ENABLE 
+#define NI_ENABLE 
 
 #ifdef NI_ENABLE
-#define NI_PMT_GAIN_CHANNEL		    "Dev2/ao1" // 13
-#define NI_FLIM_TRIG_CHANNEL		"Dev2/ctr1" // PFI5 (7) // 100k/4 Hz
-#define NI_FLIM_TRIG_SOURCE			"/Dev2/PFI2"
-#define NI_AXSUN_TRIG_CHANNEL		"Dev2/ctr0" // PFI4 (6) // 100k/1024 Hz
-#define NI_AXSUN_TRIG_SOURCE		"/Dev2/PFI3"
+#define NI_PMT_GAIN_CHANNEL		    "Dev1/ao1" // 13
+#define NI_FLIM_TRIG_CHANNEL		"Dev1/ctr1" // PFI5 (7) // 100k/4 Hz
+#define NI_FLIM_TRIG_SOURCE			"/Dev1/PFI2"
+#define NI_AXSUN_TRIG_CHANNEL		"Dev1/ctr0" // PFI4 (6) // 100k/1024 Hz
+#define NI_AXSUN_TRIG_SOURCE		"/Dev1/PFI3"
 #endif
 
 ///////////////////////// OCT Setup /////////////////////////
@@ -32,20 +32,16 @@
 
 #define CLOCK_DELAY					10
 
-//#define VERTICAL_MIRRORING
+#define VERTICAL_MIRRORING
 
 ///#define OCT_DEFAULT_BACKGROUND      "bg.bin"
 
 /////////////////// Pullback Device Setup ///////////////////
-#define ZABER_PORT					"\\\\.\\COM15"
-#define ZABER_MAX_MICRO_RESOLUTION  64 // BENCHTOP_MODE ? 128 : 64;
-#define ZABER_MICRO_RESOLUTION		64
-#define ZABER_CONVERSION_FACTOR		1.6384 //1.0 / 9.375 // BENCHTOP_MODE ? 1.0 / 9.375 : 1.6384;
-#define ZABER_MICRO_STEPSIZE		0.09921875 //  micro-meter /// 0.49609375 // 
-#define ZABER_HOME_OFFSET			0 // mm
+#define PULLBACK_MOTOR_PORT			"COM100" // 18
+//#define PULLBACK_HOME_OFFSET		0 // mm
 
-#define FAULHABER_PORT				"COM13"
-#define FAULHABER_POSITIVE_ROTATION false
+#define ROTARY_MOTOR_PORT			"COM17" // COM19
+//#define ROTARY_POSITIVE_ROTATION	false
 
 
 //////////////// Thread & Buffer Processing /////////////////
@@ -71,8 +67,8 @@
 #define INTENSITY_COLORTABLE		6 // fire
 #define LIFETIME_COLORTABLE         16 // hsv1 ==> Viewer/QImageView.cpp
 
-#define INTER_FRAME_SYNC			10//9  // Frames
-#define INTRA_FRAME_SYNC			0//30 // A-lines
+#define INTER_FRAME_SYNC			10 //9  // Frames
+#define INTRA_FRAME_SYNC			0 //30 // A-lines
 
 #define RENEWAL_COUNT				10
 #define PIXEL_RESOLUTION			5.7 // micrometer
@@ -101,13 +97,7 @@ static int ratio_index[3][2] = { { 2, 3 }, { 1, 3 }, { 1, 2 } };
 class Configuration
 {
 public:
-    explicit Configuration() 
-	{
-		flimBg[0] = 0.0f;;
-		flimBg[1] = 0.0f;;
-		//memset(flimBg, 0, sizeof(float) * 2);
-	}
-
+	explicit Configuration() {}
 	~Configuration() {}
 
 public:
@@ -125,8 +115,7 @@ public:
         octFrameSize = octScans * octAlines;
 
         // FLIm processing
-		flimBg[0] = settings.value("flimBg0").toFloat();
-		flimBg[1] = settings.value("flimBg").toFloat();
+		flimBg = settings.value("flimBg").toFloat();
 		flimWidthFactor = settings.value("flimWidthFactor").toFloat();
 		for (int i = 0; i < 4; i++)
 		{
@@ -173,9 +162,9 @@ public:
 		axsunVDLLength = settings.value("axsunVDLLength").toFloat();
 		axsunDbRange.max = settings.value("axsunDbRangeMax").toFloat();
 		axsunDbRange.min = settings.value("axsunDbRangeMin").toFloat();
-		zaberPullbackSpeed = settings.value("zaberPullbackSpeed").toInt();
-		zaberPullbackLength = settings.value("zaberPullbackLength").toInt();
-		faulhaberRpm = settings.value("faulhaberRpm").toInt();
+		pullbackSpeed = settings.value("pullbackSpeed").toInt();
+		pullbackLength = settings.value("pullbackLength").toInt();
+		rotaryRpm = settings.value("rotaryRpm").toInt();
 
 		settings.endGroup();
 	}
@@ -192,8 +181,7 @@ public:
 		settings.setValue("octAlines", octAlines);
 
 		// FLIm processing
-		settings.setValue("flimBg0", QString::number(flimBg[0], 'f', 2));
-		settings.setValue("flimBg", QString::number(flimBg[1], 'f', 2));
+		settings.setValue("flimBg", QString::number(flimBg, 'f', 2));
 		settings.setValue("flimWidthFactor", QString::number(flimWidthFactor, 'f', 2));
 		for (int i = 0; i < 4; i++)
 		{
@@ -228,9 +216,9 @@ public:
 		settings.setValue("axsunVDLLength", QString::number(axsunVDLLength, 'f', 2));
 		settings.setValue("axsunDbRangeMax", QString::number(axsunDbRange.max, 'f', 1));
 		settings.setValue("axsunDbRangeMin", QString::number(axsunDbRange.min, 'f', 1));
-		settings.setValue("zaberPullbackSpeed", zaberPullbackSpeed);
-		settings.setValue("zaberPullbackLength", zaberPullbackLength);
-		settings.setValue("faulhaberRpm", faulhaberRpm);
+		settings.setValue("pullbackSpeed", pullbackSpeed);
+		settings.setValue("pullbackLength", pullbackLength);
+		settings.setValue("rotaryRpm", rotaryRpm);
 
 		// Current Time
 		QDate date = QDate::currentDate();
@@ -249,7 +237,7 @@ public:
     int octScans, octAlines, octFrameSize;
 
     // FLIm processing
-	float flimBg[2];
+	float flimBg;
 	float flimWidthFactor;
 	int flimChStartInd[4];
     float flimDelayOffset[3];
@@ -277,9 +265,9 @@ public:
     int px14DcOffset;
 	float axsunVDLLength;
 	Range<float> axsunDbRange;
-	int zaberPullbackSpeed;
-	int zaberPullbackLength;
-    int faulhaberRpm;
+	int pullbackSpeed;
+	int pullbackLength;
+    int rotaryRpm;
 	
 	// Message callback
 	callback<const char*> msgHandle;

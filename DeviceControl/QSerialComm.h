@@ -29,16 +29,16 @@ public:
 	}
 
 public:
-	bool openSerialPort(QString portName, 
-		QSerialPort::BaudRate baudRate = QSerialPort::Baud9600, 
+	bool openSerialPort(QString portName,
+		QSerialPort::BaudRate baudRate = QSerialPort::Baud9600,
 		QSerialPort::DataBits dataBits = QSerialPort::Data8,
-		QSerialPort::Parity parity = QSerialPort::NoParity, 
-		QSerialPort::StopBits stopBits = QSerialPort::OneStop, 
+		QSerialPort::Parity parity = QSerialPort::NoParity,
+		QSerialPort::StopBits stopBits = QSerialPort::OneStop,
 		QSerialPort::FlowControl flowControl = QSerialPort::NoFlowControl)
 	{
 		m_pSerialPort->setPortName(portName);
 		m_pSerialPort->setBaudRate(baudRate);
-		m_pSerialPort->setDataBits( dataBits);
+		m_pSerialPort->setDataBits(dataBits);
 		m_pSerialPort->setParity(parity);
 		m_pSerialPort->setStopBits(stopBits);
 		m_pSerialPort->setFlowControl(flowControl);
@@ -50,7 +50,7 @@ public:
 		}
 
 		m_bIsConnected = true;
-		
+
 		return true;
 	}
 
@@ -61,13 +61,22 @@ public:
 		m_bIsConnected = false;
 	}
 
-	bool writeSerialPort(char* data)
+	bool writeSerialPort(char* data, qint64 len = 0)
 	{
 		if (m_pSerialPort->isOpen())
 		{
-			qint64 nWrote = m_pSerialPort->write(data);			
-			if (nWrote != 0)
-				return true;
+			if (len == 0)
+			{
+				qint64 nWrote = m_pSerialPort->write(data);
+				if (nWrote != 0)
+					return true;
+			}
+			else
+			{
+				qint64 nWrote = m_pSerialPort->write(data, len);
+				if (nWrote != 0)
+					return true;
+			}
 		}
 		return false;
 	}

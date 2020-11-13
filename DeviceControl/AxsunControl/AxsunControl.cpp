@@ -34,10 +34,10 @@ bool AxsunControl::initialize()
 
 	// Co-Initialization
     result = CoInitialize(NULL);
-
+	
 	// Dynamic Object for Axsun OCT Control
 	m_pAxsunOCTControl = IAxsunOCTControlPtr(__uuidof(struct AxsunOCTControl));
-
+	
 	// Start Ethernet Connection
 	result = m_pAxsunOCTControl->StartNetworkControlInterface(&retvallong);
 	if (result != S_OK)

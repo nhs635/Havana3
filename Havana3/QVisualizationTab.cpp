@@ -1077,6 +1077,11 @@ void QVisualizationTab::visualizeImage(uint8_t* oct_im, float* intensity, float*
 		memcpy(&m_pImgObjIntensity->arr(0, i), rectIntensity, sizeof(uint8_t) * roi_flim.width);
 		memcpy(&m_pImgObjLifetime->arr(0, i), rectLifetime, sizeof(uint8_t) * roi_flim.width);
 	}
+	
+	// Convert RGB
+	m_pImgObjRectImage->convertRgb();
+	m_pImgObjIntensity->convertScaledRgb();
+	m_pImgObjLifetime->convertScaledRgb();
 
 	emit makeRgb(m_pImgObjRectImage, m_pImgObjCircImage, m_pImgObjIntensity, m_pImgObjLifetime);
 }
@@ -1145,10 +1150,8 @@ void QVisualizationTab::visualizeImage(int frame)
 
 void QVisualizationTab::constructRgbImage(ImageObject *rectObj, ImageObject *circObj, ImageObject *intObj, ImageObject *lftObj)
 {
-	// Convert RGB
-	rectObj->convertRgb();
-	intObj->convertScaledRgb();
-	lftObj->convertScaledRgb();
+	//std::chrono::system_clock::time_point time1 = std::chrono::system_clock::now();	
+	//std::chrono::system_clock::time_point time2 = std::chrono::system_clock::now();
 
 	// Paste FLIM color ring to RGB rect image
 	if ((m_pStreamTab != nullptr) || (!m_pCheckBox_IntensityWeightedLifetimeMap->isChecked() && !m_pCheckBox_Classification->isChecked()))
@@ -1167,6 +1170,8 @@ void QVisualizationTab::constructRgbImage(ImageObject *rectObj, ImageObject *cir
 		for (int i = 0; i < (int)(RING_THICKNESS); i++)
 			memcpy(rectObj->qrgbimg.bits() + 3 * rectObj->arr.size(0) * (rectObj->arr.size(1) - i - 1), hsvObj.qrgbimg.bits(), hsvObj.qrgbimg.byteCount());
 	}
+
+	//std::chrono::system_clock::time_point time3 = std::chrono::system_clock::now();
 		
 	int id = m_pButtonGroup_ViewMode->checkedId();
 	// Circ View
@@ -1184,6 +1189,15 @@ void QVisualizationTab::constructRgbImage(ImageObject *rectObj, ImageObject *cir
 		// Draw image
 		if (m_pImageView_RectImage->isEnabled()) m_pImageView_RectImage->drawImage(rectObj->qrgbimg.bits());
 	}
+
+	//std::chrono::system_clock::time_point time4 = std::chrono::system_clock::now();
+
+	//std::chrono::nanoseconds nano1 = time2 - time1;
+	//std::chrono::nanoseconds nano2 = time3 - time2;
+	//std::chrono::nanoseconds nano3 = time4 - time3;
+	//printf("constructRgbImage: %.3f %.3f %.3f msec\n", (double)nano1.count() / 1000.0 / 1000.0, 
+	//												   (double)nano2.count() / 1000.0 / 1000.0, 
+	//	                                               (double)nano3.count() / 1000.0 / 1000.0);
 } 
 
 

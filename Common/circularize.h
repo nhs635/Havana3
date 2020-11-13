@@ -94,7 +94,7 @@ public:
 
 		ippiRemap_32f_C1R(&rect_im(offset, 0), srcSize, sizeof(Ipp32f) * rect_im.size(0), srcRoi,
 			rho, sizeof(Ipp32f) * dstRoiSize.width, theta, sizeof(Ipp32f) * dstRoiSize.width,
-			circ_im.raw_ptr(), sizeof(Ipp32f) * dstRoiSize.width, dstRoiSize, IPPI_INTER_LINEAR);	
+			circ_im.raw_ptr(), sizeof(Ipp32f) * dstRoiSize.width, dstRoiSize, IPPI_INTER_NN);
         }
 
 	void operator() (np::Array<uint8_t, 2>& rect_im, uint8_t* circ_im, int offset = 0)
@@ -105,7 +105,7 @@ public:
 
 		ippiRemap_8u_C1R(&rect_im(offset, 0), srcSize, sizeof(Ipp8u) * rect_im.size(0), srcRoi,
 			rho, sizeof(Ipp32f) * dstRoiSize.width, theta, sizeof(Ipp32f) * dstRoiSize.width,
-			circ_im, sizeof(Ipp8u) * dstRoiSize.width, dstRoiSize, IPPI_INTER_LINEAR);
+			circ_im, sizeof(Ipp8u) * dstRoiSize.width, dstRoiSize, IPPI_INTER_NN);
         }
 
 	void operator() (np::Array<uint8_t, 2>& rect_im, uint8_t* circ_im, const char* vertical, int offset = 0)
@@ -116,7 +116,7 @@ public:
 
 		ippiRemap_8u_C1R(&rect_im(0, offset), srcSize, sizeof(Ipp8u) * rect_im.size(0), srcRoi,
 			theta, sizeof(Ipp32f) * dstRoiSize.width, rho, sizeof(Ipp32f) * dstRoiSize.width,
-			circ_im, sizeof(Ipp8u) * dstRoiSize.width, dstRoiSize, IPPI_INTER_LINEAR);
+			circ_im, sizeof(Ipp8u) * dstRoiSize.width, dstRoiSize, IPPI_INTER_NN);
 
         (void)vertical;
 	}
@@ -129,7 +129,7 @@ public:
 
 		ippiRemap_8u_C3R(&rect_im(0, offset), srcSize, sizeof(Ipp8u) * rect_im.size(0), srcRoi,
 			theta, sizeof(Ipp32f) * dstRoiSize.width, rho, sizeof(Ipp32f) * dstRoiSize.width,
-			circ_im, sizeof(Ipp8u) * 3 * dstRoiSize.width, dstRoiSize, IPPI_INTER_LINEAR);
+			circ_im, sizeof(Ipp8u) * 3 * dstRoiSize.width, dstRoiSize, IPPI_INTER_NN);
 		
 		(void)vertical;
 		(void)rgb;

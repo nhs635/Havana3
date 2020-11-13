@@ -133,7 +133,7 @@ void QOperationTab::operateDataAcquisition(bool toggled)
 				allocate_writing_buffer.detach();				
 								
 				// Set helical scanning control
-				//m_pStreamTab->getDeviceControlTab()->setHelicalScanningControl(true);
+				m_pStreamTab->getDeviceControlTab()->setHelicalScanningControl(true);
 
 				// Set FLIm system control
 				std::this_thread::sleep_for(std::chrono::milliseconds(200)); 
@@ -174,7 +174,7 @@ void QOperationTab::operateDataAcquisition(bool toggled)
 		m_pStreamTab->getVisTab()->setOuterSheathLines(false);
 
 		// Set helical scanning control
-		//m_pStreamTab->getDeviceControlTab()->setHelicalScanningControl(false);
+		m_pStreamTab->getDeviceControlTab()->setHelicalScanningControl(false);
 
 		// Set Axsun OCT system control
 		m_pStreamTab->getDeviceControlTab()->setAxsunControl(false);
@@ -221,7 +221,7 @@ void QOperationTab::operateDataRecording(bool toggled)
 		m_pToggleButton_Acquisition->setEnabled(true);
 		m_pToggleButton_Saving->setEnabled(m_pMemoryBuffer->m_nRecordedFrames != 0);
 
-		if (m_pStreamTab->getDeviceControlTab()->isFaulhaberMotorEnabled())
+		if (m_pStreamTab->getDeviceControlTab()->isRotaryMotorEnabled())
 			m_pStreamTab->getDeviceControlTab()->stopMotor();
 
 		if (m_pMemoryBuffer->m_nRecordedFrames > 1)

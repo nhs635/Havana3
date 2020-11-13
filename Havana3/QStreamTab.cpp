@@ -359,7 +359,7 @@ void QStreamTab::setVisualizationCallback()
         // Get the buffers from the previous sync Queues
 		float* flim_data = m_syncFlimVisualization.Queue_sync.pop();
 		uint8_t* oct_data = m_syncOctVisualization.Queue_sync.pop();
-		if ((flim_data != nullptr) && (oct_data != nullptr))
+		if ((flim_data != nullptr) && (oct_data != nullptr))		
         {
             // Body
             if (m_pOperationTab->getAcquisitionButton()->isChecked()) // Only valid if acquisition is running
@@ -370,6 +370,8 @@ void QStreamTab::setVisualizationCallback()
 				m_pVisualizationTab->m_visLifetime = np::FloatArray2(flim_data + 8 * m_pConfig->flimAlines, m_pConfig->flimAlines, 3);
 				
                 // Draw Images
+				//m_pVisualizationTab->visualizeImage(m_pVisualizationTab->m_visImage.raw_ptr(),
+				//		m_pVisualizationTab->m_visIntensity.raw_ptr(), m_pVisualizationTab->m_visLifetime.raw_ptr());
 				emit m_pVisualizationTab->drawImage(m_pVisualizationTab->m_visImage.raw_ptr(),
 					m_pVisualizationTab->m_visIntensity.raw_ptr(), m_pVisualizationTab->m_visLifetime.raw_ptr());
             }

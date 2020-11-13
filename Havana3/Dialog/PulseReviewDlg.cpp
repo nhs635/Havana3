@@ -27,7 +27,7 @@ PulseReviewDlg::PulseReviewDlg(QWidget *parent) :
 
 	// Create widgets
 	m_pScope_PulseView = new QScope({ 0, (double)m_pFLIm->_resize.crop_src.size(0) }, 
-		{ -(double)(int)m_pFLIm->_params.bg[1], (double)(int)(POWER_2(16) - m_pFLIm->_params.bg[1]), }, 2, 2, 1, 1, 0, 0, "", "", false);
+		{ -(double)(int)m_pFLIm->_params.bg, (double)(int)(POWER_2(16) - m_pFLIm->_params.bg), }, 2, 2, 1, 1, 0, 0, "", "", false);
 	m_pScope_PulseView->setMinimumHeight(200);
 	m_pScope_PulseView->getRender()->setGrid(8, 32, 1, true);
 	

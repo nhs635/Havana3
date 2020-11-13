@@ -67,7 +67,7 @@ void FlimCalibDlg::createPulseView()
     m_pScope_PulseView->getRender()->m_bMaskUse = false;
     m_pScope_PulseView->setMinimumHeight(180);
     m_pScope_PulseView->getRender()->setGrid(8, 32, 1, true);
-    m_pScope_PulseView->setDcLine(m_pFLIm->_params.bg[1]);
+    m_pScope_PulseView->setDcLine(m_pFLIm->_params.bg);
 
     m_pStart = &m_pScope_PulseView->getRender()->m_start;
     m_pEnd = &m_pScope_PulseView->getRender()->m_end;
@@ -145,7 +145,7 @@ void FlimCalibDlg::createCalibWidgets()
     m_pPushButton_CaptureBackground = new QPushButton(this);
     m_pPushButton_CaptureBackground->setText("Capture Background");
     m_pLineEdit_Background = new QLineEdit(this);
-    m_pLineEdit_Background->setText(QString::number(m_pFLIm->_params.bg[1], 'f', 2));
+    m_pLineEdit_Background->setText(QString::number(m_pFLIm->_params.bg, 'f', 2));
     m_pLineEdit_Background->setFixedWidth(60);
     m_pLineEdit_Background->setAlignment(Qt::AlignCenter);
 		
@@ -375,7 +375,7 @@ void FlimCalibDlg::drawRoiPulse(FLImProcess* pFLIm, int aline)
     }
 
     // ROI pulse
-    ippsAddC_32f_I(pFLIm->_params.bg[1], data.raw_ptr(), data.length());
+    ippsAddC_32f_I(pFLIm->_params.bg, data.raw_ptr(), data.length());
     m_pScope_PulseView->drawData(&data(0, aline), pFLIm->_resize.pMask);
 
     // Histogram
@@ -613,8 +613,8 @@ void FlimCalibDlg::captureBackground(const QString &str)
 {
     float bg = str.toFloat();
 	
-    m_pFLIm->_params.bg[1] = bg;
-    m_pConfig->flimBg[1] = bg;
+    m_pFLIm->_params.bg = bg;
+    m_pConfig->flimBg = bg;
 
     m_pScope_PulseView->setDcLine(bg);
 

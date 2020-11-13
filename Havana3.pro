@@ -78,9 +78,9 @@ SOURCES += DeviceControl/FreqDivider/FreqDivider.cpp \
     DeviceControl/PmtGainControl/PmtGainControl.cpp \
     DeviceControl/ElforlightLaser/ElforlightLaser.cpp \
     DeviceControl/AxsunControl/AxsunControl.cpp \
-    DeviceControl/ZaberStage/ZaberStage.cpp \
-    DeviceControl/ZaberStage/zb_serial.cpp \
-    DeviceControl/FaulhaberMotor/FaulhaberMotor.cpp
+    DeviceControl/FaulhaberMotor/FaulhaberMotor.cpp \
+    DeviceControl/FaulhaberMotor/PullbackMotor.cpp \
+    DeviceControl/FaulhaberMotor/RotaryMotor.cpp \
 
 
 HEADERS += Havana3/Configuration.h \
@@ -110,9 +110,9 @@ HEADERS += DeviceControl/FreqDivider/FreqDivider.h \
     DeviceControl/PmtGainControl/PmtGainControl.h \
     DeviceControl/ElforlightLaser/ElforlightLaser.h \
     DeviceControl/AxsunControl/AxsunControl.h \
-    DeviceControl/ZaberStage/ZaberStage.h \
-    DeviceControl/ZaberStage/zb_serial.h \
     DeviceControl/FaulhaberMotor/FaulhaberMotor.h \
+    DeviceControl/FaulhaberMotor/PullbackMotor.h \
+    DeviceControl/FaulhaberMotor/RotaryMotor.h \
     DeviceControl/QSerialComm.h
 
 

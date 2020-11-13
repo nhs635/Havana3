@@ -287,7 +287,8 @@ QRenderImage::~QRenderImage()
 void QRenderImage::paintEvent(QPaintEvent *)
 {
     QPainter painter(this);
-	painter.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform, true);
+	//painter.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform, true);
+	painter.setRenderHints(QPainter::Antialiasing, true);
 
     // Area size
     int w = this->width();
