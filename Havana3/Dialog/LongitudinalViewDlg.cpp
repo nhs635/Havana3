@@ -4,7 +4,7 @@
 #include <Havana3/MainWindow.h>
 #include <Havana3/QResultTab.h>
 #include <Havana3/QProcessingTab.h>
-#include <Havana3/QVisualizationTab.h>
+#include <Havana3/QViewTab.h>
 
 #include <tbb/parallel_for.h>
 #include <tbb/blocked_range.h>
@@ -20,9 +20,9 @@ LongitudinalViewDlg::LongitudinalViewDlg(QWidget *parent) :
 	setWindowTitle("Longitudinal View");
 
     // Set main window objects
-	m_pVisualizationTab = (QVisualizationTab*)parent;
-	m_pProcessingTab = m_pVisualizationTab->getResultTab()->getProcessingTab();
-	m_pConfig = m_pVisualizationTab->getResultTab()->getMainWnd()->m_pConfiguration;
+    m_pViewTab = (QViewTab*)parent;
+    m_pProcessingTab = m_pViewTab->getResultTab()->getProcessingTab();
+    m_pConfig = m_pViewTab->getResultTab()->getMainWnd()->m_pConfiguration;
 	
 	// Create image view buffers
 	ColorTable temp_ctable;	
@@ -40,8 +40,8 @@ LongitudinalViewDlg::LongitudinalViewDlg(QWidget *parent) :
 	m_pImageView_LongitudinalView = new QImageView(ColorTable::colortable(OCT_COLORTABLE), m_pProcessingTab->getConfigTemp()->frames, 2 * m_pProcessingTab->getConfigTemp()->octScans, true);
 	m_pImageView_LongitudinalView->setMinimumWidth(600);
 	m_pImageView_LongitudinalView->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
-	m_pImageView_LongitudinalView->setVLineChangeCallback([&](int frame) { m_pVisualizationTab->setCurrentFrame(frame); });
-	m_pImageView_LongitudinalView->setVerticalLine(1, m_pVisualizationTab->getCurrentFrame());
+    m_pImageView_LongitudinalView->setVLineChangeCallback([&](int frame) { m_pViewTab->setCurrentFrame(frame); });
+    m_pImageView_LongitudinalView->setVerticalLine(1, m_pViewTab->getCurrentFrame());
 	m_pImageView_LongitudinalView->getRender()->update();
 
 	m_pLabel_CurrentAline = new QLabel(this);
@@ -98,7 +98,7 @@ void LongitudinalViewDlg::setWidgets(bool enabled)
 void LongitudinalViewDlg::drawLongitudinalImage(int aline)
 {	
 	// Specified A line
-	int aline0 = aline + m_pVisualizationTab->getCurrentRotation();
+    int aline0 = aline; // + m_pViewTab->getCurrentRotation();
 	int aline1 = aline0 % (m_pProcessingTab->getConfigTemp()->octAlines / 2);
 
 	// Make longitudinal - OCT
@@ -110,9 +110,9 @@ void LongitudinalViewDlg::drawLongitudinalImage(int aline)
 		[&](const tbb::blocked_range<size_t>& r) {
 		for (size_t i = r.begin(); i != r.end(); ++i)
 		{
-			memcpy(&scale_temp(0, (int)i), &m_pVisualizationTab->m_vectorOctImage.at((int)i)(0, aline1), sizeof(uint8_t) * m_pProcessingTab->getConfigTemp()->octScans);
+            memcpy(&scale_temp(0, (int)i), &m_pViewTab->m_vectorOctImage.at((int)i)(0, aline1), sizeof(uint8_t) * m_pProcessingTab->getConfigTemp()->octScans);
 			memcpy(&scale_temp(m_pProcessingTab->getConfigTemp()->octScans, (int)i),
-				&m_pVisualizationTab->m_vectorOctImage.at((int)i)(0, m_pProcessingTab->getConfigTemp()->octAlines / 2 + aline1), sizeof(uint8_t) * m_pProcessingTab->getConfigTemp()->octScans);
+                &m_pViewTab->m_vectorOctImage.at((int)i)(0, m_pProcessingTab->getConfigTemp()->octAlines / 2 + aline1), sizeof(uint8_t) * m_pProcessingTab->getConfigTemp()->octScans);
 			ippsFlip_8u_I(&scale_temp(0, (int)i), m_pProcessingTab->getConfigTemp()->octScans);
 		}
 	});
@@ -132,10 +132,10 @@ void LongitudinalViewDlg::drawLongitudinalImage(int aline)
 		[&](const tbb::blocked_range<size_t>& r) {
 		for (size_t i = r.begin(); i != r.end(); ++i)
 		{
-			m_pImgObjIntensity->arr((int)i, 0) = m_pVisualizationTab->m_pImgObjIntensityMap->arr(aline / 4, (int)(m_pProcessingTab->getConfigTemp()->frames - i - 1));
-			m_pImgObjIntensity->arr((int)i, RING_THICKNESS) = m_pVisualizationTab->m_pImgObjIntensityMap->arr(m_pProcessingTab->getConfigTemp()->flimAlines / 2 + aline / 4, (int)(m_pProcessingTab->getConfigTemp()->frames - i - 1));
-			m_pImgObjLifetime->arr((int)i, 0) = m_pVisualizationTab->m_pImgObjLifetimeMap->arr(aline / 4, (int)(m_pProcessingTab->getConfigTemp()->frames - i - 1));
-			m_pImgObjLifetime->arr((int)i, RING_THICKNESS) = m_pVisualizationTab->m_pImgObjLifetimeMap->arr(m_pProcessingTab->getConfigTemp()->flimAlines / 2 + aline / 4, (int)(m_pProcessingTab->getConfigTemp()->frames - i - 1));
+            m_pImgObjIntensity->arr((int)i, 0) = m_pViewTab->m_pImgObjIntensityMap->arr(aline / 4, (int)(m_pProcessingTab->getConfigTemp()->frames - i - 1));
+            m_pImgObjIntensity->arr((int)i, RING_THICKNESS) = m_pViewTab->m_pImgObjIntensityMap->arr(m_pProcessingTab->getConfigTemp()->flimAlines / 2 + aline / 4, (int)(m_pProcessingTab->getConfigTemp()->frames - i - 1));
+            m_pImgObjLifetime->arr((int)i, 0) = m_pViewTab->m_pImgObjLifetimeMap->arr(aline / 4, (int)(m_pProcessingTab->getConfigTemp()->frames - i - 1));
+            m_pImgObjLifetime->arr((int)i, RING_THICKNESS) = m_pViewTab->m_pImgObjLifetimeMap->arr(m_pProcessingTab->getConfigTemp()->flimAlines / 2 + aline / 4, (int)(m_pProcessingTab->getConfigTemp()->frames - i - 1));
 		}
 	});
 	tbb::parallel_for(tbb::blocked_range<size_t>(1, (size_t)(RING_THICKNESS)),
@@ -149,9 +149,9 @@ void LongitudinalViewDlg::drawLongitudinalImage(int aline)
 		}
 	});
 	
-	if (!m_pVisualizationTab->isIntensityWeighted())
+//    if (!m_pViewTab->isIntensityWeighted())
 	{
-		if (!m_pVisualizationTab->isClassification())
+//        if (!m_pViewTab->isClassification())
 		{
 			m_pImgObjIntensity->convertNonScaledRgb();
 			m_pImgObjLifetime->convertNonScaledRgb();
@@ -164,7 +164,7 @@ void LongitudinalViewDlg::drawLongitudinalImage(int aline)
 			memcpy(m_pImgObjOctLongiImage->qrgbimg.bits() + 3 * m_pImgObjOctLongiImage->arr.size(0) * (m_pImgObjOctLongiImage->arr.size(1) - 1 * RING_THICKNESS),
 				m_pImgObjLifetime->qrgbimg.bits() + m_pImgObjLifetime->qrgbimg.byteCount() / 2, m_pImgObjLifetime->qrgbimg.byteCount() / 2);
 		}
-		else
+//		else
 		{
 			// Classification map
 			//ColorTable temp_ctable;
@@ -174,8 +174,8 @@ void LongitudinalViewDlg::drawLongitudinalImage(int aline)
 				[&](const tbb::blocked_range<size_t>& r) {
 				for (size_t i = r.begin(); i != r.end(); ++i)
 				{
-					//tempImgObj.arr((int)i, 0) = m_pVisualizationTab->m_pAnn->GetClfMapPtr()(aline / 4, (int)(m_pProcessingTab->getConfigTemp()->frames - i - 1));
-					//tempImgObj.arr((int)i, RING_THICKNESS) = m_pVisualizationTab->m_pAnn->GetClfMapPtr()(m_pProcessingTab->getConfigTemp()->flimAlines / 2 + aline / 4, (int)(m_pProcessingTab->getConfigTemp()->frames - i - 1));
+                    //tempImgObj.arr((int)i, 0) = m_pViewTab->m_pAnn->GetClfMapPtr()(aline / 4, (int)(m_pProcessingTab->getConfigTemp()->frames - i - 1));
+                    //tempImgObj.arr((int)i, RING_THICKNESS) = m_pViewTab->m_pAnn->GetClfMapPtr()(m_pProcessingTab->getConfigTemp()->flimAlines / 2 + aline / 4, (int)(m_pProcessingTab->getConfigTemp()->frames - i - 1));
 				}
 			});
 			tbb::parallel_for(tbb::blocked_range<size_t>(1, (size_t)(RING_THICKNESS)),
@@ -197,7 +197,7 @@ void LongitudinalViewDlg::drawLongitudinalImage(int aline)
 				m_pImgObjIntensityWeightedLifetime->qrgbimg.bits() + m_pImgObjIntensityWeightedLifetime->qrgbimg.byteCount() / 2, m_pImgObjIntensityWeightedLifetime->qrgbimg.byteCount() / 2);
 		}
 	}
-	else
+//	else
 	{
 		// intensity-weight lifetime map
 		ColorTable temp_ctable;
@@ -222,14 +222,14 @@ void LongitudinalViewDlg::drawLongitudinalImage(int aline)
 		360.0 * (double)aline / (double)m_pProcessingTab->getConfigTemp()->octAlines);
 	m_pLabel_CurrentAline->setText(str);
 
-	if (m_pVisualizationTab->getRectImageView()->isVisible())
+//    if (m_pViewTab->getRectImageView()->isVisible())
+//	{
+//        m_pViewTab->getRectImageView()->setVerticalLine(1, aline);
+//        m_pViewTab->getRectImageView()->getRender()->update();
+//	}
+//	else
 	{
-		m_pVisualizationTab->getRectImageView()->setVerticalLine(1, aline);
-		m_pVisualizationTab->getRectImageView()->getRender()->update();
-	}
-	else
-	{
-		m_pVisualizationTab->getCircImageView()->setVerticalLine(1, aline);
-		m_pVisualizationTab->getCircImageView()->getRender()->update();
+        m_pViewTab->getCircImageView()->setVerticalLine(1, aline);
+        m_pViewTab->getCircImageView()->getRender()->update();
 	}
 }

@@ -6,6 +6,11 @@
 #include <QtCore>
 
 class Configuration;
+class HvnSqlDataBase;
+
+class QHomeTab;
+class QPatientSelectionTab;
+class QPatientSummaryTab;
 
 class QStreamTab;
 class QResultTab;
@@ -22,45 +27,51 @@ class MainWindow : public QMainWindow
 // Constructer & Destructer /////////////////////////////
 public:
     explicit MainWindow(QWidget *parent = nullptr);
-    ~MainWindow();
+    virtual ~MainWindow();
 
 // Methods //////////////////////////////////////////////
 protected:
     void closeEvent(QCloseEvent *e);
 
 public:
-	void updateFlimLaserState(double* state);
+	inline QTabWidget* getTabWidget() const { return m_pTabWidget; }
+    inline QHomeTab* getHomeTab() const { return m_pHomeTab; }
+    inline QPatientSelectionTab* getPatientSelectionTab() const { return m_pPatientSelectionTab; }
+    inline QStreamTab* getStreamTab() const { return m_pStreamTab; }
+    inline auto getVectorTabViews() { return m_vectorTabViews; }
+
+public:
+    void addTabView(QDialog *);
+    void removeTabView(QDialog *);
 
 private slots:
-    void onTimer();
-	void onTimerDiagnostic();
-	void onTimerSync();
-    void changedTab(int);
+    void tabCurrentChanged(int);
+    void tabCloseRequested(int);
+
+    void makePatientSelectionTab();
+    void makePatientSummaryTab(int);
+    void makeStreamTab(QString);
+    void makeResultTab(QString);
 
 // Variables ////////////////////////////////////////////
 public:
     Configuration* m_pConfiguration;
-
-private:
-    QTimer *m_pTimer, *m_pTimerDiagnostic, *m_pTimerSync;
-
+    HvnSqlDataBase* m_pHvnSqlDataBase;
+	
 private:
     Ui::MainWindow *ui;
 
     // Layout
     QGridLayout *m_pGridLayout;
 
-public:
+private:
     // Tab objects
     QTabWidget *m_pTabWidget;
-    QStreamTab *m_pStreamTab;
-    QResultTab *m_pResultTab;
+    std::vector<QDialog *> m_vectorTabViews;
 
-    // Status bar
-	QLabel *m_pStatusLabel_FlimDiagnostic;
-	QLabel *m_pStatusLabel_OctDiagnostic;
-    QLabel *m_pStatusLabel_ImagePos;
-	QLabel *m_pStatusLabel_SyncStatus;
+	QHomeTab *m_pHomeTab;
+    QPatientSelectionTab *m_pPatientSelectionTab;
+    QStreamTab *m_pStreamTab;
 };
 
 #endif // MAINWINDOW_H

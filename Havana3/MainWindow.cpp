@@ -3,20 +3,18 @@
 #include "ui_MainWindow.h"
 
 #include <Havana3/Configuration.h>
+#include <Havana3/HvnSqlDataBase.h>
+
+#include <Havana3/QHomeTab.h>
+#include <Havana3/QPatientSelectionTab.h>
+#include <Havana3/QPatientSummaryTab.h>
 
 #include <Havana3/QStreamTab.h>
 #include <Havana3/QResultTab.h>
-#include <Havana3/QOperationTab.h>
-#include <Havana3/QDeviceControlTab.h>
-
-#include <Havana3/Dialog/FlimCalibDlg.h>
-
-#include <DataAcquisition/DataAcquisition.h>
-#include <DataAcquisition/FLImProcess/FLImProcess.h>
 
 
 MainWindow::MainWindow(QWidget *parent) :
-    QMainWindow(parent),
+    QMainWindow(parent), m_pStreamTab(nullptr),
     ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
@@ -34,46 +32,20 @@ MainWindow::MainWindow(QWidget *parent) :
     m_pConfiguration->octScans = OCT_SCANS;
     m_pConfiguration->octAlines = OCT_ALINES;
 
-    // Set timer for renew configuration
-    m_pTimer = new QTimer(this);
-    m_pTimer->start(5 * 60 * 1000); // renew per 5 min
-	m_pTimerDiagnostic = new QTimer(this);
-	m_pTimerDiagnostic->start(2000);
-	m_pTimerSync = new QTimer(this);
-	m_pTimerSync->start(1000); // renew per 1 sec
+    // Create sql database object
+    m_pHvnSqlDataBase = new HvnSqlDataBase(this);
+
+	// Create group boxes and tab widgets
+	m_pTabWidget = new QTabWidget(this);
+	m_pTabWidget->setTabsClosable(true);
+	m_pTabWidget->setDocumentMode(true);
 
     // Create tabs objects
-    m_pStreamTab = new QStreamTab(this);
-    m_pResultTab = new QResultTab(this);
+    m_pHomeTab = new QHomeTab(this);
+    addTabView(m_pHomeTab);
 
-    // Create group boxes and tab widgets
-    m_pTabWidget = new QTabWidget(this);
-    m_pTabWidget->addTab(m_pStreamTab, tr("Real-Time Data Streaming"));
-    m_pTabWidget->addTab(m_pResultTab, tr("Image Post-Processing"));
+    connect(m_pHomeTab, SIGNAL(signedIn()), this, SLOT(makePatientSelectionTab()));
 	
-    // Create status bar
-	m_pStatusLabel_FlimDiagnostic = new QLabel(QString::fromLocal8Bit("[FLIm Laser] Diode Current: %1A (%2A) / Diode Temp.: %3˚C (%4˚C) / Chipset Temp.: %5˚C (%6˚C)")
-		.arg(0.0, 1, 'f', 1).arg(0.0, 1, 'f', 1).arg(0.0, 2, 'f', 1).arg(0.0, 2, 'f', 1).arg(0.0, 2, 'f', 1).arg(0.0, 2, 'f', 1), this);
-	m_pStatusLabel_OctDiagnostic = new QLabel(QString::fromLocal8Bit("[Axsun OCT] Source Current: %1A / TEC Temp.: %2˚C / Board Temp.: %3˚C")
-		.arg(0.00, 0, 'f', 2).arg(10.0, 2, 'f', 1).arg(10.0, 2, 'f', 1));
-    m_pStatusLabel_ImagePos = new QLabel(QString("(%1, %2)").arg(0000, 4).arg(0000, 4), this);
-	
-	size_t fp_bfn = m_pStreamTab->getFlimProcessingBufferQueueSize();
-	size_t fv_bfn = m_pStreamTab->getFlimVisualizationBufferQueueSize();
-	size_t ov_bfn = m_pStreamTab->getOctVisualizationBufferQueueSize();
-	m_pStatusLabel_SyncStatus = new QLabel(QString("[Sync] FP#: %1 / FV#: %2 / OV#: %3").arg(fp_bfn, 3).arg(fv_bfn, 3).arg(ov_bfn, 3), this);
-
-	m_pStatusLabel_FlimDiagnostic->setFrameStyle(QFrame::Panel | QFrame::Sunken);
-	m_pStatusLabel_OctDiagnostic->setFrameStyle(QFrame::Panel | QFrame::Sunken);
-    m_pStatusLabel_ImagePos->setFrameStyle(QFrame::Panel | QFrame::Sunken);
-	m_pStatusLabel_SyncStatus->setFrameStyle(QFrame::Panel | QFrame::Sunken);
-
-    // then add the widget to the status bar
-    statusBar()->addPermanentWidget(m_pStatusLabel_FlimDiagnostic, 42);
-	statusBar()->addPermanentWidget(m_pStatusLabel_OctDiagnostic, 32);
-    statusBar()->addPermanentWidget(m_pStatusLabel_ImagePos, 11);
-    statusBar()->addPermanentWidget(m_pStatusLabel_SyncStatus, 15);
-	statusBar()->setSizeGripEnabled(false);
 
     // Set layout
     m_pGridLayout = new QGridLayout;
@@ -84,17 +56,28 @@ MainWindow::MainWindow(QWidget *parent) :
     this->setMinimumSize(1280, 994);
 
     // Connect signal and slot
-    connect(m_pTimer, SIGNAL(timeout()), this, SLOT(onTimer()));
-	connect(m_pTimerDiagnostic, SIGNAL(timeout()), this, SLOT(onTimerDiagnostic()));
-	connect(m_pTimerSync, SIGNAL(timeout()), this, SLOT(onTimerSync()));
-    connect(m_pTabWidget, SIGNAL(currentChanged(int)), this, SLOT(changedTab(int)));
+    connect(m_pTabWidget, SIGNAL(currentChanged(int)), this, SLOT(tabCurrentChanged(int)));
+    connect(m_pTabWidget, SIGNAL(tabCloseRequested(int)), this, SLOT(tabCloseRequested(int)));
+
+  
+	// Set timer for renew configuration		(여러 가지 타이머 관련 셋팅이 필요하지 않을까요.)
+//	m_pTimer = new QTimer(this);
+//	m_pTimer->start(5 * 60 * 1000); // renew per 5 min
+//	m_pTimerDiagnostic = new QTimer(this);
+//	m_pTimerDiagnostic->start(2000);
+//	m_pTimerSync = new QTimer(this);
+//	m_pTimerSync->start(1000); // renew per 1 sec
+
+//    connect(m_pTimer, SIGNAL(timeout()), this, SLOT(onTimer()));
+//	connect(m_pTimerDiagnostic, SIGNAL(timeout()), this, SLOT(onTimerDiagnostic()));
+//	connect(m_pTimerSync, SIGNAL(timeout()), this, SLOT(onTimerSync()));
 }
 
 MainWindow::~MainWindow()
 {
-	m_pTimer->stop();
-	m_pTimerDiagnostic->stop();
-	m_pTimerSync->stop();
+//	m_pTimer->stop();
+//	m_pTimerDiagnostic->stop();
+//	m_pTimerSync->stop();
 
     if (m_pConfiguration)
     {
@@ -107,56 +90,130 @@ MainWindow::~MainWindow()
 
 void MainWindow::closeEvent(QCloseEvent *e)
 {
-	if (m_pStreamTab->getOperationTab()->getAcquisitionButton()->isChecked())
-		m_pStreamTab->getOperationTab()->setAcquisitionButton(false);
+//	if (m_pStreamTab->getOperationTab()->getAcquisitionButton()->isChecked())
+//		m_pStreamTab->getOperationTab()->setAcquisitionButton(false);   // 여러가지 종료 컨디션
 
     e->accept();
 }
 
-void MainWindow::updateFlimLaserState(double* state)
+
+void MainWindow::addTabView(QDialog *pTabView)
 {
-	m_pStatusLabel_FlimDiagnostic->setText(QString::fromLocal8Bit("[FLIm Laser] Diode Current: %1A (%2A) / Diode Temp.: %3˚C (%4˚C) / Chipset Temp.: %5˚C (%6˚C)")
-		.arg(state[1], 0, 'f', 1).arg(state[0], 0, 'f', 1).arg(state[3], 0, 'f', 1).arg(state[2], 0, 'f', 1).arg(state[5], 0, 'f', 1).arg(state[4], 0, 'f', 1));
+    m_vectorTabViews.push_back(pTabView);
+
+    int tabIndex = m_pTabWidget->addTab(pTabView, pTabView->windowTitle());
+    m_pTabWidget->setCurrentIndex(tabIndex);
+}
+
+void MainWindow::removeTabView(QDialog *pTabView)
+{
+    m_pTabWidget->removeTab(m_pTabWidget->indexOf(pTabView));
+
+//	if (pTabView == m_pStreamTab)    // 스트림 탭 관련 추가.
+//		m_pStreamTab = nullptr;
+
+    m_vectorTabViews.erase(std::find(m_vectorTabViews.begin(), m_vectorTabViews.end(), pTabView));
+
+    delete pTabView;
 }
 
 
-void MainWindow::onTimer()
+void MainWindow::tabCurrentChanged(int index)
 {
-    // Current Time should be added here.
-    QDate date = QDate::currentDate();
-    QTime time = QTime::currentTime();
-    QString current = QString("%1-%2-%3 %4-%5-%6")
-        .arg(date.year()).arg(date.month(), 2, 10, (QChar)'0').arg(date.day(), 2, 10, (QChar)'0')
-        .arg(time.hour(), 2, 10, (QChar)'0').arg(time.minute(), 2, 10, (QChar)'0').arg(time.second(), 2, 10, (QChar)'0');
-	
-	m_pConfiguration->msgHandle(QString("[%1] Configuration data has been renewed!").arg(current).toLocal8Bit().data());
+    auto currentTab = m_vectorTabViews.at(index);
 
-	m_pStreamTab->getOperationTab()->getDataAcq()->getFLIm()->saveMaskData();
-    m_pConfiguration->setConfigFile("Havana3.ini");
+    if (currentTab == m_pPatientSelectionTab)
+        m_pPatientSelectionTab->loadPatientDatabase();
+    else if (currentTab->windowTitle().contains("Summary"))
+        dynamic_cast<QPatientSummaryTab*>(currentTab)->loadRecordDatabase();
 }
 
-void MainWindow::onTimerDiagnostic()
+void MainWindow::tabCloseRequested(int index)
 {
-	m_pStreamTab->getDeviceControlTab()->sendLaserCommand((char*)"?");
-	///m_pStreamTab->getDeviceControlTab()->requestOctStatus();
+    auto *pTabView = m_vectorTabViews.at(index);
+
+    if (index != 0) // HomeTab & SelectionTab cannot be closed.
+    {
+		if (pTabView->windowTitle().contains("Summary"))
+			m_pTabWidget->setCurrentIndex(0);
+		else if (pTabView->windowTitle().contains("Review"))
+		{
+			int index = 0;
+			foreach(QDialog* _pTabView, m_vectorTabViews)
+			{
+				if (_pTabView->windowTitle().contains("Summary"))
+					if (_pTabView->windowTitle().contains(((QResultTab*)pTabView)->getRecordInfo().patientName))
+						m_pTabWidget->setCurrentIndex(index);
+				index++;
+			}
+		}
+
+		removeTabView(pTabView);
+    }
 }
 
-void MainWindow::onTimerSync()
-{
-	size_t fp_bfn = m_pStreamTab->getFlimProcessingBufferQueueSize();
-	size_t fv_bfn = m_pStreamTab->getFlimVisualizationBufferQueueSize();
-	size_t ov_bfn = m_pStreamTab->getOctVisualizationBufferQueueSize();
-	m_pStatusLabel_SyncStatus->setText(QString("[Sync] FP#: %1 / FV#: %2 / OV#: %3").arg(fp_bfn, 3).arg(fv_bfn, 3).arg(ov_bfn, 3));
 
-	//if ((fp_bfn < PROCESSING_BUFFER_SIZE - 5) || (fv_bfn < PROCESSING_BUFFER_SIZE - 5) || (ov_bfn < PROCESSING_BUFFER_SIZE - 5))
-	//{
-	//	emit m_pStreamTab->sendStatusMessage("Synchronization failed. Please re-start the acquisition.", true);
-	//	m_pStreamTab->getOperationTab()->setAcquisitionButton(false);
-	//}
+void MainWindow::makePatientSelectionTab()
+{
+    m_pPatientSelectionTab = new QPatientSelectionTab(this);
+    addTabView(m_pPatientSelectionTab);
+    removeTabView(m_pHomeTab);
+
+    connect(m_pPatientSelectionTab->getTableWidgetPatientInformation(), SIGNAL(cellDoubleClicked(int, int)), this, SLOT(makePatientSummaryTab(int)));
 }
 
-void MainWindow::changedTab(int index)
+void MainWindow::makePatientSummaryTab(int row)
 {
-	m_pResultTab->changeTab(index == 1);
-	m_pStreamTab->changeTab(index == 0);
+    QString patient_id = m_pPatientSelectionTab->getTableWidgetPatientInformation()->item(row, 1)->text();
+
+    foreach (QDialog* pTabView, m_vectorTabViews)
+    {
+        if (pTabView->windowTitle().contains("Summary"))
+        {
+            if (((QPatientSummaryTab*)pTabView)->getPatientId() == patient_id)
+            {
+                m_pTabWidget->setCurrentWidget(pTabView);
+                return;
+            }
+        }
+    }
+
+    QPatientSummaryTab *pPatientSummaryTab = new QPatientSummaryTab(patient_id, this);
+    addTabView(pPatientSummaryTab);
+
+    connect(pPatientSummaryTab, SIGNAL(requestNewRecord(QString)), this, SLOT(makeStreamTab(QString)));
+    connect(pPatientSummaryTab, SIGNAL(requestReview(QString)), this, SLOT(makeResultTab(QString)));
+}
+
+void MainWindow::makeStreamTab(QString patient_id)
+{
+	if (!m_pStreamTab)
+	{
+		m_pStreamTab = new QStreamTab(patient_id, this);
+		addTabView(m_pStreamTab);
+	}
+	else
+	{
+		// 스트림 탭 딱 하나만 만들 수 있도록.. 
+		// 탭 안닫고 하면 소유주 바뀌도록..
+		m_pTabWidget->setCurrentWidget(m_pStreamTab);
+	}
+}
+
+void MainWindow::makeResultTab(QString record_id)
+{
+	foreach(QDialog* pTabView, m_vectorTabViews)
+	{
+		if (pTabView->windowTitle().contains("Review"))
+		{
+			if (((QResultTab*)pTabView)->getRecordInfo().recordId == record_id)
+			{
+				m_pTabWidget->setCurrentWidget(pTabView);
+				return;
+			}
+		}
+	}
+
+    QResultTab *pResultTab = new QResultTab(record_id, this);
+    addTabView(pResultTab);
 }

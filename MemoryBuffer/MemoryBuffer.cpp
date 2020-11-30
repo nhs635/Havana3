@@ -5,7 +5,7 @@
 #include <Havana3/QOperationTab.h>
 #include <Havana3/MainWindow.h>
 #include <Havana3/QStreamTab.h>
-#include <Havana3/QDeviceControlTab.h>
+//#include <Havana3/QDeviceControlTab.h>
 
 #include <DeviceControl/ZaberStage/ZaberStage.h>
 
@@ -22,8 +22,8 @@ MemoryBuffer::MemoryBuffer(QObject *parent) :
 	m_bIsRecording(false), m_bIsSaved(false),
 	m_nRecordedFrames(0)
 {
-	m_pOperationTab = (QOperationTab*)parent;
-	m_pConfig = m_pOperationTab->getStreamTab()->getMainWnd()->m_pConfiguration;
+	m_pStreamTab = (QStreamTab*)parent;
+	m_pConfig = m_pStreamTab->getMainWnd()->m_pConfiguration;
 }
 
 MemoryBuffer::~MemoryBuffer()
@@ -118,16 +118,16 @@ bool MemoryBuffer::startRecording()
 	m_nRecordedFrames = 0;
 
     // Pullback
-	m_pDeviceControlTab = m_pOperationTab->getStreamTab()->getDeviceControlTab();
-    if (m_pDeviceControlTab->isPullbackMotorEnabled())
-    {
-        //m_pDeviceControlTab->getPullbackMotor()->DidMovedAbsolute += [&]() {  // Need modification
-        //    // Finish recording when the pullback is finished.
-        //    m_bIsRecording = false;
-        //    m_pOperationTab->setRecordingButton(false);
-        //};
-        m_pDeviceControlTab->pullback();
-    }
+//	m_pDeviceControlTab = m_pOperationTab->getStreamTab()->getDeviceControlTab();
+//    if (m_pDeviceControlTab->isPullbackMotorEnabled())
+//    {
+//        //m_pDeviceControlTab->getPullbackMotor()->DidMovedAbsolute += [&]() {  // Need modification
+//        //    // Finish recording when the pullback is finished.
+//        //    m_bIsRecording = false;
+//        //    m_pOperationTab->setRecordingButton(false);
+//        //};
+//        m_pDeviceControlTab->pullback();
+//    }
 	
 	// Start Recording
 	m_bIsRecording = true;

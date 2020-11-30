@@ -13,7 +13,7 @@
 
 class MainWindow;
 class QProcessingTab;
-class QVisualizationTab;
+class QViewTab;
 
 
 class LongitudinalViewDlg : public QDialog
@@ -48,7 +48,7 @@ private:
     MainWindow* m_pMainWnd;
 	Configuration* m_pConfig;
 	QProcessingTab* m_pProcessingTab;
-	QVisualizationTab* m_pVisualizationTab;
+    QViewTab* m_pViewTab;
 
 public:
 	ImageObject *m_pImgObjOctLongiImage; 

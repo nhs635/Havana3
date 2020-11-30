@@ -5,7 +5,7 @@
 
 #include "../QSerialComm.h"
 
-#define GEAR_RATITO 334.224
+#define GEAR_RATIO 334.224
 
 
 class FaulhaberMotor 

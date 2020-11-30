@@ -36,7 +36,7 @@ int main(int argc, char *argv[])
     // Set fonts
     QFont font;
     font.setFamily("Tahoma");
-    font.setPointSizeF(8.5);
+    font.setPointSizeF(9.5);
     a.setFont(font);
 
     MainWindow w;

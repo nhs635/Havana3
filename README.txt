@@ -46,3 +46,5 @@ Havana3.VC*
   (Inter & intra frame synchronization)
 - 200311 Havana3 v1.2.2
   (Minor error corrected)
+- 201130 Havana3 v1.4.0
+  (Patient selection & summary view, Major modification - still developing)

@@ -51,6 +51,24 @@ public:
 	void convertRgb()
 	{
 		np::Uint8Array2 rgbarr(3 * width, height);
+		////np::Uint8Array2 rgbarr(3 * width, height);
+
+		//tbb::parallel_for(tbb::blocked_range<size_t>(0, (size_t)height),
+		//	[&](const tbb::blocked_range<size_t>& r) {
+		//	for (size_t i = r.begin(); i != r.end(); ++i)
+		//	{
+		//		for (int j = 0; j < width; j++)
+		//		{
+		//			uchar* pImg = qrgbimg.bits(); //.setPixelColor(j, (int)i, QColor(colortable.at(arr(j, (int)i))));
+
+		//			QRgb val = colortable.at(arr(j, (int)i));
+		//			*(pImg + (3 * j + 0) * width + (int)i) = qRed(val);
+		//			//rgbarr(3 * j + 0, (int)i) = qRed(val);
+		//			//rgbarr(3 * j + 1, (int)i) = qGreen(val);
+		//			//rgbarr(3 * j + 2, (int)i) = qBlue(val);
+		//		}
+		//	}
+		//});
 
 		tbb::parallel_for(tbb::blocked_range<size_t>(0, (size_t)height),
 			[&](const tbb::blocked_range<size_t>& r) {
@@ -87,6 +105,11 @@ public:
 	void scaledRgb4()
 	{
 		qrgbimg = std::move(qrgbimg.scaled(4 * width, height));
+	}
+
+	void scaledRgb4h()
+	{
+		qrgbimg = std::move(qrgbimg.scaled(width, 4 * height));
 	}
 
 	void setRgbChannelData(uchar* data, int ch)

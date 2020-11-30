@@ -1,16 +1,31 @@
 #ifndef QRESULTTAB_H
 #define QRESULTTAB_H
 
-#include <QDialog>
 #include <QtWidgets>
 #include <QtCore>
 
-#include <Havana3/Configuration.h>
 
 class MainWindow;
-class QProcessingTab;
-class QVisualizationTab;
+class Configuration;
+class HvnSqlDataBase;
 
+class QViewTab;
+class SettingDlg;
+class ExportDlg;
+
+class DataProcessing;
+
+struct RecordInfo
+{
+    QString recordId;
+    QString patientId;
+    QString patientName;
+    QString title;
+    QString date;
+    int vessel;
+    int procedure;
+    QString filename;
+};
 
 class QResultTab : public QDialog
 {
@@ -18,7 +33,7 @@ class QResultTab : public QDialog
 
 // Constructer & Destructer /////////////////////////////
 public:
-    explicit QResultTab(QWidget *parent = nullptr);
+    explicit QResultTab(QString record_id, QWidget *parent = nullptr);
 	virtual ~QResultTab();
 
 // Methods //////////////////////////////////////////////
@@ -27,28 +42,54 @@ protected:
 
 public:
 	inline MainWindow* getMainWnd() const { return m_pMainWnd; }
-	inline QProcessingTab* getProcessingTab() const { return m_pProcessingTab; }
-	inline QVisualizationTab* getVisualizationTab() const { return m_pVisualizationTab; }
+    inline RecordInfo getRecordInfo() { return m_recordInfo; }
+    inline DataProcessing* getDataProcessing() { return m_pDataProcessing; }
+    inline QViewTab* getViewTab() const { return m_pViewTab; }
+
+private:
+    void createResultReviewWidgets();
 
 public:
-	void changeTab(bool status);
+    void readRecordData();	
+	void loadRecordInfo();
+	void loadPatientInfo();
 
+private slots:
+    void changeVesselInfo(int);
+    void changeProcedureInfo(int);
+    void createSettingDlg();
+    void deleteSettingDlg();
+    void createExportDlg();
+    void deleteExportDlg();
 
 // Variables ////////////////////////////////////////////
-private: // main pointer
+private:
 	MainWindow* m_pMainWnd;
 	Configuration* m_pConfig;
+    HvnSqlDataBase* m_pHvnSqlDataBase;
 
-	QProcessingTab* m_pProcessingTab;
-	QVisualizationTab* m_pVisualizationTab;
+    DataProcessing* m_pDataProcessing;
 		
 private:
-    // Layout
-    QHBoxLayout *m_pHBoxLayout;
+    RecordInfo m_recordInfo;
 
-	// Group Boxes
-	QGroupBox *m_pGroupBox_ProcessingTab;
-	QGroupBox *m_pGroupBox_VisualizationTab;
+private:
+    // Review tab control widget
+    QGroupBox *m_pGroupBox_ResultReview;
+
+    QLabel *m_pLabel_PatientInformation;
+    QLabel *m_pLabel_RecordInformation;
+    QComboBox *m_pComboBox_Vessel;
+    QComboBox *m_pComboBox_Procedure;
+
+    QPushButton *m_pPushButton_Setting;
+    QPushButton *m_pPushButton_Export;
+
+    QViewTab* m_pViewTab;
+
+    // Dialogs
+    SettingDlg *m_pSettingDlg;
+    ExportDlg *m_pExportDlg;
 };
 
 #endif // QRESULTTAB_H

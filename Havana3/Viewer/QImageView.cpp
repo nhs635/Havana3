@@ -204,13 +204,37 @@ void QImageView::setContour(int len, uint16_t* pContour)
         memcpy(m_pRenderImage->m_contour.raw_ptr(), pContour, sizeof(uint16_t) * len);
 }
 
+void QImageView::setText(QPoint pos, const QString & str, bool is_vertical)
+{
+	m_pRenderImage->m_textPos = pos;
+	m_pRenderImage->m_str = str;
+	m_pRenderImage->m_bVertical = is_vertical;
+}
+
+void QImageView::setScaleBar(int len)
+{
+	m_pRenderImage->m_nScaleLen = len;
+}
+
 void QImageView::setMagnDefault()
 {
 	m_pRenderImage->m_rectMagnified = QRect(0, 0, m_pRenderImage->m_pImage->width(), m_pRenderImage->m_pImage->height());
 	m_pRenderImage->m_fMagnLevel = 1.0;
 }
 
-void QImageView::setHLineChangeCallback(const std::function<void(int)> &slot) 
+void QImageView::setEnterCallback(const std::function<void(void)>& slot)
+{
+	m_pRenderImage->DidEnter.clear();
+	m_pRenderImage->DidEnter += slot;
+}
+
+void QImageView::setLeaveCallback(const std::function<void(void)>& slot)
+{
+	m_pRenderImage->DidLeave.clear();
+	m_pRenderImage->DidLeave += slot;
+}
+
+void QImageView::setHLineChangeCallback(const std::function<void(int)> &slot)
 { 
 	m_pRenderImage->DidChangedHLine.clear();
 	m_pRenderImage->DidChangedHLine += slot; 
@@ -269,10 +293,11 @@ void QImageView::drawRgbImage(uint8_t* pImage)
 
 QRenderImage::QRenderImage(QWidget *parent) :
 	QWidget(parent), m_pImage(nullptr), m_colorLine(0xff0000),
-	m_bMeasureDistance(false), m_nClicked(0),
+	m_bMeasureDistance(false), m_nClicked(0), m_bIsClicking(false),
     m_hLineLen(0), m_vLineLen(0), m_circLen(0), 
 	m_bRadial(false), m_bDiametric(false),
-	m_bCanBeMagnified(false), m_rectMagnified(0, 0, 0, 0), m_fMagnLevel(1.0)
+	m_bCanBeMagnified(false), m_rectMagnified(0, 0, 0, 0), m_fMagnLevel(1.0),
+	m_str(""), m_bVertical(false), m_nScaleLen(0)
 {
 	m_pHLineInd = new int[10];
     m_pVLineInd = new int[10];
@@ -287,8 +312,8 @@ QRenderImage::~QRenderImage()
 void QRenderImage::paintEvent(QPaintEvent *)
 {
     QPainter painter(this);
-	//painter.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform, true);
-	painter.setRenderHints(QPainter::Antialiasing, true);
+	painter.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform, true);
+	//painter.setRenderHints(QPainter::Antialiasing, true);
 
     // Area size
     int w = this->width();
@@ -390,7 +415,7 @@ void QRenderImage::paintEvent(QPaintEvent *)
 	// Measure distance
 	if (m_bMeasureDistance)
 	{
-		QPen pen; pen.setColor(Qt::red); pen.setWidth(3);
+		QPen pen; pen.setColor(Qt::yellow); pen.setWidth(3);
 		painter.setPen(pen);
 
 		QPointF p[2], pc[2];
@@ -406,7 +431,7 @@ void QRenderImage::paintEvent(QPaintEvent *)
 			if (i == 1)
 			{
 				// Connecting line
-				QPen pen; pen.setColor(Qt::red); pen.setWidth(1);
+				QPen pen; pen.setColor(Qt::yellow); pen.setWidth(1);
 				painter.setPen(pen);
 				painter.drawLine(p[0], p[1]);
 				
@@ -422,43 +447,86 @@ void QRenderImage::paintEvent(QPaintEvent *)
 			}
 		}
 	}
+
+	// Set text
+	if (m_str != "")
+	{
+		QPen pen; pen.setColor(!m_bVertical ? Qt::white : Qt::black); pen.setWidth(1);
+		painter.setPen(pen);
+		QFont font; font.setBold(true); font.setPointSize(!m_bVertical ? 11 : 9);
+		painter.setFont(font);
+
+		painter.rotate(!m_bVertical ? 0 : 90);
+		if (!m_bVertical)
+			painter.drawText(m_textPos, m_str);
+		else
+			painter.drawText(0, -24, this->height(), this->width(), Qt::AlignCenter, m_str);
+		painter.rotate(!m_bVertical ? 0 : -90);
+	}
+
+	// Set scale bar
+	if (m_nScaleLen > 0)
+	{
+		QPen pen; pen.setColor(Qt::white); pen.setWidth(6);
+		painter.setPen(pen);
+		int scale_bar_len = int((double)(m_nScaleLen * w) / (double)m_rectMagnified.width());		
+		painter.drawLine(QLine(this->width() - scale_bar_len - 20, this->height() - 20, 
+						 this->width() - 20, this->height() - 20));
+	}
+
+}
+
+void QRenderImage::enterEvent(QEvent *e)
+{
+	DidEnter();
+	update();
+}
+
+void QRenderImage::leaveEvent(QEvent *e)
+{
+	DidLeave();
+	update();
 }
 
 void QRenderImage::mousePressEvent(QMouseEvent *e)
 {
 	QPoint p = e->pos();
-	if (m_hLineLen == 1)
-	{
-		m_pHLineInd[0] = m_pImage->height() - ((int)((double)(p.y() * m_rectMagnified.height()) / (double)this->height()) + m_rectMagnified.top());
-		DidChangedHLine(m_pHLineInd[0]);
-	}
-	if (m_vLineLen == 1)
-	{
-		if (!m_bRadial)
-		{
-			m_pVLineInd[0] = (int)((double)(p.x() * m_rectMagnified.width()) / (double)this->width()) + m_rectMagnified.left();
-			DidChangedVLine(m_pVLineInd[0]);
-		}
-		else
-		{
-			double center_x = ((double)m_pImage->width() / 2.0 - (double)m_rectMagnified.left()) * (double)(this->width()) / (double)m_rectMagnified.width();
-			double center_y = ((double)m_pImage->height() / 2.0 - (double)m_rectMagnified.top()) * (double)(this->height()) / (double)m_rectMagnified.height();
-
-			double angle = atan2(center_y - (double)p.y(), (double)p.x() - center_x);
-			if (angle < 0) angle += IPP_2PI;
-			m_pVLineInd[0] = (int)(angle / IPP_2PI * m_rMax);
-			DidChangedRLine(m_pVLineInd[0]);
-		}
-	}
+	m_bIsClicking = true;
 
 	if (m_bMeasureDistance)
-	{		
+	{
 		if (m_nClicked == 2) m_nClicked = 0;
 
 		m_point[m_nClicked][0] = p.x(); // (int)((double)(p.x() * m_pImage->height())) / (double)this->height();
 		m_point[m_nClicked++][1] = p.y(); // (int)((double)(p.y() * m_pImage->height())) / (double)this->height();
 
 		update();
+	}
+	else
+	{
+		if (m_hLineLen == 1)
+		{
+			m_pHLineInd[0] = (int)((double)(p.y() * m_rectMagnified.height()) / (double)this->height()) + m_rectMagnified.top(); // m_pImage->height() - (
+			DidChangedHLine(m_pHLineInd[0]);
+		}
+		if (m_vLineLen == 1)
+		{
+			if (!m_bRadial)
+			{
+				m_pVLineInd[0] = (int)((double)(p.x() * m_rectMagnified.width()) / (double)this->width()) + m_rectMagnified.left();
+				DidChangedVLine(m_pVLineInd[0]);
+			}
+			else
+			{
+				double center_x = ((double)m_pImage->width() / 2.0 - (double)m_rectMagnified.left()) * (double)(this->width()) / (double)m_rectMagnified.width();
+				double center_y = ((double)m_pImage->height() / 2.0 - (double)m_rectMagnified.top()) * (double)(this->height()) / (double)m_rectMagnified.height();
+
+				double angle = atan2(center_y - (double)p.y(), (double)p.x() - center_x);
+				if (angle < 0) angle += IPP_2PI;
+				m_pVLineInd[0] = (int)(angle / IPP_2PI * m_rMax);
+				DidChangedRLine(m_pVLineInd[0]);
+			}
+		}
 	}
 }
 
@@ -471,15 +539,38 @@ void QRenderImage::mouseMoveEvent(QMouseEvent *e)
 {
 	QPoint p = e->pos();
 
-	if (QRect(0, 0, this->width(), this->height()).contains(p))
+	//if (QRect(0, 0, this->width(), this->height()).contains(p))
+	//{
+	//	int rx = int((double)(p.x() * m_rectMagnified.width()) / (double)(this->width())) + m_rectMagnified.left();
+	//	int ry = int((double)(p.y() * m_rectMagnified.height()) / (double)(this->height())) + m_rectMagnified.top();
+
+	//	QPoint p1(rx, ry);
+
+	//	DidMovedMouse(p1);
+	//}
+
+	if (m_bIsClicking)
 	{
-		int rx = int((double)(p.x() * m_rectMagnified.width()) / (double)(this->width())) + m_rectMagnified.left();
-		int ry = int((double)(p.y() * m_rectMagnified.height()) / (double)(this->height())) + m_rectMagnified.top();
+		if (m_vLineLen == 1)
+		{
+			if (m_bRadial)
+			{
+				double center_x = ((double)m_pImage->width() / 2.0 - (double)m_rectMagnified.left()) * (double)(this->width()) / (double)m_rectMagnified.width();
+				double center_y = ((double)m_pImage->height() / 2.0 - (double)m_rectMagnified.top()) * (double)(this->height()) / (double)m_rectMagnified.height();
 
-		QPoint p1(rx, ry);
-
-		DidMovedMouse(p1);
+				double angle = atan2(center_y - (double)p.y(), (double)p.x() - center_x);
+				if (angle < 0) angle += IPP_2PI;
+				m_pVLineInd[0] = (int)(angle / IPP_2PI * m_rMax);
+				DidChangedRLine(m_pVLineInd[0]);
+			}
+		}
 	}
+}
+
+void QRenderImage::mouseReleaseEvent(QMouseEvent *e)
+{
+	QPoint p = e->pos();
+	m_bIsClicking = false;
 }
 
 void QRenderImage::wheelEvent(QWheelEvent *e)

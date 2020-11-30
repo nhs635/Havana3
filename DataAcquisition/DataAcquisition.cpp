@@ -1,14 +1,18 @@
 
 #include "DataAcquisition.h"
 
+#include <Havana3/Configuration.h>
+
 #include <DataAcquisition/SignatecDAQ/SignatecDAQ.h>
 #include <DataAcquisition/FLImProcess/FLImProcess.h>
 #include <DataAcquisition/AxsunCapture/AxsunCapture.h>
 
 
 DataAcquisition::DataAcquisition(Configuration* pConfig)
-    : m_pDaq(nullptr), m_pFLIm(nullptr), m_pAxsunCapture(nullptr)
+    : m_bAcquisitionState(false),
+      m_pDaq(nullptr), m_pFLIm(nullptr), m_pAxsunCapture(nullptr)
 {
+    // Set main window objects
     m_pConfig = pConfig;
 
     // Create SignatecDAQ object
@@ -86,6 +90,7 @@ bool DataAcquisition::StartAcquisition()
         return false;
     }
 
+    printf("here?\n");
     return true;
 }
 

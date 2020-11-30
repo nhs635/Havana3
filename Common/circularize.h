@@ -78,12 +78,11 @@ public:
 		//ippsMulC_32f_I(1.0f, theta, diameter * diameter);
 		ippsAddC_32f_I((Ipp32f)IPP_PI, theta, diameter * diameter);
 		ippsMulC_32f_I(((Ipp32f)alines - 1.0f) / (Ipp32f)IPP_2PI, theta, diameter * diameter);
-        }
+    }
 
 	~circularize()
 	{
-
-        }
+    }
 	
 public:
 	void operator() (np::Array<float, 2>& rect_im, np::Array<float, 2>& circ_im, int offset = 0)
@@ -95,44 +94,40 @@ public:
 		ippiRemap_32f_C1R(&rect_im(offset, 0), srcSize, sizeof(Ipp32f) * rect_im.size(0), srcRoi,
 			rho, sizeof(Ipp32f) * dstRoiSize.width, theta, sizeof(Ipp32f) * dstRoiSize.width,
 			circ_im.raw_ptr(), sizeof(Ipp32f) * dstRoiSize.width, dstRoiSize, IPPI_INTER_NN);
-        }
+    }
 
-	void operator() (np::Array<uint8_t, 2>& rect_im, uint8_t* circ_im, int offset = 0)
+	void operator() (np::Array<uint8_t, 2>& rect_im, uint8_t* circ_im, bool vertical = false, bool rgb = false, int offset = 0)
 	{
-		IppiSize srcSize = { radius, alines }; // width * height
-		IppiRect srcRoi = { 0, 0, radius, alines };
-		IppiSize dstRoiSize = { diameter, diameter };
+		if (vertical)
+		{
+			IppiSize srcSize = { alines, radius }; // width * height
+			IppiRect srcRoi = { 0, 0, alines, radius };
+			IppiSize dstRoiSize = { diameter, diameter };
 
-		ippiRemap_8u_C1R(&rect_im(offset, 0), srcSize, sizeof(Ipp8u) * rect_im.size(0), srcRoi,
-			rho, sizeof(Ipp32f) * dstRoiSize.width, theta, sizeof(Ipp32f) * dstRoiSize.width,
-			circ_im, sizeof(Ipp8u) * dstRoiSize.width, dstRoiSize, IPPI_INTER_NN);
-        }
+			if (rgb)
+				ippiRemap_8u_C3R(&rect_im(0, offset), srcSize, sizeof(Ipp8u) * rect_im.size(0), srcRoi,
+					theta, sizeof(Ipp32f) * dstRoiSize.width, rho, sizeof(Ipp32f) * dstRoiSize.width,
+					circ_im, sizeof(Ipp8u) * 3 * dstRoiSize.width, dstRoiSize, IPPI_INTER_NN);
+			else
+				ippiRemap_8u_C1R(&rect_im(0, offset), srcSize, sizeof(Ipp8u) * rect_im.size(0), srcRoi,
+					theta, sizeof(Ipp32f) * dstRoiSize.width, rho, sizeof(Ipp32f) * dstRoiSize.width,
+					circ_im, sizeof(Ipp8u) * dstRoiSize.width, dstRoiSize, IPPI_INTER_NN);
+		}
+		else
+		{
+			IppiSize srcSize = { radius, alines }; // width * height
+			IppiRect srcRoi = { 0, 0, radius, alines };
+			IppiSize dstRoiSize = { diameter, diameter };
 
-	void operator() (np::Array<uint8_t, 2>& rect_im, uint8_t* circ_im, const char* vertical, int offset = 0)
-	{
-		IppiSize srcSize = { alines, radius }; // width * height
-		IppiRect srcRoi = { 0, 0, alines, radius };
-		IppiSize dstRoiSize = { diameter, diameter };
-
-		ippiRemap_8u_C1R(&rect_im(0, offset), srcSize, sizeof(Ipp8u) * rect_im.size(0), srcRoi,
-			theta, sizeof(Ipp32f) * dstRoiSize.width, rho, sizeof(Ipp32f) * dstRoiSize.width,
-			circ_im, sizeof(Ipp8u) * dstRoiSize.width, dstRoiSize, IPPI_INTER_NN);
-
-        (void)vertical;
-	}
-
-	void operator() (np::Array<uint8_t, 2>& rect_im, uint8_t* circ_im, const char* vertical, const char* rgb, int offset = 0)
-	{
-		IppiSize srcSize = { alines, radius }; // width * height
-		IppiRect srcRoi = { 0, 0, alines, radius };
-		IppiSize dstRoiSize = { diameter, diameter };
-
-		ippiRemap_8u_C3R(&rect_im(0, offset), srcSize, sizeof(Ipp8u) * rect_im.size(0), srcRoi,
-			theta, sizeof(Ipp32f) * dstRoiSize.width, rho, sizeof(Ipp32f) * dstRoiSize.width,
-			circ_im, sizeof(Ipp8u) * 3 * dstRoiSize.width, dstRoiSize, IPPI_INTER_NN);
-		
-		(void)vertical;
-		(void)rgb;
+			if (rgb)
+				ippiRemap_8u_C3R(&rect_im(offset, 0), srcSize, sizeof(Ipp8u) * rect_im.size(0), srcRoi,
+					rho, sizeof(Ipp32f) * dstRoiSize.width, theta, sizeof(Ipp32f) * dstRoiSize.width,
+					circ_im, sizeof(Ipp8u) * 3 * dstRoiSize.width, dstRoiSize, IPPI_INTER_NN);
+			else
+				ippiRemap_8u_C1R(&rect_im(offset, 0), srcSize, sizeof(Ipp8u) * rect_im.size(0), srcRoi,
+					rho, sizeof(Ipp32f) * dstRoiSize.width, theta, sizeof(Ipp32f) * dstRoiSize.width,
+					circ_im, sizeof(Ipp8u) * dstRoiSize.width, dstRoiSize, IPPI_INTER_NN);
+		}
 	}
 		
 public:

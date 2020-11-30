@@ -3,35 +3,37 @@
 
 #include <QObject>
 
-#include <Havana3/Configuration.h>
-
 #include <Common/array.h>
 #include <Common/callback.h>
+
+
+class Configuration;
 
 class SignatecDAQ;
 class FLImProcess;
 class AxsunCapture;
 
-
 class DataAcquisition : public QObject
 {
 	Q_OBJECT
 
+// Constructer & Destructer /////////////////////////////
 public:
     explicit DataAcquisition(Configuration*);
     virtual ~DataAcquisition();
 
-public:
+// Methods //////////////////////////////////////////////
+public: ////////////////////////////////////////////////////////////////////////////////////////////////
 	inline SignatecDAQ* getDigitizer() const { return m_pDaq; }
     inline FLImProcess* getFLIm() const { return m_pFLIm; }
 	inline AxsunCapture* getAxsunCapture() const { return m_pAxsunCapture; }
 
-public:
+public: ////////////////////////////////////////////////////////////////////////////////////////////////
     bool InitializeAcquistion();
     bool StartAcquisition();
     void StopAcquisition();
 
-public:
+public: ////////////////////////////////////////////////////////////////////////////////////////////////
     void GetBootTimeBufCfg(int idx, int& buffer_size);
     void SetBootTimeBufCfg(int idx, int buffer_size);
     void SetDcOffset(int offset);
@@ -45,9 +47,15 @@ public:
 	void ConnectAxsunStopOctData(const std::function<void(void)> &slot);
 	void ConnectAxsunSendStatusMessage(const std::function<void(const char*, bool)> &slot);
 
-private:
-	Configuration* m_pConfig;
+// Variables ////////////////////////////////////////////
+private: ////////////////////////////////////////////////////////////////////////////////////////////////
+    // Configuration object
+    Configuration* m_pConfig;
 
+    // Acquisition state flag
+    bool m_bAcquisitionState;
+
+    // Object related to data acquisition
     SignatecDAQ* m_pDaq;
     FLImProcess* m_pFLIm;
     AxsunCapture* m_pAxsunCapture;

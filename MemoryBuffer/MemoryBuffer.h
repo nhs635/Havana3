@@ -12,8 +12,7 @@
 
 class MainWindow;
 class Configuration;
-class QOperationTab;
-class QDeviceControlTab;
+class QStreamTab;
 
 class MemoryBuffer : public QObject
 {
@@ -52,8 +51,7 @@ signals:
 
 private:
 	Configuration* m_pConfig;
-	QOperationTab* m_pOperationTab;
-	QDeviceControlTab* m_pDeviceControlTab;
+	QStreamTab* m_pStreamTab;
 
 public:
 	bool m_bIsAllocatedWritingBuffer;

@@ -1,12 +1,11 @@
-#ifndef FLIMCALIBDLG_H
-#define FLIMCALIBDLG_H
+#ifndef FLIMCALIBTAB_H
+#define FLIMCALIBTAB_H
 
-#include <QObject>
 #include <QtWidgets>
 #include <QtCore>
 
 #include <Havana3/Configuration.h>
-#include <Havana3/QDeviceControlTab.h>
+//#include <Havana3/QDeviceControlTab.h>
 #include <Havana3/Viewer/QScope.h>
 #include <Havana3/Viewer/QImageView.h>
 
@@ -19,9 +18,20 @@
 
 #define N_BINS 50
 
-class QDeviceControlTab;
+class Configuration;
+class QStreamTab;
 class FLImProcess;
 
+
+class QMySpinBox : public QDoubleSpinBox
+{
+public:
+    explicit QMySpinBox(QWidget *parent = nullptr) : QDoubleSpinBox(parent)
+    {
+        lineEdit()->setReadOnly(true);
+    }
+    virtual ~QMySpinBox() {}
+};
 
 struct Histogram
 {
@@ -92,18 +102,19 @@ private:
 };
 
 
-class FlimCalibDlg : public QDialog
+class FlimCalibTab : public QDialog
 {
     Q_OBJECT
 
 // Constructer & Destructer /////////////////////////////
 public:
-    explicit FlimCalibDlg(QWidget *parent = nullptr);
-    virtual ~FlimCalibDlg();
+    explicit FlimCalibTab(QWidget *parent = nullptr);
+    virtual ~FlimCalibTab();
 
 // Methods //////////////////////////////////////////////
-private:
-    void keyPressEvent(QKeyEvent *e);
+public:
+    inline QStreamTab* getStreamTab() const { return m_pStreamTab; }
+    inline QGroupBox* getLayoutBox() const { return m_pGroupBox_FlimCalibTab; }
 
 private:
     void createPulseView();
@@ -142,7 +153,7 @@ public:
 // Variables ////////////////////////////////////////////
 private:
     Configuration* m_pConfig;
-    QDeviceControlTab* m_pDeviceControlTab;
+    QStreamTab* m_pStreamTab;;
     FLImProcess* m_pFLIm;
 
 private:
@@ -156,8 +167,9 @@ private:
 private:
     // Layout
     QVBoxLayout *m_pVBoxLayout;
+    QGroupBox *m_pGroupBox_FlimCalibTab;
 
-    // Widgets for pulse view
+    // Pulse view widgets
     QScope *m_pScope_PulseView;
 
     QCheckBox *m_pCheckBox_ShowWindow;
@@ -168,7 +180,7 @@ private:
     QPushButton *m_pPushButton_AddMask;
     QPushButton *m_pPushButton_RemoveMask;
 
-    // Widgets for FLIM calibration widgets
+    // FLIM calibration widgets
 	QLabel *m_pLabel_PX14DcOffset;
 	QSlider *m_pSlider_PX14DcOffset;
 
@@ -182,7 +194,7 @@ private:
     QLineEdit *m_pLineEdit_DelayTimeOffset[3];
     QLabel *m_pLabel_NanoSec[2];
 
-    // Widgets for histogram
+    // Histogram widgets
     QLabel *m_pLabel_FluIntensity;
     QRenderArea *m_pRenderArea_FluIntensity;
     QImageView *m_pColorbar_FluIntensity;
@@ -200,4 +212,4 @@ private:
     QLabel *m_pLabel_FluLifetimeStd;
 };
 
-#endif // FLIMCALIBDLG_H
+#endif // FLIMCALIBTAB_H

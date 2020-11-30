@@ -1,10 +1,11 @@
 
-#include "FlimCalibDlg.h"
+#include "FlimCalibTab.h"
 
 #include <Havana3/MainWindow.h>
+#include <Havana3/Configuration.h>
 #include <Havana3/QStreamTab.h>
-#include <Havana3/QDeviceControlTab.h>
-#include <Havana3/QOperationTab.h>
+
+#include <Havana3/Dialog/SettingDlg.h>
 
 #include <DataAcquisition/DataAcquisition.h>
 #include <DataAcquisition/FLImProcess/FLImProcess.h>
@@ -13,20 +14,14 @@
 #include <thread>
 
 
-FlimCalibDlg::FlimCalibDlg(QWidget *parent) :
+FlimCalibTab::FlimCalibTab(QWidget *parent) :
     QDialog(parent), m_pHistogramIntensity(nullptr), m_pHistogramLifetime(nullptr)
 {
-    // Set default size & frame
-    setFixedSize(530, 580);
-    setWindowFlags(Qt::Tool);
-    setWindowTitle("FLIm Calibration");
-
     // Set main window objects
-    m_pDeviceControlTab = dynamic_cast<QDeviceControlTab*>(parent);
-    m_pConfig = m_pDeviceControlTab->getStreamTab()->getMainWnd()->m_pConfiguration;
-    m_pFLIm = m_pDeviceControlTab->getStreamTab()->getOperationTab()->getDataAcq()->getFLIm();
+    m_pStreamTab = dynamic_cast<SettingDlg*>(parent)->getStreamTab();
+    m_pConfig = m_pStreamTab->getMainWnd()->m_pConfiguration;
+    m_pFLIm = m_pStreamTab->getDataAcquisition()->getFLIm();
 		
-
     // Create layout
     m_pVBoxLayout = new QVBoxLayout;
     m_pVBoxLayout->setSpacing(10);
@@ -37,25 +32,23 @@ FlimCalibDlg::FlimCalibDlg(QWidget *parent) :
     createHistogram();
 
     // Set layout
-    this->setLayout(m_pVBoxLayout);
+    m_pGroupBox_FlimCalibTab = new QGroupBox;
+    m_pGroupBox_FlimCalibTab->setStyleSheet("QGroupBox{padding-top:15px; margin-top:-15px}");
+    m_pGroupBox_FlimCalibTab->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
+
+    m_pGroupBox_FlimCalibTab->setLayout(m_pVBoxLayout);
 	
 	drawRoiPulse(m_pFLIm, 0);
 }
 
-FlimCalibDlg::~FlimCalibDlg()
+FlimCalibTab::~FlimCalibTab()
 {
     if (m_pHistogramIntensity) delete m_pHistogramIntensity;
     if (m_pHistogramLifetime) delete m_pHistogramLifetime;
 }
 
-void FlimCalibDlg::keyPressEvent(QKeyEvent *e)
-{
-    if (e->key() != Qt::Key_Escape)
-        QDialog::keyPressEvent(e);
-}
 
-
-void FlimCalibDlg::createPulseView()
+void FlimCalibTab::createPulseView()
 {
     // Create widgets for FLIM pulse view layout
     QGridLayout *pGridLayout_PulseView = new QGridLayout;
@@ -125,7 +118,7 @@ void FlimCalibDlg::createPulseView()
     connect(m_pPushButton_RemoveMask, SIGNAL(clicked(bool)), this, SLOT(removeMask()));
 }
 
-void FlimCalibDlg::createCalibWidgets()
+void FlimCalibTab::createCalibWidgets()
 {
     // Create widgets for FLIM calibration layout
     QGridLayout *pGridLayout_PulseView = new QGridLayout;
@@ -238,7 +231,7 @@ void FlimCalibDlg::createCalibWidgets()
         connect(m_pLineEdit_DelayTimeOffset[i], SIGNAL(textChanged(const QString &)), this, SLOT(resetDelayTimeOffset()));
 }
 
-void FlimCalibDlg::createHistogram()
+void FlimCalibTab::createHistogram()
 {
     // Create widgets for histogram layout
     QHBoxLayout *pHBoxLayout_Histogram = new QHBoxLayout;
@@ -346,7 +339,7 @@ void FlimCalibDlg::createHistogram()
 }
 
 
-void FlimCalibDlg::drawRoiPulse(FLImProcess* pFLIm, int aline)
+void FlimCalibTab::drawRoiPulse(FLImProcess* pFLIm, int aline)
 {
     // Reset pulse view (if necessary)
     static int roi_width = 0;
@@ -405,7 +398,7 @@ void FlimCalibDlg::drawRoiPulse(FLImProcess* pFLIm, int aline)
     m_pLabel_FluLifetimeStd->setText(QString("Std: %1").arg(stdev, 4, 'f', 3));
 }
 
-void FlimCalibDlg::showWindow(bool checked)
+void FlimCalibTab::showWindow(bool checked)
 {
     if (checked)
     {
@@ -422,7 +415,7 @@ void FlimCalibDlg::showWindow(bool checked)
     m_pScope_PulseView->getRender()->update();
 }
 
-void FlimCalibDlg::showMeanDelay(bool checked)
+void FlimCalibTab::showMeanDelay(bool checked)
 {
     if (checked)
     {
@@ -441,7 +434,7 @@ void FlimCalibDlg::showMeanDelay(bool checked)
     m_pScope_PulseView->getRender()->update();
 }
 
-void FlimCalibDlg::splineView(bool checked)
+void FlimCalibTab::splineView(bool checked)
 {
     if (m_pCheckBox_ShowWindow->isChecked())
     {
@@ -460,7 +453,7 @@ void FlimCalibDlg::splineView(bool checked)
     m_pCheckBox_ShowMask->setDisabled(checked);
 }
 
-void FlimCalibDlg::showMask(bool clicked)
+void FlimCalibTab::showMask(bool clicked)
 {
     m_pPushButton_ModifyMask->setEnabled(clicked);
     m_pCheckBox_SplineView->setDisabled(clicked);
@@ -469,7 +462,7 @@ void FlimCalibDlg::showMask(bool clicked)
 	drawRoiPulse(m_pFLIm, 0);
 }
 
-void FlimCalibDlg::modifyMask(bool toggled)
+void FlimCalibTab::modifyMask(bool toggled)
 {
     m_pCheckBox_ShowMask->setDisabled(toggled);
     m_pPushButton_AddMask->setEnabled(toggled);
@@ -481,7 +474,7 @@ void FlimCalibDlg::modifyMask(bool toggled)
 	drawRoiPulse(m_pFLIm, 0);
 }
 
-void FlimCalibDlg::addMask()
+void FlimCalibTab::addMask()
 {
 	RESIZE* pResize = &(m_pFLIm->_resize);
 
@@ -535,7 +528,7 @@ void FlimCalibDlg::addMask()
 	drawRoiPulse(m_pFLIm, 0);
 }
 
-void FlimCalibDlg::removeMask()
+void FlimCalibTab::removeMask()
 {
 	RESIZE* pResize = &m_pFLIm->_resize;
 
@@ -590,16 +583,16 @@ void FlimCalibDlg::removeMask()
 }
 
 
-void FlimCalibDlg::setPX14DcOffset(int offset)
+void FlimCalibTab::setPX14DcOffset(int offset)
 {
-	DataAcquisition *pDataAcq = m_pDeviceControlTab->getStreamTab()->getOperationTab()->m_pDataAcquisition;
-	pDataAcq->SetDcOffset(offset);
+//	DataAcquisition *pDataAcq = m_pDeviceControlTab->getStreamTab()->getOperationTab()->m_pDataAcquisition;
+//	pDataAcq->SetDcOffset(offset);
 	
 	m_pConfig->px14DcOffset = offset;
 	m_pLabel_PX14DcOffset->setText(QString("Set DC Offset (%1)").arg(m_pConfig->px14DcOffset, 4, 10));
 }
 
-void FlimCalibDlg::captureBackground()
+void FlimCalibTab::captureBackground()
 {
     Ipp32f bg;
     ippsMean_32f(m_pScope_PulseView->getRender()->m_pData, m_pScope_PulseView->getRender()->m_sizeGraph.width(), &bg, ippAlgHintFast);
@@ -609,7 +602,7 @@ void FlimCalibDlg::captureBackground()
 	m_pScope_PulseView->getRender()->update();
 }
 
-void FlimCalibDlg::captureBackground(const QString &str)
+void FlimCalibTab::captureBackground(const QString &str)
 {
     float bg = str.toFloat();
 	
@@ -621,7 +614,7 @@ void FlimCalibDlg::captureBackground(const QString &str)
 	m_pScope_PulseView->getRender()->update();
 }
 
-void FlimCalibDlg::resetChStart0(double start)
+void FlimCalibTab::resetChStart0(double start)
 {
     int ch_ind = (int)round(start / m_pFLIm->_params.samp_intv);
 	
@@ -646,7 +639,7 @@ void FlimCalibDlg::resetChStart0(double start)
     m_pScope_PulseView->getRender()->update();
 }
 
-void FlimCalibDlg::resetChStart1(double start)
+void FlimCalibTab::resetChStart1(double start)
 {
     int ch_ind = (int)round(start / m_pFLIm->_params.samp_intv);
 	
@@ -671,7 +664,7 @@ void FlimCalibDlg::resetChStart1(double start)
     m_pScope_PulseView->getRender()->update();
 }
 
-void FlimCalibDlg::resetChStart2(double start)
+void FlimCalibTab::resetChStart2(double start)
 {
     int ch_ind = (int)round(start / m_pFLIm->_params.samp_intv);
 
@@ -696,7 +689,7 @@ void FlimCalibDlg::resetChStart2(double start)
     m_pScope_PulseView->getRender()->update();
 }
 
-void FlimCalibDlg::resetChStart3(double start)
+void FlimCalibTab::resetChStart3(double start)
 {
     int ch_ind = (int)round(start / m_pFLIm->_params.samp_intv);
 
@@ -721,7 +714,7 @@ void FlimCalibDlg::resetChStart3(double start)
     m_pScope_PulseView->getRender()->update();
 }
 
-void FlimCalibDlg::resetDelayTimeOffset()
+void FlimCalibTab::resetDelayTimeOffset()
 {
     float delay_offset[3];
     for (int i = 0; i < 3; i++)

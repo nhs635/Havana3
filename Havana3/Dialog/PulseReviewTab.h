@@ -1,5 +1,5 @@
-#ifndef PULSEREVIEWDLG_H
-#define PULSEREVIEWDLG_H
+#ifndef PULSEREVIEWTAB_H
+#define PULSEREVIEWTAB_H
 
 #include <QObject>
 #include <QtWidgets>
@@ -11,18 +11,18 @@
 #include <Common/array.h>
 #include <Common/callback.h>
 
-class QVisualizationTab;
+class QViewTab;
 class FLImProcess;
 
 
-class PulseReviewDlg : public QDialog
+class PulseReviewTab : public QDialog
 {
     Q_OBJECT
 
 // Constructer & Destructer /////////////////////////////
 public:
-    explicit PulseReviewDlg(QWidget *parent = 0);
-    virtual ~PulseReviewDlg();
+    explicit PulseReviewTab(QWidget *parent = 0);
+    virtual ~PulseReviewTab();
 
 // Methods //////////////////////////////////////////////
 private:
@@ -42,7 +42,7 @@ signals:
 // Variables ////////////////////////////////////////////
 private:	
 	Configuration* m_pConfig;
-	QVisualizationTab* m_pVisualizationTab;
+    QViewTab* m_pViewTab;
 	FLImProcess* m_pFLIm;
 
 private:
@@ -55,4 +55,4 @@ private:
 	QComboBox *m_pComboBox_PulseType;
 };
 
-#endif // PULSEREVIEWDLG_H
+#endif // PULSEREVIEWTAB_H

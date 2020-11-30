@@ -1,7 +1,7 @@
 #ifndef CONFIGURATION_H
 #define CONFIGURATION_H
 
-#define VERSION						"1.3.0"
+#define VERSION						"1.4.0"
 
 #define POWER_2(x)					(1 << x)
 #define NEAR_2_POWER(x)				(int)(1 << (int)ceil(log2(x)))
@@ -16,7 +16,7 @@
 
 #define ELFORLIGHT_PORT				"COM3"
 
-#define NI_ENABLE 
+//#define NI_ENABLE
 
 #ifdef NI_ENABLE
 #define NI_PMT_GAIN_CHANNEL		    "Dev1/ao1" // 13
@@ -61,11 +61,11 @@
 #define INTENSITY_THRES				0.001f
 
 /////////////////////// Visualization ///////////////////////
-#define RING_THICKNESS				100
+#define RING_THICKNESS				150
 
 #define OCT_COLORTABLE              0 // gray
 #define INTENSITY_COLORTABLE		6 // fire
-#define LIFETIME_COLORTABLE         16 // hsv1 ==> Viewer/QImageView.cpp
+#define LIFETIME_COLORTABLE         14 // hsv1 ==> Viewer/QImageView.cpp
 
 #define INTER_FRAME_SYNC			10 //9  // Frames
 #define INTRA_FRAME_SYNC			0 //30 // A-lines
@@ -79,7 +79,7 @@
 
 
 template <typename T>
-struct Range
+struct ContrastRange
 {
 	T min = 0;
 	T max = 0;
@@ -162,9 +162,12 @@ public:
 		axsunVDLLength = settings.value("axsunVDLLength").toFloat();
 		axsunDbRange.max = settings.value("axsunDbRangeMax").toFloat();
 		axsunDbRange.min = settings.value("axsunDbRangeMin").toFloat();
-		pullbackSpeed = settings.value("pullbackSpeed").toInt();
-		pullbackLength = settings.value("pullbackLength").toInt();
+        pullbackSpeed = settings.value("pullbackSpeed").toFloat();
+        pullbackLength = settings.value("pullbackLength").toFloat();
 		rotaryRpm = settings.value("rotaryRpm").toInt();
+
+        // Database
+        dbPath = settings.value("dbPath").toString();
 
 		settings.endGroup();
 	}
@@ -216,9 +219,12 @@ public:
 		settings.setValue("axsunVDLLength", QString::number(axsunVDLLength, 'f', 2));
 		settings.setValue("axsunDbRangeMax", QString::number(axsunDbRange.max, 'f', 1));
 		settings.setValue("axsunDbRangeMin", QString::number(axsunDbRange.min, 'f', 1));
-		settings.setValue("pullbackSpeed", pullbackSpeed);
-		settings.setValue("pullbackLength", pullbackLength);
+        settings.setValue("pullbackSpeed", QString::number(pullbackSpeed, 'f', 2));
+        settings.setValue("pullbackLength", QString::number(pullbackLength, 'f', 2));
 		settings.setValue("rotaryRpm", rotaryRpm);
+
+        // Database
+        settings.setValue("dbPath", dbPath);
 
 		// Current Time
 		QDate date = QDate::currentDate();
@@ -249,12 +255,12 @@ public:
 	
 	// Visualization    
     int flimEmissionChannel;
-    Range<float> flimIntensityRange[3];
-    Range<float> flimLifetimeRange[3];
+    ContrastRange<float> flimIntensityRange[3];
+    ContrastRange<float> flimLifetimeRange[3];
 	int flimIntensityRatioRefIdx[3];
-	Range<float> flimIntensityRatioRange[3][3];
+    ContrastRange<float> flimIntensityRatioRange[3][3];
 	float flimIntensityComp[3];
-	Range<int> octGrayRange;
+    ContrastRange<int> octGrayRange;
 
 	// Additional synchronization parameters
 	int intraFrameSync;
@@ -264,10 +270,13 @@ public:
 	float pmtGainVoltage;
     int px14DcOffset;
 	float axsunVDLLength;
-	Range<float> axsunDbRange;
-	int pullbackSpeed;
-	int pullbackLength;
+    ContrastRange<float> axsunDbRange;
+    float pullbackSpeed;
+    float pullbackLength;
     int rotaryRpm;
+
+    // Database
+    QString dbPath;
 	
 	// Message callback
 	callback<const char*> msgHandle;

@@ -1,23 +1,24 @@
 #ifndef QSTREAMTAB_H
 #define QSTREAMTAB_H
 
-#include <QDialog>
 #include <QtWidgets>
 #include <QtCore>
 
-#include <Havana3/Configuration.h>
-
-#include <Common/array.h>
 #include <Common/SyncObject.h>
 
+
 class MainWindow;
-class QOperationTab;
-class QDeviceControlTab;
-class QVisualizationTab;
+class Configuration;
+class HvnSqlDataBase;
+
+class QViewTab;
+class SettingDlg;
+
+class DataAcquisition;
+class MemoryBuffer;
+class DeviceControl;
 
 class ThreadManager;
-class FLImProcess;
-
 
 class QStreamTab : public QDialog
 {
@@ -25,7 +26,7 @@ class QStreamTab : public QDialog
 
 // Constructer & Destructer /////////////////////////////
 public:
-    explicit QStreamTab(QWidget *parent = nullptr);
+    explicit QStreamTab(QString patient_id = "", QWidget *parent = nullptr);
 	virtual ~QStreamTab();
 	
 // Methods //////////////////////////////////////////////
@@ -34,9 +35,10 @@ protected:
 
 public:
 	inline MainWindow* getMainWnd() const { return m_pMainWnd; }
-    inline QOperationTab* getOperationTab() const { return m_pOperationTab; }
-    inline QDeviceControlTab* getDeviceControlTab() const { return m_pDeviceControlTab; }
-	inline QVisualizationTab* getVisTab() const { return m_pVisualizationTab; }
+    inline QString getPatientId() { return m_patientId; }
+    inline DataAcquisition* getDataAcquisition() const { return m_pDataAcquisition; }
+    inline DeviceControl* getDeviceControl() const { return m_pDeviceControl; }
+    inline QViewTab* getViewTab() const { return m_pViewTab; }
 
 	inline size_t getFlimProcessingBufferQueueSize() const { return m_syncFlimProcessing.queue_buffer.size(); }
 	inline size_t getFlimVisualizationBufferQueueSize() const { return m_syncFlimVisualization.queue_buffer.size(); }
@@ -46,8 +48,14 @@ public:
 	//inline auto getFlimVisualizationSync() { return &m_syncFlimVisualization; }
 	//inline auto getOctVisualizationSync() { return &m_syncOctVisualization; }
 
-public:
+private:
+    void createLiveStreamingViewWidgets();
+
+public:    
     void changeTab(bool status);
+    bool enableDataAcquisition(bool);
+    bool enableMemoryBuffer(bool);
+    bool enableDeviceControl(bool);
 
 private:		
 // Set thread callback objects
@@ -57,22 +65,28 @@ private:
     void setVisualizationCallback();
 
 private slots:
-    void processMessage(QString, bool);
+    void createSettingDlg();
+    void deleteSettingDlg();
+    void scrollCatheterCalibration(int);
+    void enableRotation(bool);
+    void startPullback(bool);
+//    void processMessage(QString, bool);
 
-signals:
-    void sendStatusMessage(QString, bool);
+//signals:
+//    void sendStatusMessage(QString, bool);
 
 // Variables ////////////////////////////////////////////
 private:
     MainWindow* m_pMainWnd;
     Configuration* m_pConfig;
+    HvnSqlDataBase* m_pHvnSqlDataBase;
 
-    QOperationTab* m_pOperationTab;
-    QDeviceControlTab* m_pDeviceControlTab;
-    QVisualizationTab* m_pVisualizationTab;
+    DataAcquisition* m_pDataAcquisition;
+    MemoryBuffer* m_pMemoryBuffer;
+    DeviceControl* m_pDeviceControl;
 
-	// Message Window
-	QListWidget *m_pListWidget_MsgWnd;
+private:
+    QString m_patientId;
 
 public:
 	// Thread manager objects
@@ -86,13 +100,22 @@ private:
 	SyncObject<uint8_t> m_syncOctVisualization;
 
 private:
-    // Layout
-    QHBoxLayout *m_pHBoxLayout;
+    // Live streaming view control widget
+    QGroupBox *m_pGroupBox_LiveStreaming;
 
-    // Group Boxes
-    QGroupBox *m_pGroupBox_OperationTab;
-    QGroupBox *m_pGroupBox_DeviceControlTab;
-    QGroupBox *m_pGroupBox_VisualizationTab;
+    QLabel *m_pLabel_PatientInformation;
+    QPushButton *m_pPushButton_Setting;
+
+    QViewTab* m_pViewTab;
+
+    QLabel *m_pLabel_CatheterCalibration;
+    QScrollBar *m_pScrollBar_CatheterCalibration;
+
+    QPushButton *m_pToggleButton_EnableRotation;
+    QPushButton *m_pToggleButton_StartPullback;
+
+    // Setting dialog
+    SettingDlg *m_pSettingDlg;
 };
 
 #endif // QSTREAMTAB_H

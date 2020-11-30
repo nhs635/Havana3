@@ -4,7 +4,7 @@
 #
 #-------------------------------------------------
 
-QT       += core gui
+QT       += core gui sql
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets serialport
 
@@ -52,25 +52,30 @@ LIBS += $$PWD/lib/intel64_win/mkl_core.lib \
 
 
 SOURCES += Havana3/Havana3.cpp \
+    Havana3/HvnSqlDataBase.cpp \
     Havana3/MainWindow.cpp \
+    Havana3/QHomeTab.cpp \    
+    Havana3/QPatientSelectionTab.cpp \
+    Havana3/QPatientSummaryTab.cpp \
+    Havana3/QViewTab.cpp \
     Havana3/QStreamTab.cpp \
     Havana3/QResultTab.cpp \
-    Havana3/QOperationTab.cpp \
-    Havana3/QDeviceControlTab.cpp \
-    Havana3/QVisualizationTab.cpp \
-    Havana3/QProcessingTab.cpp \
     Havana3/Viewer/QScope.cpp \
     Havana3/Viewer/QImageView.cpp \
-    Havana3/Dialog/FlimCalibDlg.cpp \
-    Havana3/Dialog/SaveResultDlg.cpp \
-    Havana3/Dialog/PulseReviewDlg.cpp \
-    Havana3/Dialog/LongitudinalViewDlg.cpp
+    Havana3/Dialog/AddPatientDlg.cpp \
+    Havana3/Dialog/SettingDlg.cpp \
+    Havana3/Dialog/ViewOptionTab.cpp \
+    Havana3/Dialog/DeviceOptionTab.cpp \
+    Havana3/Dialog/FlimCalibTab.cpp \
+    Havana3/Dialog/PulseReviewTab.cpp # \
+    #Havana3/Dialog/SaveResultDlg.cpp
 
 SOURCES += DataAcquisition/SignatecDAQ/SignatecDAQ.cpp \
     DataAcquisition/FLImProcess/FLImProcess.cpp \
     DataAcquisition/AxsunCapture/AxsunCapture.cpp \
     DataAcquisition/ThreadManager.cpp \
-    DataAcquisition/DataAcquisition.cpp
+    DataAcquisition/DataAcquisition.cpp \
+    DataAcquisition/DataProcessing.cpp
 
 SOURCES += MemoryBuffer/MemoryBuffer.cpp
 
@@ -81,28 +86,34 @@ SOURCES += DeviceControl/FreqDivider/FreqDivider.cpp \
     DeviceControl/FaulhaberMotor/FaulhaberMotor.cpp \
     DeviceControl/FaulhaberMotor/PullbackMotor.cpp \
     DeviceControl/FaulhaberMotor/RotaryMotor.cpp \
+    DeviceControl/DeviceControl.cpp
 
 
 HEADERS += Havana3/Configuration.h \
+    Havana3/HvnSqlDataBase.h \
     Havana3/MainWindow.h \
+    Havana3/QHomeTab.h \
+    Havana3/QPatientSelectionTab.h \
+    Havana3/QPatientSummaryTab.h \
+    Havana3/QViewTab.h \
     Havana3/QStreamTab.h \
     Havana3/QResultTab.h \
-    Havana3/QOperationTab.h \
-    Havana3/QDeviceControlTab.h \
-    Havana3/QVisualizationTab.h \
-    Havana3/QProcessingTab.h \
     Havana3/Viewer/QScope.h \
     Havana3/Viewer/QImageView.h \
-    Havana3/Dialog/FlimCalibDlg.h \
-    Havana3/Dialog/SaveResultDlg.h \
-    Havana3/Dialog/PulseReviewDlg.h \
-    Havana3/Dialog/LongitudinalViewDlg.h
+    Havana3/Dialog/AddPatientDlg.h \
+    Havana3/Dialog/SettingDlg.h \
+    Havana3/Dialog/ViewOptionTab.h \
+    Havana3/Dialog/DeviceOptionTab.h \
+    Havana3/Dialog/FlimCalibTab.h \
+    Havana3/Dialog/PulseReviewTab.h # \
+    #Havana3/Dialog/SaveResultDlg.h
 
 HEADERS += DataAcquisition/SignatecDAQ/SignatecDAQ.h \
     DataAcquisition/FLImProcess/FLImProcess.h \
     DataAcquisition/AxsunCapture/AxsunCapture.h \
     DataAcquisition/ThreadManager.h \
-    DataAcquisition/DataAcquisition.h
+    DataAcquisition/DataAcquisition.h \
+    DataAcquisition/DataProcessing.h
 
 HEADERS += MemoryBuffer/MemoryBuffer.h
 
@@ -113,7 +124,8 @@ HEADERS += DeviceControl/FreqDivider/FreqDivider.h \
     DeviceControl/FaulhaberMotor/FaulhaberMotor.h \
     DeviceControl/FaulhaberMotor/PullbackMotor.h \
     DeviceControl/FaulhaberMotor/RotaryMotor.h \
-    DeviceControl/QSerialComm.h
+    DeviceControl/QSerialComm.h \
+    DeviceControl/DeviceControl.h
 
 
 FORMS   += Havana3/MainWindow.ui

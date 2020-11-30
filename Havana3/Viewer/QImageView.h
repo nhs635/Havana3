@@ -32,14 +32,16 @@ class QImageView : public QDialog
 	Q_OBJECT
 
 private:
-    explicit QImageView(QWidget *parent = 0); // Disabling default constructor
+	explicit QImageView(QWidget *parent = 0); // Disabling default constructor
 
 public:
-    explicit QImageView(ColorTable::colortable ctable, int width, int height, bool rgb = false, QWidget *parent = 0);
-    virtual ~QImageView();
+	explicit QImageView(ColorTable::colortable ctable, int width, int height, bool rgb = false, QWidget *parent = 0);
+	virtual ~QImageView();
 
 public:
 	inline QRenderImage* getRender() { return m_pRenderImage; }
+	inline int getWidth() { return m_width; }
+	inline int getHeight() { return m_height; }
 
 protected:
     void resizeEvent(QResizeEvent *);
@@ -57,8 +59,12 @@ public:
 	void setVerticalLine(int len, ...);
 	void setCircle(int len, ...);
     void setContour(int len, uint16_t* pContour);
+	void setText(QPoint pos, const QString& str, bool is_vertical = false);
+	void setScaleBar(int len);
 	void setMagnDefault();
 
+	void setEnterCallback(const std::function<void(void)> &slot);
+	void setLeaveCallback(const std::function<void(void)> &slot);
 	void setHLineChangeCallback(const std::function<void(int)> &slot);
 	void setVLineChangeCallback(const std::function<void(int)> &slot);
 	void setRLineChangeCallback(const std::function<void(int)> &slot);
@@ -96,19 +102,20 @@ public:
 
 protected:
     void paintEvent(QPaintEvent *);
+	void enterEvent(QEvent *);
+	void leaveEvent(QEvent *);
 	void mousePressEvent(QMouseEvent *);
 	void mouseDoubleClickEvent(QMouseEvent *);
 	void mouseMoveEvent(QMouseEvent *);
+	void mouseReleaseEvent(QMouseEvent *);
 	void wheelEvent(QWheelEvent *);
 	
 public:
     QImage *m_pImage;
 
     int *m_pHLineInd, *m_pVLineInd;
-    int m_hLineLen, m_vLineLen;
-    int m_circLen;
-	bool m_bRadial;
-	bool m_bDiametric;
+	int m_hLineLen, m_vLineLen, m_circLen;
+	bool m_bRadial, m_bDiametric;
 	bool m_bCanBeMagnified;
 	QRect m_rectMagnified;
 	float m_fMagnLevel;
@@ -118,9 +125,17 @@ public:
     np::Uint16Array m_contour;
 
 	bool m_bMeasureDistance;
+	int m_bIsClicking;
 	int m_nClicked;
 	int m_point[2][2];
 
+	QPoint m_textPos;
+	QString m_str;
+	bool m_bVertical;
+
+	int m_nScaleLen;
+
+	callback<void> DidEnter, DidLeave;
 	callback<int> DidChangedHLine;
 	callback<int> DidChangedVLine;
 	callback<int> DidChangedRLine;
