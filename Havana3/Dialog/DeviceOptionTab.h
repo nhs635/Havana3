@@ -6,6 +6,7 @@
 
 
 class Configuration;
+class QPatientSummaryTab;
 class QStreamTab;
 class QResultTab;
 class DeviceControl;
@@ -27,7 +28,7 @@ class DeviceOptionTab : public QDialog
 
 // Constructer & Destructer /////////////////////////////
 public:
-    explicit DeviceOptionTab(bool is_streaming = true, QWidget *parent = nullptr);
+    explicit DeviceOptionTab(QWidget *parent = nullptr);
     virtual ~DeviceOptionTab();
 
 // Methods //////////////////////////////////////////////
@@ -93,6 +94,7 @@ signals:
 // Variables ////////////////////////////////////////////
 private:
     Configuration* m_pConfig;
+	QPatientSummaryTab* m_pPatientSummaryTab;
     QStreamTab* m_pStreamTab;
     QResultTab* m_pResultTab;
     DeviceControl* m_pDeviceControl;

@@ -5,8 +5,6 @@
 
 #include "../QSerialComm.h"
 
-#define GEAR_RATIO 334.224
-
 
 class FaulhaberMotor 
 {
@@ -32,6 +30,7 @@ private:
 	uint8_t CalcCRCByte(uint8_t u8Byte, uint8_t u8CRC);
 
 public:
+	callback<void> DidRotateEnd;
 	callback2<const char*, bool> SendStatusMessage;
 
 private:

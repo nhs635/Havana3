@@ -9,6 +9,20 @@ class MainWindow;
 class Configuration;
 class HvnSqlDataBase;
 class AddPatientDlg;
+class SettingDlg;
+
+struct RecordInfo
+{
+	QString recordId = "-1";
+	QString patientId;
+	QString patientName;
+	QString	title = "pullback";
+	QString date;
+	QByteArray preview;
+	int vessel = 0;
+	int procedure = 0;
+	QString filename;
+};
 
 class QPatientSummaryTab : public QDialog
 {
@@ -25,7 +39,7 @@ protected:
 	    
 public:
     inline MainWindow* getMainWnd() const { return m_pMainWnd; }
-    inline QString getPatientId() { return m_patientId; }
+    inline RecordInfo getPatientInfo() { return m_patientInfo; }
     inline QTableWidget* getTableWidgetRecordInformation() const { return m_pTableWidget_RecordInformation; }
 
 private:
@@ -34,21 +48,23 @@ private:
 
 private slots:
     void newRecord();
+	void import();
     void editPatient();
     void deleteEditPatientDlg();
+	void createSettingDlg();
+	void deleteSettingDlg();
     void modifyRecordComment(int, int);
     void finishedModifyRecordComment(QTableWidgetItem*);
-	void deleteRecordData(QString);
-//    void reviewRequested();
+	void deleteRecordData(const QString &);
 
 public:
     void loadPatientInformation();
     void loadRecordDatabase();
 
 signals:
-    void requestNewRecord(QString);
-    void requestReview(QString);
-	void requestDelete(QString);
+    void requestNewRecord(const QString &);
+    void requestReview(const QString &);
+	void requestDelete(const QString &);
 //    void sendStatusMessage(QString, bool);
 
 // Variables ////////////////////////////////////////////
@@ -58,7 +74,7 @@ private:
     HvnSqlDataBase* m_pHvnSqlDataBase;
 	
 private:
-    QString m_patientId;
+    RecordInfo m_patientInfo;
 	
 private:
     // Widgets for patient summary view
@@ -68,12 +84,15 @@ private:
     QLabel *m_pLabel_PatientInformation;
 
     QPushButton *m_pPushButton_NewRecord;
+	QPushButton *m_pPushButton_Import;
     QPushButton *m_pPushButton_EditPatient;
+	QPushButton *m_pPushButton_Setting;
 
     QTableWidget *m_pTableWidget_RecordInformation;
 
     // Edit Patient Dialog
     AddPatientDlg *m_pEditPatientDlg;
+	SettingDlg *m_pSettingDlg;
 };
 
 #endif // QPATIENTSUMMARYTAB_H

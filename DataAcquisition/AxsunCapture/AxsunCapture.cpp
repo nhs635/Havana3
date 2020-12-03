@@ -303,9 +303,10 @@ void AxsunCapture::dumpCaptureError(int32_t res, const char* pPreamble)
 	sprintf_s(err, 256, "%s (%s)", msg, capture_message);
 	SendStatusMessage(err, true);
 
-	int32_t result = axStopSession();
-	if (result != CAPTURE_OK)
-		dumpCaptureError(result, "[axStopSession] ");
+	axStopSession();
+	//int32_t result = axStopSession();
+	//if (result != CAPTURE_OK)
+		//dumpCaptureError(result, "[axStopSession] ");
 }
 
 

@@ -4,11 +4,13 @@
 #include <QtWidgets>
 #include <QtCore>
 
+#include <Havana3/Configuration.h>
+#include <Havana3/QPatientSummaryTab.h>
+
 #include <Common/SyncObject.h>
 
 
 class MainWindow;
-class Configuration;
 class HvnSqlDataBase;
 
 class QViewTab;
@@ -21,7 +23,7 @@ class DeviceControl;
 class ThreadManager;
 
 class QStreamTab : public QDialog
-{
+{	
     Q_OBJECT
 
 // Constructer & Destructer /////////////////////////////
@@ -35,7 +37,7 @@ protected:
 
 public:
 	inline MainWindow* getMainWnd() const { return m_pMainWnd; }
-    inline QString getPatientId() { return m_patientId; }
+	inline RecordInfo getRecordInfo() { return m_recordInfo; }
     inline DataAcquisition* getDataAcquisition() const { return m_pDataAcquisition; }
     inline DeviceControl* getDeviceControl() const { return m_pDeviceControl; }
     inline QViewTab* getViewTab() const { return m_pViewTab; }
@@ -43,16 +45,17 @@ public:
 	inline size_t getFlimProcessingBufferQueueSize() const { return m_syncFlimProcessing.queue_buffer.size(); }
 	inline size_t getFlimVisualizationBufferQueueSize() const { return m_syncFlimVisualization.queue_buffer.size(); }
 	inline size_t getOctVisualizationBufferQueueSize() const { return m_syncOctVisualization.queue_buffer.size(); }
-
-	//inline auto getFlimProcessingSync() { return &m_syncFlimProcessing; }
-	//inline auto getFlimVisualizationSync() { return &m_syncFlimVisualization; }
-	//inline auto getOctVisualizationSync() { return &m_syncOctVisualization; }
-
+	
 private:
     void createLiveStreamingViewWidgets();
 
+public:
+	void changePatient(QString patient_id);
+
 public:    
-    void changeTab(bool status);
+	bool startLiveImaging(bool);
+
+private:
     bool enableDataAcquisition(bool);
     bool enableMemoryBuffer(bool);
     bool enableDeviceControl(bool);
@@ -70,10 +73,13 @@ private slots:
     void scrollCatheterCalibration(int);
     void enableRotation(bool);
     void startPullback(bool);
-//    void processMessage(QString, bool);
+#ifdef DEVELOPER_MODE
+	void onTimerSyncMonitor();
+#endif
 
-//signals:
-//    void sendStatusMessage(QString, bool);
+signals:
+	void getCapture(QByteArray &);
+	void requestReview(const QString &);
 
 // Variables ////////////////////////////////////////////
 private:
@@ -86,7 +92,11 @@ private:
     DeviceControl* m_pDeviceControl;
 
 private:
-    QString m_patientId;
+	RecordInfo m_recordInfo;
+	QTimer *m_pCaptureTimer;
+#ifdef DEVELOPER_MODE
+	QTimer *m_pSyncMonitorTimer;
+#endif
 
 public:
 	// Thread manager objects
@@ -113,6 +123,10 @@ private:
 
     QPushButton *m_pToggleButton_EnableRotation;
     QPushButton *m_pToggleButton_StartPullback;
+
+#ifdef DEVELOPER_MODE
+	QLabel *m_pLabel_StreamingSyncStatus;
+#endif
 
     // Setting dialog
     SettingDlg *m_pSettingDlg;

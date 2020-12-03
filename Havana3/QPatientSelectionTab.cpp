@@ -71,7 +71,8 @@ void QPatientSelectionTab::createPatientSelectionViewWidgets()
 
     m_pLineEdit_DatabaseLocation = new QLineEdit(this);
     m_pLineEdit_DatabaseLocation->setText(m_pConfig->dbPath);
-    m_pLineEdit_DatabaseLocation->setFixedWidth(600);
+	m_pLineEdit_DatabaseLocation->setReadOnly(true);
+    m_pLineEdit_DatabaseLocation->setFixedWidth(450);
 
     m_pPushButton_DatabaseLocation = new QPushButton(this);
     m_pPushButton_DatabaseLocation->setIcon(style()->standardIcon(QStyle::SP_DirOpenIcon));
@@ -176,8 +177,16 @@ void QPatientSelectionTab::removePatient()
     default:
         return;
     }
-
+	
     int current_row = m_pTableWidget_PatientInformation->currentRow();
+	QString patient_name = m_pTableWidget_PatientInformation->item(current_row, 0)->text();
+
+	foreach(QDialog* pTabView, m_pMainWnd->getVectorTabViews())
+	{
+		if (pTabView->windowTitle().contains(patient_name))
+			m_pMainWnd->removeTabView(pTabView);
+	}
+
     m_pHvnSqlDataBase->queryDatabase(QString("DELETE FROM patients WHERE patient_id='%1'")
                                      .arg(m_pTableWidget_PatientInformation->item(current_row, 1)->text()));
     m_pTableWidget_PatientInformation->removeRow(current_row);
@@ -192,24 +201,27 @@ void QPatientSelectionTab::findDatabaseLocation()
 {
     QString dbPath = QFileDialog::getExistingDirectory(nullptr, "Select Database...", m_pConfig->dbPath,
                                                        QFileDialog::ShowDirsOnly | QFileDialog::DontUseNativeDialog);
+	QString prevDbPath = m_pConfig->dbPath;
     if (dbPath != "")
     {
         m_pLineEdit_DatabaseLocation->setText(dbPath);
 
-        if (!QDir().exists(dbPath + "\\db.sqlite"))
-            m_pHvnSqlDataBase->initializeDatabase();  // DataBase 로케이션을 My Document로 기본적으로 만들게 하기??? QDir::HomeDir 써서...
-
-        loadPatientDatabase();
+		m_pHvnSqlDataBase->closeDatabase();
+		if (m_pHvnSqlDataBase->openDatabase(m_pHvnSqlDataBase->getUserName(), m_pHvnSqlDataBase->getPassword()))
+			loadPatientDatabase();
+		else
+		{
+			m_pLineEdit_DatabaseLocation->setText(prevDbPath);
+			if (m_pHvnSqlDataBase->openDatabase(m_pHvnSqlDataBase->getUserName(), m_pHvnSqlDataBase->getPassword()))
+				loadPatientDatabase();
+		}
     }
-	else
-	{
-		// else인 경우에 어떻게 처리할 지...
-	}
 }
 
 
 void QPatientSelectionTab::loadPatientDatabase()
 {
+	// Get patient database
     m_pTableWidget_PatientInformation->setRowCount(0);
     m_pTableWidget_PatientInformation->setSortingEnabled(false);
 
@@ -261,6 +273,9 @@ void QPatientSelectionTab::loadPatientDatabase()
             m_pTableWidget_PatientInformation->setItem(rowCount, 4, pLastCaseItem);
             m_pTableWidget_PatientInformation->setItem(rowCount, 5, pPhysicianItem);
             m_pTableWidget_PatientInformation->setItem(rowCount, 6, pKeywordsItem);
+
+			if (!QDir().exists(m_pConfig->dbPath + "/record/" + _sqlQuery.value(3).toString()))
+				QDir().mkdir(m_pConfig->dbPath + "/record/" + _sqlQuery.value(3).toString());
 
             rowCount++;
         }

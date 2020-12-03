@@ -11,7 +11,15 @@ HvnSqlDataBase::HvnSqlDataBase(QObject *parent) :
     QObject(parent)
 {
     // Set configuration objects
-    m_pConfig = dynamic_cast<MainWindow*>(parent)->m_pConfiguration;
+	m_pMainWnd = dynamic_cast<MainWindow*>(parent);
+    m_pConfig = m_pMainWnd->m_pConfiguration;
+
+	// Set default database path & check database location is valid
+	if (m_pConfig->dbPath == "")
+	{
+		m_pConfig->dbPath = QDir().homePath() + "/Documents/Havana3";
+		QDir().mkdir(m_pConfig->dbPath);
+	}
 }
 
 HvnSqlDataBase::~HvnSqlDataBase()
@@ -19,63 +27,108 @@ HvnSqlDataBase::~HvnSqlDataBase()
 }
 
 
-void HvnSqlDataBase::openDatabase()
+bool HvnSqlDataBase::openDatabase(const QString& username, const QString& password)
 {    
-    m_sqlDataBase = QSqlDatabase::addDatabase("QSQLITE", "DBConnection");
-    m_sqlDataBase.setDatabaseName(m_pConfig->dbPath + "\\db.sqlite");
-    if (!m_sqlDataBase.open())
-    {
-        QMessageBox MsgBox(QMessageBox::Critical, "Database error", "Failed to open: " + m_sqlDataBase.lastError().text());
-        MsgBox.exec();
-    }
+	m_pMainWnd->setCursor(Qt::WaitCursor);
+	{
+		if (!m_sqlDataBase.isValid())
+		{
+			// Initialize sql database
+			bool init_req = !QDir().exists(m_pConfig->dbPath + "/db.sqlite");
+
+#ifndef ENABLE_DATABASE_ENCRYPTION
+			m_sqlDataBase = QSqlDatabase::addDatabase("SQLITECIPHER", "DBConnection");
+			m_sqlDataBase.setDatabaseName(m_pConfig->dbPath + "/db.sqlite");
+			m_sqlDataBase.setUserName(username);
+			m_sqlDataBase.setPassword(password);
+			m_sqlDataBase.setConnectOptions("QSQLITE_USE_CIPHER=sqlcipher");
+#else
+			m_sqlDataBase = QSqlDatabase::addDatabase("QSQLITE", "DBConnection");
+			m_sqlDataBase.setDatabaseName(m_pConfig->dbPath + "/db.sqlite");
+#endif
+			if (!m_sqlDataBase.open())
+			{
+				QMessageBox MsgBox(QMessageBox::Critical, "Database error", "Failed to open: " + m_sqlDataBase.lastError().text());
+				MsgBox.exec();
+
+				closeDatabase();
+				return false;
+			}
+			else
+			{
+				if (init_req) initializeDatabase();
+
+				m_username = username;
+				m_password = password;
+			}
+		}
+	}
+	m_pMainWnd->setCursor(Qt::ArrowCursor);
+
+	return true;
 }
 
 void HvnSqlDataBase::closeDatabase()
 {
     if (m_sqlDataBase.isOpen())
-    {
         m_sqlDataBase.close();
-        m_sqlDataBase = QSqlDatabase();
-        m_sqlDataBase.removeDatabase("DBConnection");
-    }
+    m_sqlDataBase = QSqlDatabase();
+    m_sqlDataBase.removeDatabase("DBConnection");
 }
 
 void HvnSqlDataBase::initializeDatabase()
 {
-    QFile sql_file("initialize_query.sql");
-    if (sql_file.open(QIODevice::ReadOnly))
-    {
-        QString query_str(sql_file.readAll());
-        QStringList query_str_list = query_str.split(';', QString::SkipEmptyParts);
+	QMessageBox MsgBox(QMessageBox::Information, "Database initialization", "There is no db.sqlite file in the specified path.\nDB initialization begins...");
+	MsgBox.exec();
 
-        foreach (const QString& command, query_str_list)
-            if (command.trimmed() != "")
-                queryDatabase(command);
-        sql_file.close();
-    }
-    else
-    {
-        return; // error
-    }
+	MsgBox.setCursor(Qt::WaitCursor);
+	{
+		QFile sql_file("initialize_query.sql");
+		if (sql_file.open(QIODevice::ReadOnly))
+		{
+			QString query_str(sql_file.readAll());
+			QStringList query_str_list = query_str.split(';', QString::SkipEmptyParts);
+
+			foreach(const QString& command, query_str_list)
+				if (command.trimmed() != "")
+					queryDatabase(command);
+			sql_file.close();
+
+			// Make directory for recorded data
+			if (!QDir().exists(m_pConfig->dbPath + "/record"))
+				QDir().mkdir(m_pConfig->dbPath + "/record");
+		}
+		else
+		{
+			/* 이니셜라이제이션 파일이 없다고 에러 나와야 함. */
+			//return; // error
+		}
+	}
+	m_pMainWnd->setCursor(Qt::ArrowCursor);
 }
 
-bool HvnSqlDataBase::queryDatabase(const QString &command, std::function<void(QSqlQuery &)> const &DidQuery, bool db_opened)
+bool HvnSqlDataBase::queryDatabase(const QString &command, std::function<void(QSqlQuery &)> const &DidQuery, bool db_opened, const QByteArray & preview)
 {
-    if (!db_opened) openDatabase();
+	if (!db_opened) m_sqlDataBase.open();
     {
-        QSqlQuery sqlQuery(m_sqlDataBase);
-        if (!sqlQuery.exec(command))
+		QSqlQuery sqlQuery(m_sqlDataBase);
+
+		sqlQuery.prepare(command);
+		if (preview.size() > 0)
+			sqlQuery.bindValue(":preview", preview);
+
+        if (!sqlQuery.exec())
         {
             QMessageBox MsgBox(QMessageBox::Critical, "Database error", "Failed to query: " + sqlQuery.lastError().text());
             MsgBox.exec();
-            closeDatabase();
+			m_sqlDataBase.close();
             return false;
         }
 
         // Do next thing
         DidQuery(sqlQuery);
     }
-    if (!db_opened) closeDatabase();
+	if (!db_opened) m_sqlDataBase.close(); 
 
     return true;
 }

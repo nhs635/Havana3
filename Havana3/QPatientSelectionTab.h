@@ -37,8 +37,8 @@ private slots:
     void removePatient();
     void editDatabaseLocation(const QString &);
     void findDatabaseLocation();
-
-public:    
+	
+public:
     void loadPatientDatabase();
 
 // Variables ////////////////////////////////////////////

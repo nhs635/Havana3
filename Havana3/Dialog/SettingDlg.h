@@ -6,6 +6,7 @@
 
 
 class Configuration;
+class QPatientSummaryTab;
 class QStreamTab;
 class QResultTab;
 class QViewTab;
@@ -49,7 +50,7 @@ class SettingDlg : public QDialog
 
 // Constructer & Destructer /////////////////////////////
 public:
-    explicit SettingDlg(bool is_streaming = true, QWidget *parent = 0);
+    explicit SettingDlg(QWidget *parent = 0);
     virtual ~SettingDlg();
 
 // Methods //////////////////////////////////////////////
@@ -57,6 +58,7 @@ private:
 	void keyPressEvent(QKeyEvent *e);
 
 public:
+	inline QPatientSummaryTab* getPatientSummaryTab() const { return m_pPatientSummaryTab; }
     inline QStreamTab* getStreamTab() const { return m_pStreamTab; }
     inline QResultTab* getResultTab() const { return m_pResultTab; }
     inline ViewOptionTab* getViewOptionTab() const { return m_pViewOptionTab; }
@@ -67,6 +69,7 @@ public:
 // Variables ////////////////////////////////////////////
 private:	
 	Configuration* m_pConfig;
+	QPatientSummaryTab* m_pPatientSummaryTab;
     QStreamTab* m_pStreamTab;
     QResultTab* m_pResultTab;
     QViewTab* m_pViewTab;

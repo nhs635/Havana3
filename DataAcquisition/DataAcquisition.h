@@ -23,17 +23,19 @@ public:
     virtual ~DataAcquisition();
 
 // Methods //////////////////////////////////////////////
-public: ////////////////////////////////////////////////////////////////////////////////////////////////
+public: 
 	inline SignatecDAQ* getDigitizer() const { return m_pDaq; }
     inline FLImProcess* getFLIm() const { return m_pFLIm; }
 	inline AxsunCapture* getAxsunCapture() const { return m_pAxsunCapture; }
+	inline bool getAcquisitionState() { return m_bAcquisitionState; }
+	inline bool getPauseState() { return m_bIsPaused; }
 
-public: ////////////////////////////////////////////////////////////////////////////////////////////////
+public:
     bool InitializeAcquistion();
     bool StartAcquisition();
-    void StopAcquisition();
+    void StopAcquisition(bool suc_stop);
 
-public: ////////////////////////////////////////////////////////////////////////////////////////////////
+public: 
     void GetBootTimeBufCfg(int idx, int& buffer_size);
     void SetBootTimeBufCfg(int idx, int buffer_size);
     void SetDcOffset(int offset);
@@ -46,14 +48,15 @@ public:
 	void ConnectAxsunAcquiredOctData(const std::function<void(uint32_t, const np::Uint8Array2&)> &slot);
 	void ConnectAxsunStopOctData(const std::function<void(void)> &slot);
 	void ConnectAxsunSendStatusMessage(const std::function<void(const char*, bool)> &slot);
-
+	
 // Variables ////////////////////////////////////////////
-private: ////////////////////////////////////////////////////////////////////////////////////////////////
+private: 
     // Configuration object
     Configuration* m_pConfig;
 
     // Acquisition state flag
     bool m_bAcquisitionState;
+	bool m_bIsPaused;
 
     // Object related to data acquisition
     SignatecDAQ* m_pDaq;

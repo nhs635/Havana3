@@ -6,8 +6,8 @@
 #include <Havana3/MainWindow.h>
 #include <Havana3/Configuration.h>
 #include <Havana3/HvnSqlDataBase.h>
-#include <Havana3/QPatientSummaryTab.h>
 #include <Havana3/QViewTab.h>
+
 #include <Havana3/Dialog/SettingDlg.h>
 //#include <Havana3/Dialog/ExportDlg.h>
 
@@ -127,6 +127,7 @@ void QResultTab::createResultReviewWidgets()
 
 
     // Connect signal and slot
+	connect(this, SIGNAL(getCapture(QByteArray &)), m_pViewTab, SLOT(getCapture(QByteArray &)));
     connect(m_pComboBox_Vessel, SIGNAL(currentIndexChanged(int)), this, SLOT(changeVesselInfo(int)));
     connect(m_pComboBox_Procedure, SIGNAL(currentIndexChanged(int)), this, SLOT(changeProcedureInfo(int)));
     connect(m_pPushButton_Setting, SIGNAL(clicked(bool)), this, SLOT(createSettingDlg()));
@@ -140,9 +141,9 @@ void QResultTab::readRecordData()
 	m_pDataProcessing->startProcessing(m_recordInfo.filename);
 
 	// Make progress dialog
-	QProgressDialog progress("Loading...", "", 0, 100, this);
+	QProgressDialog progress("Loading...", "Cancel", 0, 100, this);
 	connect(m_pDataProcessing, SIGNAL(processedSingleFrame(int)), &progress, SLOT(setValue(int)));
-	//connect(&progress, &QProgressDialog::canceled, [&]() { m_pDataProcessing->m_bAbort = true; });
+	connect(&progress, &QProgressDialog::canceled, [&]() { m_pDataProcessing->m_bAbort = true; });
 	progress.setCancelButton(0);
 	progress.setWindowModality(Qt::WindowModal);
 	progress.setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::CustomizeWindowHint);
@@ -152,7 +153,21 @@ void QResultTab::readRecordData()
 
 	// Abort
 	if (m_pDataProcessing->m_bAbort)
-		m_pMainWnd->removeTabView(this);
+	{
+		std::thread tab_close([&]() {
+			while (1)
+			{
+				int total = (int)m_pMainWnd->getVectorTabViews().size();
+				int current = m_pMainWnd->getTabWidget()->currentIndex() + 1;
+				if (total > current)
+				{
+					emit m_pMainWnd->getTabWidget()->tabCloseRequested(current);
+					break;
+				}
+			}
+		});
+		tab_close.detach();
+	}
 }
 
 void QResultTab::loadRecordInfo()
@@ -194,6 +209,14 @@ void QResultTab::loadPatientInfo()
 	});
 }
 
+void QResultTab::updatePreviewImage()
+{
+	emit getCapture(m_recordInfo.preview);
+
+	QString command = QString("UPDATE records SET preview=:preview WHERE id=%1").arg(m_recordInfo.recordId);
+	m_pHvnSqlDataBase->queryDatabase(command, [&](QSqlQuery &) {}, false, m_recordInfo.preview);
+}
+
 
 void QResultTab::changeVesselInfo(int info)
 {
@@ -215,7 +238,7 @@ void QResultTab::createSettingDlg()
 	// SETTING DIALOG 기능 구현!!!
     if (m_pSettingDlg == nullptr)
     {
-        m_pSettingDlg = new SettingDlg(false, this);
+        m_pSettingDlg = new SettingDlg(this);
         connect(m_pSettingDlg, SIGNAL(finished(int)), this, SLOT(deleteSettingDlg()));
         m_pSettingDlg->show();
     }

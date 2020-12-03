@@ -12,6 +12,8 @@
 #include <Havana3/QStreamTab.h>
 #include <Havana3/QResultTab.h>
 
+#include <DataAcquisition/DataAcquisition.h>
+
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent), m_pStreamTab(nullptr),
@@ -58,8 +60,7 @@ MainWindow::MainWindow(QWidget *parent) :
     // Connect signal and slot
     connect(m_pTabWidget, SIGNAL(currentChanged(int)), this, SLOT(tabCurrentChanged(int)));
     connect(m_pTabWidget, SIGNAL(tabCloseRequested(int)), this, SLOT(tabCloseRequested(int)));
-
-  
+	
 	// Set timer for renew configuration		(여러 가지 타이머 관련 셋팅이 필요하지 않을까요.)
 //	m_pTimer = new QTimer(this);
 //	m_pTimer->start(5 * 60 * 1000); // renew per 5 min
@@ -90,9 +91,6 @@ MainWindow::~MainWindow()
 
 void MainWindow::closeEvent(QCloseEvent *e)
 {
-//	if (m_pStreamTab->getOperationTab()->getAcquisitionButton()->isChecked())
-//		m_pStreamTab->getOperationTab()->setAcquisitionButton(false);   // 여러가지 종료 컨디션
-
     e->accept();
 }
 
@@ -108,24 +106,48 @@ void MainWindow::addTabView(QDialog *pTabView)
 void MainWindow::removeTabView(QDialog *pTabView)
 {
     m_pTabWidget->removeTab(m_pTabWidget->indexOf(pTabView));
-
-//	if (pTabView == m_pStreamTab)    // 스트림 탭 관련 추가.
-//		m_pStreamTab = nullptr;
-
+	
+	if (pTabView == m_pStreamTab)
+		m_pStreamTab = nullptr;
+ 
     m_vectorTabViews.erase(std::find(m_vectorTabViews.begin(), m_vectorTabViews.end(), pTabView));
-
-    delete pTabView;
+	
+	delete pTabView;	
 }
 
 
 void MainWindow::tabCurrentChanged(int index)
 {
+	static int prev_index = 0;
+
+	auto previousTab = m_vectorTabViews.at(prev_index);
     auto currentTab = m_vectorTabViews.at(index);
 
-    if (currentTab == m_pPatientSelectionTab)
-        m_pPatientSelectionTab->loadPatientDatabase();
-    else if (currentTab->windowTitle().contains("Summary"))
-        dynamic_cast<QPatientSummaryTab*>(currentTab)->loadRecordDatabase();
+	if (previousTab == m_pStreamTab)
+	{
+		if (m_pStreamTab->getDataAcquisition()->getAcquisitionState())
+			m_pStreamTab->startLiveImaging(false);
+	}
+	else if (previousTab->windowTitle().contains("Review"))
+	{
+		dynamic_cast<QResultTab*>(previousTab)->updatePreviewImage();
+	}
+
+	if (currentTab == m_pPatientSelectionTab)
+	{
+		m_pPatientSelectionTab->loadPatientDatabase();
+	}
+	else if (currentTab->windowTitle().contains("Summary"))
+	{
+		dynamic_cast<QPatientSummaryTab*>(currentTab)->loadRecordDatabase();
+	}
+	else if (currentTab == m_pStreamTab)
+	{
+		if (m_pStreamTab->getDataAcquisition()->getPauseState())
+			m_pStreamTab->startLiveImaging(true);
+	}
+	
+	prev_index = index;
 }
 
 void MainWindow::tabCloseRequested(int index)
@@ -135,19 +157,66 @@ void MainWindow::tabCloseRequested(int index)
     if (index != 0) // HomeTab & SelectionTab cannot be closed.
     {
 		if (pTabView->windowTitle().contains("Summary"))
-			m_pTabWidget->setCurrentIndex(0);
-		else if (pTabView->windowTitle().contains("Review"))
 		{
-			int index = 0;
+			QMessageBox MsgBox(QMessageBox::Information, "Confirm close", "All relevant tabs will be closed.");
+			MsgBox.setStandardButtons(QMessageBox::Ok | QMessageBox::Cancel);
+			MsgBox.setDefaultButton(QMessageBox::Cancel);
+
+			switch (MsgBox.exec())
+			{
+			case QMessageBox::Ok:
+				break;
+			case QMessageBox::Cancel:
+				return;
+			default:
+				return;
+			}
+
+			int _index = 0;
+			QString patient_name = ((QPatientSummaryTab*)pTabView)->getPatientInfo().patientName;
+			foreach(QDialog* _pTabView, m_vectorTabViews)
+			{				
+				QString window_title = _pTabView->windowTitle();
+				if (window_title.contains(patient_name) && !window_title.contains("Summary"))
+					tabCloseRequested(_index--);
+				_index++;
+			}
+			m_pTabWidget->setCurrentIndex(0);
+		}
+		else if (pTabView->windowTitle().contains("Streaming"))
+		{
+			int _index = 0;
 			foreach(QDialog* _pTabView, m_vectorTabViews)
 			{
 				if (_pTabView->windowTitle().contains("Summary"))
+				{
+					if (_pTabView->windowTitle().contains(((QStreamTab*)pTabView)->getRecordInfo().patientName))
+					{
+						m_pTabWidget->setCurrentIndex(_index);
+						break;
+					}
+				}
+				_index++;
+			}
+		}
+		else if (pTabView->windowTitle().contains("Review"))
+		{
+			int _index = 0;
+			foreach(QDialog* _pTabView, m_vectorTabViews)
+			{
+				if (_pTabView->windowTitle().contains("Summary"))
+				{
 					if (_pTabView->windowTitle().contains(((QResultTab*)pTabView)->getRecordInfo().patientName))
-						m_pTabWidget->setCurrentIndex(index);
-				index++;
+					{
+						m_pTabWidget->setCurrentIndex(_index);
+						break;
+					}
+				}
+				_index++;
 			}
 		}
 
+		qDebug() << pTabView->windowTitle();
 		removeTabView(pTabView);
     }
 }
@@ -170,7 +239,7 @@ void MainWindow::makePatientSummaryTab(int row)
     {
         if (pTabView->windowTitle().contains("Summary"))
         {
-            if (((QPatientSummaryTab*)pTabView)->getPatientId() == patient_id)
+            if (((QPatientSummaryTab*)pTabView)->getPatientInfo().patientId == patient_id)
             {
                 m_pTabWidget->setCurrentWidget(pTabView);
                 return;
@@ -181,26 +250,27 @@ void MainWindow::makePatientSummaryTab(int row)
     QPatientSummaryTab *pPatientSummaryTab = new QPatientSummaryTab(patient_id, this);
     addTabView(pPatientSummaryTab);
 
-    connect(pPatientSummaryTab, SIGNAL(requestNewRecord(QString)), this, SLOT(makeStreamTab(QString)));
-    connect(pPatientSummaryTab, SIGNAL(requestReview(QString)), this, SLOT(makeResultTab(QString)));
+    connect(pPatientSummaryTab, SIGNAL(requestNewRecord(const QString &)), this, SLOT(makeStreamTab(const QString &)));
+    connect(pPatientSummaryTab, SIGNAL(requestReview(const QString &)), this, SLOT(makeResultTab(const QString &)));
 }
 
-void MainWindow::makeStreamTab(QString patient_id)
+void MainWindow::makeStreamTab(const QString& patient_id)
 {
 	if (!m_pStreamTab)
 	{
 		m_pStreamTab = new QStreamTab(patient_id, this);
 		addTabView(m_pStreamTab);
+
+		connect(m_pStreamTab, SIGNAL(requestReview(const QString &)), this, SLOT(makeResultTab(const QString &)));
 	}
 	else
 	{
-		// 스트림 탭 딱 하나만 만들 수 있도록.. 
-		// 탭 안닫고 하면 소유주 바뀌도록..
+		m_pStreamTab->changePatient(patient_id);
 		m_pTabWidget->setCurrentWidget(m_pStreamTab);
 	}
 }
 
-void MainWindow::makeResultTab(QString record_id)
+void MainWindow::makeResultTab(const QString& record_id)
 {
 	foreach(QDialog* pTabView, m_vectorTabViews)
 	{

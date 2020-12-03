@@ -4,6 +4,8 @@
 #include <QtWidgets>
 #include <QtCore>
 
+#include <Havana3/QPatientSummaryTab.h>
+
 
 class MainWindow;
 class Configuration;
@@ -14,18 +16,6 @@ class SettingDlg;
 class ExportDlg;
 
 class DataProcessing;
-
-struct RecordInfo
-{
-    QString recordId;
-    QString patientId;
-    QString patientName;
-    QString title;
-    QString date;
-    int vessel;
-    int procedure;
-    QString filename;
-};
 
 class QResultTab : public QDialog
 {
@@ -53,6 +43,7 @@ public:
     void readRecordData();	
 	void loadRecordInfo();
 	void loadPatientInfo();
+	void updatePreviewImage();
 
 private slots:
     void changeVesselInfo(int);
@@ -61,6 +52,9 @@ private slots:
     void deleteSettingDlg();
     void createExportDlg();
     void deleteExportDlg();
+
+signals:
+	void getCapture(QByteArray &);
 
 // Variables ////////////////////////////////////////////
 private:

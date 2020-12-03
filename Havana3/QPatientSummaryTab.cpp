@@ -1,6 +1,7 @@
 
 #include "QPatientSummaryTab.h"
 
+#include <QFileInfo>
 #include <QSqlQuery>
 #include <QSqlError>
 
@@ -9,10 +10,11 @@
 #include <Havana3/HvnSqlDataBase.h>
 #include <Havana3/QResultTab.h>
 #include <Havana3/Dialog/AddPatientDlg.h>
+#include <Havana3/Dialog/SettingDlg.h>
 
 
 QPatientSummaryTab::QPatientSummaryTab(QString patient_id, QWidget *parent) :
-    QDialog(parent), m_patientId(patient_id), m_pEditPatientDlg(nullptr)
+    QDialog(parent), m_pEditPatientDlg(nullptr), m_pSettingDlg(nullptr)
 {
     // Set title
     setWindowTitle("Patient Summary");
@@ -21,6 +23,7 @@ QPatientSummaryTab::QPatientSummaryTab(QString patient_id, QWidget *parent) :
     m_pMainWnd = dynamic_cast<MainWindow*>(parent);
     m_pConfig = m_pMainWnd->m_pConfiguration;
     m_pHvnSqlDataBase = m_pMainWnd->m_pHvnSqlDataBase;
+	m_patientInfo.patientId = patient_id;
 
     // Create widgets for patient summary view
     createPatientSummaryViewWidgets();
@@ -68,32 +71,52 @@ void QPatientSummaryTab::createPatientSummaryViewWidgets()
     m_pPushButton_NewRecord->setStyleSheet("QPushButton{font-size:12pt; font-weight:bold}");
     m_pPushButton_NewRecord->setFixedSize(180, 35);
 
+	m_pPushButton_Import = new QPushButton(this);
+	m_pPushButton_Import->setText("  Import");
+	m_pPushButton_Import->setIcon(style()->standardIcon(QStyle::SP_DialogOpenButton));
+	m_pPushButton_Import->setFixedSize(130, 25);
+
     m_pPushButton_EditPatient = new QPushButton(this);
     m_pPushButton_EditPatient->setText("  Edit Patient");
     m_pPushButton_EditPatient->setIcon(style()->standardIcon(QStyle::SP_DialogResetButton));
     m_pPushButton_EditPatient->setFixedSize(130, 25);
 
+	m_pPushButton_Setting = new QPushButton(this);
+	m_pPushButton_Setting->setText("  Setting");
+	m_pPushButton_Setting->setIcon(style()->standardIcon(QStyle::SP_FileDialogInfoView));
+	m_pPushButton_Setting->setFixedSize(130, 25);
+
     createPatientSummaryTable();
 
     // Set layout: patient selection view
-    QGridLayout *pGridLayout_PatientSummary = new QGridLayout;
-    pGridLayout_PatientSummary->setSpacing(8);
+    QVBoxLayout *pVBoxLayout_PatientSummary = new QVBoxLayout;
+	pVBoxLayout_PatientSummary->setSpacing(8);
 
-    pGridLayout_PatientSummary->addWidget(m_pLabel_PatientSummary, 0, 0);
-    pGridLayout_PatientSummary->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed), 0, 1);
-    pGridLayout_PatientSummary->addWidget(m_pPushButton_NewRecord, 0, 2, 1, 2);
+	QHBoxLayout *pHBoxLayout_Title = new QHBoxLayout;
+	pHBoxLayout_Title->setSpacing(8);
+	pHBoxLayout_Title->addWidget(m_pLabel_PatientSummary);
+	pHBoxLayout_Title->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed));
+	pHBoxLayout_Title->addWidget(m_pPushButton_NewRecord);
 
-    pGridLayout_PatientSummary->addWidget(m_pLabel_PatientInformation, 1, 0);
-    pGridLayout_PatientSummary->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed), 1, 0, 1, 3);
-    pGridLayout_PatientSummary->addWidget(m_pPushButton_EditPatient, 1, 3);
+	QHBoxLayout *pHBoxLayout_Info = new QHBoxLayout;
+	pHBoxLayout_Info->setSpacing(8);
+	pHBoxLayout_Info->addWidget(m_pLabel_PatientInformation);
+	pHBoxLayout_Info->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed));
+	pHBoxLayout_Info->addWidget(m_pPushButton_Import);
+	pHBoxLayout_Info->addWidget(m_pPushButton_EditPatient);
+	pHBoxLayout_Info->addWidget(m_pPushButton_Setting);
 
-    pGridLayout_PatientSummary->addWidget(m_pTableWidget_RecordInformation, 2, 0, 1, 4);
+	pVBoxLayout_PatientSummary->addItem(pHBoxLayout_Title);
+	pVBoxLayout_PatientSummary->addItem(pHBoxLayout_Info);
+	pVBoxLayout_PatientSummary->addWidget(m_pTableWidget_RecordInformation);
 
-    m_pGroupBox_PatientSummary->setLayout(pGridLayout_PatientSummary);
+    m_pGroupBox_PatientSummary->setLayout(pVBoxLayout_PatientSummary);
 
 
     // Connect signal and slot
+	connect(m_pPushButton_Import, SIGNAL(clicked(bool)), this, SLOT(import()));
     connect(m_pPushButton_EditPatient, SIGNAL(clicked(bool)), this, SLOT(editPatient()));
+	connect(m_pPushButton_Setting, SIGNAL(clicked(bool)), this, SLOT(createSettingDlg()));
     connect(m_pPushButton_NewRecord, SIGNAL(clicked(bool)), this, SLOT(newRecord()));
 }
 
@@ -112,7 +135,7 @@ void QPatientSummaryTab::createPatientSummaryTable()
 
     // Cell items properties
     m_pTableWidget_RecordInformation->setAlternatingRowColors(true);
-    m_pTableWidget_RecordInformation->setSelectionMode(QAbstractItemView::SingleSelection);  // Focus 잃으면 Deselect 되도록 하기
+    m_pTableWidget_RecordInformation->setSelectionMode(QAbstractItemView::SingleSelection);  /////////////////////// Focus 잃으면 Deselect 되도록 하기
     m_pTableWidget_RecordInformation->setEditTriggers(QAbstractItemView::NoEditTriggers);
     m_pTableWidget_RecordInformation->setSelectionBehavior(QAbstractItemView::SelectRows);
     m_pTableWidget_RecordInformation->setTextElideMode(Qt::ElideRight);
@@ -146,14 +169,42 @@ void QPatientSummaryTab::createPatientSummaryTable()
 
 void QPatientSummaryTab::newRecord()
 {
-    emit requestNewRecord(m_patientId);
+    emit requestNewRecord(m_patientInfo.patientId);
+}
+
+void QPatientSummaryTab::import()
+{
+	QString fileName = QFileDialog::getOpenFileName(nullptr, "Import external FLIm OCT data", "", "FLIm OCT raw data (*.data)");
+	
+	// Get path to read	
+	if (fileName != "")
+	{
+		// Set record information
+		RecordInfo record_info;
+
+		record_info.patientId = m_patientInfo.patientId;
+		record_info.patientName = m_patientInfo.patientName;
+		record_info.filename = fileName;
+		record_info.date = QFileInfo(record_info.filename).lastModified().toString("yyyy-MM-dd hh:mm:ss");
+
+		// Add to database
+		QString command = QString("INSERT INTO records(patient_id, datetime_taken, title, filename, procedure_id, vessel_id) "
+			"VALUES('%1', '%2', '%3', '%4', %5, %6)").arg(record_info.patientId).arg(record_info.date)
+			.arg(record_info.title).arg(record_info.filename).arg(record_info.procedure).arg(record_info.vessel);
+		m_pHvnSqlDataBase->queryDatabase(command);
+
+		loadRecordDatabase();
+
+		QMessageBox MsgBox(QMessageBox::Information, "Import", "Successfully imported!");
+		MsgBox.exec();
+	}
 }
 
 void QPatientSummaryTab::editPatient()
 {
     if (m_pEditPatientDlg == nullptr)
     {
-        m_pEditPatientDlg = new AddPatientDlg(this, m_patientId);
+        m_pEditPatientDlg = new AddPatientDlg(this, m_patientInfo.patientId);
         connect(m_pEditPatientDlg, SIGNAL(finished(int)), this, SLOT(deleteEditPatientDlg()));
         m_pEditPatientDlg->setModal(true);
         m_pEditPatientDlg->exec();
@@ -163,6 +214,24 @@ void QPatientSummaryTab::editPatient()
 void QPatientSummaryTab::deleteEditPatientDlg()
 {
     m_pEditPatientDlg = nullptr;
+}
+
+void QPatientSummaryTab::createSettingDlg()
+{
+	if (m_pSettingDlg == nullptr)
+	{
+		m_pSettingDlg = new SettingDlg(this);
+		connect(m_pSettingDlg, SIGNAL(finished(int)), this, SLOT(deleteSettingDlg()));
+		m_pSettingDlg->show();
+	}
+	m_pSettingDlg->raise();
+	m_pSettingDlg->activateWindow();
+}
+
+void QPatientSummaryTab::deleteSettingDlg()
+{
+	m_pSettingDlg->deleteLater();
+	m_pSettingDlg = nullptr;
 }
 
 
@@ -208,7 +277,7 @@ void QPatientSummaryTab::finishedModifyRecordComment(QTableWidgetItem* item)
 //    }
 }
 
-void QPatientSummaryTab::deleteRecordData(QString record_id)
+void QPatientSummaryTab::deleteRecordData(const QString& record_id)
 {
 	QMessageBox MsgBox(QMessageBox::Question, "Confirm delete", "Do you want to remove the recorded data?");
 	MsgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
@@ -237,6 +306,12 @@ void QPatientSummaryTab::deleteRecordData(QString record_id)
 			{
 				if (m_pTableWidget_RecordInformation->item(i, 2)->text() == datetime)
 				{
+					foreach(QDialog* pTabView, m_pMainWnd->getVectorTabViews())
+					{
+						if (pTabView->windowTitle().contains(datetime))
+							m_pMainWnd->removeTabView(pTabView);
+					}
+
 					current_row = i;
 					break;
 				}
@@ -251,21 +326,21 @@ void QPatientSummaryTab::deleteRecordData(QString record_id)
 
 void QPatientSummaryTab::loadPatientInformation()
 {
-    QString command = QString("SELECT * FROM patients WHERE patient_id=%1").arg(m_patientId);
+    QString command = QString("SELECT * FROM patients WHERE patient_id=%1").arg(m_patientInfo.patientId);
 
     m_pHvnSqlDataBase->queryDatabase(command, [&](QSqlQuery& _sqlQuery) {
         while (_sqlQuery.next())
         {
-			QString patient_name = _sqlQuery.value(1).toString() + ", " + _sqlQuery.value(0).toString();
+			m_patientInfo.patientName = _sqlQuery.value(1).toString() + ", " + _sqlQuery.value(0).toString();
             m_pLabel_PatientInformation->setText(QString("&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>%1</b>"
                                                          "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>ID:</b> %2"
                                                          "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>DOB:</b> %3"
                                                          "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>Gender:</b> %4").
-                                                         arg(patient_name).
+                                                         arg(m_patientInfo.patientName).
                                                          arg(_sqlQuery.value(3).toString()).
                                                          arg(_sqlQuery.value(4).toString()).
                                                          arg(m_pHvnSqlDataBase->getGender(_sqlQuery.value(5).toInt())));			
-			QString title = QString("Patient Summary: %1").arg(patient_name);
+			QString title = QString("Patient Summary: %1").arg(m_patientInfo.patientName);
             setWindowTitle(title);
 
 			// Set current tab title
@@ -293,7 +368,7 @@ void QPatientSummaryTab::loadRecordDatabase()
     m_pTableWidget_RecordInformation->setRowCount(0);
     m_pTableWidget_RecordInformation->setSortingEnabled(false);
 
-    QString command = QString("SELECT * FROM records WHERE patient_id=%1").arg(m_patientId);
+    QString command = QString("SELECT * FROM records WHERE patient_id=%1").arg(m_patientInfo.patientId);
 
     m_pHvnSqlDataBase->queryDatabase(command, [&](QSqlQuery& _sqlQuery) {
 
@@ -332,11 +407,20 @@ void QPatientSummaryTab::loadRecordDatabase()
             pWidget_Delete->setLayout(pHBoxLayout_Delete);
 
             QByteArray previewByteArray = _sqlQuery.value(4).toByteArray();
-            QPixmap previewImage = QPixmap();
-            previewImage.loadFromData(previewByteArray);
+			if (previewByteArray.size() > 0)
+			{
+				QPixmap previewImage = QPixmap();
+				previewImage.loadFromData(previewByteArray, "bmp", Qt::ColorOnly);
+				pPreviewItem->setData(Qt::DecorationRole, previewImage);
+			}
+			else
+			{
+				pPreviewItem->setText("No Preview Image"); 
+				pPreviewItem->setTextAlignment(Qt::AlignCenter);
+				pPreviewItem->setTextColor(QColor(128, 128, 128));
+			}
 
-            pTitleItem->setText(_sqlQuery.value(7).toString()); pTitleItem->setTextAlignment(Qt::AlignCenter);
-            pPreviewItem->setData(Qt::DecorationRole, previewImage.scaled(144, 144));
+            pTitleItem->setText(_sqlQuery.value(7).toString()); pTitleItem->setTextAlignment(Qt::AlignCenter);            
             pDateTimeItem->setText(_sqlQuery.value(3).toString()); pDateTimeItem->setTextAlignment(Qt::AlignCenter);
             pVesselItem->setText(m_pHvnSqlDataBase->getVessel(_sqlQuery.value(12).toInt())); pVesselItem->setTextAlignment(Qt::AlignCenter);
             pProcedureItem->setText(m_pHvnSqlDataBase->getProcedure(_sqlQuery.value(11).toInt())); pProcedureItem->setTextAlignment(Qt::AlignCenter);

@@ -7,6 +7,7 @@
 
 class MainWindow;
 class Configuration;
+class HvnSqlDataBase;
 
 class QHomeTab : public QDialog
 {
@@ -37,6 +38,7 @@ signals:
 private:
     MainWindow* m_pMainWnd;
     Configuration* m_pConfig;
+	HvnSqlDataBase* m_pHvnSqlDataBase;
 
 private:
 	// Widgets for sign-in view

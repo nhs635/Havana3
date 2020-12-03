@@ -2,6 +2,7 @@
 #include "SettingDlg.h"
 
 #include <Havana3/MainWindow.h>
+#include <Havana3/QPatientSummaryTab.h>
 #include <Havana3/QStreamTab.h>
 #include <Havana3/QResultTab.h>
 #include <Havana3/QViewTab.h>
@@ -12,8 +13,8 @@
 #include <Havana3/Dialog/PulseReviewTab.h>
 
 
-SettingDlg::SettingDlg(bool is_streaming, QWidget *parent) :
-    QDialog(parent)
+SettingDlg::SettingDlg(QWidget *parent) :
+    QDialog(parent), m_pPatientSummaryTab(nullptr), m_pStreamTab(nullptr), m_pResultTab(nullptr), m_pViewTab(nullptr)
 {
     // Set default size & frame
     setFixedSize(650, 350);
@@ -21,22 +22,35 @@ SettingDlg::SettingDlg(bool is_streaming, QWidget *parent) :
     setWindowTitle("Setting");
 
     // Set main window objects
-    if (is_streaming)
+	QString parent_name, parent_title = parent->windowTitle();
+	if (parent_title.contains("Summary"))
+	{
+		parent_name = "Summary";
+		m_pPatientSummaryTab = dynamic_cast<QPatientSummaryTab*>(parent);
+		m_pConfig = m_pPatientSummaryTab->getMainWnd()->m_pConfiguration;
+
+		m_pDeviceOptionTab = new DeviceOptionTab(parent);
+	}
+	else if (parent_title.contains("Streaming"))
     {
+		parent_name = "Streaming";
         m_pStreamTab = dynamic_cast<QStreamTab*>(parent);
         m_pConfig = m_pStreamTab->getMainWnd()->m_pConfiguration;
+
+		m_pViewOptionTab = new ViewOptionTab(true, this);
+		m_pDeviceOptionTab = new DeviceOptionTab(parent);
+		m_pFlimCalibTab = new FlimCalibTab(this);
     }
-    else
+    else if (parent_title.contains("Review"))
     {
+		parent_name = "Review";
         m_pResultTab = (QResultTab*)parent;
         m_pConfig = m_pResultTab->getMainWnd()->m_pConfiguration;
+
+		m_pViewOptionTab = new ViewOptionTab(false, this);
+		m_pDeviceOptionTab = new DeviceOptionTab(parent);
     }
-
-    // Create option tabs
-    m_pViewOptionTab = new ViewOptionTab(is_streaming, this);
-    m_pDeviceOptionTab = new DeviceOptionTab(is_streaming, this);
-    if (is_streaming) m_pFlimCalibTab = new FlimCalibTab(this);
-
+	
 	// Create widgets
     m_pTabWidget_Setting = new QTabWidget(this);
     m_pTabWidget_Setting->setTabPosition(QTabWidget::West);
@@ -44,12 +58,12 @@ SettingDlg::SettingDlg(bool is_streaming, QWidget *parent) :
     m_pTabWidget_Setting->tabBar()->setStyleSheet("QTabBar::tab { background-color: #2a2a2a; color: #808080 }"
                                                   "QTabBar::tab::selected { background-color: #424242; color: #ffffff }");
 
-    m_pTabWidget_Setting->addTab(m_pViewOptionTab->getLayoutBox(), "Visualization");
+    if (parent_name != "Summary") m_pTabWidget_Setting->addTab(m_pViewOptionTab->getLayoutBox(), "Visualization");
     m_pTabWidget_Setting->addTab(m_pDeviceOptionTab->getHelicalScanLayoutBox(), "Motor Control");
     m_pTabWidget_Setting->addTab(m_pDeviceOptionTab->getFlimSystemLayoutBox(), "FLIm System");
     m_pTabWidget_Setting->addTab(m_pDeviceOptionTab->getAxsunOCTSystemLayoutBox(), "Axsun OCT System");
-    if (is_streaming) m_pTabWidget_Setting->addTab(m_pFlimCalibTab->getLayoutBox(), "FLIm Calibration");
-    if (!is_streaming) m_pTabWidget_Setting->addTab(new QWidget(this), "FLIm Pulse Review");
+    if (parent_name == "Streaming") m_pTabWidget_Setting->addTab(m_pFlimCalibTab->getLayoutBox(), "FLIm Calibration");
+    if (parent_name == "Review") m_pTabWidget_Setting->addTab(new QWidget(this), "FLIm Pulse Review");
     m_pTabWidget_Setting->addTab(new QWidget(this), "Log");
 
     m_pPushButton_Ok = new QPushButton(this);

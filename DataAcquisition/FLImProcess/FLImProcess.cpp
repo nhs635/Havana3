@@ -141,18 +141,18 @@ void FLImProcess::loadMaskData(QString maskpath)
             }
         }
 
-		SendStatusMessage("[FLIm AF Mask]");
+		///SendStatusMessage("[FLIm AF Mask]", false);
 
-		for (int i = 0; i < 4; i++)
-		{
-			char msg[256];
-			sprintf(msg, "mask %d: [%d %d]", i + 1, _resize.start_ind[i], _resize.end_ind[i]);
-			SendStatusMessage(msg);
-		}
+		///for (int i = 0; i < 4; i++)
+		///{
+		///	char msg[256];
+		///	sprintf(msg, "mask %d: [%d %d]", i + 1, _resize.start_ind[i], _resize.end_ind[i]);
+		///	//SendStatusMessage(msg, false);
+		///}
 
 		if ((start_count == 4) && (end_count == 4))
-			SendStatusMessage("Proper mask is selected!!");
+			SendStatusMessage("[FLImProcess - Load AF Mask] Proper mask is selected!!", false);
         else
-			SendStatusMessage("Improper mask: please modify the mask!");
+			SendStatusMessage("[FLImProcess - Load AF Mask] Improper mask: please modify the mask!", false);
     }
 }

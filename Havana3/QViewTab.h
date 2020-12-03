@@ -62,17 +62,20 @@ public slots:
     void visualizeLongiImage(int aline);
 
 private slots:
-    void constructRgbImage(ImageObject*, ImageObject*, ImageObject*, ImageObject*);
+    void constructCircImage();
 	void play(bool);
 	void measureDistance(bool);
 	void changeEmissionChannel(int);
 
 private:
 	void circShift(np::Uint8Array2& image, int shift);
+
+public slots:
+	void getCapture(QByteArray &);
 	
 signals:
 	void drawImage(uint8_t*, float*, float*);
-	void makeRgb(ImageObject*, ImageObject*, ImageObject*, ImageObject*);
+	void makeCirc(void);
 	void paintCircImage(uint8_t*);
 	void paintEnFaceMap(uint8_t*);
     void paintLongiImage(uint8_t*);
@@ -109,13 +112,9 @@ private:
 	ImageObject* m_pImgObjOctProjection;
 	ImageObject *m_pImgObjIntensityMap;
 	ImageObject *m_pImgObjLifetimeMap;
-	ImageObject *m_pImgObjIntensityWeightedLifetimeMap;
 
     // Image visualization buffers - longitudinal
     ImageObject *m_pImgObjLongiImage;
-    ImageObject *m_pImgObjLongiIntensity;
-    ImageObject *m_pImgObjLongiLifetime;
-    ImageObject *m_pImgObjLongiIntensityWeightedLifetime;
 
 private:
 	circularize* m_pCirc;
@@ -134,18 +133,12 @@ private:
     QImageView *m_pImageView_EnFace;
     QImageView *m_pImageView_Longi;
     QImageView *m_pImageView_ColorBar;
-
-	QLabel *m_pLabel_EnFace;
-	QLabel *m_pLabel_Longi;
-	QLabel *m_pLabel_ColorBar;
-
+	
 	// Navigation widgets
     QPushButton *m_pToggleButton_Play;
     QPushButton *m_pPushButton_Decrement;
     QPushButton *m_pPushButton_Increment;
-
 	QSlider *m_pSlider_SelectFrame;
-	QLabel *m_pLabel_SelectFrame;
 
     // View option widgets
     QPushButton *m_pToggleButton_MeasureDistance;

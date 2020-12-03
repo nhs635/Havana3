@@ -25,10 +25,10 @@ public:
     virtual ~DeviceControl();
 
 // Methods //////////////////////////////////////////////
-public: ////////////////////////////////////////////////////////////////////////////////////////////////
-	void setControlsStatus();
+public:
+	void setAllDeviceOff();
 
-public: ////////////////////////////////////////////////////////////////////////////////////////////////
+public: 
 	inline PullbackMotor* getPullbackMotor() const { return m_pPullbackMotor; }
     inline RotaryMotor* getRotatyMotor() const { return m_pRotaryMotor; }
     inline FreqDivider* getFlimFreqDivider() const { return m_pFlimFreqDivider; }
@@ -41,19 +41,8 @@ public: ////////////////////////////////////////////////////////////////////////
         return (m_pFlimFreqDivider != nullptr) && (m_pElforlightLaser != nullptr); //  && (m_pAxsunFreqDivider != nullptr)
 	}
     inline bool isOctSystemInitialized() const { return (m_pAxsunControl != nullptr); }
-
-//public: ////////////////////////////////////////////////////////////////////////////////////////////////
-	// Helical Scanning Control
-//	void setHelicalScanningControl(bool);
-//	bool isPullbackMotorEnabled() { return m_pPullbackMotor != nullptr; }
-//	bool isRotaryMotorEnabled() { return m_pRotaryMotor != nullptr; }
-	// FLIm Control
-//	void setFlimControl(bool);
-	// Axsun OCT Control
-//	void setAxsunControl(bool);
-
 	
-public: /////////////////////////////////////////////////////////////////////////////////////////
+public: 
     // Helical Scanning Control
 	bool connectPullbackMotor(bool);
 	void moveAbsolute();
@@ -91,7 +80,7 @@ public: ////////////////////////////////////////////////////////////////////////
 	void setClockDelay(double);
 	void setVDLLength(double);
 	void setVDLHome();
-    void adjustDecibelRange();
+    void adjustDecibelRange(double, double);
     void requestOctStatus();
 //	void setVDLWidgets(bool);
 	
@@ -99,7 +88,7 @@ signals:
 	void transferAxsunArray(int);
 
 // Variables ////////////////////////////////////////////
-private: ////////////////////////////////////////////////////////////////////////////////////////////////
+private:
     // Configuration object
     Configuration* m_pConfig;
 

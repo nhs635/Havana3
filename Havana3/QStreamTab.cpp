@@ -4,7 +4,6 @@
 #include <QSqlQuery>
 
 #include <Havana3/MainWindow.h>
-#include <Havana3/Configuration.h>
 #include <Havana3/HvnSqlDataBase.h>
 #include <Havana3/QViewTab.h>
 #include <Havana3/Dialog/SettingDlg.h>
@@ -15,6 +14,9 @@
 
 #include <MemoryBuffer/MemoryBuffer.h>
 #include <DeviceControl/DeviceControl.h>
+#include <DeviceControl/FaulhaberMotor/RotaryMotor.h>
+#include <DeviceControl/FaulhaberMotor/PullbackMotor.h>
+#include <DeviceControl/AxsunControl/AxsunControl.h>
 
 #include <iostream>
 #include <thread>
@@ -28,7 +30,7 @@
 
 
 QStreamTab::QStreamTab(QString patient_id, QWidget *parent) :
-    QDialog(parent), m_patientId(patient_id), m_pSettingDlg(nullptr)
+    QDialog(parent), m_pSettingDlg(nullptr)
 {
 	// Set main window objects
     m_pMainWnd = dynamic_cast<MainWindow*>(parent);
@@ -37,6 +39,7 @@ QStreamTab::QStreamTab(QString patient_id, QWidget *parent) :
 
     // Create widgets for live streaming view
     createLiveStreamingViewWidgets();
+	changePatient(patient_id);
 
     // Create data acquisition object
     m_pDataAcquisition = new DataAcquisition(m_pConfig);
@@ -58,6 +61,8 @@ QStreamTab::QStreamTab(QString patient_id, QWidget *parent) :
 
     // Create memory buffer object
     m_pMemoryBuffer = new MemoryBuffer(this);
+	connect(m_pMemoryBuffer, &MemoryBuffer::finishedBufferAllocation, [&]() { m_pToggleButton_StartPullback->setEnabled(true); });
+	connect(m_pMemoryBuffer, &MemoryBuffer::finishedWritingThread, [&]() { emit requestReview(m_recordInfo.recordId); });
 
     // Create device control object
     m_pDeviceControl = new DeviceControl(m_pConfig);
@@ -70,20 +75,18 @@ QStreamTab::QStreamTab(QString patient_id, QWidget *parent) :
 
     this->setLayout(pHBoxLayout);
 
-    // Initialize & start live streaming
-    if (enableDataAcquisition(true))
-        qDebug() << "data acq";
-    if (enableMemoryBuffer(true))
-        qDebug() << "mem buff";
-    if (enableDeviceControl(true))
-        qDebug() << "device control";
-
+    // Initialize & start live streaming	
+	//startLiveImaging(true);
 }
 
 QStreamTab::~QStreamTab()
 {
 	if (m_pThreadVisualization) delete m_pThreadVisualization;
 	if (m_pThreadFlimProcess) delete m_pThreadFlimProcess;
+
+#ifdef DEVELOPER_MODE
+	m_pSyncMonitorTimer->stop();
+#endif
 }
 
 
@@ -103,20 +106,6 @@ void QStreamTab::createLiveStreamingViewWidgets()
     m_pGroupBox_LiveStreaming->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Expanding);
 
     m_pLabel_PatientInformation = new QLabel(this);
-    {
-        QString command = QString("SELECT * FROM patients WHERE patient_id=%1").arg(m_patientId);
-
-        m_pHvnSqlDataBase->queryDatabase(command, [&](QSqlQuery& _sqlQuery) {
-            while (_sqlQuery.next())
-            {
-                m_pLabel_PatientInformation->setText(QString("<b>%1</b>"
-                                                             "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>ID:</b> %2").
-                                                             arg(_sqlQuery.value(1).toString() + ", " + _sqlQuery.value(0).toString()).
-                                                             arg(_sqlQuery.value(3).toString()));
-                setWindowTitle(QString("Live Streaming: %1").arg(_sqlQuery.value(1).toString() + ", " + _sqlQuery.value(0).toString()));
-            }
-        });
-    }
     m_pLabel_PatientInformation->setStyleSheet("QLabel{font-size:12pt}");
 
     m_pViewTab = new QViewTab(true, this);
@@ -146,11 +135,22 @@ void QStreamTab::createLiveStreamingViewWidgets()
     m_pToggleButton_StartPullback->setIcon(style()->standardIcon(QStyle::SP_ArrowRight));
     m_pToggleButton_StartPullback->setStyleSheet("QPushButton{font-size:12pt; font-weight:bold; color:black; background-color:#00ff00}");
     m_pToggleButton_StartPullback->setFixedSize(180, 35);
+	//m_pToggleButton_StartPullback->setDisabled(true);
 
     m_pPushButton_Setting = new QPushButton(this);
     m_pPushButton_Setting->setText("  Setting");
     m_pPushButton_Setting->setIcon(style()->standardIcon(QStyle::SP_FileDialogInfoView));
     m_pPushButton_Setting->setFixedSize(100, 25);
+
+#ifdef DEVELOPER_MODE
+	m_pLabel_StreamingSyncStatus = new QLabel(this);
+	m_pLabel_StreamingSyncStatus->setFixedSize(80, 200);
+	m_pLabel_StreamingSyncStatus->setAlignment(Qt::AlignTop | Qt::AlignLeft);
+	
+	m_pSyncMonitorTimer = new QTimer(this);
+	m_pSyncMonitorTimer->start(1000);
+	connect(m_pSyncMonitorTimer, SIGNAL(timeout()), this, SLOT(onTimerSyncMonitor()));
+#endif
 
     // Set layout: live streaming view
     QVBoxLayout *pVBoxLayout_LiveStreaming = new QVBoxLayout;
@@ -182,6 +182,7 @@ void QStreamTab::createLiveStreamingViewWidgets()
 
 
     // Connect signal and slot
+	connect(this, SIGNAL(getCapture(QByteArray &)), m_pViewTab, SLOT(getCapture(QByteArray &)));
     connect(m_pScrollBar_CatheterCalibration, SIGNAL(valueChanged(int)), this, SLOT(scrollCatheterCalibration(int)));
     connect(m_pToggleButton_EnableRotation, SIGNAL(toggled(bool)), this, SLOT(enableRotation(bool)));
     connect(m_pToggleButton_StartPullback, SIGNAL(toggled(bool)), this, SLOT(startPullback(bool)));
@@ -189,41 +190,101 @@ void QStreamTab::createLiveStreamingViewWidgets()
 }
 
 
-void QStreamTab::changeTab(bool status)
+void QStreamTab::changePatient(QString patient_id)
 {
-//	if (status) // result -> stream
-//		m_pViewTab->setWidgetsValue();
-//	else // stream -> result
-//	{
-//		m_pOperationTab->setWidgetsStatus();
-//		m_pDeviceControlTab->setControlsStatus();
-//	}
+	m_recordInfo.patientId = patient_id;
 
-    //	if (m_pDeviceControlTab->getFlimCalibDlgDlg()) m_pDeviceControlTab->getFlimCalibDlgDlg()->close();
+	QString command = QString("SELECT * FROM patients WHERE patient_id=%1").arg(m_recordInfo.patientId);
+
+	m_pHvnSqlDataBase->queryDatabase(command, [&](QSqlQuery& _sqlQuery) {
+		while (_sqlQuery.next())
+		{
+			m_recordInfo.patientName = _sqlQuery.value(1).toString() + ", " + _sqlQuery.value(0).toString();
+			m_pLabel_PatientInformation->setText(QString("<b>%1</b>"
+				"&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>ID:</b> %2").
+				arg(m_recordInfo.patientName).
+				arg(m_recordInfo.patientId));
+			QString title = QString("Live Streaming: %1").arg(m_recordInfo.patientName);
+			setWindowTitle(title);
+			
+			// Set tab titles
+			int index = 0;
+			foreach(QDialog* pTabView, m_pMainWnd->getVectorTabViews())
+			{
+				if (pTabView->windowTitle().contains("Streaming"))
+					m_pMainWnd->getTabWidget()->setTabText(index, this->windowTitle());
+				index++;
+			}
+
+		}
+	});
 }
+
+
+bool QStreamTab::startLiveImaging(bool start)
+{
+	if (start)
+	{
+		QMessageBox msg_box(QMessageBox::NoIcon, "Live Streaming", "Hardware Initialization...", QMessageBox::NoButton);
+		msg_box.setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::CustomizeWindowHint);
+		msg_box.setStandardButtons(0);
+		QTimer timer(this);
+		timer.start(1500);
+		connect(&timer, SIGNAL(timeout()), &msg_box, SLOT(close()));
+		msg_box.show();
+		
+		if (!enableDataAcquisition(true) || !enableMemoryBuffer(true) || !enableDeviceControl(true))
+		{
+			std::thread tab_close([&]() {
+				while (1)
+				{
+					int total = (int)m_pMainWnd->getVectorTabViews().size();
+					int current = m_pMainWnd->getTabWidget()->currentIndex() + 1;
+					if (total > current)
+					{
+						emit m_pMainWnd->getTabWidget()->tabCloseRequested(current);
+						break;
+					}
+				}
+			});
+			tab_close.detach();
+			
+			return false;
+		}
+	}
+	else
+	{
+		enableDeviceControl(false);
+		enableDataAcquisition(false);
+	}
+
+	return true;
+}
+
 
 bool QStreamTab::enableDataAcquisition(bool enabled)
 {
+	bool is_success = !enabled;
     if (enabled) // Enable data acquisition object
-    {
-        if (m_pDataAcquisition->InitializeAcquistion())
+    {		
+        if ((is_success = m_pDataAcquisition->InitializeAcquistion()))
         {
             // Start thread process
             m_pThreadVisualization->startThreading();
             m_pThreadFlimProcess->startThreading();
 
-            // Start data acquisition
-            if (m_pDataAcquisition->StartAcquisition())
+            // Start data acquisition			
+            if ((is_success = m_pDataAcquisition->StartAcquisition()))
                 return true;
         }
     }
 
     // Disable data acquisition object
-    m_pDataAcquisition->StopAcquisition();
+    m_pDataAcquisition->StopAcquisition(is_success);
     m_pThreadFlimProcess->stopThreading();
     m_pThreadVisualization->stopThreading();
 
-    return enabled ? false : true;
+	return enabled ? false : true;
 }
 
 bool QStreamTab::enableMemoryBuffer(bool enabled)
@@ -235,35 +296,46 @@ bool QStreamTab::enableMemoryBuffer(bool enabled)
         });
         allocate_writing_buffer.detach();
     }
-    else
-    {
-//        std::thread deallocate_writing_buffer([&]() {
-//            m_pMemoryBuffer->de allocateWritingBuffer();
-//        });
-//        allocate_writing_buffer.detach();
-    }
 
     return true;
 }
 
 bool QStreamTab::enableDeviceControl(bool enabled)
 {
-    // Set helical scanning control
-    if (!m_pDeviceControl->connectPullbackMotor(enabled)) return false;
-    if (!m_pDeviceControl->connectRotaryMotor(enabled)) return false;
+	if (enabled)
+	{
+		// Set recording - pullback synchronization			
+		m_pMemoryBuffer->DidPullback += [&]() {
+			m_pDeviceControl->getPullbackMotor()->DidRotateEnd += [&]() { startPullback(false);	};
+			m_pDeviceControl->pullback();
+		};
+		
+		// Set FLIm system control
+		std::this_thread::sleep_for(std::chrono::milliseconds(200));
+		if (!m_pDeviceControl->applyPmtGainVoltage(true)) return false;
+		if (!m_pDeviceControl->connectFlimLaser(true)) return false;
 
-    // Set FLIm system control
-    if (enabled) std::this_thread::sleep_for(std::chrono::milliseconds(200));
-    if (!m_pDeviceControl->applyPmtGainVoltage(enabled)) return false;
-    if (!m_pDeviceControl->connectFlimLaser(enabled)) return false;
+		// Set OCT system control
+		std::this_thread::sleep_for(std::chrono::milliseconds(200));
+		if (!m_pDeviceControl->connectAxsunControl(true)) return false;
 
-    // Set OCT system control
-    if (enabled) std::this_thread::sleep_for(std::chrono::milliseconds(200));
-    if (!m_pDeviceControl->connectAxsunControl(enabled)) return false;
+		// Set master synchronization control
+		std::this_thread::sleep_for(std::chrono::milliseconds(200));
+		if (!m_pDeviceControl->startSynchronization(true)) return false;
 
-    // Set master synchronization control
-    if (enabled) std::this_thread::sleep_for(std::chrono::milliseconds(200));
-    if (!m_pDeviceControl->startSynchronization(enabled)) return false;
+		// Set master trigger generation + Axsun imaging mode on
+		m_pDeviceControl->setLiveImaging(true);
+		m_pDeviceControl->setLightSource(true);
+	}
+	else
+	{
+		// Turn off the master trigger generation
+		m_pDeviceControl->setLightSource(false);
+		m_pDeviceControl->setLiveImaging(false);
+
+		// Turn off all the devices
+		m_pDeviceControl->setAllDeviceOff();
+	}
 
     return true;
 }
@@ -271,8 +343,6 @@ bool QStreamTab::enableDeviceControl(bool enabled)
 
 void QStreamTab::setFlimAcquisitionCallback()
 {
-//    DataAcquisition* pDataAcq = m_pOperationTab->getDataAcq();
-//	MemoryBuffer* pMemBuff = m_pOperationTab->getMemBuff();
     m_pDataAcquisition->ConnectDaqAcquiredFlimData([&](int frame_count, const np::Array<uint16_t, 2>& frame) {
 
         // Data transfer
@@ -333,8 +403,7 @@ void QStreamTab::setFlimAcquisitionCallback()
 			else
 			{
 				// Finish recording when the buffer is full
-                m_pMemoryBuffer->m_bIsRecording = false;
-//				m_pOperationTab->setRecordingButton(false);
+				m_pMemoryBuffer->stopRecording();
 			}
 		}
     });
@@ -344,9 +413,11 @@ void QStreamTab::setFlimAcquisitionCallback()
     });
 
     m_pDataAcquisition->ConnectDaqSendStatusMessage([&](const char * msg, bool is_error) {
-//		if (is_error) m_pOperationTab->setAcquisitionButton(false);
-		QString qmsg = QString::fromUtf8(msg);
-//		emit sendStatusMessage(qmsg, is_error);
+		if (is_error)
+		{
+			enableDeviceControl(false);
+			enableDataAcquisition(false);
+		}
     });
 }
 
@@ -416,16 +487,16 @@ void QStreamTab::setFlimProcessingCallback()
     };
 
     m_pThreadFlimProcess->SendStatusMessage += [&](const char* msg, bool is_error) {
-//		if (is_error) m_pOperationTab->setAcquisitionButton(false);
-        QString qmsg = QString::fromUtf8(msg);
-//        emit sendStatusMessage(qmsg, is_error);
+		if (is_error)
+		{
+			enableDeviceControl(false);
+			enableDataAcquisition(false);
+		}
     };
 }
 
 void QStreamTab::setOctProcessingCallback()
 {
-//	DataAcquisition* pDataAcq = m_pOperationTab->getDataAcq();
-//	MemoryBuffer* pMemBuff = m_pOperationTab->getMemBuff();
     m_pDataAcquisition->ConnectAxsunAcquiredOctData([&](uint32_t frame_count, const np::Uint8Array2& frame) {
 				
         // Mirroring
@@ -497,9 +568,11 @@ void QStreamTab::setOctProcessingCallback()
     });
 
     m_pDataAcquisition->ConnectAxsunSendStatusMessage([&](const char * msg, bool is_error) {
-//		if (is_error) m_pOperationTab->setAcquisitionButton(false);
-        QString qmsg = QString::fromUtf8(msg);
-//        emit sendStatusMessage(qmsg, is_error);
+		if (is_error)
+		{
+			enableDeviceControl(false);
+			enableDataAcquisition(false);
+		}
     });
 }
 
@@ -514,7 +587,7 @@ void QStreamTab::setVisualizationCallback()
         if ((flim_data != nullptr) && (oct_data != nullptr))
         {
             // Body
-//            if (m_pOperationTab->getAcquisitionButton()->isChecked()) // Only valid if acquisition is running
+            if (m_pDataAcquisition->getAcquisitionState()) // Only valid if acquisition is running
             {
                 // Draw A-lines
                 m_pViewTab->m_visImage = np::Uint8Array2(oct_data, m_pConfig->octScans, m_pConfig->octAlines);
@@ -522,8 +595,6 @@ void QStreamTab::setVisualizationCallback()
                 m_pViewTab->m_visLifetime = np::FloatArray2(flim_data + 8 * m_pConfig->flimAlines, m_pConfig->flimAlines, 3);
 				
                 // Draw Images
-                //m_pViewTab->visualizeImage(m_pViewTab->m_visImage.raw_ptr(),
-                //		m_pViewTab->m_visIntensity.raw_ptr(), m_pViewTab->m_visLifetime.raw_ptr());
                 emit m_pViewTab->drawImage(m_pViewTab->m_visImage.raw_ptr(),
                     m_pViewTab->m_visIntensity.raw_ptr(), m_pViewTab->m_visLifetime.raw_ptr());
             }
@@ -570,9 +641,11 @@ void QStreamTab::setVisualizationCallback()
     };
 
     m_pThreadVisualization->SendStatusMessage += [&](const char* msg, bool is_error) {
-//		if (is_error) m_pOperationTab->setAcquisitionButton(false);
-        QString qmsg = QString::fromUtf8(msg);
-//        emit sendStatusMessage(qmsg, is_error);
+		if (is_error)
+		{
+			enableDeviceControl(false);
+			enableDataAcquisition(false);
+		}
     };
 }
 
@@ -581,7 +654,7 @@ void QStreamTab::createSettingDlg()
 {
     if (m_pSettingDlg == nullptr)
     {
-        m_pSettingDlg = new SettingDlg(true, this);
+        m_pSettingDlg = new SettingDlg(this);
         connect(m_pSettingDlg, SIGNAL(finished(int)), this, SLOT(deleteSettingDlg()));
         m_pSettingDlg->show();
     }
@@ -595,53 +668,108 @@ void QStreamTab::deleteSettingDlg()
     m_pSettingDlg = nullptr;
 }
 
+
 void QStreamTab::scrollCatheterCalibration(int value)
 {
-
+	//QMessageBox MsgBox(QMessageBox::Critical, "Device error", "OCT swept laser source opeartion failed.\nCan't initialize service.");
+	//MsgBox.exec();
+	if (m_pDeviceControl->getAxsunControl())
+		m_pDeviceControl->getAxsunControl()->setVDLLength((float)value / 100.0f);
 }
 
 void QStreamTab::enableRotation(bool enabled)
-{
+{	
+	//QMessageBox MsgBox(QMessageBox::Critical, "Device error", "Catheter connection failed.\nCan't start live mode.");
+	//MsgBox.exec();
+
     if (enabled)
-    {
+    {	
+		// Set widgets
         m_pToggleButton_EnableRotation->setIcon(style()->standardIcon(QStyle::SP_BrowserStop));
         m_pToggleButton_EnableRotation->setText(" Disable Rotation");
         m_pToggleButton_EnableRotation->setStyleSheet("QPushButton{font-size:12pt; font-weight:bold; color:black; background-color:#ff0000}");
+
+		if (!m_pDeviceControl->connectRotaryMotor(true))
+		{
+			enableRotation(false);
+			return;
+		}
     }
     else
     {
+		m_pDeviceControl->rotate(enabled);
+		m_pDeviceControl->connectRotaryMotor(false);
+
         m_pToggleButton_EnableRotation->setIcon(style()->standardIcon(QStyle::SP_BrowserReload));
         m_pToggleButton_EnableRotation->setText(" Enable Rotation");
         m_pToggleButton_EnableRotation->setStyleSheet("QPushButton{font-size:12pt; font-weight:bold; color:black; background-color:#00ff00}");
-    }
+    }	
 }
 
 void QStreamTab::startPullback(bool enabled)
 {
+	//QMessageBox MsgBox(QMessageBox::Critical, "Device error", "Linear motor operation failed.\nCan't prepare for the catheter connection.");
+	//MsgBox.exec();
+
     if (enabled)
     {
+		// Set widgets
         m_pToggleButton_StartPullback->setIcon(style()->standardIcon(QStyle::SP_BrowserStop));
         m_pToggleButton_StartPullback->setText(" Stop Pullback");
         m_pToggleButton_StartPullback->setStyleSheet("QPushButton{font-size:12pt; font-weight:bold; color:black; background-color:#ff0000}");
+		
+		// Start recording (+ automatical pullback)
+		if (!m_pDeviceControl->connectPullbackMotor(true))
+		{
+			startPullback(false);
+			return;
+		}
+		m_pMemoryBuffer->startRecording();
+
+		// Capture timer
+		m_pCaptureTimer = new QTimer(this);
+		m_pCaptureTimer->start(1200);
+		connect(m_pCaptureTimer, &QTimer::timeout, [&]() { emit getCapture(m_recordInfo.preview); m_pCaptureTimer->stop(); });
     }
-    else
+    else 
     {
-        m_pToggleButton_StartPullback->setIcon(style()->standardIcon(QStyle::SP_ArrowRight));
-        m_pToggleButton_StartPullback->setText(" Start Pullback");
-        m_pToggleButton_StartPullback->setStyleSheet("QPushButton{font-size:12pt; font-weight:bold; color:black; background-color:#00ff00}");
+		if (m_pDeviceControl->getPullbackMotor())
+		{
+			// Preview capture
+			if (m_pCaptureTimer->isActive())
+			{
+				m_pCaptureTimer->stop();
+				delete m_pCaptureTimer;
+
+				emit getCapture(m_recordInfo.preview);
+			}
+
+			// Stop motor operation
+			m_pMemoryBuffer->stopRecording();
+			m_pDeviceControl->rotate(false);
+
+			// Saving recorded data
+			QDateTime datetime = QDateTime::currentDateTime();
+			m_recordInfo.date = datetime.toString("yyyy-MM-dd hh:mm:ss");
+			m_recordInfo.filename = m_pConfig->dbPath + "/record/" + m_recordInfo.patientId + datetime.toString("/yyyy-MM-dd_hh-mm-ss");
+			m_pMemoryBuffer->startSaving(m_recordInfo);
+		}
+		
+		// Set widgets
+		m_pToggleButton_StartPullback->setIcon(style()->standardIcon(QStyle::SP_ArrowRight));
+		m_pToggleButton_StartPullback->setText(" Start Pullback");
+		m_pToggleButton_StartPullback->setStyleSheet("QPushButton{font-size:12pt; font-weight:bold; color:black; background-color:#00ff00}");
+
     }
 }
 
+#ifdef DEVELOPER_MODE
+void QStreamTab::onTimerSyncMonitor()
+{
+	size_t fp_bfn = getFlimProcessingBufferQueueSize();
+	size_t fv_bfn = getFlimVisualizationBufferQueueSize();
+	size_t ov_bfn = getOctVisualizationBufferQueueSize();
 
-
-//void QStreamTab::processMessage(QString qmsg, bool is_error)
-//{
-////	m_pListWidget_MsgWnd->addItem(qmsg);
-////	m_pListWidget_MsgWnd->setCurrentRow(m_pListWidget_MsgWnd->count() - 1);
-
-////	if (is_error)
-////	{
-////		QMessageBox MsgBox(QMessageBox::Critical, "Error", qmsg);
-////		MsgBox.exec();
-////	}
-//}
+	m_pLabel_StreamingSyncStatus->setText(QString("[Sync]\nFP#: %1\nFV#: %2\nOV#: %3").arg(fp_bfn, 3).arg(fv_bfn, 3).arg(ov_bfn, 3));
+}
+#endif

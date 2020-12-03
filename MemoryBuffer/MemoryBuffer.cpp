@@ -1,15 +1,16 @@
 
 #include "MemoryBuffer.h"
 
+#include <QSqlQuery>
+#include <QProgressDialog>
+
 #include <Havana3/Configuration.h>
-#include <Havana3/QOperationTab.h>
+#include <Havana3/HvnSqlDataBase.h>
 #include <Havana3/MainWindow.h>
 #include <Havana3/QStreamTab.h>
-//#include <Havana3/QDeviceControlTab.h>
-
-#include <DeviceControl/ZaberStage/ZaberStage.h>
 
 #include <iostream>
+#include <thread>
 #include <deque>
 #include <chrono>
 #include <mutex>
@@ -24,6 +25,17 @@ MemoryBuffer::MemoryBuffer(QObject *parent) :
 {
 	m_pStreamTab = (QStreamTab*)parent;
 	m_pConfig = m_pStreamTab->getMainWnd()->m_pConfiguration;
+	m_pHvnSqlDataBase = m_pStreamTab->getMainWnd()->m_pHvnSqlDataBase;
+
+	// Message & error handling function object
+	SendStatusMessage += [&](const char* msg, bool is_error) {
+		QString qmsg = QString::fromUtf8(msg);
+		if (is_error)
+		{
+			QMessageBox MsgBox(QMessageBox::Critical, "Error", qmsg);
+			MsgBox.exec();
+		}
+	};
 }
 
 MemoryBuffer::~MemoryBuffer()
@@ -68,7 +80,7 @@ void MemoryBuffer::allocateWritingBuffer()
 			memset(buffer2, 0, m_pConfig->octFrameSize * sizeof(uint8_t));
 			m_queueWritingOctBuffer.push(buffer2);
 			
-			//printf("\rAllocating the writing buffers... [%d / %d]", i + 1, WRITING_BUFFER_SIZE);
+			printf("\rAllocating the writing buffers... [%d / %d]", i + 1, WRITING_BUFFER_SIZE);
 		}
 
 		m_syncFlimBuffering.allocate_queue_buffer(m_pConfig->flimScans, m_pConfig->flimAlines, PROCESSING_BUFFER_SIZE);
@@ -87,47 +99,12 @@ void MemoryBuffer::allocateWritingBuffer()
 
 bool MemoryBuffer::startRecording()
 {
-	// Check if the previous recorded data is saved
-	if (!m_bIsSaved && (m_nRecordedFrames != 0))
-	{
-		QMessageBox MsgBox;
-		MsgBox.setWindowTitle("Warning");
-		MsgBox.setIcon(QMessageBox::Warning);
-		MsgBox.setText("The previous recorded data is not saved.\nWhat would you like to do with this data?");
-		MsgBox.setStandardButtons(QMessageBox::Ignore | QMessageBox::Discard | QMessageBox::Cancel);
-		MsgBox.setDefaultButton(QMessageBox::Cancel);
-
-		int resp = MsgBox.exec();
-		switch (resp)
-		{
-		case QMessageBox::Ignore:
-			break;
-		case QMessageBox::Discard:
-			m_bIsSaved = true;
-			m_nRecordedFrames = 0;
-			return false;
-		case QMessageBox::Cancel:
-			return false;
-		default:
-			break;
-		}
-	}
-
 	// Start Recording
 	SendStatusMessage("Data recording is started.", false);
 	m_nRecordedFrames = 0;
 
     // Pullback
-//	m_pDeviceControlTab = m_pOperationTab->getStreamTab()->getDeviceControlTab();
-//    if (m_pDeviceControlTab->isPullbackMotorEnabled())
-//    {
-//        //m_pDeviceControlTab->getPullbackMotor()->DidMovedAbsolute += [&]() {  // Need modification
-//        //    // Finish recording when the pullback is finished.
-//        //    m_bIsRecording = false;
-//        //    m_pOperationTab->setRecordingButton(false);
-//        //};
-//        m_pDeviceControlTab->pullback();
-//    }
+	DidPullback();
 	
 	// Start Recording
 	m_bIsRecording = true;
@@ -172,8 +149,8 @@ bool MemoryBuffer::startRecording()
 			}
 			else
 			{
-				printf("end: %zd %zd\n", m_syncFlimBuffering.Queue_sync.size(), m_syncOctBuffering.Queue_sync.size());
-				printf("who null: %d %d\n", (pulse == nullptr), (oct_im == nullptr));
+				//printf("end: %zd %zd\n", m_syncFlimBuffering.Queue_sync.size(), m_syncOctBuffering.Queue_sync.size());
+				//printf("who null: %d %d\n", (pulse == nullptr), (oct_im == nullptr));
 
 				if (pulse != nullptr)
 				{
@@ -225,17 +202,29 @@ void MemoryBuffer::stopRecording()
 	}
 }
 
-bool MemoryBuffer::startSaving()
+void MemoryBuffer::startSaving(RecordInfo& record_info)
 {
 	// Get path to write
-	m_fileName = QFileDialog::getSaveFileName(nullptr, "Save As", "", "FLIm OCT raw data (*.data)");
-	if (m_fileName == "") return false;
-	
+	if (!QDir().exists(record_info.filename))
+		QDir().mkdir(record_info.filename);
+
+	record_info.filename += "/pullback.data";
+	m_fileName = record_info.filename;
+
 	// Start writing thread
 	std::thread _thread = std::thread(&MemoryBuffer::write, this);
 	_thread.detach();
+	
+	// Add to database
+	QString command = QString("INSERT INTO records(patient_id, datetime_taken, preview, title, filename, procedure_id, vessel_id) "
+		"VALUES('%1', '%2', '%3', '%4', '%5', %6, %7)").arg(record_info.patientId).arg(record_info.date).arg(":preview")
+													   .arg(record_info.title).arg(record_info.filename).arg(record_info.procedure).arg(record_info.vessel);
+	m_pHvnSqlDataBase->queryDatabase(command, [&](QSqlQuery &) {}, false, record_info.preview);
 
-	return true;
+	m_pHvnSqlDataBase->queryDatabase(QString("SELECT * FROM records WHERE datetime_taken=%1").arg(record_info.date), [&](QSqlQuery& _sqlQuery) {
+		while (_sqlQuery.next())
+			record_info.recordId = _sqlQuery.value(0).toString();
+	});
 }
 
 ///void MemoryBuffer::circulation(int nFramesToCirc)
@@ -271,7 +260,7 @@ void MemoryBuffer::write()
 	if (QFile::exists(m_fileName))
 	{
 		SendStatusMessage("Havana3 does not overwrite a recorded data.", false);
-		emit finishedWritingThread(true);
+		emit errorWhileWriting();
 		return;
 	}
 
@@ -296,6 +285,14 @@ void MemoryBuffer::write()
 		m_queueWritingOctBuffer.pop();
 		m_queueWritingOctBuffer.push(buffer_oct);
 	}
+		
+	// Make progress dialog
+	QProgressDialog progress("Writing...", "Cancel", 0, m_nRecordedFrames - INTER_FRAME_SYNC, m_pStreamTab);
+	progress.setCancelButton(0);
+	progress.setWindowModality(Qt::WindowModal);
+	progress.setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::CustomizeWindowHint);
+	progress.move((m_pStreamTab->getMainWnd()->width() - progress.width()) / 2, (m_pStreamTab->getMainWnd()->height() - progress.height()) / 2);
+	progress.setFixedSize(progress.width(), progress.height());
 
 	// Writing
 	QFile file(m_fileName);
@@ -311,7 +308,7 @@ void MemoryBuffer::write()
 			if (!(res == sizeof(uint16_t) * flimSamplesToWrite))
 			{
 				SendStatusMessage("Error occurred while writing...", true);
-				emit finishedWritingThread(true);
+				emit errorWhileWriting();
 				return;
 			}	
 			flimSamplesToWrite = m_pConfig->flimScans * INTRA_FRAME_SYNC;
@@ -319,7 +316,7 @@ void MemoryBuffer::write()
 			if (!(res == sizeof(uint16_t) * flimSamplesToWrite))
 			{
 				SendStatusMessage("Error occurred while writing...", true);
-				emit finishedWritingThread(true);
+				emit errorWhileWriting();
 				return;
 			}
 			m_queueWritingFlimBuffer.push(buffer_flim);
@@ -331,14 +328,15 @@ void MemoryBuffer::write()
 			if (!(res == sizeof(uint8_t) * octSamplesToWrite))
 			{
 				SendStatusMessage("Error occurred while writing...", true);
-				emit finishedWritingThread(true);
+				emit finishedWritingThread();
 				return;
 			}		
 			m_queueWritingOctBuffer.push(buffer_oct);
 
-			emit wroteSingleFrame(i);
+			progress.setValue(i);
 			///printf("\r%dth frame is wrote... [%3.2f%%]", i + 1, 100 * (double)(i + 1) / (double)m_nRecordedFrames);
 		}
+		progress.setValue(m_nRecordedFrames - INTER_FRAME_SYNC);
 		file.close();
 	}
 	else
@@ -375,7 +373,7 @@ void MemoryBuffer::write()
 		printf("Error occurred while copying MATLAB processing data.\n");
 	
 	// Send a signal to notify this thread is finished
-	emit finishedWritingThread(false);
+	emit finishedWritingThread();
 
 	// Status update
 	char msg[256];

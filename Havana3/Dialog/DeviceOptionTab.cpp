@@ -27,22 +27,30 @@
 #include <chrono>
 
 
-DeviceOptionTab::DeviceOptionTab(bool is_streaming, QWidget *parent) :
-    QDialog(parent), m_pStreamTab(nullptr), m_pResultTab(nullptr), m_pDeviceControl(nullptr)
+DeviceOptionTab::DeviceOptionTab(QWidget *parent) :
+    QDialog(parent), m_pPatientSummaryTab(nullptr), m_pStreamTab(nullptr), m_pResultTab(nullptr), m_pDeviceControl(nullptr)
 {
     // Set configuration objects
-    if (is_streaming)
-    {
-        m_pStreamTab = dynamic_cast<SettingDlg*>(parent)->getStreamTab();
-        m_pConfig = m_pStreamTab->getMainWnd()->m_pConfiguration;
-        m_pDeviceControl = m_pStreamTab->getDeviceControl();
-    }
-    else
-    {
-        m_pResultTab = dynamic_cast<SettingDlg*>(parent)->getResultTab();
-        m_pConfig = m_pResultTab->getMainWnd()->m_pConfiguration;
-//        m_pViewTab = m_pResultTab->getViewTab();
-    }
+	QString parent_name, parent_title = parent->windowTitle();
+	if (parent_title.contains("Summary"))
+	{
+		parent_name = "Summary";
+		m_pPatientSummaryTab = dynamic_cast<QPatientSummaryTab*>(parent);
+		m_pConfig = m_pPatientSummaryTab->getMainWnd()->m_pConfiguration;
+	}
+	else if (parent_title.contains("Streaming"))
+	{
+		parent_name = "Streaming";
+		m_pStreamTab = dynamic_cast<QStreamTab*>(parent);
+		m_pConfig = m_pStreamTab->getMainWnd()->m_pConfiguration;
+		m_pDeviceControl = m_pStreamTab->getDeviceControl();
+	}
+	else if (parent_title.contains("Review"))
+	{
+		parent_name = "Review";
+		m_pResultTab = (QResultTab*)parent;
+		m_pConfig = m_pResultTab->getMainWnd()->m_pConfiguration;
+	}
 
     // Create device control tabs
 	createHelicalScanningControl();

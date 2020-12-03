@@ -2,9 +2,11 @@
 #define MEMORYBUFFER_H
 
 #include <QObject>
+#include <QString>
+
+#include <Havana3/QPatientSummaryTab.h>
 
 #include <iostream>
-#include <thread>
 #include <queue>
 
 #include <Common/SyncObject.h>
@@ -12,6 +14,7 @@
 
 class MainWindow;
 class Configuration;
+class HvnSqlDataBase;
 class QStreamTab;
 
 class MemoryBuffer : public QObject
@@ -22,7 +25,6 @@ public:
     explicit MemoryBuffer(QObject *parent = nullptr);
     virtual ~MemoryBuffer();
 
-
 public:
 	// Memory allocation function (buffer for writing)
     void allocateWritingBuffer();
@@ -32,7 +34,7 @@ public:
     void stopRecording();
 
     // Data saving (save wrote data to hard disk)
-    bool startSaving();
+    void startSaving(RecordInfo &);
 
 	/// Circulation
 	///void circulation(int nFramesToCirc);
@@ -47,10 +49,12 @@ private: // writing threading operation
 signals:
 	void wroteSingleFrame(int);
 	void finishedBufferAllocation();
-	void finishedWritingThread(bool);
+	void errorWhileWriting();
+	void finishedWritingThread();
 
 private:
 	Configuration* m_pConfig;
+	HvnSqlDataBase* m_pHvnSqlDataBase;
 	QStreamTab* m_pStreamTab;
 
 public:
@@ -60,6 +64,7 @@ public:
 	int m_nRecordedFrames;
 
 public:
+	callback<void> DidPullback;
 	callback2<const char*, bool> SendStatusMessage;
 
 public:

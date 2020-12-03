@@ -63,6 +63,8 @@ bool FaulhaberMotor::ConnectDevice()
 				//for (int i = 0; i < (int)len; i++)
 				//	printf("%02X ", (unsigned char)buffer[i]);
 				//printf("\n");
+
+				DidRotateEnd();
 			};
 		}
 		else

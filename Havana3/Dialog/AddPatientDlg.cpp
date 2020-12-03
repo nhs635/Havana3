@@ -273,6 +273,9 @@ void AddPatientDlg::add()
             }
         }
 
+		if (!QDir().exists(m_pConfig->dbPath + "/record/" + patient_id))
+			QDir().mkdir(m_pConfig->dbPath + "/record");
+
         this->accept();
     }
 }

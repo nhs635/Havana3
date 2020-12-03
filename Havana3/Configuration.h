@@ -1,10 +1,16 @@
 #ifndef CONFIGURATION_H
 #define CONFIGURATION_H
 
-#define VERSION						"1.4.0"
+#define VERSION						"0.0.0" //"1.4.0"
 
 #define POWER_2(x)					(1 << x)
 #define NEAR_2_POWER(x)				(int)(1 << (int)ceil(log2(x)))
+#define ROUND_UP_4S(x)				((x + 3) >> 2) << 2
+
+#define DEVELOPER_MODE
+
+////////////////////// Database Setup ///////////////////////
+#define ENABLE_DATABASE_ENCRYPTION
 
 //////////////////////// FLIm Setup /////////////////////////
 #define PX14_ADC_RATE               400 // MHz
@@ -84,6 +90,7 @@ struct ContrastRange
 	T min = 0;
 	T max = 0;
 };
+
 
 #include <QString>
 #include <QSettings>

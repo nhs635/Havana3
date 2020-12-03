@@ -50,8 +50,8 @@ private slots:
 
     void makePatientSelectionTab();
     void makePatientSummaryTab(int);
-    void makeStreamTab(QString);
-    void makeResultTab(QString);
+    void makeStreamTab(const QString&);
+    void makeResultTab(const QString&);
 
 // Variables ////////////////////////////////////////////
 public:

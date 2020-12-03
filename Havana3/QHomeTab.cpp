@@ -3,6 +3,7 @@
 
 #include <Havana3/MainWindow.h>
 #include <Havana3/Configuration.h>
+#include <Havana3/HvnSqlDataBase.h>
 
 #include <iostream>
 #include <thread>
@@ -18,6 +19,7 @@ QHomeTab::QHomeTab(QWidget *parent) :
 	// Set main window objects
     m_pMainWnd = dynamic_cast<MainWindow*>(parent);
     m_pConfig = m_pMainWnd->m_pConfiguration;
+	m_pHvnSqlDataBase = m_pMainWnd->m_pHvnSqlDataBase;
 
     // Create widgets for sign-in view
     createSignInViewWidgets();
@@ -54,12 +56,12 @@ void QHomeTab::createSignInViewWidgets()
 
     m_pLabel_Title = new QLabel(this);
     m_pLabel_Title->setText("Clinical FLIm-OCT");
-    m_pLabel_Title->setAlignment(Qt::AlignCenter | Qt::AlignHCenter);
+    m_pLabel_Title->setAlignment(Qt::AlignCenter);
     m_pLabel_Title->setStyleSheet("QLabel{font-size:25pt; font-weight:bold}");
 
     m_pLabel_Version = new QLabel(this);
     m_pLabel_Version->setText(QString("Havana3 ver%2").arg(VERSION));
-    m_pLabel_Version->setAlignment(Qt::AlignCenter | Qt::AlignHCenter);
+    m_pLabel_Version->setAlignment(Qt::AlignCenter);
     m_pLabel_Version->setStyleSheet("QLabel{font-size:12pt;}");
 
     m_pLabel_UserName = new QLabel(this);
@@ -111,17 +113,15 @@ void QHomeTab::signIn()
     static int n_trial = 0;
     static bool too_many_attempts = false;
 
+	QString typed_user = m_pLineEdit_UserName->text();
     QString typed_pswd = m_pLineEdit_Password->text();
     if (!too_many_attempts && (n_trial++ < 5))
     {
-        if (!typed_pswd.compare("bop4328", Qt::CaseSensitive))  // 하드 코딩 피해야 함...
+        if (m_pHvnSqlDataBase->openDatabase(typed_user, typed_pswd))
         {
             n_trial = 0;
-            m_pGroupBox_SignIn->setVisible(false);
-            this->setCursor(Qt::WaitCursor);
-            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-            this->setCursor(Qt::ArrowCursor);
-
+            m_pGroupBox_SignIn->setVisible(false);            
+			
             emit signedIn();
         }
         else

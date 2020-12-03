@@ -257,7 +257,7 @@ void DataProcessing::flimProcessing(FLImProcess* pFLIm, Configuration* pConfig)
                 memcpy(&pVisTab->m_lifetimeMap.at(1)(0, frameCount), &ltm(0, 1), sizeof(float) * pConfig->flimAlines);
                 memcpy(&pVisTab->m_lifetimeMap.at(2)(0, frameCount), &ltm(0, 2), sizeof(float) * pConfig->flimAlines);
             }
-			emit processedSingleFrame(int((100 * frameCount++) / pConfig->frames));
+			emit processedSingleFrame(int(double(100 * frameCount++) / (double)pConfig->frames + 1));
 
 			// Return (push) the buffer to the previous threading queue
 			{

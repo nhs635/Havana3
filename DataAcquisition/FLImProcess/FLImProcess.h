@@ -231,9 +231,9 @@ public:
 		diff_ind[3] = round((FLIM_CH_START_5 - 1) * ActualFactor);
 
         ippsMin_32s(diff_ind, 4, &pulse_roi_length);
-		char msg[256];
-		sprintf(msg, "FLIm Initializing... %d", pulse_roi_length);
-		SendStatusMessage(msg);
+		//char msg[256];
+		//sprintf(msg, "FLIm Initializing... %d", pulse_roi_length);
+		//SendStatusMessage(msg);
 
         /* sequence for mean delay caculation */
         if (pSeq) { ippsFree(pSeq); pSeq = nullptr; }
@@ -299,7 +299,7 @@ public:
     FloatArray2 ext_src;
     FloatArray2 filt_src;
 
-	callback<const char*> SendStatusMessage;
+	//callback<const char*> SendStatusMessage;
 };
 
 struct INTENSITY
@@ -474,9 +474,9 @@ private: // Not to call copy constrcutor and copy assignment operator
 public:
     // Generate fluorescence intensity & lifetime
     void operator()(FloatArray2& intensity, FloatArray2& mean_delay, FloatArray2& lifetime, Uint16Array2& pulse);
-	//void getResize(Uint16Array2& pulse);
-	//void getIntensity(FloatArray2& intensity);
-	//void getLifetime(FloatArray2& mean_delay, FloatArray2& lifetime);
+	///void getResize(Uint16Array2& pulse);
+	///void getIntensity(FloatArray2& intensity);
+	///void getLifetime(FloatArray2& mean_delay, FloatArray2& lifetime);
 
     // For FLIM parameters setting
     void setParameters(Configuration* pConfig);
@@ -495,7 +495,7 @@ public:
 
 public:
 	// Callbacks
-	callback<const char*> SendStatusMessage;
+	callback2<const char*, bool> SendStatusMessage;
 };
 
 #endif

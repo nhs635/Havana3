@@ -1,6 +1,8 @@
 
 #include "DeviceControl.h"
 
+#include <QMessageBox>
+
 #include <Havana3/Configuration.h>
 
 #include <DeviceControl/FreqDivider/FreqDivider.h>
@@ -15,10 +17,22 @@
 #include <DataAcquisition/AxsunCapture/AxsunCapture.h>
 
 #include <Common/Array.h>
+#include <Common/callback.h>
 
 #include <iostream>
 #include <thread>
 #include <chrono>
+
+
+// Message & error handling function object
+auto message_handle = [&](const char* msg, bool is_error) {
+	QString qmsg = QString::fromUtf8(msg);
+	if (is_error)
+	{
+		QMessageBox MsgBox(QMessageBox::Critical, "Error", qmsg);
+		MsgBox.exec();
+	}
+};
 
 
 DeviceControl::DeviceControl(Configuration *pConfig) :
@@ -32,15 +46,16 @@ DeviceControl::DeviceControl(Configuration *pConfig) :
 
 DeviceControl::~DeviceControl()
 {
-	//setControlsStatus();
+	setAllDeviceOff();
 }
 
 
-void DeviceControl::setControlsStatus()
+void DeviceControl::setAllDeviceOff()
 {
-//	if (m_pGroupBox_HelicalScanningControl->isChecked()) m_pGroupBox_HelicalScanningControl->setChecked(false);
-//	if (m_pGroupBox_FlimControl->isChecked()) m_pGroupBox_FlimControl->setChecked(false);
-//	if (m_pGroupBox_AxsunOctControl->isChecked()) m_pGroupBox_AxsunOctControl->setChecked(false);
+	connectAxsunControl(false);
+	connectFlimLaser(false);
+	connectRotaryMotor(false);
+	connectPullbackMotor(false);
 }
 
 
@@ -52,11 +67,7 @@ bool DeviceControl::connectPullbackMotor(bool enabled)
 		if (!m_pPullbackMotor)
 		{
 			m_pPullbackMotor = new PullbackMotor;
-//			m_pPullbackMotor->SendStatusMessage += [&](const char* msg, bool is_error) {
-//				QString qmsg = QString::fromUtf8(msg);
-//				qmsg.replace('\n', ' ');
-////				emit m_pStreamTab->sendStatusMessage(qmsg, is_error);
-//			};
+			m_pPullbackMotor->SendStatusMessage += message_handle;
 		}
 
 		// Connect the motor
@@ -94,16 +105,19 @@ bool DeviceControl::connectPullbackMotor(bool enabled)
 
 void DeviceControl::moveAbsolute()
 {
-	// Pullback
-    m_pPullbackMotor->RotateMotor(-int(m_pConfig->pullbackSpeed * GEAR_RATIO));
+	if (m_pPullbackMotor)
+	{
+		// Pullback
+		m_pPullbackMotor->RotateMotor(-int(m_pConfig->pullbackSpeed * GEAR_RATIO));
 
-	// Pullback end condition
-    float duration = m_pConfig->pullbackLength / m_pConfig->pullbackSpeed;
-	std::thread stop([&, duration]() {
-		std::this_thread::sleep_for(std::chrono::milliseconds(int(1000 * 2)));// duration)));
-		this->stop();
-	});
-	stop.detach();
+		// Pullback end condition
+		float duration = m_pConfig->pullbackLength / m_pConfig->pullbackSpeed;
+		std::thread stop([&, duration]() {
+			std::this_thread::sleep_for(std::chrono::milliseconds(int(1000 * duration)));
+			this->stop();
+		});
+		stop.detach();
+	}
 }
 
 void DeviceControl::setTargetSpeed(float speed)
@@ -118,35 +132,14 @@ void DeviceControl::changePullbackLength(float length)
 
 void DeviceControl::home()
 {
-    m_pPullbackMotor->RotateMotor(int(20 * GEAR_RATIO));
+	if (m_pPullbackMotor)
+	    m_pPullbackMotor->RotateMotor(int(20 * GEAR_RATIO));
 }
 
 void DeviceControl::stop()
 {
-	// Stop pullback motor
-	m_pPullbackMotor->StopMotor();
-
-//	// Stop rotary motor
-//	if (m_pToggleButton_Rotate->isChecked())
-//	{
-//		m_pToggleButton_Rotate->setChecked(false);
-
-//		m_pGroupBox_HelicalScanningControl->setChecked(false);
-//		m_pGroupBox_HelicalScanningControl->setChecked(true);
-//	}
-
-//	// Set widgets
-//	m_pLabel_PullbackSpeed->setEnabled(true);
-//	m_pLabel_PullbackSpeedUnit->setEnabled(true);
-//	m_pLineEdit_PullbackSpeed->setEnabled(true);
-
-//	m_pLabel_PullbackLength->setEnabled(true);
-//	m_pLabel_PullbackLengthUnit->setEnabled(true);
-//	m_pLineEdit_PullbackLength->setEnabled(true);
-
-//	m_pPushButton_Home->setEnabled(true);
-
-//	m_pPushButton_Pullback->setStyleSheet("QPushButton { background-color:#ff0000; }");
+	if (m_pPullbackMotor)
+		m_pPullbackMotor->StopMotor();
 }
 
 
@@ -158,11 +151,7 @@ bool DeviceControl::connectRotaryMotor(bool toggled)
 		if (!m_pRotaryMotor)
 		{
 			m_pRotaryMotor = new RotaryMotor;
-//			m_pRotaryMotor->SendStatusMessage += [&](const char* msg, bool is_error) {
-//				QString qmsg = QString::fromUtf8(msg);
-//				qmsg.replace('\n', ' ');
-//				emit m_pStreamTab->sendStatusMessage(qmsg, is_error);
-//			};
+			m_pRotaryMotor->SendStatusMessage += message_handle;
 		}
 
 		// Connect the motor
@@ -194,13 +183,13 @@ bool DeviceControl::connectRotaryMotor(bool toggled)
 
 void DeviceControl::rotate(bool toggled)
 {
-	m_pRotaryMotor->RotateMotor(toggled ? m_pConfig->rotaryRpm : 0);
-	
-//	m_pLineEdit_RPM->setDisabled(toggled);
-//	m_pLabel_RPM->setDisabled(toggled);
-
-//	m_pToggleButton_Rotate->setStyleSheet(toggled ? "QPushButton { background-color:#00ff00; }" : "QPushButton { background-color:#ff0000; }");
-//	m_pToggleButton_Rotate->setText(toggled ? "Stop" : "Rotate");
+	if (m_pRotaryMotor)
+	{
+		if (toggled)
+			m_pRotaryMotor->RotateMotor(m_pConfig->rotaryRpm);
+		else
+			m_pRotaryMotor->StopMotor();
+	}
 }
 
 void DeviceControl::changeRotaryRpm(int rpm)
@@ -208,218 +197,6 @@ void DeviceControl::changeRotaryRpm(int rpm)
     m_pConfig->rotaryRpm = rpm;
 }
 
-//void DeviceControl::setHelicalScanningControl(bool toggled)
-//{
-//	// Set Helical Scanning Control
-//	m_pGroupBox_HelicalScanningControl->setChecked(toggled);
-//}
-
-
-//void DeviceControl::initializeFlimSystem(bool toggled)
-//{
-//    if (toggled)
-//    {
-//		// DAQ Board Connection Check
-//		if (isDaqBoardConnected())
-//		{
-//			// Set enabled true for FLIm control widgets
-//			if (!m_pToggleButton_SynchronizedPulsedLaser->isChecked())
-//			{
-//				m_pLabel_AsynchronizedPulsedLaser->setEnabled(true);
-//				m_pToggleButton_AsynchronizedPulsedLaser->setEnabled(true);
-//			}
-//			if (!m_pToggleButton_AsynchronizedPulsedLaser->isChecked())
-//			{
-//				m_pLabel_SynchronizedPulsedLaser->setEnabled(true);
-//				m_pToggleButton_SynchronizedPulsedLaser->setEnabled(true);
-//			}
-//			m_pLabel_PmtGainControl->setEnabled(true);
-//			m_pLineEdit_PmtGainVoltage->setEnabled(true);
-//			m_pLabel_PmtGainVoltage->setEnabled(true);
-//			m_pToggleButton_PmtGainVoltage->setEnabled(true);
-
-//			if (!m_pStreamTab->getOperationTab()->m_pAcquisitionState)
-//			{
-//				m_pToggleButton_AsynchronizedPulsedLaser->setStyleSheet("QPushButton { background-color:#ff0000; }");
-//				m_pToggleButton_SynchronizedPulsedLaser->setStyleSheet("QPushButton { background-color:#ff0000; }");
-//				m_pToggleButton_PmtGainVoltage->setStyleSheet("QPushButton { background-color:#ff0000; }");
-//			}
-//		}
-//		else
-//		{
-//			m_pGroupBox_FlimControl->setChecked(false);
-//			return;
-//		}
-
-//		// FLIm Laser Connection Check
-//		if (connectFlimLaser(true))
-//		{
-//			// Set enabled true for FLIM laser power control widgets
-//			m_pLabel_FlimLaserPowerControl->setEnabled(true);
-//			m_pSpinBox_FlimLaserPowerControl->setEnabled(true);
-//		}
-//		else
-//		{
-//			m_pGroupBox_FlimControl->setChecked(false);
-//			return;
-//		}
-
-//		// Digitizer Connection Check
-//		if (m_pStreamTab->getOperationTab()->getDataAcq()->getDigitizer()->is_initialized())
-//		{
-//			// Set enabled true for FLIm pulse view and calibration button
-//			m_pPushButton_FlimCalibDlgration->setEnabled(true);
-//		}
-//		///else
-//		///{
-//		///	m_pGroupBox_FlimControl->setChecked(false);
-//		///	return;
-//		///}
-//    }
-//    else
-//    {
-//		// If acquisition is processing...
-//		if (m_pStreamTab->getOperationTab()->m_pAcquisitionState)
-//		{
-//			QMessageBox MsgBox;
-//			MsgBox.setWindowTitle("Warning");
-//			MsgBox.setIcon(QMessageBox::Warning);
-//			MsgBox.setText("Re-turning the FLIm system on does not guarantee the synchronized operation once you turn off the laser.\nWould you like to turn off the FLIm system?");
-//			MsgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
-//			MsgBox.setDefaultButton(QMessageBox::No);
-
-//			int resp = MsgBox.exec();
-//			switch (resp)
-//			{
-//			case QMessageBox::Yes:
-//				m_pStreamTab->getOperationTab()->setAcquisitionButton(false);
-//				break;
-//			case QMessageBox::No:
-//				m_pGroupBox_FlimControl->setChecked(true);
-//				return;
-//			default:
-//				m_pGroupBox_FlimControl->setChecked(true);
-//				return;
-//			}
-//		}
-		
-//		// Set buttons
-//		if (m_pToggleButton_AsynchronizedPulsedLaser->isChecked()) m_pToggleButton_AsynchronizedPulsedLaser->setChecked(false);
-//		if (m_pToggleButton_SynchronizedPulsedLaser->isChecked()) m_pToggleButton_SynchronizedPulsedLaser->setChecked(false);
-//		if (m_pToggleButton_PmtGainVoltage->isChecked()) m_pToggleButton_PmtGainVoltage->setChecked(false);
-//		m_pToggleButton_SynchronizedPulsedLaser->setText("On");
-
-//		m_pLabel_AsynchronizedPulsedLaser->setEnabled(false);
-//		m_pToggleButton_AsynchronizedPulsedLaser->setEnabled(false);
-//		m_pLabel_SynchronizedPulsedLaser->setEnabled(false);
-//		m_pToggleButton_SynchronizedPulsedLaser->setEnabled(false);
-//		m_pLabel_PmtGainControl->setEnabled(false);
-//		m_pLineEdit_PmtGainVoltage->setEnabled(false);
-//		m_pLabel_PmtGainVoltage->setEnabled(false);
-//		m_pToggleButton_PmtGainVoltage->setEnabled(false);
-//		m_pLabel_FlimLaserPowerControl->setEnabled(false);
-//		m_pSpinBox_FlimLaserPowerControl->setEnabled(false);
-//		m_pPushButton_FlimCalibDlgration->setEnabled(false);
-
-//		m_pToggleButton_AsynchronizedPulsedLaser->setStyleSheet("QPushButton { background-color:#353535; }");
-//		m_pToggleButton_SynchronizedPulsedLaser->setStyleSheet("QPushButton { background-color:#353535; }");
-//		m_pToggleButton_PmtGainVoltage->setStyleSheet("QPushButton { background-color:#353535; }");
-
-//		// Disconnect devices
-//		connectFlimLaser(false);
-//    }
-//}
-
-//bool DeviceControl::isDaqBoardConnected()
-//{
-//#ifdef NI_ENABLE
-//	if (!m_pPmtGainControl)
-//	{
-//		// Create temporary PMT gain control objects
-//		PmtGainControl *pTempGain = new PmtGainControl;
-//		pTempGain->SendStatusMessage += [&](const char* msg, bool is_error) {
-//			QString qmsg = QString::fromUtf8(msg);
-//			emit m_pStreamTab->sendStatusMessage(qmsg, is_error);
-//		};
-
-//		pTempGain->voltage = 0;
-//		if (!pTempGain->initialize())
-//		{
-//			pTempGain->SendStatusMessage("DAQ Board is not connected!", true);
-//			delete pTempGain;
-//			return false;
-//		}
-
-//		pTempGain->stop();
-//		delete pTempGain;
-//	}
-
-//	return true;
-//#else
-//	return false;
-//#endif
-//}
-
-//void DeviceControl::startFlimAsynchronization(bool toggled)
-//{
-//#ifdef NI_ENABLE
-//	if (toggled)
-//	{
-//		// Set text
-//		m_pToggleButton_AsynchronizedPulsedLaser->setText("Off");
-//		m_pToggleButton_AsynchronizedPulsedLaser->setStyleSheet("QPushButton { background-color:#00ff00; }");
-
-//		// Create FLIm laser async control objects
-//		if (!m_pFlimFreqDivider)
-//		{
-//			m_pFlimFreqDivider = new FreqDivider;
-//			m_pFlimFreqDivider->SendStatusMessage += [&](const char* msg, bool is_error) {
-//				QString qmsg = QString::fromUtf8(msg);
-//				emit m_pStreamTab->sendStatusMessage(qmsg, is_error);
-//			};
-//		}
-//		m_pFlimFreqDivider->sourceTerminal = "100kHzTimebase";
-//		m_pFlimFreqDivider->counterChannel = NI_FLIM_TRIG_CHANNEL;
-//		m_pFlimFreqDivider->slow = 4;
-
-//		// Initializing
-//		if (!m_pFlimFreqDivider->initialize())
-//		{
-//			m_pToggleButton_AsynchronizedPulsedLaser->setChecked(false);
-//			return;
-//		}
-
-//		// Generate FLIm laser
-//		m_pFlimFreqDivider->start();
-
-//		// Set widgets
-//		m_pLabel_SynchronizedPulsedLaser->setEnabled(false);
-//		m_pToggleButton_SynchronizedPulsedLaser->setEnabled(false);
-//		m_pToggleButton_SynchronizedPulsedLaser->setStyleSheet("QPushButton { background-color:#353535; }");
-//	}
-//	else
-//	{
-//		// Delete FLIm laser async control objects
-//		if (m_pFlimFreqDivider)
-//		{
-//			m_pFlimFreqDivider->stop();
-//			delete m_pFlimFreqDivider;
-//			m_pFlimFreqDivider = nullptr;
-//		}
-
-//		// Set text
-//		m_pToggleButton_AsynchronizedPulsedLaser->setText("On");
-//		m_pToggleButton_AsynchronizedPulsedLaser->setStyleSheet("QPushButton { background-color:#ff0000; }");
-
-//		// Set widgets
-//		m_pLabel_SynchronizedPulsedLaser->setEnabled(true);
-//		m_pToggleButton_SynchronizedPulsedLaser->setEnabled(true);
-//		m_pToggleButton_SynchronizedPulsedLaser->setStyleSheet("QPushButton { background-color:#ff0000; }");
-//	}
-//#else
-//	(void)toggled;
-//#endif
-//}
 
 bool DeviceControl::startSynchronization(bool enabled)
 {
@@ -430,10 +207,7 @@ bool DeviceControl::startSynchronization(bool enabled)
 		if (!m_pFlimFreqDivider)
 		{
 			m_pFlimFreqDivider = new FreqDivider;
-//			m_pFlimFreqDivider->SendStatusMessage += [&](const char* msg, bool is_error) {
-//				QString qmsg = QString::fromUtf8(msg);
-//				emit m_pStreamTab->sendStatusMessage(qmsg, is_error);
-//			};
+			m_pFlimFreqDivider->SendStatusMessage += message_handle;
 		}
 		m_pFlimFreqDivider->sourceTerminal = NI_FLIM_TRIG_SOURCE;
 		m_pFlimFreqDivider->counterChannel = NI_FLIM_TRIG_CHANNEL;
@@ -443,83 +217,41 @@ bool DeviceControl::startSynchronization(bool enabled)
 		if (!m_pAxsunFreqDivider)
 		{
 			m_pAxsunFreqDivider = new FreqDivider;
-//			m_pAxsunFreqDivider->SendStatusMessage += [&](const char* msg, bool is_error) {
-//				QString qmsg = QString::fromUtf8(msg);
-//				emit m_pStreamTab->sendStatusMessage(qmsg, is_error);
-//			};
+			m_pAxsunFreqDivider->SendStatusMessage += message_handle;
 		}
 		m_pAxsunFreqDivider->sourceTerminal = NI_AXSUN_TRIG_SOURCE;
 		m_pAxsunFreqDivider->counterChannel = NI_AXSUN_TRIG_CHANNEL;
 		m_pAxsunFreqDivider->slow = 1024;
 
 		// Initializing
-		if (!m_pFlimFreqDivider->initialize() || !m_pAxsunFreqDivider->initialize())
+		if (m_pFlimFreqDivider->initialize() && m_pAxsunFreqDivider->initialize())
 		{
-//			m_pToggleButton_SynchronizedPulsedLaser->setChecked(false);
+			// Generate FLIm laser & Axsun OCT sync
+			m_pFlimFreqDivider->start();
+			m_pAxsunFreqDivider->start();
+		}
+		else
+		{
+			startSynchronization(false);
             return false;
 		}
-
-		// Generate FLIm laser & Axsun OCT sync
-		m_pFlimFreqDivider->start();
-		m_pAxsunFreqDivider->start();
-
-		// Set widgets
-//		m_pLabel_AsynchronizedPulsedLaser->setEnabled(false);
-//		m_pToggleButton_AsynchronizedPulsedLaser->setEnabled(false);
-//		m_pToggleButton_AsynchronizedPulsedLaser->setStyleSheet("QPushButton { background-color:#353535; }");
 	}
 	else
 	{
-		// If acquisition is processing...
-//		if (m_pStreamTab->getOperationTab()->m_pAcquisitionState)
-//		{
-//			QMessageBox MsgBox;
-//			MsgBox.setWindowTitle("Warning");
-//			MsgBox.setIcon(QMessageBox::Warning);
-//			MsgBox.setText("Re-turning the laser on does not guarantee the synchronized operation once you turn off the laser.\nWould you like to turn off the laser?");
-//			MsgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
-//			MsgBox.setDefaultButton(QMessageBox::No);
-
-//			int resp = MsgBox.exec();
-//			switch (resp)
-//			{
-//				case QMessageBox::Yes:
-//					m_pStreamTab->getOperationTab()->setAcquisitionButton(false);
-//					break;
-//				case QMessageBox::No:
-//					m_pToggleButton_SynchronizedPulsedLaser->setChecked(true);
-//					return;
-//				default:
-//					m_pToggleButton_SynchronizedPulsedLaser->setChecked(true);
-//					return;
-//			}
-//		}
-//		else
+		// Delete FLIm laser sync control objects
+		if (m_pFlimFreqDivider)
 		{
-			// Delete FLIm laser sync control objects
-			if (m_pFlimFreqDivider)
-			{
-				m_pFlimFreqDivider->stop();
-				delete m_pFlimFreqDivider;
-				m_pFlimFreqDivider = nullptr;
-			}
+			m_pFlimFreqDivider->stop();
+			delete m_pFlimFreqDivider;
+			m_pFlimFreqDivider = nullptr;
+		}
 
-			// Delete Axsun OCT sync control objects
-			if (m_pAxsunFreqDivider)
-			{
-				m_pAxsunFreqDivider->stop();
-				delete m_pAxsunFreqDivider;
-				m_pAxsunFreqDivider = nullptr;
-			}
-
-//			// Set text
-//			m_pToggleButton_SynchronizedPulsedLaser->setText("On");
-//			m_pToggleButton_SynchronizedPulsedLaser->setStyleSheet("QPushButton { background-color:#ff0000; }");
-
-//			// Set widgets
-//			m_pLabel_AsynchronizedPulsedLaser->setEnabled(true);
-//			m_pToggleButton_AsynchronizedPulsedLaser->setEnabled(true);
-//			m_pToggleButton_AsynchronizedPulsedLaser->setStyleSheet("QPushButton { background-color:#ff0000; }");
+		// Delete Axsun OCT sync control objects
+		if (m_pAxsunFreqDivider)
+		{
+			m_pAxsunFreqDivider->stop();
+			delete m_pAxsunFreqDivider;
+			m_pAxsunFreqDivider = nullptr;
 		}
 	}
 #else
@@ -531,39 +263,27 @@ bool DeviceControl::startSynchronization(bool enabled)
 
 bool DeviceControl::applyPmtGainVoltage(bool enabled)
 {
-#ifdef NI_ENABLE
-	// Set text
-//	m_pToggleButton_PmtGainVoltage->setText(toggled ? "Off" : "On");
-//	m_pToggleButton_PmtGainVoltage->setStyleSheet(toggled ? "QPushButton { background-color:#00ff00; }" : "QPushButton { background-color:#ff0000; }");
-	
+#ifdef NI_ENABLE	
     if (enabled)
 	{
-		// Set enabled false for PMT gain control widgets
-//		m_pLineEdit_PmtGainVoltage->setEnabled(false);
-//		m_pLabel_PmtGainVoltage->setEnabled(false);
-
 		// Create PMT gain control objects
 		if (!m_pPmtGainControl)
 		{
 			m_pPmtGainControl = new PmtGainControl;
-//			m_pPmtGainControl->SendStatusMessage += [&](const char* msg, bool is_error) {
-//				QString qmsg = QString::fromUtf8(msg);
-//				emit m_pStreamTab->sendStatusMessage(qmsg, is_error);
-//			};
+			m_pPmtGainControl->SendStatusMessage += message_handle;
 		}
 
-//		m_pPmtGainControl->voltage = m_pLineEdit_PmtGainVoltage->text().toDouble();
 		if (m_pPmtGainControl->voltage > 1.0)
 		{
 			m_pPmtGainControl->SendStatusMessage(">1.0V Gain cannot be assigned!", true);
-//			m_pToggleButton_PmtGainVoltage->setChecked(false);
+			applyPmtGainVoltage(false);
             return false;
 		}
 
 		// Initializing
 		if (!m_pPmtGainControl->initialize())
 		{
-//			m_pToggleButton_PmtGainVoltage->setChecked(false);
+			applyPmtGainVoltage(false);
             return false;
 		}
 
@@ -579,10 +299,6 @@ bool DeviceControl::applyPmtGainVoltage(bool enabled)
 			delete m_pPmtGainControl;
 			m_pPmtGainControl = nullptr;
 		}
-
-		// Set enabled true for PMT gain control widgets
-//		m_pLineEdit_PmtGainVoltage->setEnabled(true);
-//		m_pLabel_PmtGainVoltage->setEnabled(true);
 	}	
 #else
     (void)enabled;
@@ -604,11 +320,7 @@ bool DeviceControl::connectFlimLaser(bool state)
 		if (!m_pElforlightLaser)
 		{
 			m_pElforlightLaser = new ElforlightLaser;
-//			m_pElforlightLaser->SendStatusMessage += [&](const char* msg, bool is_error) {
-//				QString qmsg = QString::fromUtf8(msg);
-//				qmsg.replace('\n', ' ');
-//				emit m_pStreamTab->sendStatusMessage(qmsg, is_error);
-//			};
+			m_pElforlightLaser->SendStatusMessage += message_handle;
 //			m_pElforlightLaser->UpdateState += [&](double* state) {
 ////				m_pStreamTab->getMainWnd()->updateFlimLaserState(state);
 //			};
@@ -645,8 +357,7 @@ bool DeviceControl::connectFlimLaser(bool state)
 
 void DeviceControl::adjustLaserPower(int level)
 {
-	static int i = 0;
-
+	//static int i = 0;
 //	if (i == 0)
 //	{
 //		QMessageBox MsgBox;
@@ -690,50 +401,6 @@ void DeviceControl::sendLaserCommand(char* command)
 		m_pElforlightLaser->SendCommand(command);
 }
 
-//void DeviceControl::createFlimCalibDlgDlg()
-//{
-//    if (m_pFlimCalibDlgDlg == nullptr)
-//    {
-//        m_pFlimCalibDlgDlg = new FlimCalibDlgDlg(this);
-//        connect(m_pFlimCalibDlgDlg, SIGNAL(finished(int)), this, SLOT(deleteFlimCalibDlgDlg()));
-//		m_pFlimCalibDlgDlg->SendStatusMessage += [&](const char* msg) {
-//			QString qmsg = QString::fromUtf8(msg);
-//			emit m_pStreamTab->sendStatusMessage(qmsg, false);
-//		};
-//        m_pFlimCalibDlgDlg->show();
-/////        emit m_pFlimCalibDlgDlg->plotRoiPulse(m_pFLIm, m_pSlider_SelectAline->value() / 4);
-//    }
-//    m_pFlimCalibDlgDlg->raise();
-//    m_pFlimCalibDlgDlg->activateWindow();
-//}
-
-//void DeviceControl::deleteFlimCalibDlgDlg()
-//{
-/////    m_pFlimCalibDlgDlg->showWindow(false);
-/////    m_pFlimCalibDlgDlg->showMeanDelay(false);
-/////    m_pFlimCalibDlgDlg->showMask(false);
-
-//    m_pFlimCalibDlgDlg->deleteLater();
-//    m_pFlimCalibDlgDlg = nullptr;
-//}
-
-//void DeviceControl::setFlimControl(bool toggled)
-//{
-//	// Set FLIm Control
-//	if (toggled)
-//	{
-//		if (m_pGroupBox_FlimControl->isChecked()) m_pGroupBox_FlimControl->setChecked(false);
-//		m_pGroupBox_FlimControl->setChecked(toggled);
-//		if (m_pElforlightLaser)
-//		{
-//			m_pToggleButton_SynchronizedPulsedLaser->setChecked(toggled);
-//			m_pToggleButton_PmtGainVoltage->setChecked(toggled);
-//		}
-//	}
-//	else
-//		m_pGroupBox_FlimControl->setChecked(toggled);
-//}
-
 
 bool DeviceControl::connectAxsunControl(bool toggled)
 {
@@ -743,15 +410,7 @@ bool DeviceControl::connectAxsunControl(bool toggled)
 		if (!m_pAxsunControl)
 		{
 			m_pAxsunControl = new AxsunControl;
-//			m_pAxsunControl->SendStatusMessage += [&](const char* msg, bool is_error) {
-//				QString qmsg = QString::fromUtf8(msg);
-//				emit m_pStreamTab->sendStatusMessage(qmsg, is_error);
-//				if (is_error)
-//				{
-//					m_pStreamTab->getOperationTab()->getProgressBar()->setFormat("");
-//					m_pStreamTab->getOperationTab()->getProgressBar()->setValue(0);
-//				}
-//			};
+			m_pAxsunControl->SendStatusMessage += message_handle;
 //			m_pAxsunControl->DidTransferArray += [&](int i) {
 //				emit transferAxsunArray(i);
 //			};
@@ -759,7 +418,7 @@ bool DeviceControl::connectAxsunControl(bool toggled)
 			// Initialize the Axsun OCT control
 			if (!(m_pAxsunControl->initialize()))
 			{
-//				m_pGroupBox_AxsunOctControl->setChecked(false);
+				connectAxsunControl(false);
                 return false;
 			}
 			
@@ -782,70 +441,16 @@ bool DeviceControl::connectAxsunControl(bool toggled)
 			vdl_length.detach();
 
 			// Default Contrast Range
-			adjustDecibelRange();
-		}
-				
-//		// Set enabled true for Axsun OCT control widgets
-//		m_pLabel_LightSource->setEnabled(true);
-//		m_pLabel_LiveImaging->setEnabled(true);
-//		m_pToggleButton_LightSource->setEnabled(true);
-//		m_pToggleButton_LiveImaging->setEnabled(true);
-
-//		if (!m_pStreamTab->getOperationTab()->m_pAcquisitionState)
-//		{
-//			m_pToggleButton_LightSource->setStyleSheet("QPushButton { background-color:#ff0000; }");
-//			m_pToggleButton_LiveImaging->setStyleSheet("QPushButton { background-color:#ff0000; }");
-//		}
-		
-//		m_pStreamTab->getVisTab()->setOctDecibelContrastWidgets(true);
+			adjustDecibelRange(m_pConfig->axsunDbRange.min, m_pConfig->axsunDbRange.max);
+			//		m_pStreamTab->getVisTab()->setOctDecibelContrastWidgets(true);
+		}						
 	}
 	else
 	{
-//		// If acquisition is processing...
-//		if (m_pStreamTab->getOperationTab()->m_pAcquisitionState)
-//		{
-//			QMessageBox MsgBox;
-//			MsgBox.setWindowTitle("Warning");
-//			MsgBox.setIcon(QMessageBox::Warning);
-//			MsgBox.setText("Re-turning the Axsun OCT system on does not guarantee the synchronized operation once you turn off the laser.\nWould you like to turn off the Axsun OCT system?");
-//			MsgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
-//			MsgBox.setDefaultButton(QMessageBox::No);
-
-//			int resp = MsgBox.exec();
-//			switch (resp)
-//			{
-//			case QMessageBox::Yes:
-//				m_pStreamTab->getOperationTab()->setAcquisitionButton(false);
-//				break;
-//			case QMessageBox::No:
-//				m_pGroupBox_AxsunOctControl->setChecked(true);
-//				return;
-//			default:
-//				m_pGroupBox_AxsunOctControl->setChecked(true);
-//				return;
-//			}
-//		}
-
-//		// Set buttons
-//		if (m_pToggleButton_LightSource->isChecked()) m_pToggleButton_LightSource->setChecked(false);
-//		if (m_pToggleButton_LiveImaging->isChecked()) m_pToggleButton_LiveImaging->setChecked(false);
-//		m_pToggleButton_LightSource->setText("On");
-//		m_pToggleButton_LiveImaging->setText("On");
-
-//		// Set disabled true for Axsun OCT control widgets
-//		m_pLabel_LightSource->setDisabled(true);
-//		m_pLabel_LiveImaging->setDisabled(true);
-//		m_pToggleButton_LightSource->setDisabled(true);
-//		m_pToggleButton_LiveImaging->setDisabled(true);
-//		m_pToggleButton_LightSource->setStyleSheet("QPushButton { background-color:#353535; }");
-//		m_pToggleButton_LiveImaging->setStyleSheet("QPushButton { background-color:#353535; }");
-		
-//		//m_pLabel_VDLLength->setDisabled(true);
-//		//m_pSpinBox_VDLLength->setDisabled(true);
-//		//m_pPushButton_VDLHome->setDisabled(true);
-
-//		m_pStreamTab->getVisTab()->setOctDecibelContrastWidgets(false);
-
+		// Set status
+		setLiveImaging(false);
+		setLightSource(false);
+				
 		if (m_pAxsunControl)
 		{
 			// Delete Axsun OCT control objects
@@ -863,48 +468,13 @@ void DeviceControl::setLightSource(bool toggled)
 	{
 		if (toggled)
 		{
-//			 Set text
-//			m_pToggleButton_LightSource->setText("Off");
-//			m_pToggleButton_LightSource->setStyleSheet("QPushButton { background-color:#00ff00; }");
-
 			// Start Axsun light source operation
 			m_pAxsunControl->setLaserEmission(true);
 		}
 		else
 		{
-			// If acquisition is processing...
-//			if (m_pStreamTab->getOperationTab()->m_pAcquisitionState)
-//			{
-//				QMessageBox MsgBox;
-//				MsgBox.setWindowTitle("Warning");
-//				MsgBox.setIcon(QMessageBox::Warning);
-//				MsgBox.setText("Re-turning the laser on does not guarantee the synchronized operation once you turn off the laser.\nWould you like to turn off the laser?");
-//				MsgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
-//				MsgBox.setDefaultButton(QMessageBox::No);
-
-//				int resp = MsgBox.exec();
-//				switch (resp)
-//				{
-//				case QMessageBox::Yes:
-//					m_pStreamTab->getOperationTab()->setAcquisitionButton(false);
-//					break;
-//				case QMessageBox::No:
-//					m_pToggleButton_LightSource->setChecked(true);
-//					return;
-//				default:
-//					m_pToggleButton_LightSource->setChecked(true);
-//					return;
-//				}
-//			}
-//			else
-			{
-				// Stop Axsun light source operation
-				if (m_pAxsunControl) m_pAxsunControl->setLaserEmission(false);
-
-				// Set text
-//				m_pToggleButton_LightSource->setText("On");
-//				m_pToggleButton_LightSource->setStyleSheet("QPushButton { background-color:#ff0000; }");
-			}
+			// Stop Axsun light source operation
+			if (m_pAxsunControl) m_pAxsunControl->setLaserEmission(false);
 		}
 	}
 }
@@ -915,56 +485,25 @@ void DeviceControl::setLiveImaging(bool toggled)
 	{
 		if (toggled)
 		{
-			// Set text and widgets
-//			m_pToggleButton_LiveImaging->setText("Off");
-//			m_pToggleButton_LiveImaging->setStyleSheet("QPushButton { background-color:#00ff00; }");
-
 			// Start Axsun live imaging operation
 			m_pAxsunControl->setLiveImagingMode(true);
 		}
 		else
 		{
-//			// If acquisition is processing...
-//			if (m_pStreamTab->getOperationTab()->m_pAcquisitionState)
-//			{
-//				QMessageBox MsgBox;
-//				MsgBox.setWindowTitle("Warning");
-//				MsgBox.setIcon(QMessageBox::Warning);
-//				MsgBox.setText("Re-turning the live imaging mode on does not guarantee the synchronized operation once you turn off the live imaging mode.\nWould you like to turn off the live imaging mode?");
-//				MsgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
-//				MsgBox.setDefaultButton(QMessageBox::No);
-
-//				int resp = MsgBox.exec();
-//				switch (resp)
-//				{
-//				case QMessageBox::Yes:
-//					m_pStreamTab->getOperationTab()->setAcquisitionButton(false);
-//					break;
-//				case QMessageBox::No:
-//					m_pToggleButton_LiveImaging->setChecked(true);
-//					return;
-//				default:
-//					m_pToggleButton_LiveImaging->setChecked(true);
-//					return;
-//				}
-//			}
-//			else
-			{
-				// Stop Axsun live imaging operation
-				if (m_pAxsunControl) m_pAxsunControl->setLiveImagingMode(false);
-
-				// Set text and widgets
-//				m_pToggleButton_LiveImaging->setText("On");
-//				m_pToggleButton_LiveImaging->setStyleSheet("QPushButton { background-color:#ff0000; }");
-			}
+			// Stop Axsun live imaging operation
+			if (m_pAxsunControl) m_pAxsunControl->setLiveImagingMode(false);
 		}
 	}
 }
 
-void DeviceControl::adjustDecibelRange()
+void DeviceControl::adjustDecibelRange(double min, double max)
 {
 	if (m_pAxsunControl)
+	{
+		m_pConfig->axsunDbRange.min = min;
+		m_pConfig->axsunDbRange.max = max;
 		m_pAxsunControl->setDecibelRange(m_pConfig->axsunDbRange.min, m_pConfig->axsunDbRange.max);
+	}
 }
 
 void DeviceControl::setClockDelay(double)
@@ -986,36 +525,13 @@ void DeviceControl::setVDLHome()
 {
 	if (m_pAxsunControl)
 	{
+		m_pConfig->axsunVDLLength = 0.0f;
 		m_pAxsunControl->setVDLHome();
-//		m_pSpinBox_VDLLength->setValue(0.0);
 	}
 }
 
-//void DeviceControl::setVDLWidgets(bool enabled)
-//{
-//	m_pLabel_VDLLength->setEnabled(enabled);
-//	m_pSpinBox_VDLLength->setEnabled(enabled);
-//	m_pPushButton_VDLHome->setEnabled(enabled);
-//}
-
-//void DeviceControl::setAxsunControl(bool toggled)
-//{
-//	// Set Axsun OCT Control
-//	if (toggled)
-//	{
-//		if (m_pGroupBox_AxsunOctControl->isChecked()) m_pGroupBox_AxsunOctControl->setChecked(false);
-//		m_pGroupBox_AxsunOctControl->setChecked(toggled);
-//		if (m_pAxsunControl)
-//		{
-//			m_pToggleButton_LightSource->setChecked(toggled);
-//			m_pToggleButton_LiveImaging->setChecked(toggled);
-//		}
-//	}
-//	else
-//		m_pGroupBox_AxsunOctControl->setChecked(toggled);
-//}
-
 void DeviceControl::requestOctStatus()
 {
-	if (m_pAxsunControl) m_pAxsunControl->getDeviceState();
+	if (m_pAxsunControl) 
+		m_pAxsunControl->getDeviceState();
 }
