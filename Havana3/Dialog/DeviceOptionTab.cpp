@@ -742,26 +742,26 @@ void DeviceOptionTab::initializeFlimSystem(bool toggled)
 bool DeviceOptionTab::isDaqBoardConnected()
 {
 #ifdef NI_ENABLE
-	if (!m_pPmtGainControl)
-	{
-		// Create temporary PMT gain control objects
-		PmtGainControl *pTempGain = new PmtGainControl;
-		pTempGain->SendStatusMessage += [&](const char* msg, bool is_error) {
-			QString qmsg = QString::fromUtf8(msg);
-			emit m_pStreamTab->sendStatusMessage(qmsg, is_error);
-		};
+	//if (!m_pPmtGainControl)
+	//{
+	//	// Create temporary PMT gain control objects
+	//	PmtGainControl *pTempGain = new PmtGainControl;
+	//	pTempGain->SendStatusMessage += [&](const char* msg, bool is_error) {
+	//		QString qmsg = QString::fromUtf8(msg);
+	//		emit m_pStreamTab->sendStatusMessage(qmsg, is_error);
+	//	};
 
-		pTempGain->voltage = 0;
-		if (!pTempGain->initialize())
-		{
-			pTempGain->SendStatusMessage("DAQ Board is not connected!", true);
-			delete pTempGain;
-			return false;
-		}
+	//	pTempGain->voltage = 0;
+	//	if (!pTempGain->initialize())
+	//	{
+	//		pTempGain->SendStatusMessage("DAQ Board is not connected!", true);
+	//		delete pTempGain;
+	//		return false;
+	//	}
 
-		pTempGain->stop();
-		delete pTempGain;
-	}
+	//	pTempGain->stop();
+	//	delete pTempGain;
+	//}
 
 	return true;
 #else
@@ -774,32 +774,32 @@ void DeviceOptionTab::startFlimAsynchronization(bool toggled)
 #ifdef NI_ENABLE
 	if (toggled)
 	{
-		// Set text
-		m_pToggleButton_AsynchronizedPulsedLaser->setText("Off");
-		m_pToggleButton_AsynchronizedPulsedLaser->setStyleSheet("QPushButton { background-color:#00ff00; }");
+		//// Set text
+		//m_pToggleButton_AsynchronizedPulsedLaser->setText("Off");
+		//m_pToggleButton_AsynchronizedPulsedLaser->setStyleSheet("QPushButton { background-color:#00ff00; }");
 
-		// Create FLIm laser async control objects
-		if (!m_pFlimFreqDivider)
-		{
-			m_pFlimFreqDivider = new FreqDivider;
-			m_pFlimFreqDivider->SendStatusMessage += [&](const char* msg, bool is_error) {
-				QString qmsg = QString::fromUtf8(msg);
-				emit m_pStreamTab->sendStatusMessage(qmsg, is_error);
-			};
-		}
-		m_pFlimFreqDivider->sourceTerminal = "100kHzTimebase";
-		m_pFlimFreqDivider->counterChannel = NI_FLIM_TRIG_CHANNEL;
-		m_pFlimFreqDivider->slow = 4;
+		//// Create FLIm laser async control objects
+		//if (!m_pFlimFreqDivider)
+		//{
+		//	m_pFlimFreqDivider = new FreqDivider;
+		//	m_pFlimFreqDivider->SendStatusMessage += [&](const char* msg, bool is_error) {
+		//		QString qmsg = QString::fromUtf8(msg);
+		//		emit m_pStreamTab->sendStatusMessage(qmsg, is_error);
+		//	};
+		//}
+		//m_pFlimFreqDivider->sourceTerminal = "100kHzTimebase";
+		//m_pFlimFreqDivider->counterChannel = NI_FLIM_TRIG_CHANNEL;
+		//m_pFlimFreqDivider->slow = 4;
 
 		// Initializing
-		if (!m_pFlimFreqDivider->initialize())
-		{
-			m_pToggleButton_AsynchronizedPulsedLaser->setChecked(false);
-			return;
-		}
+		//if (!m_pFlimFreqDivider->initialize())
+		//{
+		//	m_pToggleButton_AsynchronizedPulsedLaser->setChecked(false);
+		//	return;
+		//}
 
 		// Generate FLIm laser
-		m_pFlimFreqDivider->start();
+		//m_pFlimFreqDivider->start();
 
 		// Set widgets
 		m_pLabel_SynchronizedPulsedLaser->setEnabled(false);
@@ -809,12 +809,12 @@ void DeviceOptionTab::startFlimAsynchronization(bool toggled)
 	else
 	{
 		// Delete FLIm laser async control objects
-		if (m_pFlimFreqDivider)
+		/*if (m_pFlimFreqDivider)
 		{
 			m_pFlimFreqDivider->stop();
 			delete m_pFlimFreqDivider;
 			m_pFlimFreqDivider = nullptr;
-		}
+		}*/
 
 		// Set text
 		m_pToggleButton_AsynchronizedPulsedLaser->setText("On");
@@ -839,42 +839,42 @@ void DeviceOptionTab::startFlimSynchronization(bool toggled)
 		m_pToggleButton_SynchronizedPulsedLaser->setText("Off");
 		m_pToggleButton_SynchronizedPulsedLaser->setStyleSheet("QPushButton { background-color:#00ff00; }");
 
-		// Create FLIm laser sync control objects
-		if (!m_pFlimFreqDivider)
-		{
-			m_pFlimFreqDivider = new FreqDivider;
-			m_pFlimFreqDivider->SendStatusMessage += [&](const char* msg, bool is_error) {
-				QString qmsg = QString::fromUtf8(msg);
-				emit m_pStreamTab->sendStatusMessage(qmsg, is_error);
-			};
-		}
-		m_pFlimFreqDivider->sourceTerminal = NI_FLIM_TRIG_SOURCE;
-		m_pFlimFreqDivider->counterChannel = NI_FLIM_TRIG_CHANNEL;
-		m_pFlimFreqDivider->slow = 4;
+		//// Create FLIm laser sync control objects
+		//if (!m_pFlimFreqDivider)
+		//{
+		//	m_pFlimFreqDivider = new FreqDivider;
+		//	m_pFlimFreqDivider->SendStatusMessage += [&](const char* msg, bool is_error) {
+		//		QString qmsg = QString::fromUtf8(msg);
+		//		emit m_pStreamTab->sendStatusMessage(qmsg, is_error);
+		//	};
+		//}
+		//m_pFlimFreqDivider->sourceTerminal = NI_FLIM_TRIG_SOURCE;
+		//m_pFlimFreqDivider->counterChannel = NI_FLIM_TRIG_CHANNEL;
+		//m_pFlimFreqDivider->slow = 4;
 
-		// Create Axsun OCT sync control objects
-		if (!m_pAxsunFreqDivider)
-		{
-			m_pAxsunFreqDivider = new FreqDivider;
-			m_pAxsunFreqDivider->SendStatusMessage += [&](const char* msg, bool is_error) {
-				QString qmsg = QString::fromUtf8(msg);
-				emit m_pStreamTab->sendStatusMessage(qmsg, is_error);
-			};
-		}
-		m_pAxsunFreqDivider->sourceTerminal = NI_AXSUN_TRIG_SOURCE;
-		m_pAxsunFreqDivider->counterChannel = NI_AXSUN_TRIG_CHANNEL;
-		m_pAxsunFreqDivider->slow = 1024;
+		//// Create Axsun OCT sync control objects
+		//if (!m_pAxsunFreqDivider)
+		//{
+		//	m_pAxsunFreqDivider = new FreqDivider;
+		//	m_pAxsunFreqDivider->SendStatusMessage += [&](const char* msg, bool is_error) {
+		//		QString qmsg = QString::fromUtf8(msg);
+		//		emit m_pStreamTab->sendStatusMessage(qmsg, is_error);
+		//	};
+		//}
+		//m_pAxsunFreqDivider->sourceTerminal = NI_AXSUN_TRIG_SOURCE;
+		//m_pAxsunFreqDivider->counterChannel = NI_AXSUN_TRIG_CHANNEL;
+		//m_pAxsunFreqDivider->slow = 1024;
 
-		// Initializing
-		if (!m_pFlimFreqDivider->initialize() || !m_pAxsunFreqDivider->initialize())
-		{
-			m_pToggleButton_SynchronizedPulsedLaser->setChecked(false);
-			return;
-		}
+		//// Initializing
+		//if (!m_pFlimFreqDivider->initialize() || !m_pAxsunFreqDivider->initialize())
+		//{
+		//	m_pToggleButton_SynchronizedPulsedLaser->setChecked(false);
+		//	return;
+		//}
 
-		// Generate FLIm laser & Axsun OCT sync
-		m_pFlimFreqDivider->start();
-		m_pAxsunFreqDivider->start();
+		//// Generate FLIm laser & Axsun OCT sync
+		//m_pFlimFreqDivider->start();
+		//m_pAxsunFreqDivider->start();
 
 		// Set widgets
 		m_pLabel_AsynchronizedPulsedLaser->setEnabled(false);
@@ -884,56 +884,56 @@ void DeviceOptionTab::startFlimSynchronization(bool toggled)
 	else
 	{
 		// If acquisition is processing...
-		if (m_pStreamTab->getOperationTab()->m_pAcquisitionState)
-		{
-			QMessageBox MsgBox;
-			MsgBox.setWindowTitle("Warning");
-			MsgBox.setIcon(QMessageBox::Warning);
-			MsgBox.setText("Re-turning the laser on does not guarantee the synchronized operation once you turn off the laser.\nWould you like to turn off the laser?");
-			MsgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
-			MsgBox.setDefaultButton(QMessageBox::No);
+		//if (m_pStreamTab->getOperationTab()->m_pAcquisitionState)
+		//{
+		//	QMessageBox MsgBox;
+		//	MsgBox.setWindowTitle("Warning");
+		//	MsgBox.setIcon(QMessageBox::Warning);
+		//	MsgBox.setText("Re-turning the laser on does not guarantee the synchronized operation once you turn off the laser.\nWould you like to turn off the laser?");
+		//	MsgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
+		//	MsgBox.setDefaultButton(QMessageBox::No);
 
-			int resp = MsgBox.exec();
-			switch (resp)
-			{
-				case QMessageBox::Yes:
-					m_pStreamTab->getOperationTab()->setAcquisitionButton(false);
-					break;
-				case QMessageBox::No:
-					m_pToggleButton_SynchronizedPulsedLaser->setChecked(true);
-					return;
-				default:
-					m_pToggleButton_SynchronizedPulsedLaser->setChecked(true);
-					return;
-			}
-		}
-		else
-		{
-			// Delete FLIm laser sync control objects
-			if (m_pFlimFreqDivider)
-			{
-				m_pFlimFreqDivider->stop();
-				delete m_pFlimFreqDivider;
-				m_pFlimFreqDivider = nullptr;
-			}
+		//	int resp = MsgBox.exec();
+		//	switch (resp)
+		//	{
+		//		case QMessageBox::Yes:
+		//			m_pStreamTab->getOperationTab()->setAcquisitionButton(false);
+		//			break;
+		//		case QMessageBox::No:
+		//			m_pToggleButton_SynchronizedPulsedLaser->setChecked(true);
+		//			return;
+		//		default:
+		//			m_pToggleButton_SynchronizedPulsedLaser->setChecked(true);
+		//			return;
+		//	}
+		//}
+		//else
+		//{
+		//	// Delete FLIm laser sync control objects
+		//	if (m_pFlimFreqDivider)
+		//	{
+		//		m_pFlimFreqDivider->stop();
+		//		delete m_pFlimFreqDivider;
+		//		m_pFlimFreqDivider = nullptr;
+		//	}
 
-			// Delete Axsun OCT sync control objects
-			if (m_pAxsunFreqDivider)
-			{
-				m_pAxsunFreqDivider->stop();
-				delete m_pAxsunFreqDivider;
-				m_pAxsunFreqDivider = nullptr;
-			}
+		//	// Delete Axsun OCT sync control objects
+		//	if (m_pAxsunFreqDivider)
+		//	{
+		//		m_pAxsunFreqDivider->stop();
+		//		delete m_pAxsunFreqDivider;
+		//		m_pAxsunFreqDivider = nullptr;
+		//	}
 
-			// Set text
-			m_pToggleButton_SynchronizedPulsedLaser->setText("On");
-			m_pToggleButton_SynchronizedPulsedLaser->setStyleSheet("QPushButton { background-color:#ff0000; }");
+		//	// Set text
+		//	m_pToggleButton_SynchronizedPulsedLaser->setText("On");
+		//	m_pToggleButton_SynchronizedPulsedLaser->setStyleSheet("QPushButton { background-color:#ff0000; }");
 
-			// Set widgets
-			m_pLabel_AsynchronizedPulsedLaser->setEnabled(true);
-			m_pToggleButton_AsynchronizedPulsedLaser->setEnabled(true);
-			m_pToggleButton_AsynchronizedPulsedLaser->setStyleSheet("QPushButton { background-color:#ff0000; }");
-		}
+		//	// Set widgets
+		//	m_pLabel_AsynchronizedPulsedLaser->setEnabled(true);
+		//	m_pToggleButton_AsynchronizedPulsedLaser->setEnabled(true);
+		//	m_pToggleButton_AsynchronizedPulsedLaser->setStyleSheet("QPushButton { background-color:#ff0000; }");
+		//}
 	}
 #else
 	(void)toggled;
@@ -953,43 +953,43 @@ void DeviceOptionTab::applyPmtGainVoltage(bool toggled)
 		m_pLineEdit_PmtGainVoltage->setEnabled(false);
 		m_pLabel_PmtGainVoltage->setEnabled(false);
 
-		// Create PMT gain control objects
-		if (!m_pPmtGainControl)
-		{
-			m_pPmtGainControl = new PmtGainControl;
-			m_pPmtGainControl->SendStatusMessage += [&](const char* msg, bool is_error) {
-				QString qmsg = QString::fromUtf8(msg);
-				emit m_pStreamTab->sendStatusMessage(qmsg, is_error);
-			};
-		}
+		//// Create PMT gain control objects
+		//if (!m_pPmtGainControl)
+		//{
+		//	m_pPmtGainControl = new PmtGainControl;
+		//	m_pPmtGainControl->SendStatusMessage += [&](const char* msg, bool is_error) {
+		//		QString qmsg = QString::fromUtf8(msg);
+		//		emit m_pStreamTab->sendStatusMessage(qmsg, is_error);
+		//	};
+		//}
 
-		m_pPmtGainControl->voltage = m_pLineEdit_PmtGainVoltage->text().toDouble();
-		if (m_pPmtGainControl->voltage > 1.0)
-		{
-			m_pPmtGainControl->SendStatusMessage(">1.0V Gain cannot be assigned!", true);
-			m_pToggleButton_PmtGainVoltage->setChecked(false);
-			return;
-		}
+		//m_pPmtGainControl->voltage = m_pLineEdit_PmtGainVoltage->text().toDouble();
+		//if (m_pPmtGainControl->voltage > 1.0)
+		//{
+		//	m_pPmtGainControl->SendStatusMessage(">1.0V Gain cannot be assigned!", true);
+		//	m_pToggleButton_PmtGainVoltage->setChecked(false);
+		//	return;
+		//}
 
-		// Initializing
-		if (!m_pPmtGainControl->initialize())
-		{
-			m_pToggleButton_PmtGainVoltage->setChecked(false);
-			return;
-		}
+		//// Initializing
+		//if (!m_pPmtGainControl->initialize())
+		//{
+		//	m_pToggleButton_PmtGainVoltage->setChecked(false);
+		//	return;
+		//}
 
-		// Generate PMT gain voltage
-		m_pPmtGainControl->start();
+		//// Generate PMT gain voltage
+		//m_pPmtGainControl->start();
 	}
 	else
 	{
-		// Delete PMT gain control objects
-		if (m_pPmtGainControl)
-		{
-			m_pPmtGainControl->stop();
-			delete m_pPmtGainControl;
-			m_pPmtGainControl = nullptr;
-		}
+		//// Delete PMT gain control objects
+		//if (m_pPmtGainControl)
+		//{
+		//	m_pPmtGainControl->stop();
+		//	delete m_pPmtGainControl;
+		//	m_pPmtGainControl = nullptr;
+		//}
 
 		// Set enabled true for PMT gain control widgets
 		m_pLineEdit_PmtGainVoltage->setEnabled(true);

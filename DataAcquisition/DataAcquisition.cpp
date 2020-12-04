@@ -1,6 +1,7 @@
 
 #include "DataAcquisition.h"
 
+#include <QDebug>
 #include <QMessageBox>
 
 #include <Havana3/Configuration.h>
@@ -25,6 +26,8 @@ DataAcquisition::DataAcquisition(Configuration* pConfig)
 			QMessageBox MsgBox(QMessageBox::Critical, "Error", qmsg);
 			MsgBox.exec();
 		}
+		else
+			qDebug() << qmsg;
 	};
 
     // Create SignatecDAQ object
@@ -72,7 +75,7 @@ bool DataAcquisition::InitializeAcquistion()
 	m_pAxsunCapture->image_width = m_pConfig->octAlines;
 	
     // Initialization for DAQ & Axsun Capture
-    if (!(m_pDaq->set_init()) || !(m_pAxsunCapture->initializeCapture()))
+    if ( !m_pAxsunCapture->initializeCapture())  // !m_pDaq->set_init() ||
     {
 		StopAcquisition(false);
         return false;
@@ -87,7 +90,7 @@ bool DataAcquisition::StartAcquisition()
     m_pDaq->DcOffset = m_pConfig->px14DcOffset;
 
     // Start acquisition
-	if (!(m_pAxsunCapture->startCapture()) || !(m_pDaq->startAcquisition()))
+	if (!m_pAxsunCapture->startCapture())   //!m_pDaq->startAcquisition() || 
 	{
 		StopAcquisition(false);
 		return false;
@@ -102,7 +105,7 @@ bool DataAcquisition::StartAcquisition()
 void DataAcquisition::StopAcquisition(bool suc_stop)
 {
     // Stop thread
-	m_pDaq->stopAcquisition();
+	//m_pDaq->stopAcquisition();
 	m_pAxsunCapture->stopCapture();
 
 	m_bAcquisitionState = false;

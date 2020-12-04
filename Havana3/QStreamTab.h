@@ -56,8 +56,8 @@ public:
 	bool startLiveImaging(bool);
 
 private:
+	bool enableMemoryBuffer(bool);
     bool enableDataAcquisition(bool);
-    bool enableMemoryBuffer(bool);
     bool enableDeviceControl(bool);
 
 private:		

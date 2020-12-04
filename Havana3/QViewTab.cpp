@@ -59,11 +59,16 @@ QViewTab::~QViewTab()
 void QViewTab::createViewTabWidgets(bool is_streaming)
 {
     // Create image view : cross-section
-    m_pImageView_CircImage = new QImageView(ColorTable::colortable(OCT_COLORTABLE), 2 * m_pConfig->octScans, 2 * m_pConfig->octScans, true);    
-    if (is_streaming)
-        m_pImageView_CircImage->setMinimumSize(810, 810);
-    else
-        m_pImageView_CircImage->setMinimumSize(650, 650);    
+	if (is_streaming)
+	{
+		m_pImageView_CircImage = new QImageView(ColorTable::colortable(OCT_COLORTABLE), 2 * m_pConfig->octScans, 2 * m_pConfig->octScans, true);
+		m_pImageView_CircImage->setMinimumSize(810, 810);
+	}
+	else
+	{
+		m_pImageView_CircImage = new QImageView(ColorTable::colortable(OCT_COLORTABLE), 2 * m_pConfig->octScans, 2 * m_pConfig->octScans, true);
+		m_pImageView_CircImage->setMinimumSize(650, 650);
+	}
 	m_pImageView_CircImage->setSquare(true);
 	m_pImageView_CircImage->setCircle(1, OUTER_SHEATH_POSITION);
 
@@ -213,7 +218,7 @@ void QViewTab::setStreamingBuffersObjects()
     m_pImgObjLifetime = new ImageObject(m_pConfig->flimAlines, RING_THICKNESS, temp_ctable.m_colorTableVector.at(LIFETIME_COLORTABLE));
 
 	if (m_pCirc) delete m_pCirc;
-    m_pCirc = new circularize(m_pConfig->octScans, m_pConfig->octAlines, true);
+    m_pCirc = new circularize(m_pConfig->octScans, m_pConfig->octAlines, false);
 	if (m_pMedfiltRect) delete m_pMedfiltRect;
 	m_pMedfiltRect = new medfilt(m_pConfig->octAlines, m_pConfig->octScans, 3, 3);
 }

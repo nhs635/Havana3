@@ -1,6 +1,7 @@
 
 #include "DeviceControl.h"
 
+#include <QDebug>
 #include <QMessageBox>
 
 #include <Havana3/Configuration.h>
@@ -32,6 +33,8 @@ auto message_handle = [&](const char* msg, bool is_error) {
 		QMessageBox MsgBox(QMessageBox::Critical, "Error", qmsg);
 		MsgBox.exec();
 	}
+	else
+		qDebug() << qmsg;
 };
 
 
@@ -53,6 +56,7 @@ DeviceControl::~DeviceControl()
 void DeviceControl::setAllDeviceOff()
 {
 	connectAxsunControl(false);
+	applyPmtGainVoltage(false);
 	connectFlimLaser(false);
 	connectRotaryMotor(false);
 	connectPullbackMotor(false);

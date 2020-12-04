@@ -217,7 +217,7 @@ void MemoryBuffer::startSaving(RecordInfo& record_info)
 	
 	// Add to database
 	QString command = QString("INSERT INTO records(patient_id, datetime_taken, preview, title, filename, procedure_id, vessel_id) "
-		"VALUES('%1', '%2', '%3', '%4', '%5', %6, %7)").arg(record_info.patientId).arg(record_info.date).arg(":preview")
+		"VALUES('%1', '%2', '%3', '%4', '%5', %6, %7)").arg(record_info.patientId).arg(record_info.date).arg("':preview'")
 													   .arg(record_info.title).arg(record_info.filename).arg(record_info.procedure).arg(record_info.vessel);
 	m_pHvnSqlDataBase->queryDatabase(command, [&](QSqlQuery &) {}, false, record_info.preview);
 
@@ -364,13 +364,13 @@ void MemoryBuffer::write()
 
 	m_pConfig->setConfigFile("Havana3.ini");
 	if (false == QFile::copy("Havana3.ini", fileTitle + ".ini"))
-		SendStatusMessage("Error occurred while copying configuration data.", true);
+		SendStatusMessage("Error occurred while copying configuration data.", false);
 
 	if (false == QFile::copy("flim_mask.dat", fileTitle + ".flim_mask"))
-		SendStatusMessage("Error occurred while copying flim_mask data.", true);
+		SendStatusMessage("Error occurred while copying flim_mask data.", false);
 
 	if (false == QFile::copy("Havana3.m", fileTitle + ".m"))
-		printf("Error occurred while copying MATLAB processing data.\n");
+		SendStatusMessage("Error occurred while copying MATLAB processing data.\n", false);
 	
 	// Send a signal to notify this thread is finished
 	emit finishedWritingThread();

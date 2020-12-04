@@ -61,8 +61,8 @@ QStreamTab::QStreamTab(QString patient_id, QWidget *parent) :
 
     // Create memory buffer object
     m_pMemoryBuffer = new MemoryBuffer(this);
-	connect(m_pMemoryBuffer, &MemoryBuffer::finishedBufferAllocation, [&]() { m_pToggleButton_StartPullback->setEnabled(true); });
-	connect(m_pMemoryBuffer, &MemoryBuffer::finishedWritingThread, [&]() { emit requestReview(m_recordInfo.recordId); });
+	///connect(m_pMemoryBuffer, &MemoryBuffer::finishedBufferAllocation, [&]() { m_pToggleButton_StartPullback->setEnabled(true); });
+	//connect(m_pMemoryBuffer, &MemoryBuffer::finishedWritingThread, [&]() { emit requestReview(m_recordInfo.recordId); });
 
     // Create device control object
     m_pDeviceControl = new DeviceControl(m_pConfig);
@@ -76,7 +76,7 @@ QStreamTab::QStreamTab(QString patient_id, QWidget *parent) :
     this->setLayout(pHBoxLayout);
 
     // Initialize & start live streaming	
-	//startLiveImaging(true);
+	startLiveImaging(true);
 }
 
 QStreamTab::~QStreamTab()
@@ -225,17 +225,16 @@ bool QStreamTab::startLiveImaging(bool start)
 {
 	if (start)
 	{
-		QMessageBox msg_box(QMessageBox::NoIcon, "Live Streaming", "Hardware Initialization...", QMessageBox::NoButton);
-		msg_box.setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::CustomizeWindowHint);
-		msg_box.setStandardButtons(0);
-		QTimer timer(this);
-		timer.start(1500);
-		connect(&timer, SIGNAL(timeout()), &msg_box, SLOT(close()));
-		msg_box.show();
-		
-		if (!enableDataAcquisition(true) || !enableMemoryBuffer(true) || !enableDeviceControl(true))
-		{
-			std::thread tab_close([&]() {
+		//QProgressDialog progress("Hardware Initialization...", "Cancel", 0, 1, this);
+		//progress.setCancelButton(0);
+		//progress.setWindowModality(Qt::WindowModal);
+		//progress.setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::CustomizeWindowHint);
+		//progress.move((m_pMainWnd->width() - progress.width()) / 2, (m_pMainWnd->height() - progress.height()) / 2);
+		//progress.setFixedSize(progress.width(), progress.height());
+
+		//std::thread init([&]() {
+			if (!enableMemoryBuffer(true) || !enableDataAcquisition(true) || !enableDeviceControl(true))
+			{
 				while (1)
 				{
 					int total = (int)m_pMainWnd->getVectorTabViews().size();
@@ -246,11 +245,15 @@ bool QStreamTab::startLiveImaging(bool start)
 						break;
 					}
 				}
-			});
-			tab_close.detach();
-			
-			return false;
-		}
+
+				return false;
+			}
+		//	else
+		//		progress.setValue(1);
+		//});
+		//init.detach();
+		//
+		//progress.exec();
 	}
 	else
 	{
@@ -262,6 +265,19 @@ bool QStreamTab::startLiveImaging(bool start)
 }
 
 
+bool QStreamTab::enableMemoryBuffer(bool enabled)
+{
+	if (enabled)
+	{
+		std::thread allocate_writing_buffer([&]() {
+			m_pMemoryBuffer->allocateWritingBuffer();
+		});
+		allocate_writing_buffer.detach();
+	}
+
+	return true;
+}
+
 bool QStreamTab::enableDataAcquisition(bool enabled)
 {
 	bool is_success = !enabled;
@@ -271,7 +287,7 @@ bool QStreamTab::enableDataAcquisition(bool enabled)
         {
             // Start thread process
             m_pThreadVisualization->startThreading();
-            m_pThreadFlimProcess->startThreading();
+            //m_pThreadFlimProcess->startThreading();
 
             // Start data acquisition			
             if ((is_success = m_pDataAcquisition->StartAcquisition()))
@@ -287,33 +303,14 @@ bool QStreamTab::enableDataAcquisition(bool enabled)
 	return enabled ? false : true;
 }
 
-bool QStreamTab::enableMemoryBuffer(bool enabled)
-{
-    if (enabled)
-    {
-        std::thread allocate_writing_buffer([&]() {
-            m_pMemoryBuffer->allocateWritingBuffer();
-        });
-        allocate_writing_buffer.detach();
-    }
-
-    return true;
-}
-
 bool QStreamTab::enableDeviceControl(bool enabled)
 {
 	if (enabled)
-	{
-		// Set recording - pullback synchronization			
-		m_pMemoryBuffer->DidPullback += [&]() {
-			m_pDeviceControl->getPullbackMotor()->DidRotateEnd += [&]() { startPullback(false);	};
-			m_pDeviceControl->pullback();
-		};
-		
+	{		
 		// Set FLIm system control
 		std::this_thread::sleep_for(std::chrono::milliseconds(200));
-		if (!m_pDeviceControl->applyPmtGainVoltage(true)) return false;
 		if (!m_pDeviceControl->connectFlimLaser(true)) return false;
+		if (!m_pDeviceControl->applyPmtGainVoltage(true)) return false;
 
 		// Set OCT system control
 		std::this_thread::sleep_for(std::chrono::milliseconds(200));
@@ -453,13 +450,13 @@ void QStreamTab::setFlimProcessingCallback()
                 np::FloatArray2 lifetime(flim_ptr + 8 * m_pConfig->flimAlines, m_pConfig->flimAlines, 3);
                 np::Uint16Array2 pulse(pulse_data, m_pConfig->flimScans, m_pConfig->flimAlines);
 
-                (*pFLIm)(intensity, mean_delay, lifetime, pulse);
+                //(*pFLIm)(intensity, mean_delay, lifetime, pulse);
 
-                for (int i = 0; i < 11; i++)
-                {
-                    float* pValue = flim_ptr + i * m_pConfig->flimAlines;
-                    std::rotate(pValue, pValue + INTRA_FRAME_SYNC, pValue + m_pConfig->flimAlines);
-                }
+                //for (int i = 0; i < 11; i++)
+                //{
+                //    float* pValue = flim_ptr + i * m_pConfig->flimAlines;
+                //    std::rotate(pValue, pValue + INTRA_FRAME_SYNC, pValue + m_pConfig->flimAlines);
+                //}
 
                 // Transfer to FLIm calibration dlg
 //				if (m_pDeviceControlTab->getFlimCalibDlgDlg())
@@ -487,6 +484,7 @@ void QStreamTab::setFlimProcessingCallback()
     };
 
     m_pThreadFlimProcess->SendStatusMessage += [&](const char* msg, bool is_error) {
+		qDebug() << msg;
 		if (is_error)
 		{
 			enableDeviceControl(false);
@@ -582,17 +580,17 @@ void QStreamTab::setVisualizationCallback()
     m_pThreadVisualization->DidAcquireData += [&](int frame_count) {
 		
         // Get the buffers from the previous sync Queues
-        float* flim_data = m_syncFlimVisualization.Queue_sync.pop();
+        //float* flim_data = m_syncFlimVisualization.Queue_sync.pop();
         uint8_t* oct_data = m_syncOctVisualization.Queue_sync.pop();
-        if ((flim_data != nullptr) && (oct_data != nullptr))
+        if ((oct_data != nullptr))  //(flim_data != nullptr) && 
         {
             // Body
             if (m_pDataAcquisition->getAcquisitionState()) // Only valid if acquisition is running
             {
                 // Draw A-lines
                 m_pViewTab->m_visImage = np::Uint8Array2(oct_data, m_pConfig->octScans, m_pConfig->octAlines);
-                m_pViewTab->m_visIntensity = np::FloatArray2(flim_data + 0 * m_pConfig->flimAlines, m_pConfig->flimAlines, 4);
-                m_pViewTab->m_visLifetime = np::FloatArray2(flim_data + 8 * m_pConfig->flimAlines, m_pConfig->flimAlines, 3);
+                //m_pViewTab->m_visIntensity = np::FloatArray2(flim_data + 0 * m_pConfig->flimAlines, m_pConfig->flimAlines, 4);
+                //m_pViewTab->m_visLifetime = np::FloatArray2(flim_data + 8 * m_pConfig->flimAlines, m_pConfig->flimAlines, 3);
 				
                 // Draw Images
                 emit m_pViewTab->drawImage(m_pViewTab->m_visImage.raw_ptr(),
@@ -600,10 +598,10 @@ void QStreamTab::setVisualizationCallback()
             }
 
             // Return (push) the buffer to the previous threading queue
-            {
-                std::unique_lock<std::mutex> lock(m_syncFlimVisualization.mtx);
-                m_syncFlimVisualization.queue_buffer.push(flim_data);
-            }
+            //{
+            //    std::unique_lock<std::mutex> lock(m_syncFlimVisualization.mtx);
+            //    m_syncFlimVisualization.queue_buffer.push(flim_data);
+            //}
             {
                 std::unique_lock<std::mutex> lock(m_syncOctVisualization.mtx);
                 m_syncOctVisualization.queue_buffer.push(oct_data);
@@ -611,16 +609,17 @@ void QStreamTab::setVisualizationCallback()
         }
         else
         {
-            if (flim_data != nullptr)
-            {
-                float* flim_temp = flim_data;
-                do
-                {
-                    m_syncFlimVisualization.queue_buffer.push(flim_temp);
-                    flim_temp = m_syncFlimVisualization.Queue_sync.pop();
-                } while (flim_temp != nullptr);
-            }
-            else if (oct_data != nullptr)
+            //if (flim_data != nullptr)
+            //{
+            //    float* flim_temp = flim_data;
+            //    do
+            //    {
+            //        m_syncFlimVisualization.queue_buffer.push(flim_temp);
+            //        flim_temp = m_syncFlimVisualization.Queue_sync.pop();
+            //    } while (flim_temp != nullptr);
+            //}
+            //else 
+			if (oct_data != nullptr)
             {
                 uint8_t* oct_temp = oct_data;
                 do
@@ -641,6 +640,7 @@ void QStreamTab::setVisualizationCallback()
     };
 
     m_pThreadVisualization->SendStatusMessage += [&](const char* msg, bool is_error) {
+		qDebug() << msg;
 		if (is_error)
 		{
 			enableDeviceControl(false);
@@ -673,8 +673,12 @@ void QStreamTab::scrollCatheterCalibration(int value)
 {
 	//QMessageBox MsgBox(QMessageBox::Critical, "Device error", "OCT swept laser source opeartion failed.\nCan't initialize service.");
 	//MsgBox.exec();
-	if (m_pDeviceControl->getAxsunControl())
-		m_pDeviceControl->getAxsunControl()->setVDLLength((float)value / 100.0f);
+	/* 추후 VDL 작동 확인 하기.  더 알맞은 functionality implementation이 있는지 찾아 보기 */
+	std::thread calib([&]() {
+		if (m_pDeviceControl->getAxsunControl())
+			m_pDeviceControl->getAxsunControl()->setVDLLength((float)value / 100.0f);
+	});
+	calib.detach();
 }
 
 void QStreamTab::enableRotation(bool enabled)
@@ -718,12 +722,21 @@ void QStreamTab::startPullback(bool enabled)
         m_pToggleButton_StartPullback->setText(" Stop Pullback");
         m_pToggleButton_StartPullback->setStyleSheet("QPushButton{font-size:12pt; font-weight:bold; color:black; background-color:#ff0000}");
 		
-		// Start recording (+ automatical pullback)
-		if (!m_pDeviceControl->connectPullbackMotor(true))
-		{
-			startPullback(false);
-			return;
-		}
+		//// Start recording (+ automatical pullback)
+		//if (!m_pDeviceControl->connectPullbackMotor(true))
+		//{
+		//	startPullback(false);
+		//	return;
+		//}
+
+		//// Set recording - pullback synchronization			
+		//m_pMemoryBuffer->DidPullback += [&]() {
+		//	if (m_pDeviceControl->getPullbackMotor())
+		//	{
+		//		m_pDeviceControl->getPullbackMotor()->DidRotateEnd += [&]() { startPullback(false);	};
+		//		m_pDeviceControl->pullback();
+		//	}
+		//};
 		m_pMemoryBuffer->startRecording();
 
 		// Capture timer
@@ -733,7 +746,7 @@ void QStreamTab::startPullback(bool enabled)
     }
     else 
     {
-		if (m_pDeviceControl->getPullbackMotor())
+		//if (m_pDeviceControl->getPullbackMotor())
 		{
 			// Preview capture
 			if (m_pCaptureTimer->isActive())

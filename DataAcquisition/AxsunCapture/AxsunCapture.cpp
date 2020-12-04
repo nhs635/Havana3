@@ -226,6 +226,8 @@ void AxsunCapture::captureRun()
 	capture_running = true;
     while (capture_running)
 	{
+		Sleep(1);
+
 		// get information about an image to be retreived from the main image buffer.
         result = axGetImageInfoAdv(-1, &returned_image, &height, &width, &dataType, &required_buffer_size,
             &force_trig_status, &trig_too_fast_status);
@@ -257,7 +259,7 @@ void AxsunCapture::captureRun()
 
 				// Periodically update progress
 				ULONG dwTickNow = GetTickCount();
-				if (dwTickNow - dwTickLastUpdate > 5000)
+				if (dwTickNow - dwTickLastUpdate > 2500)
 				{
 					double dRate, dRateUpdate;
 

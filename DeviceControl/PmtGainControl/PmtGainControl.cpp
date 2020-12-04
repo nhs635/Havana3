@@ -36,17 +36,17 @@ bool PmtGainControl::initialize()
 	/*********************************************/
 	if ((res = DAQmxCreateTask("", &_taskHandle)) != 0)
 	{
-		dumpError(res, "ERROR: Failed to set Gain Control: ");
+		dumpError(res, "ERROR: Failed to set Gain Control1: ");
 		return false;
 	}
 	if ((res = DAQmxCreateAOVoltageChan(_taskHandle, physicalChannel, "", 0.0, 1.0, DAQmx_Val_Volts, NULL)) != 0)
 	{
-		dumpError(res, "ERROR: Failed to set Gain Control: ");
+		dumpError(res, "ERROR: Failed to set Gain Control2: ");
 		return false;
 	}	
 	if ((res = DAQmxWriteAnalogF64(_taskHandle, 1, TRUE, DAQmx_Val_WaitInfinitely, DAQmx_Val_GroupByChannel, data, NULL, NULL)) != 0)
 	{
-		dumpError(res, "ERROR: Failed to set Gain Control: ");
+		dumpError(res, "ERROR: Failed to set Gain Control3: ");
 		return false;
 	}		
 

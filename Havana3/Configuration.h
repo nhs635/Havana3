@@ -22,7 +22,7 @@
 
 #define ELFORLIGHT_PORT				"COM3"
 
-//#define NI_ENABLE
+#define NI_ENABLE
 
 #ifdef NI_ENABLE
 #define NI_PMT_GAIN_CHANNEL		    "Dev1/ao1" // 13
@@ -73,7 +73,7 @@
 #define INTENSITY_COLORTABLE		6 // fire
 #define LIFETIME_COLORTABLE         14 // hsv1 ==> Viewer/QImageView.cpp
 
-#define INTER_FRAME_SYNC			10 //9  // Frames
+#define INTER_FRAME_SYNC			0 //10 //9  // Frames
 #define INTRA_FRAME_SYNC			0 //30 // A-lines
 
 #define RENEWAL_COUNT				10
