@@ -141,33 +141,33 @@ void QResultTab::readRecordData()
 	m_pDataProcessing->startProcessing(m_recordInfo.filename);
 
 	// Make progress dialog
-	QProgressDialog progress("Loading...", "Cancel", 0, 100, this);
-	connect(m_pDataProcessing, SIGNAL(processedSingleFrame(int)), &progress, SLOT(setValue(int)));
-	connect(&progress, &QProgressDialog::canceled, [&]() { m_pDataProcessing->m_bAbort = true; });
-	progress.setCancelButton(0);
-	progress.setWindowModality(Qt::WindowModal);
-	progress.setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::CustomizeWindowHint);
-	progress.move((m_pMainWnd->width() - progress.width()) / 2, (m_pMainWnd->height() - progress.height()) / 2);
-	progress.setFixedSize(progress.width(), progress.height());
-	progress.exec();
+	//QProgressDialog progress("Loading...", "Cancel", 0, 100, this);
+	//connect(m_pDataProcessing, SIGNAL(processedSingleFrame(int)), &progress, SLOT(setValue(int)));
+	//connect(&progress, &QProgressDialog::canceled, [&]() { m_pDataProcessing->m_bAbort = true; });
+	//progress.setCancelButton(0);
+	//progress.setWindowModality(Qt::WindowModal);
+	//progress.setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::CustomizeWindowHint);
+	//progress.move((m_pMainWnd->width() - progress.width()) / 2, (m_pMainWnd->height() - progress.height()) / 2);
+	//progress.setFixedSize(progress.width(), progress.height());
+	//progress.exec();
 
 	// Abort
-	if (m_pDataProcessing->m_bAbort)
-	{
-		std::thread tab_close([&]() {
-			while (1)
-			{
-				int total = (int)m_pMainWnd->getVectorTabViews().size();
-				int current = m_pMainWnd->getTabWidget()->currentIndex() + 1;
-				if (total > current)
-				{
-					emit m_pMainWnd->getTabWidget()->tabCloseRequested(current);
-					break;
-				}
-			}
-		});
-		tab_close.detach();
-	}
+	//if (m_pDataProcessing->m_bAbort)
+	//{
+	//	std::thread tab_close([&]() {
+	//		while (1)
+	//		{
+	//			int total = (int)m_pMainWnd->getVectorTabViews().size();
+	//			int current = m_pMainWnd->getTabWidget()->currentIndex() + 1;
+	//			if (total > current)
+	//			{
+	//				emit m_pMainWnd->getTabWidget()->tabCloseRequested(current);
+	//				break;
+	//			}
+	//		}
+	//	});
+	//	tab_close.detach();
+	//}
 }
 
 void QResultTab::loadRecordInfo()

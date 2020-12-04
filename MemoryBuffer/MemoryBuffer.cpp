@@ -32,8 +32,14 @@ MemoryBuffer::MemoryBuffer(QObject *parent) :
 		QString qmsg = QString::fromUtf8(msg);
 		if (is_error)
 		{
+			m_pConfig->writeToLog(QString("[MemBuff ERROR] %1").arg(qmsg));
 			QMessageBox MsgBox(QMessageBox::Critical, "Error", qmsg);
 			MsgBox.exec();
+		}
+		else
+		{
+			m_pConfig->writeToLog(QString("[MemBuff] %1").arg(qmsg));
+			qDebug() << qmsg;
 		}
 	};
 }
@@ -217,11 +223,11 @@ void MemoryBuffer::startSaving(RecordInfo& record_info)
 	
 	// Add to database
 	QString command = QString("INSERT INTO records(patient_id, datetime_taken, preview, title, filename, procedure_id, vessel_id) "
-		"VALUES('%1', '%2', '%3', '%4', '%5', %6, %7)").arg(record_info.patientId).arg(record_info.date).arg("':preview'")
+		"VALUES('%1', '%2', :preview, '%3', '%4', %5, %6)").arg(record_info.patientId).arg(record_info.date)
 													   .arg(record_info.title).arg(record_info.filename).arg(record_info.procedure).arg(record_info.vessel);
 	m_pHvnSqlDataBase->queryDatabase(command, [&](QSqlQuery &) {}, false, record_info.preview);
 
-	m_pHvnSqlDataBase->queryDatabase(QString("SELECT * FROM records WHERE datetime_taken=%1").arg(record_info.date), [&](QSqlQuery& _sqlQuery) {
+	m_pHvnSqlDataBase->queryDatabase(QString("SELECT * FROM records WHERE datetime_taken='%1'").arg(record_info.date), [&](QSqlQuery& _sqlQuery) {
 		while (_sqlQuery.next())
 			record_info.recordId = _sqlQuery.value(0).toString();
 	});
@@ -287,12 +293,12 @@ void MemoryBuffer::write()
 	}
 		
 	// Make progress dialog
-	QProgressDialog progress("Writing...", "Cancel", 0, m_nRecordedFrames - INTER_FRAME_SYNC, m_pStreamTab);
-	progress.setCancelButton(0);
-	progress.setWindowModality(Qt::WindowModal);
-	progress.setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::CustomizeWindowHint);
-	progress.move((m_pStreamTab->getMainWnd()->width() - progress.width()) / 2, (m_pStreamTab->getMainWnd()->height() - progress.height()) / 2);
-	progress.setFixedSize(progress.width(), progress.height());
+	//QProgressDialog progress("Writing...", "Cancel", 0, m_nRecordedFrames - INTER_FRAME_SYNC, m_pStreamTab);
+	//progress.setCancelButton(0);
+	//progress.setWindowModality(Qt::WindowModal);
+	//progress.setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::CustomizeWindowHint);
+	//progress.move((m_pStreamTab->getMainWnd()->width() - progress.width()) / 2, (m_pStreamTab->getMainWnd()->height() - progress.height()) / 2);
+	//progress.setFixedSize(progress.width(), progress.height());
 
 	// Writing
 	QFile file(m_fileName);
@@ -333,10 +339,10 @@ void MemoryBuffer::write()
 			}		
 			m_queueWritingOctBuffer.push(buffer_oct);
 
-			progress.setValue(i);
+			//progress.setValue(i);
 			///printf("\r%dth frame is wrote... [%3.2f%%]", i + 1, 100 * (double)(i + 1) / (double)m_nRecordedFrames);
 		}
-		progress.setValue(m_nRecordedFrames - INTER_FRAME_SYNC);
+	//	progress.setValue(m_nRecordedFrames - INTER_FRAME_SYNC);
 		file.close();
 	}
 	else

@@ -226,7 +226,6 @@ void AxsunCapture::captureRun()
 	capture_running = true;
     while (capture_running)
 	{
-		printf("ddd\n");
 		Sleep(1);
 
 		// get information about an image to be retreived from the main image buffer.

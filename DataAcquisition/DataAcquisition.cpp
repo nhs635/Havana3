@@ -23,11 +23,15 @@ DataAcquisition::DataAcquisition(Configuration* pConfig)
 		QString qmsg = QString::fromUtf8(msg);
 		if (is_error)
 		{
+			m_pConfig->writeToLog(QString("[DataAcq ERROR] %1").arg(qmsg));
 			QMessageBox MsgBox(QMessageBox::Critical, "Error", qmsg);
 			MsgBox.exec();
 		}
 		else
-			qDebug() << qmsg;
+		{
+			m_pConfig->writeToLog(QString("[DataAcq] %1").arg(qmsg));
+			qDebug() << qmsg;			
+		}
 	};
 
     // Create SignatecDAQ object
@@ -63,7 +67,7 @@ DataAcquisition::~DataAcquisition()
 
 bool DataAcquisition::InitializeAcquistion()
 {
-    // Set boot-time buffer
+    /// Set boot-time buffer
     ///SetBootTimeBufCfg(PX14_BOOTBUF_IDX, sizeof(uint16_t) * m_pConfig->flimScans * m_pConfig->flimAlines);
 	 
     // Parameter settings for DAQ & Axsun Capture
@@ -75,7 +79,7 @@ bool DataAcquisition::InitializeAcquistion()
 	m_pAxsunCapture->image_width = m_pConfig->octAlines;
 	
     // Initialization for DAQ & Axsun Capture
-    if ( !m_pAxsunCapture->initializeCapture())  // !m_pDaq->set_init() ||
+    if (!m_pDaq->set_init() || !m_pAxsunCapture->initializeCapture())
     {
 		StopAcquisition(false);
         return false;
@@ -90,7 +94,7 @@ bool DataAcquisition::StartAcquisition()
     m_pDaq->DcOffset = m_pConfig->px14DcOffset;
 
     // Start acquisition
-	if (!m_pAxsunCapture->startCapture())   //!m_pDaq->startAcquisition() || 
+	if (!m_pDaq->startAcquisition() || !m_pAxsunCapture->startCapture())
 	{
 		StopAcquisition(false);
 		return false;
@@ -105,7 +109,7 @@ bool DataAcquisition::StartAcquisition()
 void DataAcquisition::StopAcquisition(bool suc_stop)
 {
     // Stop thread
-	//m_pDaq->stopAcquisition();
+	m_pDaq->stopAcquisition();
 	m_pAxsunCapture->stopCapture();
 
 	m_bAcquisitionState = false;

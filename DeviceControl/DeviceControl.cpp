@@ -56,6 +56,7 @@ DeviceControl::~DeviceControl()
 void DeviceControl::setAllDeviceOff()
 {
 	connectAxsunControl(false);
+	startSynchronization(false);
 	applyPmtGainVoltage(false);
 	connectFlimLaser(false);
 	connectRotaryMotor(false);

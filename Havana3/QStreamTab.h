@@ -53,7 +53,7 @@ public:
 	void changePatient(QString patient_id);
 
 public:    
-	bool startLiveImaging(bool);
+	void startLiveImaging(bool);
 
 private:
 	bool enableMemoryBuffer(bool);
@@ -78,6 +78,7 @@ private slots:
 #endif
 
 signals:
+	void devInit();
 	void getCapture(QByteArray &);
 	void requestReview(const QString &);
 
@@ -93,6 +94,8 @@ private:
 
 private:
 	RecordInfo m_recordInfo;
+
+private:
 	QTimer *m_pCaptureTimer;
 #ifdef DEVELOPER_MODE
 	QTimer *m_pSyncMonitorTimer;

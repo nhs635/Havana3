@@ -22,7 +22,7 @@
 
 #define ELFORLIGHT_PORT				"COM3"
 
-//#define NI_ENABLE
+#define NI_ENABLE
 
 #ifdef NI_ENABLE
 #define NI_PMT_GAIN_CHANNEL		    "Dev1/ao1" // 13
