@@ -275,8 +275,10 @@ void AddPatientDlg::add()
 
 		if (!QDir().exists(m_pConfig->dbPath + "/record/" + patient_id))
 			QDir().mkdir(m_pConfig->dbPath + "/record");
+		
+		m_pConfig->writeToLog(QString("Patient info added: %1 (ID: %2)").arg(last_name + ", " + first_name).arg(patient_id));
 
-        this->accept();
+        this->accept();		
     }
 }
 
@@ -297,6 +299,8 @@ void AddPatientDlg::edit()
     if (m_pHvnSqlDataBase->queryDatabase(command))
     {
         m_pPatientSummaryTab->loadPatientInformation();
+
+		m_pConfig->writeToLog(QString("Patient info editted: %1 (ID: %2)").arg(last_name + ", " + first_name).arg(patient_id));
 
         this->accept();
     }
@@ -321,7 +325,8 @@ void AddPatientDlg::loadPatientInformation()
             m_pLineEdit_PhysicianName->setText(_sqlQuery.value(8).toString());
             m_pLineEdit_AccessionNumber->setText(_sqlQuery.value(6).toString());
             m_pLineEdit_Keywords->setText(_sqlQuery.value(7).toString());
-
+			
+			m_pConfig->writeToLog(QString("Patient info loaded: %1 (ID: %2) [AddPatientDlg]").arg(_sqlQuery.value(1).toString() + ", " + _sqlQuery.value(0).toString()).arg(m_patientId));
         }
     });
 

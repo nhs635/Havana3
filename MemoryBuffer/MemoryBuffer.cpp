@@ -80,7 +80,7 @@ void MemoryBuffer::allocateWritingBuffer()
 			memset(buffer2, 0, m_pConfig->octFrameSize * sizeof(uint8_t));
 			m_queueWritingOctBuffer.push(buffer2);
 			
-			printf("\rAllocating the writing buffers... [%d / %d]", i + 1, WRITING_BUFFER_SIZE);
+			//printf("\rAllocating the writing buffers... [%d / %d]", i + 1, WRITING_BUFFER_SIZE);
 		}
 
 		m_syncFlimBuffering.allocate_queue_buffer(m_pConfig->flimScans, m_pConfig->flimAlines, PROCESSING_BUFFER_SIZE);

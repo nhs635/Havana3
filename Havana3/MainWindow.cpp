@@ -91,23 +91,9 @@ MainWindow::~MainWindow()
 
 void MainWindow::closeEvent(QCloseEvent *e)
 {
-	for (auto it = m_vectorTabViews.rbegin(); it != m_vectorTabViews.rend(); ++it)
-	{
-		qDebug() << (QDialog(*it)).windowTitle().toLocal8Bit().data());
-		//QString window_title = it
-	}
-
-	//removeTabView
-	//m_vectorTabViews.rbegin()
-
-	//	f
-	//foreach(QDialog* _pTabView, m_vectorTabViews)
-	//{
-	//	QString window_title = _pTabView->windowTitle();
-	//	if (window_title.contains(patient_name) && !window_title.contains("Summary"))
-	//		tabCloseRequested(_index--);
-	//	_index++;
-	//}
+	if (m_pStreamTab)
+		if (m_pStreamTab->getDataAcquisition()->getAcquisitionState())
+			m_pStreamTab->startLiveImaging(false);
 
     e->accept();
 }
@@ -119,10 +105,14 @@ void MainWindow::addTabView(QDialog *pTabView)
 
     int tabIndex = m_pTabWidget->addTab(pTabView, pTabView->windowTitle());
     m_pTabWidget->setCurrentIndex(tabIndex);
+
+	m_pConfiguration->writeToLog(QString("Tab added: %1").arg(pTabView->windowTitle()));
 }
 
 void MainWindow::removeTabView(QDialog *pTabView)
 {
+	m_pConfiguration->writeToLog(QString("Tab removed: %1").arg(pTabView->windowTitle()));
+
     m_pTabWidget->removeTab(m_pTabWidget->indexOf(pTabView));
 	m_vectorTabViews.erase(std::find(m_vectorTabViews.begin(), m_vectorTabViews.end(), pTabView));
 
@@ -168,6 +158,8 @@ void MainWindow::tabCurrentChanged(int index)
 	}
 	
 	prev_index = index;
+
+	m_pConfiguration->writeToLog(QString("Tab changed: %1 ==> %2").arg(previousTab->windowTitle()).arg(currentTab->windowTitle()));
 }
 
 void MainWindow::tabCloseRequested(int index)
@@ -236,7 +228,6 @@ void MainWindow::tabCloseRequested(int index)
 			}
 		}
 
-		qDebug() << pTabView->windowTitle();
 		removeTabView(pTabView);
     }
 }

@@ -22,7 +22,7 @@
 
 #define ELFORLIGHT_PORT				"COM3"
 
-#define NI_ENABLE
+//#define NI_ENABLE
 
 #ifdef NI_ENABLE
 #define NI_PMT_GAIN_CHANNEL		    "Dev1/ao1" // 13
@@ -93,6 +93,7 @@ struct ContrastRange
 
 
 #include <QString>
+#include <QStringList>
 #include <QSettings>
 #include <QDateTime>
 
@@ -177,6 +178,8 @@ public:
         dbPath = settings.value("dbPath").toString();
 
 		settings.endGroup();
+
+		writeToLog(QString("Get configuration data: %1").arg(inipath));
 	}
 
 	void setConfigFile(QString inipath)
@@ -234,13 +237,17 @@ public:
         settings.setValue("dbPath", dbPath);
 
 		// Current Time
-		QDate date = QDate::currentDate();
-		QTime time = QTime::currentTime();
-		settings.setValue("time", QString("%1-%2-%3 %4-%5-%6")
-			.arg(date.year()).arg(date.month(), 2, 10, (QChar)'0').arg(date.day(), 2, 10, (QChar)'0')
-			.arg(time.hour(), 2, 10, (QChar)'0').arg(time.minute(), 2, 10, (QChar)'0').arg(time.second(), 2, 10, (QChar)'0'));
+		QString datetime = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss");
+		settings.setValue("time", datetime);
 
 		settings.endGroup();
+
+		writeToLog(QString("Set configuration data: %1").arg(inipath));
+	}
+
+	void writeToLog(QString msg)
+	{
+		log << QDateTime::currentDateTime().toString("[yyyy-MM-dd hh:mm:ss] ") + msg;
 	}
 	
 public:
@@ -285,6 +292,9 @@ public:
     // Database
     QString dbPath;
 	
+	// System log
+	QStringList log;
+
 	// Message callback
 	callback<const char*> msgHandle;
 };

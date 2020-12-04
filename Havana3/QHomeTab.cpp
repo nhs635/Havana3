@@ -120,18 +120,21 @@ void QHomeTab::signIn()
         if (m_pHvnSqlDataBase->openDatabase(typed_user, typed_pswd))
         {
             n_trial = 0;
-            m_pGroupBox_SignIn->setVisible(false);            
+            m_pGroupBox_SignIn->setVisible(false);        
+			m_pConfig->writeToLog(QString("Successfully signed in. (username: %1)").arg(typed_user));
 			
             emit signedIn();
         }
         else
         {
+			m_pConfig->writeToLog("Permission error: Authentication failed. Please try again.");
             QMessageBox MsgBox(QMessageBox::Critical, "Permission error", "Authentication failed. Please try again.");
             MsgBox.exec();
         }
     }
     else
     {
+		m_pConfig->writeToLog("Permission error: Too many wrong login attempts. Please try again after a few miniutes.");
         QMessageBox MsgBox(QMessageBox::Critical, "Permission error", "Too many wrong login attempts. Please try again after a few miniutes.");
         MsgBox.exec();
 

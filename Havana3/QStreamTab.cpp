@@ -232,9 +232,10 @@ bool QStreamTab::startLiveImaging(bool start)
 		//progress.move((m_pMainWnd->width() - progress.width()) / 2, (m_pMainWnd->height() - progress.height()) / 2);
 		//progress.setFixedSize(progress.width(), progress.height());
 
-		//std::thread init([&]() {
-			if (!enableMemoryBuffer(true) || !enableDataAcquisition(true) || !enableDeviceControl(true))
-			{
+		//
+		if (!enableMemoryBuffer(true) || !enableDataAcquisition(true) || !enableDeviceControl(true))
+		{
+			std::thread tab_close([&]() {
 				while (1)
 				{
 					int total = (int)m_pMainWnd->getVectorTabViews().size();
@@ -245,13 +246,15 @@ bool QStreamTab::startLiveImaging(bool start)
 						break;
 					}
 				}
+				printf("tab closed\n");
+			});
+			tab_close.detach();
 
-				return false;
-			}
+			return false;
+		}
 		//	else
 		//		progress.setValue(1);
-		//});
-		//init.detach();
+		
 		//
 		//progress.exec();
 	}
@@ -412,8 +415,11 @@ void QStreamTab::setFlimAcquisitionCallback()
     m_pDataAcquisition->ConnectDaqSendStatusMessage([&](const char * msg, bool is_error) {
 		if (is_error)
 		{
-			enableDeviceControl(false);
-			enableDataAcquisition(false);
+			if (m_pDataAcquisition->getAcquisitionState())
+			{
+				enableDeviceControl(false);
+				enableDataAcquisition(false);
+			}
 		}
     });
 }
@@ -484,11 +490,13 @@ void QStreamTab::setFlimProcessingCallback()
     };
 
     m_pThreadFlimProcess->SendStatusMessage += [&](const char* msg, bool is_error) {
-		qDebug() << msg;
 		if (is_error)
 		{
-			enableDeviceControl(false);
-			enableDataAcquisition(false);
+			if (m_pDataAcquisition->getAcquisitionState())
+			{
+				enableDeviceControl(false);
+				enableDataAcquisition(false);
+			}
 		}
     };
 }
@@ -568,8 +576,11 @@ void QStreamTab::setOctProcessingCallback()
     m_pDataAcquisition->ConnectAxsunSendStatusMessage([&](const char * msg, bool is_error) {
 		if (is_error)
 		{
-			enableDeviceControl(false);
-			enableDataAcquisition(false);
+			if (m_pDataAcquisition->getAcquisitionState())
+			{
+				enableDeviceControl(false);
+				enableDataAcquisition(false);
+			}
 		}
     });
 }
@@ -640,11 +651,13 @@ void QStreamTab::setVisualizationCallback()
     };
 
     m_pThreadVisualization->SendStatusMessage += [&](const char* msg, bool is_error) {
-		qDebug() << msg;
 		if (is_error)
 		{
-			enableDeviceControl(false);
-			enableDataAcquisition(false);
+			if (m_pDataAcquisition->getAcquisitionState())
+			{
+				enableDeviceControl(false);
+				enableDataAcquisition(false);
+			}
 		}
     };
 }

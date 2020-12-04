@@ -34,9 +34,10 @@ bool HvnSqlDataBase::openDatabase(const QString& username, const QString& passwo
 		if (!m_sqlDataBase.isValid())
 		{
 			// Initialize sql database
-			bool init_req = !QDir().exists(m_pConfig->dbPath + "/db.sqlite");
+			QString db_fullpath = m_pConfig->dbPath + "/db.sqlite";
+			bool init_req = !QDir().exists(db_fullpath);
 
-#ifndef ENABLE_DATABASE_ENCRYPTION
+#ifdef ENABLE_DATABASE_ENCRYPTION
 			m_sqlDataBase = QSqlDatabase::addDatabase("SQLITECIPHER", "DBConnection");
 			m_sqlDataBase.setDatabaseName(m_pConfig->dbPath + "/db.sqlite");
 			m_sqlDataBase.setUserName(username);
@@ -48,14 +49,19 @@ bool HvnSqlDataBase::openDatabase(const QString& username, const QString& passwo
 #endif
 			if (!m_sqlDataBase.open())
 			{
-				QMessageBox MsgBox(QMessageBox::Critical, "Database error", "Failed to open: " + m_sqlDataBase.lastError().text());
+				QString msg = "Failed to open: " + m_sqlDataBase.lastError().text();
+				m_pConfig->writeToLog(QString("Database error: %1 [%2]").arg(msg).arg(db_fullpath));
+
+				QMessageBox MsgBox(QMessageBox::Critical, "Database error", msg);
 				MsgBox.exec();
 
 				closeDatabase();
+				m_pMainWnd->setCursor(Qt::ArrowCursor);
 				return false;
 			}
 			else
 			{
+				m_pConfig->writeToLog(QString("Database opened: %1").arg(db_fullpath));
 				if (init_req) initializeDatabase();
 
 				m_username = username;
@@ -74,6 +80,8 @@ void HvnSqlDataBase::closeDatabase()
         m_sqlDataBase.close();
     m_sqlDataBase = QSqlDatabase();
     m_sqlDataBase.removeDatabase("DBConnection");
+
+	m_pConfig->writeToLog(QString("Database closed: %1").arg(m_pConfig->dbPath + "/db.sqlite"));
 }
 
 void HvnSqlDataBase::initializeDatabase()
@@ -97,6 +105,8 @@ void HvnSqlDataBase::initializeDatabase()
 			// Make directory for recorded data
 			if (!QDir().exists(m_pConfig->dbPath + "/record"))
 				QDir().mkdir(m_pConfig->dbPath + "/record");
+
+			m_pConfig->writeToLog("Database initialized: Successful initialization");
 		}
 		else
 		{
@@ -119,11 +129,17 @@ bool HvnSqlDataBase::queryDatabase(const QString &command, std::function<void(QS
 
         if (!sqlQuery.exec())
         {
-            QMessageBox MsgBox(QMessageBox::Critical, "Database error", "Failed to query: " + sqlQuery.lastError().text());
+			QString msg = "Failed to query: " + sqlQuery.lastError().text();
+			m_pConfig->writeToLog(QString("Database error: %1 [%2]").arg(msg).arg(command));
+
+            QMessageBox MsgBox(QMessageBox::Critical, "Database error", msg);
             MsgBox.exec();
+
 			m_sqlDataBase.close();
             return false;
         }
+		else
+			m_pConfig->writeToLog(QString("Database query: %1").arg(command));
 
         // Do next thing
         DidQuery(sqlQuery);

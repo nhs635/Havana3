@@ -170,6 +170,8 @@ void QPatientSummaryTab::createPatientSummaryTable()
 void QPatientSummaryTab::newRecord()
 {
     emit requestNewRecord(m_patientInfo.patientId);
+
+	m_pConfig->writeToLog(QString("New record requested: %1 (ID: %2)").arg(m_patientInfo.patientName).arg(m_patientInfo.patientId));
 }
 
 void QPatientSummaryTab::import()
@@ -197,6 +199,9 @@ void QPatientSummaryTab::import()
 
 		QMessageBox MsgBox(QMessageBox::Information, "Import", "Successfully imported!");
 		MsgBox.exec();
+
+		m_pConfig->writeToLog(QString("Exisiting record imported: %1 (ID: %2): %3")
+			.arg(m_patientInfo.patientName).arg(m_patientInfo.patientId).arg(fileName));
 	}
 }
 
@@ -260,7 +265,6 @@ void QPatientSummaryTab::modifyRecordComment(int row, int col)
 
 void QPatientSummaryTab::finishedModifyRecordComment(QTableWidgetItem* item)
 {
-    qDebug() << "here";
 //    m_pTableWidget_RecordInformation->set
 //    m_pTableWidget_RecordInformation->setEditTriggers(QAbstractItemView::NoEditTriggers);
 
@@ -316,6 +320,9 @@ void QPatientSummaryTab::deleteRecordData(const QString& record_id)
 					break;
 				}
 			}
+
+			m_pConfig->writeToLog(QString("Record deleted: %1 (ID: %2): %3 : record id: %4")
+				.arg(m_patientInfo.patientName).arg(m_patientInfo.patientId).arg(datetime).arg(record_id));
 		}
 	});
 
@@ -359,6 +366,8 @@ void QPatientSummaryTab::loadPatientInformation()
 
 				index++;
 			}
+
+			m_pConfig->writeToLog(QString("Patient info loaded: %1 (ID: %2) [QPatientSummaryTab]").arg(m_patientInfo.patientName).arg(m_patientInfo.patientId));
         }
     });
 }
@@ -451,6 +460,8 @@ void QPatientSummaryTab::loadRecordDatabase()
 
             rowCount++;
         }
+
+		m_pConfig->writeToLog(QString("Record database loaded: %1 (ID: %2)").arg(m_patientInfo.patientName).arg(m_patientInfo.patientId));
     });
 
     m_pTableWidget_RecordInformation->setSortingEnabled(true);

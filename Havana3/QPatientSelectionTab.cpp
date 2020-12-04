@@ -179,6 +179,7 @@ void QPatientSelectionTab::removePatient()
     }
 	
     int current_row = m_pTableWidget_PatientInformation->currentRow();
+	QString patient_id = m_pTableWidget_PatientInformation->item(current_row, 1)->text();
 	QString patient_name = m_pTableWidget_PatientInformation->item(current_row, 0)->text();
 
 	foreach(QDialog* pTabView, m_pMainWnd->getVectorTabViews())
@@ -187,9 +188,10 @@ void QPatientSelectionTab::removePatient()
 			m_pMainWnd->removeTabView(pTabView);
 	}
 
-    m_pHvnSqlDataBase->queryDatabase(QString("DELETE FROM patients WHERE patient_id='%1'")
-                                     .arg(m_pTableWidget_PatientInformation->item(current_row, 1)->text()));
+    m_pHvnSqlDataBase->queryDatabase(QString("DELETE FROM patients WHERE patient_id='%1'").arg(patient_id));
     m_pTableWidget_PatientInformation->removeRow(current_row);
+
+	m_pConfig->writeToLog(QString("Patient info removed: %1 (ID: %2)").arg(patient_name).arg(patient_id));
 }
 
 void QPatientSelectionTab::editDatabaseLocation(const QString &dbPath)
@@ -279,6 +281,8 @@ void QPatientSelectionTab::loadPatientDatabase()
 
             rowCount++;
         }
+
+		m_pConfig->writeToLog(QString("Patient database loaded: %1").arg(m_pConfig->dbPath));
     });
 
     m_pTableWidget_PatientInformation->setSortingEnabled(true);
