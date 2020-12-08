@@ -44,6 +44,7 @@ QResultTab::QResultTab(QString record_id, QWidget *parent) :
 
 QResultTab::~QResultTab()
 {
+	delete m_pDataProcessing;
 }
 
 
@@ -141,33 +142,38 @@ void QResultTab::readRecordData()
 	m_pDataProcessing->startProcessing(m_recordInfo.filename);
 
 	// Make progress dialog
-	//QProgressDialog progress("Loading...", "Cancel", 0, 100, this);
-	//connect(m_pDataProcessing, SIGNAL(processedSingleFrame(int)), &progress, SLOT(setValue(int)));
-	//connect(&progress, &QProgressDialog::canceled, [&]() { m_pDataProcessing->m_bAbort = true; });
-	//progress.setCancelButton(0);
-	//progress.setWindowModality(Qt::WindowModal);
-	//progress.setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::CustomizeWindowHint);
-	//progress.move((m_pMainWnd->width() - progress.width()) / 2, (m_pMainWnd->height() - progress.height()) / 2);
-	//progress.setFixedSize(progress.width(), progress.height());
-	//progress.exec();
+	QProgressDialog progress("Processing...", "Cancel", 0, 100, this);
+	connect(m_pDataProcessing, SIGNAL(processedSingleFrame(int)), &progress, SLOT(setValue(int)));
+	connect(m_pDataProcessing, &DataProcessing::abortedProcessing, [&]() { progress.setValue(100); /* tab 종료 조건 */ });
+	///connect(&progress, &QProgressDialog::canceled, [&]() { m_pDataProcessing->m_bAbort = true; });
+	progress.setWindowTitle("Review");
+	progress.setCancelButton(0);
+	progress.setWindowModality(Qt::WindowModal);
+	progress.setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::CustomizeWindowHint);
+	progress.move((m_pMainWnd->width() - progress.width()) / 2, (m_pMainWnd->height() - progress.height()) / 2);
+	progress.setFixedSize(progress.width(), progress.height());
+	progress.exec();
+	
+	/// // Abort
+	///if (m_pDataProcessing->m_bAbort)
+	///{
+	///	std::thread tab_close([&]() {
+	///		//while (1)
+	///		//{
+	///		//	int total = (int)m_pMainWnd->getVectorTabViews().size();
+	///		//	int current = m_pMainWnd->getTabWidget()->currentIndex() + 1;
+	///		//	if (total > current)
+	///		//	{
+	///		//		emit m_pMainWnd->getTabWidget()->tabCloseRequested(current);
+	///		//		break;
+	///		//	}
+	///		//}
+	///	});
+	///	tab_close.detach();
+	///}
 
-	// Abort
-	//if (m_pDataProcessing->m_bAbort)
-	//{
-	//	std::thread tab_close([&]() {
-	//		while (1)
-	//		{
-	//			int total = (int)m_pMainWnd->getVectorTabViews().size();
-	//			int current = m_pMainWnd->getTabWidget()->currentIndex() + 1;
-	//			if (total > current)
-	//			{
-	//				emit m_pMainWnd->getTabWidget()->tabCloseRequested(current);
-	//				break;
-	//			}
-	//		}
-	//	});
-	//	tab_close.detach();
-	//}
+	m_pConfig->writeToLog(QString("Record reviewing: %1 (ID: %2): %3 : record id: %4")
+		.arg(m_recordInfo.patientName).arg(m_recordInfo.patientId).arg(m_recordInfo.date).arg(m_recordInfo.recordId));
 }
 
 void QResultTab::loadRecordInfo()
@@ -189,6 +195,9 @@ void QResultTab::loadRecordInfo()
 			m_pComboBox_Vessel->setCurrentIndex(m_recordInfo.vessel);
 			m_pComboBox_Procedure->setCurrentIndex(m_recordInfo.procedure);
 		}
+
+		m_pConfig->writeToLog(QString("Record info loaded: %1 (ID: %2): %3 : record id: %4")
+			.arg(m_recordInfo.patientName).arg(m_recordInfo.patientId).arg(m_recordInfo.date).arg(m_recordInfo.recordId));
 	});
 }
 
@@ -206,6 +215,8 @@ void QResultTab::loadPatientInfo()
 				arg(m_recordInfo.patientId));
 			setWindowTitle(QString("Review: %1: %2").arg(m_recordInfo.patientName).arg(m_recordInfo.date));
 		}
+
+		m_pConfig->writeToLog(QString("Patient info loaded: %1 (ID: %2) [QResultTab]").arg(m_recordInfo.patientName).arg(m_recordInfo.patientId));
 	});
 }
 
@@ -215,6 +226,9 @@ void QResultTab::updatePreviewImage()
 
 	QString command = QString("UPDATE records SET preview=:preview WHERE id=%1").arg(m_recordInfo.recordId);
 	m_pHvnSqlDataBase->queryDatabase(command, [&](QSqlQuery &) {}, false, m_recordInfo.preview);
+
+	m_pConfig->writeToLog(QString("Record preview updated: %1 (ID: %2): %3 : record id: %4")
+		.arg(m_recordInfo.patientName).arg(m_recordInfo.patientId).arg(m_recordInfo.date).arg(m_recordInfo.recordId));
 }
 
 
@@ -223,6 +237,9 @@ void QResultTab::changeVesselInfo(int info)
     m_recordInfo.vessel = info;
     QString command = QString("UPDATE records SET vessel_id=%1 WHERE id=%2").arg(info).arg(m_recordInfo.recordId);
     m_pHvnSqlDataBase->queryDatabase(command);
+
+	m_pConfig->writeToLog(QString("Record vessel updated: %1 (ID: %2): %3 : record id: %4")
+		.arg(m_recordInfo.patientName).arg(m_recordInfo.patientId).arg(m_recordInfo.date).arg(m_recordInfo.recordId));
 }
 
 void QResultTab::changeProcedureInfo(int info)
@@ -230,25 +247,26 @@ void QResultTab::changeProcedureInfo(int info)
     m_recordInfo.procedure = info;
     QString command = QString("UPDATE records SET procedure_id=%1 WHERE id=%2").arg(info).arg(m_recordInfo.recordId);
     m_pHvnSqlDataBase->queryDatabase(command);
+
+	m_pConfig->writeToLog(QString("Record procedure updated: %1 (ID: %2): %3 : record id: %4")
+		.arg(m_recordInfo.patientName).arg(m_recordInfo.patientId).arg(m_recordInfo.date).arg(m_recordInfo.recordId));
 }
 
 
 void QResultTab::createSettingDlg()
 {
-	// SETTING DIALOG 기능 구현!!!
     if (m_pSettingDlg == nullptr)
     {
         m_pSettingDlg = new SettingDlg(this);
         connect(m_pSettingDlg, SIGNAL(finished(int)), this, SLOT(deleteSettingDlg()));
-        m_pSettingDlg->show();
+		m_pSettingDlg->setModal(true);
+		m_pSettingDlg->exec();
     }
-    m_pSettingDlg->raise();
-    m_pSettingDlg->activateWindow();
 }
 
 void QResultTab::deleteSettingDlg()
 {
-    m_pSettingDlg->deleteLater();
+	m_pSettingDlg->deleteLater();
     m_pSettingDlg = nullptr;
 }
 

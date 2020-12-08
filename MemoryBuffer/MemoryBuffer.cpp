@@ -45,30 +45,8 @@ MemoryBuffer::MemoryBuffer(QObject *parent) :
 }
 
 MemoryBuffer::~MemoryBuffer()
-{
-	for (int i = 0; i < WRITING_BUFFER_SIZE; i++)
-	{
-		if (!m_queueWritingFlimBuffer.empty())
-		{
-			uint16_t* buffer = m_queueWritingFlimBuffer.front();
-			if (buffer)
-			{
-				m_queueWritingFlimBuffer.pop();
-				delete[] buffer;
-			}
-		}
-
-		if (!m_queueWritingOctBuffer.empty())
-		{
-			uint8_t* buffer = m_queueWritingOctBuffer.front();
-			if (buffer)
-			{
-				m_queueWritingOctBuffer.pop();
-				delete[] buffer;
-			}
-		}
-	}
-	SendStatusMessage("Writing buffers are successfully disallocated.", false);
+{	
+	disallocateWritingBuffer();
 }
 
 
@@ -102,6 +80,40 @@ void MemoryBuffer::allocateWritingBuffer()
 
 	emit finishedBufferAllocation();
 }
+
+void MemoryBuffer::disallocateWritingBuffer()
+{
+	if (m_bIsAllocatedWritingBuffer)
+	{
+		for (int i = 0; i < WRITING_BUFFER_SIZE; i++)
+		{
+			if (!m_queueWritingFlimBuffer.empty())
+			{
+				uint16_t* buffer = m_queueWritingFlimBuffer.front();
+				if (buffer)
+				{
+					m_queueWritingFlimBuffer.pop();
+					delete[] buffer;
+				}
+			}
+
+			if (!m_queueWritingOctBuffer.empty())
+			{
+				uint8_t* buffer = m_queueWritingOctBuffer.front();
+				if (buffer)
+				{
+					m_queueWritingOctBuffer.pop();
+					delete[] buffer;
+				}
+			}
+		}
+
+		SendStatusMessage("Writing buffers are successfully disallocated.", false);
+
+		m_bIsAllocatedWritingBuffer = false;
+	}
+}
+
 
 bool MemoryBuffer::startRecording()
 {

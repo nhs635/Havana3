@@ -8,7 +8,7 @@
 
 
 ElforlightLaser::ElforlightLaser() :
-	port_name(ELFORLIGHT_PORT), isLaserEnabled(false)
+	port_name(""), isLaserEnabled(false)
 {
 	m_pSerialComm = new QSerialComm;
 }
@@ -29,7 +29,7 @@ bool ElforlightLaser::ConnectDevice()
 		if (m_pSerialComm->openSerialPort(port_name))
 		{
 			char msg[256];
-			sprintf(msg, "ELFORLIGHT: Success to connect to %s.", port_name);
+			sprintf(msg, "[ELFORLIGHT] Success to connect to %s.", port_name);
 			SendStatusMessage(msg, false);
 
 			m_pSerialComm->DidReadBuffer += [&](char* buffer, qint64 len)
@@ -63,13 +63,13 @@ bool ElforlightLaser::ConnectDevice()
 		else
 		{
 			char msg[256];
-			sprintf(msg, "ELFORLIGHT: Fail to connect to %s.", port_name);
+			sprintf(msg, "[ELFORLIGHT] Fail to connect to %s.", port_name);
 			SendStatusMessage(msg, false);
 			return false;
 		}
 	}
 	else
-		SendStatusMessage("ELFORLIGHT: Already connected.", false);
+		SendStatusMessage("[ELFORLIGHT] Already connected.", false);
 
 	return true;
 }
@@ -80,11 +80,11 @@ void ElforlightLaser::DisconnectDevice()
 	if (m_pSerialComm->m_bIsConnected)
 	{
 		SendCommand((char*)"R");
-		//std::this_thread::sleep_for(std::chrono::milliseconds(500));
+		std::this_thread::sleep_for(std::chrono::milliseconds(500));
 		m_pSerialComm->closeSerialPort();
 
 		char msg[256];
-		sprintf(msg, "ELFORLIGHT: Success to disconnect to %s.", port_name);
+		sprintf(msg, "[ELFORLIGHT] Success to disconnect to %s.", port_name);
 		SendStatusMessage(msg, false);
 	}
 }
@@ -95,10 +95,10 @@ void ElforlightLaser::IncreasePower()
 	char buff[2] = "+";
 
 	char msg[256];
-	sprintf(msg, "ELFORLIGHT: Send: %s", buff);
+	sprintf(msg, "[ELFORLIGHT] Send: %s", buff);
 	SendStatusMessage(msg, false);
 
-	//std::this_thread::sleep_for(std::chrono::milliseconds(250));
+	std::this_thread::sleep_for(std::chrono::milliseconds(250));
 	m_pSerialComm->writeSerialPort(buff);
     m_pSerialComm->waitUntilResponse();
 }
@@ -109,10 +109,10 @@ void ElforlightLaser::DecreasePower()
 	char buff[2] = "-";
 
 	char msg[256];
-	sprintf(msg, "ELFORLIGHT: Send: %s", buff);
+	sprintf(msg, "[ELFORLIGHT] Send: %s", buff);
 	SendStatusMessage(msg, false);
 
-	//std::this_thread::sleep_for(std::chrono::milliseconds(250));
+	std::this_thread::sleep_for(std::chrono::milliseconds(250));
 	m_pSerialComm->writeSerialPort(buff);
     m_pSerialComm->waitUntilResponse();
 }
@@ -123,11 +123,11 @@ void ElforlightLaser::SendCommand(char* command)
 	char msg[256];
 	if (command[0] != '?')
 	{
-		sprintf(msg, "ELFORLIGHT: Send: %s", command);
+		sprintf(msg, "[ELFORLIGHT] Send: %s", command);
 		SendStatusMessage(msg, false);
 	}
 
-	//std::this_thread::sleep_for(std::chrono::milliseconds(250));
+	std::this_thread::sleep_for(std::chrono::milliseconds(250));
 	m_pSerialComm->writeSerialPort(command);
 	m_pSerialComm->waitUntilResponse();
 }

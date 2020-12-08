@@ -38,6 +38,7 @@ LIBS += $$PWD/lib/intel64_win/ippcore.lib \
         $$PWD/lib/intel64_win/ipps.lib \
         $$PWD/lib/intel64_win/ippvm.lib
 debug {
+    LIBS += $$PWD/lib/vld.lib
     LIBS += $$PWD/lib/intel64_win/vc14/tbb_debug.lib
     LIBS += $$PWD/lib/opencv_world320d.lib
 }
@@ -67,8 +68,7 @@ SOURCES += Havana3/Havana3.cpp \
     Havana3/Dialog/ViewOptionTab.cpp \
     Havana3/Dialog/DeviceOptionTab.cpp \
     Havana3/Dialog/FlimCalibTab.cpp \
-    Havana3/Dialog/PulseReviewTab.cpp # \
-    #Havana3/Dialog/SaveResultDlg.cpp
+    Havana3/Dialog/PulseReviewTab.cpp
 
 SOURCES += DataAcquisition/SignatecDAQ/SignatecDAQ.cpp \
     DataAcquisition/FLImProcess/FLImProcess.cpp \
@@ -105,8 +105,7 @@ HEADERS += Havana3/Configuration.h \
     Havana3/Dialog/ViewOptionTab.h \
     Havana3/Dialog/DeviceOptionTab.h \
     Havana3/Dialog/FlimCalibTab.h \
-    Havana3/Dialog/PulseReviewTab.h # \
-    #Havana3/Dialog/SaveResultDlg.h
+    Havana3/Dialog/PulseReviewTab.h
 
 HEADERS += DataAcquisition/SignatecDAQ/SignatecDAQ.h \
     DataAcquisition/FLImProcess/FLImProcess.h \

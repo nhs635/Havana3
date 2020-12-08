@@ -28,6 +28,7 @@ public:
 public:
 	// Memory allocation function (buffer for writing)
     void allocateWritingBuffer();
+	void disallocateWritingBuffer();
 
     // Data recording (transfer streaming data to writing buffer)
     bool startRecording();

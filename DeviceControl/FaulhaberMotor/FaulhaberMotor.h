@@ -26,14 +26,14 @@ public:
 	void MoveAbsolute(int pos);
 	void Home();
 
-private:
+protected:
 	uint8_t CalcCRCByte(uint8_t u8Byte, uint8_t u8CRC);
 
 public:
 	callback<void> DidRotateEnd;
 	callback2<const char*, bool> SendStatusMessage;
 
-private:
+protected:
 	QSerialComm* m_pSerialComm;
 	const char* port_name;
 	int dev_num;

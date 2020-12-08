@@ -113,7 +113,8 @@ void QPatientSelectionTab::createPatientSelectionViewWidgets()
 void QPatientSelectionTab::createPatientSelectionTable()
 {
     m_pTableWidget_PatientInformation = new QTableWidget(this);
-    m_pTableWidget_PatientInformation->setRowCount(0);
+	m_pTableWidget_PatientInformation->clearContents();
+	m_pTableWidget_PatientInformation->setRowCount(0);
     m_pTableWidget_PatientInformation->setColumnCount(7);
 
     QStringList colLabels;
@@ -152,6 +153,7 @@ void QPatientSelectionTab::addPatient()
     {
         m_pAddPatientDlg = new AddPatientDlg(this);
         connect(m_pAddPatientDlg, SIGNAL(finished(int)), this, SLOT(deleteAddPatientDlg()));
+		m_pAddPatientDlg->setAttribute(Qt::WA_DeleteOnClose, true);
         m_pAddPatientDlg->setModal(true);
         m_pAddPatientDlg->exec();
     }
@@ -159,6 +161,7 @@ void QPatientSelectionTab::addPatient()
 
 void QPatientSelectionTab::deleteAddPatientDlg()
 {
+	m_pAddPatientDlg->deleteLater();
     m_pAddPatientDlg = nullptr;
 }
 
@@ -224,7 +227,8 @@ void QPatientSelectionTab::findDatabaseLocation()
 void QPatientSelectionTab::loadPatientDatabase()
 {
 	// Get patient database
-    m_pTableWidget_PatientInformation->setRowCount(0);
+	m_pTableWidget_PatientInformation->clearContents();
+	m_pTableWidget_PatientInformation->setRowCount(0);
     m_pTableWidget_PatientInformation->setSortingEnabled(false);
 
     m_pHvnSqlDataBase->queryDatabase("SELECT * FROM patients", [&](QSqlQuery& _sqlQuery) {

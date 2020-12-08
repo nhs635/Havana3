@@ -37,6 +37,7 @@ QViewTab::QViewTab(bool is_streaming, QWidget *parent) :
 
 QViewTab::~QViewTab()
 {
+	if (m_pImgObjRectImage) delete m_pImgObjRectImage;
 	if (m_pImgObjCircImage) delete m_pImgObjCircImage;
 	if (m_pImgObjIntensity) delete m_pImgObjIntensity;
 	if (m_pImgObjLifetime) delete m_pImgObjLifetime;	
@@ -61,12 +62,12 @@ void QViewTab::createViewTabWidgets(bool is_streaming)
     // Create image view : cross-section
 	if (is_streaming)
 	{
-		m_pImageView_CircImage = new QImageView(ColorTable::colortable(OCT_COLORTABLE), 2 * m_pConfig->octScans, 2 * m_pConfig->octScans, true);
+		m_pImageView_CircImage = new QImageView(ColorTable::colortable(OCT_COLORTABLE), 2 * m_pConfig->octScans, 2 * m_pConfig->octScans, true, this);
 		m_pImageView_CircImage->setMinimumSize(810, 810);
 	}
 	else
 	{
-		m_pImageView_CircImage = new QImageView(ColorTable::colortable(OCT_COLORTABLE), 2 * m_pConfig->octScans, 2 * m_pConfig->octScans, true);
+		m_pImageView_CircImage = new QImageView(ColorTable::colortable(OCT_COLORTABLE), 2 * m_pConfig->octScans, 2 * m_pConfig->octScans, true, this);
 		m_pImageView_CircImage->setMinimumSize(650, 650);
 	}
 	m_pImageView_CircImage->setSquare(true);
@@ -76,11 +77,11 @@ void QViewTab::createViewTabWidgets(bool is_streaming)
     {
         // Create image view : en-face
         ColorTable temp_ctable;
-        m_pImageView_EnFace = new QImageView(ColorTable::colortable(LIFETIME_COLORTABLE), 1, m_pConfig->flimAlines, true);
+        m_pImageView_EnFace = new QImageView(ColorTable::colortable(LIFETIME_COLORTABLE), 1, m_pConfig->flimAlines, true, this);
         m_pImageView_EnFace->setMinimumSize(500, 250);
 		        
         // Create image view : longitudinal
-        m_pImageView_Longi = new QImageView(ColorTable::colortable(OCT_COLORTABLE), 1, 2 * m_pConfig->octScans, true);
+        m_pImageView_Longi = new QImageView(ColorTable::colortable(OCT_COLORTABLE), 1, 2 * m_pConfig->octScans, true, this);
         m_pImageView_Longi->setMinimumSize(500, 350);		
 		
         // Create image view : colorbar
@@ -88,7 +89,7 @@ void QViewTab::createViewTabWidgets(bool is_streaming)
         for (int i = 0; i < 256 * 4; i++)
             color[i] = 255 - i / 4;
 
-        m_pImageView_ColorBar = new QImageView(ColorTable::colortable(LIFETIME_COLORTABLE), 4, 256, false);
+        m_pImageView_ColorBar = new QImageView(ColorTable::colortable(LIFETIME_COLORTABLE), 4, 256, false, this);
         m_pImageView_ColorBar->getRender()->setFixedWidth(30);
         m_pImageView_ColorBar->drawImage(color);
         m_pImageView_ColorBar->setFixedWidth(20);
@@ -198,6 +199,19 @@ void QViewTab::createViewTabWidgets(bool is_streaming)
 }
 
 
+void QViewTab::invalidate()
+{
+	visualizeEnFaceMap(true);
+	visualizeImage(getCurrentFrame());
+	visualizeLongiImage(getCurrentAline());
+
+	m_pImageView_ColorBar->setText(QPoint(0, 0), QString("%1               Lifetime (nsec)               %2")
+		.arg(m_pConfig->flimLifetimeRange[m_pConfig->flimEmissionChannel - 1].max, 2, 'f', 1)
+		.arg(m_pConfig->flimLifetimeRange[m_pConfig->flimEmissionChannel - 1].min, 2, 'f', 1), true);
+	m_pImageView_ColorBar->update();
+}
+
+
 void QViewTab::setStreamingBuffersObjects()
 {
     // Create visualization buffers
@@ -221,6 +235,8 @@ void QViewTab::setStreamingBuffersObjects()
     m_pCirc = new circularize(m_pConfig->octScans, m_pConfig->octAlines, false);
 	if (m_pMedfiltRect) delete m_pMedfiltRect;
 	m_pMedfiltRect = new medfilt(m_pConfig->octAlines, m_pConfig->octScans, 3, 3);
+
+	m_pConfig->writeToLog("Streaming buffers and objects are initialized.");
 }
 
 void QViewTab::setBuffers(Configuration* pConfig)
@@ -253,6 +269,8 @@ void QViewTab::setBuffers(Configuration* pConfig)
 		m_intensityMap.push_back(intensity);
 		m_lifetimeMap.push_back(lifetime);
 	}
+
+	m_pConfig->writeToLog("Reviewing buffers are initialized.");
 }
 
 void QViewTab::setObjects(Configuration * pConfig)
@@ -296,6 +314,8 @@ void QViewTab::setObjects(Configuration * pConfig)
 	m_pMedfiltLifetimeMap = new medfilt(frames4, pConfig->flimAlines, 5, 7); 
 	if (m_pMedfiltLongi) delete m_pMedfiltLongi;
 	m_pMedfiltLongi = new medfilt(frames4, 2 * pConfig->octScans, 3, 3); 
+
+	m_pConfig->writeToLog("Reviewing objects are initialized.");
 }
 
 void QViewTab::setWidgets(Configuration* pConfig)
@@ -338,6 +358,8 @@ void QViewTab::setWidgets(Configuration* pConfig)
 	m_pImageView_ColorBar->setText(QPoint(0, 0), QString("%1               Lifetime (nsec)               %2")
 		.arg(m_pConfig->flimLifetimeRange[m_pConfig->flimEmissionChannel - 1].max, 2, 'f', 1)
 		.arg(m_pConfig->flimLifetimeRange[m_pConfig->flimEmissionChannel - 1].min, 2, 'f', 1), true);
+
+	m_pConfig->writeToLog("Reviewing widgets are initialized.");
 }
 
 
@@ -347,20 +369,20 @@ void QViewTab::visualizeEnFaceMap(bool scaling)
 	{
 		if (scaling)
 		{
-			// Scaling OCT projection
-			IppiSize roi_proj = { m_octProjection.size(0), m_octProjection.size(1) };
-			IppiSize roi_proj4 = { roi_proj.width, ROUND_UP_4S(roi_proj.height) };
+			//// Scaling OCT projection
+			//IppiSize roi_proj = { m_octProjection.size(0), m_octProjection.size(1) };
+			//IppiSize roi_proj4 = { roi_proj.width, ROUND_UP_4S(roi_proj.height) };
 
-			np::FloatArray2 scale_temp32(roi_proj.width, roi_proj.height);
-			np::Uint8Array2 scale_temp8(roi_proj4.width, roi_proj4.height);
+			//np::FloatArray2 scale_temp32(roi_proj.width, roi_proj.height);
+			//np::Uint8Array2 scale_temp8(roi_proj4.width, roi_proj4.height);
 
-			ippsConvert_8u32f(m_octProjection.raw_ptr(), scale_temp32.raw_ptr(), scale_temp32.length());
-			ippiScale_32f8u_C1R(scale_temp32.raw_ptr(), sizeof(float) * roi_proj.width,
-				scale_temp8.raw_ptr(), sizeof(uint8_t) * roi_proj4.width, roi_proj,
-				m_pConfig->octGrayRange.min, m_pConfig->octGrayRange.max);
-			ippiTranspose_8u_C1R(scale_temp8.raw_ptr(), sizeof(uint8_t) * roi_proj4.width,
-				m_pImgObjOctProjection->arr.raw_ptr(), sizeof(uint8_t) * roi_proj4.height, roi_proj4);
-			circShift(m_pImgObjOctProjection->arr, 0 /* shift */);
+			//ippsConvert_8u32f(m_octProjection.raw_ptr(), scale_temp32.raw_ptr(), scale_temp32.length());
+			//ippiScale_32f8u_C1R(scale_temp32.raw_ptr(), sizeof(float) * roi_proj.width,
+			//	scale_temp8.raw_ptr(), sizeof(uint8_t) * roi_proj4.width, roi_proj,
+			//	m_pConfig->octGrayRange.min, m_pConfig->octGrayRange.max);
+			//ippiTranspose_8u_C1R(scale_temp8.raw_ptr(), sizeof(uint8_t) * roi_proj4.width,
+			//	m_pImgObjOctProjection->arr.raw_ptr(), sizeof(uint8_t) * roi_proj4.height, roi_proj4);
+			//circShift(m_pImgObjOctProjection->arr, m_pConfig->rotatedAlines);
 
 			// Scaling FLIM map
 			IppiSize roi_flimproj = { m_intensityMap.at(0).size(0), m_intensityMap.at(0).size(1) };
@@ -375,7 +397,7 @@ void QViewTab::visualizeEnFaceMap(bool scaling)
 				m_pConfig->flimIntensityRange[m_pConfig->flimEmissionChannel - 1].max);
 			ippiTranspose_8u_C1R(scale_temp.raw_ptr(), sizeof(uint8_t) * roi_flimproj4.width,
 				m_pImgObjIntensityMap->arr.raw_ptr(), sizeof(uint8_t) * roi_flimproj4.height, roi_flimproj4);
-			circShift(m_pImgObjIntensityMap->arr, 0 /* shift */);
+			circShift(m_pImgObjIntensityMap->arr, int(m_pConfig->rotatedAlines / 4));
 			(*m_pMedfiltIntensityMap)(m_pImgObjIntensityMap->arr.raw_ptr());
 
 			// Lifetime map
@@ -385,7 +407,7 @@ void QViewTab::visualizeEnFaceMap(bool scaling)
 				m_pConfig->flimLifetimeRange[m_pConfig->flimEmissionChannel - 1].max);
 			ippiTranspose_8u_C1R(scale_temp.raw_ptr(), sizeof(uint8_t) * roi_flimproj4.width,
 				m_pImgObjLifetimeMap->arr.raw_ptr(), sizeof(uint8_t) * roi_flimproj4.height, roi_flimproj);
-			circShift(m_pImgObjLifetimeMap->arr, 0 /* shift */);
+			circShift(m_pImgObjLifetimeMap->arr, int(m_pConfig->rotatedAlines / 4));
 			(*m_pMedfiltLifetimeMap)(m_pImgObjLifetimeMap->arr.raw_ptr());
 
 			// RGB conversion
@@ -452,7 +474,7 @@ void QViewTab::visualizeImage(int frame)
         ippsConvert_8u32f(m_vectorOctImage.at(frame).raw_ptr(), scale_temp.raw_ptr(), scale_temp.length());
         ippiScale_32f8u_C1R(scale_temp.raw_ptr(), roi_oct.width * sizeof(float),
             m_pImgObjRectImage->arr.raw_ptr(), roi_oct.width * sizeof(uint8_t), roi_oct, (float)m_pConfig->octGrayRange.min, (float)m_pConfig->octGrayRange.max);
-		circShift(m_pImgObjRectImage->arr, 0 /* shift */);
+		circShift(m_pImgObjRectImage->arr, m_pConfig->rotatedAlines);
         (*m_pMedfiltRect)(m_pImgObjRectImage->arr.raw_ptr());
 		
 		// Convert RGB
@@ -502,7 +524,7 @@ void QViewTab::visualizeLongiImage(int aline)
 	int flimAlines = octAlines / 4;
 
     // Specified A line
-    int aline0 = aline; // + m_pViewTab->getCurrentRotation();
+	int aline0 = (aline + m_pConfig->rotatedAlines) % octAlines;
     int aline1 = (aline0 + octAlines / 2) % octAlines;
 
     // Make longitudinal - OCT
@@ -587,11 +609,15 @@ void QViewTab::play(bool enabled)
 			}
 		});
 		playing.detach();
+
+		m_pConfig->writeToLog(QString("Playing mode: frame: [%1 ==> %2].").arg(cur_frame).arg(end_frame));
 	}
 	else
 	{
 		is_stop = true;
 		m_pToggleButton_Play->setIcon(style()->standardIcon(QStyle::SP_MediaPlay));
+
+		m_pConfig->writeToLog("Stop playing mode.");
 	}
 }
 
@@ -603,17 +629,23 @@ void QViewTab::measureDistance(bool toggled)
 		m_pImageView_CircImage->setRLineChangeCallback([&](int aline) { visualizeLongiImage(aline); });
 		m_pImageView_CircImage->getRender()->m_nClicked = 0;
 		m_pImageView_CircImage->getRender()->update();
+
+		m_pConfig->writeToLog("Measure distance on.");
 	}
 	else
 	{
 		m_pImageView_CircImage->setRLineChangeCallback([&](int aline) {});		
+
+		m_pConfig->writeToLog("Measure distance off.");
 	}
 }
 
 void QViewTab::changeEmissionChannel(int index)
 {
-	m_pConfig->flimEmissionChannel = index + 1;
+	m_pConfig->writeToLog(QString("Changed emission channel: [%1 ==> %2].").arg(m_pConfig->flimEmissionChannel).arg(index + 1));
 
+	m_pConfig->flimEmissionChannel = index + 1;
+	
 	visualizeEnFaceMap(true);
 	visualizeImage(getCurrentFrame());
 	visualizeLongiImage(getCurrentAline());
@@ -642,4 +674,6 @@ void QViewTab::getCapture(QByteArray & arr)
 	QBuffer inBuffer(&arr);
 	inBuffer.open(QIODevice::WriteOnly);
 	inPixmap.save(&inBuffer, "BMP");
+
+	m_pConfig->writeToLog("Preview image is captured.");
 }

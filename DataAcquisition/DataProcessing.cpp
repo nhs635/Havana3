@@ -1,6 +1,7 @@
 
 #include "DataProcessing.h"
 
+#include <Havana3/MainWindow.h>
 #include <Havana3/Configuration.h>
 #include <Havana3/QResultTab.h>
 #include <Havana3/QViewTab.h>
@@ -12,14 +13,32 @@
 
 
 DataProcessing::DataProcessing(QWidget *parent)
-    : m_pConfigTemp(nullptr), m_pFLIm(nullptr), m_bAbort(false)
+    : m_pConfigTemp(nullptr), m_pFLIm(nullptr)
 {
 	// Set main window objects    
     m_pResultTab = dynamic_cast<QResultTab*>(parent);
+	m_pConfig = m_pResultTab->getMainWnd()->m_pConfiguration;
+
+	// Set send status message object (message & error handling function object)
+	SendStatusMessage += [&](const char* msg, bool is_error) {
+		QString qmsg = QString::fromUtf8(msg);
+		if (is_error)
+		{
+			m_pConfig->writeToLog(QString("[DataProc ERROR] %1").arg(qmsg));
+			QMessageBox MsgBox(QMessageBox::Critical, "Error", qmsg);
+			MsgBox.exec();
+		}
+		else
+		{
+			m_pConfig->writeToLog(QString("[DataProc] %1").arg(qmsg));
+			qDebug() << qmsg;
+		}
+	};
 }
 
 DataProcessing::~DataProcessing()
 {
+	if (m_pConfigTemp) delete m_pConfigTemp;
 }
 
 
@@ -34,15 +53,16 @@ void DataProcessing::startProcessing(QString fileName)
 
 			QFile file(fileName);
 			if (false == file.open(QFile::ReadOnly))
-				printf("[ERROR] Invalid external data!\n");
+			{
+				SendStatusMessage("Invalid file path! Cannot review the data.", true);
+				emit abortedProcessing();
+			}
 			else
 			{
 				// Read Ini File & Initialization ///////////////////////////////////////////////////////////
                 QString fileTitle;
                 for (int i = 0; i < fileName.length(); i++)
                     if (fileName.at(i) == QChar('.')) fileTitle = fileName.left(i);
-                //for (int i = 0; i < fileName.length(); i++)
-                //    if (fileName.at(i) == QChar('/')) m_path = fileName.left(i);
 
                 QString iniName = fileTitle + ".ini";
                 QString maskName = fileTitle + ".flim_mask";
@@ -54,7 +74,9 @@ void DataProcessing::startProcessing(QString fileName)
                 m_pConfigTemp->frames = (int)(file.size() / (sizeof(uint8_t) * (qint64)m_pConfigTemp->octFrameSize + sizeof(uint16_t) * (qint64)m_pConfigTemp->flimFrameSize));
                 m_pConfigTemp->frames -= m_pConfigTemp->interFrameSync;
 
-                printf("Start external image processing... (Total nFrame: %d)\n", m_pConfigTemp->frames);
+				char msg[256];
+				sprintf(msg, "Start record review processing... (Total nFrame: %d)", m_pConfigTemp->frames);
+				SendStatusMessage(msg, false);
 
 				// Set Widgets //////////////////////////////////////////////////////////////////////////////
 				m_pResultTab->getViewTab()->setWidgets(m_pConfigTemp);
@@ -90,22 +112,22 @@ void DataProcessing::startProcessing(QString fileName)
                 getOctProjection(m_pResultTab->getViewTab()->m_vectorOctImage, m_pResultTab->getViewTab()->m_octProjection);
 
 				// Delete OCT FLIM Object & threading sync buffers //////////////////////////////////////////
+				if (m_pFLIm) delete m_pFLIm;
+
 				m_syncDeinterleaving.deallocate_queue_buffer();
 				m_syncFlimProcessing.deallocate_queue_buffer();
 				
 				// Visualization /////////////////////////////////////////////////////////////////////////////
-				if (!m_bAbort)
-				{
-					m_pResultTab->getViewTab()->visualizeEnFaceMap(true);
-					m_pResultTab->getViewTab()->visualizeImage(0);
-					m_pResultTab->getViewTab()->visualizeLongiImage(0);
-				}
+				m_pResultTab->getViewTab()->invalidate();				
 			}
 
 			file.close();
 
             std::chrono::duration<double> elapsed = std::chrono::system_clock::now() - start;
-            printf("elapsed time : %.2f sec\n\n", elapsed.count());
+
+			char msg[256];
+			sprintf(msg, "Finished record review processing... (elapsed time: %.2f sec)", elapsed.count());
+			SendStatusMessage(msg, false);
 		});
 
 		t1.detach();
@@ -139,9 +161,6 @@ void DataProcessing::loadingRawData(QFile* pFile, Configuration* pConfig)
 
 				// Push the buffers to sync Queues
 				m_syncDeinterleaving.Queue_sync.push(frame_data);
-
-				// Check abort
-				if (m_bAbort) frame_data = nullptr;
 			}
 		} while (frame_data == nullptr);
 	}

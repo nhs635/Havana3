@@ -40,12 +40,16 @@ public:
     inline QImageView* getEnFaceImageView() const { return m_pImageView_EnFace; }
     inline QImageView* getLongiImageView() const { return m_pImageView_Longi; }
     inline QSlider* getSliderSelectFrame() const { return m_pSlider_SelectFrame; }
+	inline void setEmissionChannel(int ch) { m_pComboBox_ViewMode->setCurrentIndex(ch - 1); }
 	inline void setCurrentFrame(int frame) { m_pSlider_SelectFrame->setValue(frame); }
     inline int getCurrentFrame() { return m_pSlider_SelectFrame->value(); }
 	inline int getCurrentAline() { return m_pImageView_CircImage->getRender()->m_pVLineInd[0]; }
 	
 private:
     void createViewTabWidgets(bool);
+
+public:
+	void invalidate();
 
 private:
     void setStreamingBuffersObjects();

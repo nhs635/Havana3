@@ -8,6 +8,7 @@
 #include <Havana3/Dialog/SettingDlg.h>
 
 #include <DataAcquisition/DataAcquisition.h>
+#include <DataAcquisition/SignatecDAQ/SignatecDAQ.h>
 #include <DataAcquisition/FLImProcess/FLImProcess.h>
 
 #include <iostream>
@@ -32,7 +33,7 @@ FlimCalibTab::FlimCalibTab(QWidget *parent) :
     createHistogram();
 
     // Set layout
-    m_pGroupBox_FlimCalibTab = new QGroupBox;
+    m_pGroupBox_FlimCalibTab = new QGroupBox(this);
     m_pGroupBox_FlimCalibTab->setStyleSheet("QGroupBox{padding-top:15px; margin-top:-15px}");
     m_pGroupBox_FlimCalibTab->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
 
@@ -160,7 +161,7 @@ void FlimCalibTab::createCalibWidgets()
 
     for (int i = 0; i < 4; i++)
     {
-        m_pSpinBox_ChStart[i] = new QMySpinBox(this);
+        m_pSpinBox_ChStart[i] = new QMySpinBox2(this);
         m_pSpinBox_ChStart[i]->setFixedWidth(60);
         m_pSpinBox_ChStart[i]->setRange(0.0, m_pConfig->flimScans * m_pFLIm->_params.samp_intv);
         m_pSpinBox_ChStart[i]->setSingleStep(m_pFLIm->_params.samp_intv);
@@ -254,7 +255,7 @@ void FlimCalibTab::createHistogram()
 
     m_pHistogramIntensity = new Histogram(N_BINS, m_pConfig->flimAlines);
 	
-    m_pColorbar_FluIntensity = new QImageView(ColorTable::colortable(INTENSITY_COLORTABLE), 256, 1, false);
+    m_pColorbar_FluIntensity = new QImageView(ColorTable::colortable(INTENSITY_COLORTABLE), 256, 1, false, this);
     m_pColorbar_FluIntensity->drawImage(color);
     m_pColorbar_FluIntensity->getRender()->setFixedSize(250, 10);
 
@@ -287,7 +288,7 @@ void FlimCalibTab::createHistogram()
 
     m_pHistogramLifetime = new Histogram(N_BINS, m_pConfig->flimAlines);
 
-    m_pColorbar_FluLifetime = new QImageView(ColorTable::colortable(LIFETIME_COLORTABLE), 256, 1, false);
+    m_pColorbar_FluLifetime = new QImageView(ColorTable::colortable(LIFETIME_COLORTABLE), 256, 1, false, this);
     m_pColorbar_FluLifetime->drawImage(color);
     m_pColorbar_FluLifetime->getRender()->setFixedSize(250, 10);
 

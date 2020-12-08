@@ -42,6 +42,9 @@ public:
     inline DeviceControl* getDeviceControl() const { return m_pDeviceControl; }
     inline QViewTab* getViewTab() const { return m_pViewTab; }
 
+	inline void setFirstImplemented(bool impl) { m_bFirstImplemented = impl; }
+	inline bool getFirstImplemented() { return m_bFirstImplemented; }
+
 	inline size_t getFlimProcessingBufferQueueSize() const { return m_syncFlimProcessing.queue_buffer.size(); }
 	inline size_t getFlimVisualizationBufferQueueSize() const { return m_syncFlimVisualization.queue_buffer.size(); }
 	inline size_t getOctVisualizationBufferQueueSize() const { return m_syncOctVisualization.queue_buffer.size(); }
@@ -96,6 +99,7 @@ private:
 	RecordInfo m_recordInfo;
 
 private:
+	bool m_bFirstImplemented;
 	QTimer *m_pCaptureTimer;
 #ifdef DEVELOPER_MODE
 	QTimer *m_pSyncMonitorTimer;

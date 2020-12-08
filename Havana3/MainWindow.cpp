@@ -113,16 +113,12 @@ void MainWindow::removeTabView(QDialog *pTabView)
 {
 	m_pConfiguration->writeToLog(QString("Tab removed: %1").arg(pTabView->windowTitle()));
 
+	if (pTabView != m_pStreamTab)
+		pTabView->deleteLater();
+
     m_pTabWidget->removeTab(m_pTabWidget->indexOf(pTabView));
 	m_vectorTabViews.erase(std::find(m_vectorTabViews.begin(), m_vectorTabViews.end(), pTabView));
 
-	if (pTabView == m_pStreamTab)
-	{
-		delete m_pStreamTab;
-		m_pStreamTab = nullptr;
-	} 
-	else
-		delete pTabView;	
 }
 
 
@@ -152,9 +148,11 @@ void MainWindow::tabCurrentChanged(int index)
 		dynamic_cast<QPatientSummaryTab*>(currentTab)->loadRecordDatabase();
 	}
 	else if (currentTab == m_pStreamTab)
-	{
-		if (m_pStreamTab->getDataAcquisition()->getPauseState())
-			m_pStreamTab->startLiveImaging(true);
+	{		
+		m_pStreamTab->startLiveImaging(true);
+	
+		//if (!m_pStreamTab->getDataAcquisition()->getAcquisitionState())
+		//	emit m_pTabWidget->tabCloseRequested(index);
 	}
 	
 	prev_index = index;
@@ -176,7 +174,7 @@ void MainWindow::tabCloseRequested(int index)
 
 			switch (MsgBox.exec())
 			{
-			case QMessageBox::Ok:
+			case QMessageBox::Ok:				
 				break;
 			case QMessageBox::Cancel:
 				return;
@@ -277,7 +275,8 @@ void MainWindow::makeStreamTab(const QString& patient_id)
 	else
 	{
 		m_pStreamTab->changePatient(patient_id);
-		m_pTabWidget->setCurrentWidget(m_pStreamTab);
+		addTabView(m_pStreamTab);
+		//m_pTabWidget->setCurrentWidget(m_pStreamTab);
 	}
 }
 

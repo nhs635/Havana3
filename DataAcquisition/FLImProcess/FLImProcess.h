@@ -33,6 +33,7 @@
 #include <tbb/parallel_for.h>
 #include <tbb/blocked_range.h>
 
+#include <mkl_service.h>
 #include <mkl_df.h>
 
 #include <Common/array.h>
@@ -195,8 +196,7 @@ public:
 				///				}
 
                 // 6. Up-sampling by cubic natural spline interpolation
-                DFTaskPtr task1 = nullptr;
-
+                DFTaskPtr task1;
                 dfsNewTask1D(&task1, nx, x, DF_UNIFORM_PARTITION, 1, &mask_src(0, (int)i), DF_MATRIX_STORAGE_ROWS);
                 dfsEditPPSpline1D(task1, DF_PP_CUBIC, DF_PP_NATURAL, DF_BC_NOT_A_KNOT, 0, DF_NO_IC, 0, scoeff + (int)i * (nx - 1) * DF_PP_CUBIC, DF_NO_HINT);
                 dfsConstruct1D(task1, DF_PP_SPLINE, DF_METHOD_STD);
@@ -208,6 +208,8 @@ public:
                 _filter(&filt_src(0, (int)i), &ext_src(0, (int)i), (int)i);
             }
         });
+
+		mkl_free_buffers();
     }
 
     void initialize(const FLIM_PARAMS& pParams, int _nx, int _upSampleFactor, int _alines)

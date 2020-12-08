@@ -23,13 +23,13 @@ DataAcquisition::DataAcquisition(Configuration* pConfig)
 		QString qmsg = QString::fromUtf8(msg);
 		if (is_error)
 		{
-			m_pConfig->writeToLog(QString("[DataAcq ERROR] %1").arg(qmsg));
-			QMessageBox MsgBox(QMessageBox::Critical, "Error", qmsg);
+			m_pConfig->writeToLog(QString("[ERROR] %1").arg(qmsg));
+			QMessageBox MsgBox(QMessageBox::Critical, "Data Acquisition Error", qmsg);
 			MsgBox.exec();
 		}
 		else
 		{
-			m_pConfig->writeToLog(QString("[DataAcq] %1").arg(qmsg));
+			m_pConfig->writeToLog(qmsg);
 			qDebug() << qmsg;			
 		}
 	};
@@ -81,9 +81,13 @@ bool DataAcquisition::InitializeAcquistion()
     // Initialization for DAQ & Axsun Capture
     if (!m_pDaq->set_init() || !m_pAxsunCapture->initializeCapture())
     {
-		StopAcquisition(false);
+		StopAcquisition();
+
+		m_pConfig->writeToLog("Data acq initialization failed.");
         return false;
     }
+
+	m_pConfig->writeToLog("Data acq initialization successed.");
 
     return true;
 }
@@ -96,24 +100,33 @@ bool DataAcquisition::StartAcquisition()
     // Start acquisition
 	if (!m_pDaq->startAcquisition() || !m_pAxsunCapture->startCapture())
 	{
-		StopAcquisition(false);
+		StopAcquisition();
+
+		m_pConfig->writeToLog("Data acq failed.");
 		return false;
 	}
 
 	m_bAcquisitionState = true;
 	m_bIsPaused = false;
 
+	m_pConfig->writeToLog("Data acq successed.");
+
     return true;
 }
 
-void DataAcquisition::StopAcquisition(bool suc_stop)
+void DataAcquisition::StopAcquisition()
 {
     // Stop thread
-	m_pDaq->stopAcquisition();
-	m_pAxsunCapture->stopCapture();
+	if (m_bAcquisitionState)
+	{
+		m_pDaq->stopAcquisition();
+		m_pAxsunCapture->stopCapture();
 
-	m_bAcquisitionState = false;
-	m_bIsPaused = suc_stop;
+		m_pConfig->writeToLog("Data acq stopped.");
+	}
+
+	m_bIsPaused = m_bAcquisitionState;
+	m_bAcquisitionState = false;	
 }
 
 

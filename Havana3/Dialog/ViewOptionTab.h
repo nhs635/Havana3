@@ -6,6 +6,7 @@
 
 
 class Configuration;
+class QPatientSummaryTab;
 class QStreamTab;
 class QResultTab;
 class QViewTab;
@@ -17,68 +18,60 @@ class ViewOptionTab : public QDialog
 
 // Constructer & Destructer /////////////////////////////
 public:
-    explicit ViewOptionTab(bool is_streaming = true, QWidget *parent = nullptr);
+    explicit ViewOptionTab(QWidget *parent = nullptr);
     virtual ~ViewOptionTab();
 
 // Methods //////////////////////////////////////////////
-public:    
+public:
+	inline QPatientSummaryTab* getPatientSummaryTab() const { return m_pPatientSummaryTab; }
 	inline QStreamTab* getStreamTab() const { return m_pStreamTab; }
 	inline QResultTab* getResultTab() const { return m_pResultTab; }
     inline QViewTab* getViewTab() const { return m_pViewTab; }
     inline QGroupBox* getLayoutBox() const { return m_pGroupBox_ViewOption; }
 
 	inline int getCurrentRotation() const { return m_pScrollBar_Rotation->value(); }
-	inline bool getIntensityRatioMode() const { return m_pCheckBox_IntensityRatio->isChecked(); }
-	inline bool isIntensityWeighted() const { return m_pCheckBox_IntensityWeightedLifetimeMap->isChecked(); }
+	inline bool getIntensityRatioMode() const { return m_pCheckBox_IntensityRatio->isChecked(); }	
 	inline bool isClassification() const { return m_pCheckBox_Classification->isChecked(); }
-
-public:
-	void setWidgetsValue();
-
+	
 private:
-    void createFlimVisualizationOptionTab(bool is_streaming);
-    void createOctVisualizationOptionTab(bool is_streaming);
+    void createFlimVisualizationOptionTab();
+    void createOctVisualizationOptionTab();
 
 private slots:
     // FLIm visualization option control
+	void changeEmissionChannel(int);
 	void enableIntensityRatioMode(bool);
 	void changeIntensityRatioRef(int);
-	void enableIntensityWeightingMode(bool);
-    void changeEmissionChannel(int);
-    void adjustFlimContrast();
-//	void createPulseReviewDlg();
-//	void deletePulseReviewDlg();
 	void enableClassification(bool);
+    void adjustFlimContrast();
 
-    void changeViewMode(int);
+	void rotateImage(int);
+	void verticalMirriong(bool);
 	void adjustDecibelRange();
 	void adjustOctGrayContrast();
-//	void createLongitudinalViewDlg();
-//	void deleteLongitudinalViewDlg();
-	void rotateImage(int);
 
 // Variables ////////////////////////////////////////////
 private:
     Configuration* m_pConfig;
+	QPatientSummaryTab* m_pPatientSummaryTab;
     QStreamTab* m_pStreamTab;
     QResultTab* m_pResultTab;
     QViewTab* m_pViewTab;
 
 private:
     // Visualization option widgets
-    QGroupBox *m_pGroupBox_ViewOption;
+	QGroupBox *m_pGroupBox_ViewOption;
+    QVBoxLayout *m_pVBoxLayout_ViewOption;
 
     // FLIm visualization option widgets
-    QGroupBox *m_pGroupBox_FlimVisualization;
-
     QLabel *m_pLabel_EmissionChannel;
     QComboBox *m_pComboBox_EmissionChannel;
 
 	QCheckBox *m_pCheckBox_IntensityRatio;
 	QComboBox *m_pComboBox_IntensityRef;
 
-	QCheckBox *m_pCheckBox_IntensityWeightedLifetimeMap;
-
+	QCheckBox *m_pCheckBox_Classification;;
+	
     QLabel *m_pLabel_NormIntensity;
     QLabel *m_pLabel_Lifetime;
     QLineEdit *m_pLineEdit_IntensityMax;
@@ -87,30 +80,19 @@ private:
     QLineEdit *m_pLineEdit_LifetimeMin;
     QImageView *m_pImageView_IntensityColorbar;
     QImageView *m_pImageView_LifetimeColorbar;
-	
-    QPushButton *m_pPushButton_PulseReview;
-
-	QCheckBox *m_pCheckBox_Classification;;
 
     // OCT visualization option widgets
-    QGroupBox *m_pGroupBox_OctVisualization;
-
-	QRadioButton *m_pRadioButton_CircularView;
-	QRadioButton *m_pRadioButton_RectangularView;
-	QButtonGroup *m_pButtonGroup_ViewMode;
-
-    QLineEdit *m_pLineEdit_OctGrayMax;
-    QLineEdit *m_pLineEdit_OctGrayMin;
-    QImageView *m_pImageView_OctGrayColorbar;
-
 	QLabel *m_pLabel_Rotation;
 	QScrollBar *m_pScrollBar_Rotation;
-	
-	QLabel *m_pLabel_DecibelRange;
+
+	QCheckBox *m_pCheckBox_VerticalMirroring;
+
+	QLabel *m_pLabel_OctContrast;
 	QLineEdit *m_pLineEdit_DecibelMax;
 	QLineEdit *m_pLineEdit_DecibelMin;
-	QImageView *m_pImageView_Colorbar;
-
+    QLineEdit *m_pLineEdit_OctGrayMax;
+    QLineEdit *m_pLineEdit_OctGrayMin;
+    QImageView *m_pImageView_OctColorbar;
 };
 
 #endif // VIEWOPTIONTAB_H

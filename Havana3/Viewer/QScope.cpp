@@ -39,8 +39,8 @@ QScope::QScope(QRange x_range, QRange y_range,
 
 QScope::~QScope()
 {
-	if (m_pRenderArea->m_pData)
-		delete[] m_pRenderArea->m_pData;
+	//if (m_pRenderArea->m_pData)
+	//	delete[] m_pRenderArea->m_pData;
 }
 
 
@@ -221,6 +221,9 @@ QRenderArea::QRenderArea(QWidget *parent) :
 
 QRenderArea::~QRenderArea()
 {
+	if (m_pData) delete[] m_pData;
+	if (m_pMask) delete[] m_pMask;
+
 	delete[] m_pWinLineInd;
 	delete[] m_pMdLineInd;
 }

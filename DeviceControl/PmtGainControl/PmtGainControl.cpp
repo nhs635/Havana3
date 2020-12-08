@@ -26,7 +26,7 @@ PmtGainControl::~PmtGainControl()
 
 bool PmtGainControl::initialize()
 {
-    SendStatusMessage("Initializing NI Analog Output for PMT gain control...", false);
+    SendStatusMessage("[PMT gain] Initializing NI Analog Output for PMT gain control...", false);
 
 	int res;
 	double data[1] = { voltage };
@@ -36,21 +36,21 @@ bool PmtGainControl::initialize()
 	/*********************************************/
 	if ((res = DAQmxCreateTask("", &_taskHandle)) != 0)
 	{
-		dumpError(res, "ERROR: Failed to set Gain Control1: ");
+		dumpError(res, "[PMT gain ERROR] Failed to set Gain Control1: ");
 		return false;
 	}
 	if ((res = DAQmxCreateAOVoltageChan(_taskHandle, physicalChannel, "", 0.0, 1.0, DAQmx_Val_Volts, NULL)) != 0)
 	{
-		dumpError(res, "ERROR: Failed to set Gain Control2: ");
+		dumpError(res, "[PMT gain ERROR] Failed to set Gain Control2: ");
 		return false;
 	}	
 	if ((res = DAQmxWriteAnalogF64(_taskHandle, 1, TRUE, DAQmx_Val_WaitInfinitely, DAQmx_Val_GroupByChannel, data, NULL, NULL)) != 0)
 	{
-		dumpError(res, "ERROR: Failed to set Gain Control3: ");
+		dumpError(res, "[PMT gain ERROR] Failed to set Gain Control3: ");
 		return false;
 	}		
 
-    SendStatusMessage("NI Analog Output for PMT gain control is successfully initialized.", false);
+    SendStatusMessage("[PMT gain] NI Analog Output for PMT gain control is successfully initialized.", false);
 
 	return true;
 }
@@ -60,7 +60,7 @@ void PmtGainControl::start()
 {
 	if (_taskHandle)
 	{
-        SendStatusMessage("PMT gain control generates a voltage...", false);
+        SendStatusMessage("[PMT gain] PMT gain control generates a voltage...", false);
 		DAQmxStartTask(_taskHandle);
 	}
 }
@@ -73,7 +73,7 @@ void PmtGainControl::stop()
 		double data[1] = { 0.0 };
 		DAQmxWriteAnalogF64(_taskHandle, 1, TRUE, DAQmx_Val_WaitInfinitely, DAQmx_Val_GroupByChannel, data, NULL, NULL);
 
-        SendStatusMessage("NI Analog Output is stopped.", false);
+        SendStatusMessage("[PMT gain] NI Analog Output is stopped.", false);
 		DAQmxStopTask(_taskHandle);
 		DAQmxClearTask(_taskHandle);
 		

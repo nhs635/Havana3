@@ -10,9 +10,12 @@
 
 #include <DataAcquisition/DataAcquisition.h>
 #include <DataAcquisition/ThreadManager.h>
+#include <DataAcquisition/AxsunCapture/AxsunCapture.h>
+#include <DataAcquisition/SignatecDAQ/SignatecDAQ.h>
 #include <DataAcquisition/FLImProcess/FLImProcess.h>
 
 #include <MemoryBuffer/MemoryBuffer.h>
+
 #include <DeviceControl/DeviceControl.h>
 #include <DeviceControl/FaulhaberMotor/RotaryMotor.h>
 #include <DeviceControl/FaulhaberMotor/PullbackMotor.h>
@@ -22,15 +25,13 @@
 #include <thread>
 #include <chrono>
 
-#ifdef VERTICAL_MIRRORING
 #include <ippcore.h>
 #include <ippi.h>
 #include <ipps.h>
-#endif
 
 
 QStreamTab::QStreamTab(QString patient_id, QWidget *parent) :
-    QDialog(parent), m_pSettingDlg(nullptr)
+    QDialog(parent), m_bFirstImplemented(true), m_pSettingDlg(nullptr)
 {
 	// Set main window objects
     m_pMainWnd = dynamic_cast<MainWindow*>(parent);
@@ -61,7 +62,7 @@ QStreamTab::QStreamTab(QString patient_id, QWidget *parent) :
 
     // Create memory buffer object
     m_pMemoryBuffer = new MemoryBuffer(this);
-	///connect(m_pMemoryBuffer, &MemoryBuffer::finishedBufferAllocation, [&]() { m_pToggleButton_StartPullback->setEnabled(true); });
+	//connect(m_pMemoryBuffer, &MemoryBuffer::finishedBufferAllocation, [&]() { m_pToggleButton_StartPullback->setEnabled(true); });
 	//(m_pMemoryBuffer, &MemoryBuffer::finishedWritingThread, [&]() { emit requestReview(m_recordInfo.recordId); });
 
     // Create device control object
@@ -76,14 +77,17 @@ QStreamTab::QStreamTab(QString patient_id, QWidget *parent) :
     this->setLayout(pHBoxLayout);
 
     // Initialize & start live streaming	
-	startLiveImaging(true);
+	//startLiveImaging(true);
 }
 
 QStreamTab::~QStreamTab()
 {
+	if (m_pDeviceControl) delete m_pDeviceControl;
+	if (m_pDataAcquisition) delete m_pDataAcquisition;
+
 	if (m_pThreadVisualization) delete m_pThreadVisualization;
 	if (m_pThreadFlimProcess) delete m_pThreadFlimProcess;
-
+		
 #ifdef DEVELOPER_MODE
 	m_pSyncMonitorTimer->stop();
 #endif
@@ -144,7 +148,7 @@ void QStreamTab::createLiveStreamingViewWidgets()
 
 #ifdef DEVELOPER_MODE
 	m_pLabel_StreamingSyncStatus = new QLabel(this);
-	m_pLabel_StreamingSyncStatus->setFixedSize(80, 200);
+	m_pLabel_StreamingSyncStatus->setFixedSize(150, 200);
 	m_pLabel_StreamingSyncStatus->setAlignment(Qt::AlignTop | Qt::AlignLeft);
 	
 	m_pSyncMonitorTimer = new QTimer(this);
@@ -217,6 +221,8 @@ void QStreamTab::changePatient(QString patient_id)
 			}
 
 		}
+
+		m_pConfig->writeToLog(QString("Live streaming patient changed: %1 (ID: %2)").arg(m_recordInfo.patientName).arg(m_recordInfo.patientId));
 	});
 }
 
@@ -226,39 +232,46 @@ void QStreamTab::startLiveImaging(bool start)
 	if (start)
 	{	
 		// Show message box
-		QMessageBox msg_box(QMessageBox::NoIcon, "Device Initialization...", "Done.", QMessageBox::NoButton, this);
-		msg_box.setStandardButtons(0);
-		msg_box.setWindowModality(Qt::WindowModal);
-		msg_box.setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::CustomizeWindowHint);
-		msg_box.move((m_pMainWnd->width() - msg_box.width()) / 2, (m_pMainWnd->height() - msg_box.height()) / 2);
-		msg_box.setFixedSize(msg_box.width(), msg_box.height());
-		connect(this, SIGNAL(devInit()), &msg_box, SLOT(accept()));
-		msg_box.show();
+		//QProgressDialog progress("Device intialization...", "Cancel", 0, 100, this);
+		////connect(m_pDataProcessing, SIGNAL(processedSingleFrame(int)), &progress, SLOT(setValue(int)));
+		////connect(&progress, &QProgressDialog::canceled, [&]() { m_pDataProcessing->m_bAbort = true; });
+		//progress.setWindowTitle("Live Streaming");
+		//progress.setCancelButton(0);
+		//progress.setWindowModality(Qt::WindowModal);
+		//progress.setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::CustomizeWindowHint);
+		//progress.move((m_pMainWnd->width() - progress.width()) / 2, (m_pMainWnd->height() - progress.height()) / 2);
+		//progress.setFixedSize(progress.width(), progress.height());
+
+		//QMessageBox msg_box(QMessageBox::NoIcon, "Device Initialization...", "Done.", QMessageBox::NoButton, this);
+		//msg_box.setStandardButtons(0);
+		//msg_box.setWindowModality(Qt::WindowModal);
+		//msg_box.setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::CustomizeWindowHint);
+		//msg_box.move((m_pMainWnd->width() - msg_box.width()) / 2, (m_pMainWnd->height() - msg_box.height()) / 2);
+		//msg_box.setFixedSize(msg_box.width(), msg_box.height());
+		//connect(this, SIGNAL(devInit()), &msg_box, SLOT(accept()));
+		//msg_box.show();
 
 		// Enable memory, data acq, device control
+		//progress.setValue(0);
 		if (!enableMemoryBuffer(true) || !enableDataAcquisition(true) || !enableDeviceControl(true))
 		{
-			std::thread tab_close([&]() {
-				while (1)
-				{
-					int total = (int)m_pMainWnd->getVectorTabViews().size();
-					int current = m_pMainWnd->getTabWidget()->currentIndex() + 1;
-					if (total > current)
-					{
-						emit m_pMainWnd->getTabWidget()->tabCloseRequested(current);
-						break;
-					}
-				}
-			});
-			tab_close.detach();
+			startLiveImaging(false);
+			m_pConfig->writeToLog(QString("Live streaming failed: %1 (ID: %2)").arg(m_recordInfo.patientName).arg(m_recordInfo.patientId));
 		}
-		else
-			emit devInit();
+		
+		//else
+		//	progress.setValue(1);
+		//	//emit devInit();
+
+		m_pConfig->writeToLog(QString("Live streaming started: %1 (ID: %2)").arg(m_recordInfo.patientName).arg(m_recordInfo.patientId));
 	}
 	else
 	{
+		enableMemoryBuffer(false);
 		enableDeviceControl(false);
 		enableDataAcquisition(false);
+
+		m_pConfig->writeToLog(QString("Live streaming stopped: %1 (ID: %2)").arg(m_recordInfo.patientName).arg(m_recordInfo.patientId));
 	}
 }
 
@@ -272,33 +285,40 @@ bool QStreamTab::enableMemoryBuffer(bool enabled)
 		});
 		allocate_writing_buffer.detach();
 	}
+	else
+		m_pMemoryBuffer->disallocateWritingBuffer();
 
 	return true;
 }
 
 bool QStreamTab::enableDataAcquisition(bool enabled)
 {
-	bool is_success = !enabled;
     if (enabled) // Enable data acquisition object
     {		
-        if ((is_success = m_pDataAcquisition->InitializeAcquistion()))
+        if (m_pDataAcquisition->InitializeAcquistion())
         {
             // Start thread process
             m_pThreadVisualization->startThreading();
             m_pThreadFlimProcess->startThreading();
 
             // Start data acquisition			
-            if ((is_success = m_pDataAcquisition->StartAcquisition()))
-                return true;
+			if (m_pDataAcquisition->StartAcquisition())
+				return true;
+			else
+				return false;
         }
+		return false;
     }
+	else
+	{
+		// Disable data acquisition object
+		m_pDataAcquisition->StopAcquisition();
 
-    // Disable data acquisition object
-    m_pDataAcquisition->StopAcquisition(is_success);
-    m_pThreadFlimProcess->stopThreading();
-    m_pThreadVisualization->stopThreading();
+		m_pThreadFlimProcess->stopThreading();
+		m_pThreadVisualization->stopThreading();
 
-	return enabled ? false : true;
+		return true;
+	}
 }
 
 bool QStreamTab::enableDeviceControl(bool enabled)
@@ -416,6 +436,7 @@ void QStreamTab::setFlimAcquisitionCallback()
 				enableDataAcquisition(false);
 			}
 		}
+		(void)msg;
     });
 }
 
@@ -485,14 +506,24 @@ void QStreamTab::setFlimProcessingCallback()
     };
 
     m_pThreadFlimProcess->SendStatusMessage += [&](const char* msg, bool is_error) {
-		qDebug() << QString(msg);
+		
+		QString qmsg = QString::fromUtf8(msg);
 		if (is_error)
 		{
+			m_pConfig->writeToLog(QString("[ERROR] %1").arg(qmsg));
+			QMessageBox MsgBox(QMessageBox::Critical, "Thread Mananger Error", qmsg);
+			MsgBox.exec();
+
 			if (m_pDataAcquisition->getAcquisitionState())
 			{
 				enableDeviceControl(false);
 				enableDataAcquisition(false);
 			}
+		}
+		else
+		{
+			m_pConfig->writeToLog(qmsg);
+			qDebug() << qmsg;
 		}
     };
 }
@@ -502,10 +533,11 @@ void QStreamTab::setOctProcessingCallback()
     m_pDataAcquisition->ConnectAxsunAcquiredOctData([&](uint32_t frame_count, const np::Uint8Array2& frame) {
 				
         // Mirroring
-#ifdef VERTICAL_MIRRORING
-        IppiSize roi_oct = { frame.size(0), frame.size(1) };
-        ippiMirror_8u_C1IR((Ipp8u*)frame.raw_ptr(), roi_oct.width, roi_oct, ippAxsVertical);
-#endif
+		if (m_pConfig->verticalMirroring)
+		{
+			IppiSize roi_oct = { frame.size(0), frame.size(1) };
+			ippiMirror_8u_C1IR((Ipp8u*)frame.raw_ptr(), roi_oct.width, roi_oct, ippAxsVertical);
+		}
 
         // Data transfer
         if (!(frame_count % RENEWAL_COUNT))
@@ -578,6 +610,7 @@ void QStreamTab::setOctProcessingCallback()
 				enableDataAcquisition(false);
 			}
 		}
+		(void)msg;
     });
 }
 
@@ -646,14 +679,24 @@ void QStreamTab::setVisualizationCallback()
     };
 
     m_pThreadVisualization->SendStatusMessage += [&](const char* msg, bool is_error) {
-		qDebug() << QString(msg);
+
+		QString qmsg = QString::fromUtf8(msg);
 		if (is_error)
 		{
+			m_pConfig->writeToLog(QString("[ERROR] %1").arg(qmsg));
+			QMessageBox MsgBox(QMessageBox::Critical, "Thread Mananger Error", qmsg);
+			MsgBox.exec();
+
 			if (m_pDataAcquisition->getAcquisitionState())
 			{
 				enableDeviceControl(false);
 				enableDataAcquisition(false);
 			}
+		}
+		else
+		{
+			m_pConfig->writeToLog(qmsg);
+			qDebug() << qmsg;
 		}
     };
 }
@@ -665,23 +708,20 @@ void QStreamTab::createSettingDlg()
     {
         m_pSettingDlg = new SettingDlg(this);
         connect(m_pSettingDlg, SIGNAL(finished(int)), this, SLOT(deleteSettingDlg()));
-        m_pSettingDlg->show();
+		m_pSettingDlg->setModal(true);
+		m_pSettingDlg->exec();
     }
-    m_pSettingDlg->raise();
-    m_pSettingDlg->activateWindow();
 }
 
 void QStreamTab::deleteSettingDlg()
 {
-    m_pSettingDlg->deleteLater();
+	m_pSettingDlg->deleteLater();
     m_pSettingDlg = nullptr;
 }
 
 
 void QStreamTab::scrollCatheterCalibration(int value)
 {
-	//QMessageBox MsgBox(QMessageBox::Critical, "Device error", "OCT swept laser source opeartion failed.\nCan't initialize service.");
-	//MsgBox.exec();
 	/* 추후 VDL 작동 확인 하기.  더 알맞은 functionality implementation이 있는지 찾아 보기 */
 	std::thread calib([&]() {
 		if (m_pDeviceControl->getAxsunControl())
@@ -692,9 +732,6 @@ void QStreamTab::scrollCatheterCalibration(int value)
 
 void QStreamTab::enableRotation(bool enabled)
 {	
-	//QMessageBox MsgBox(QMessageBox::Critical, "Device error", "Catheter connection failed.\nCan't start live mode.");
-	//MsgBox.exec();
-
     if (enabled)
     {	
 		// Set widgets
@@ -707,6 +744,8 @@ void QStreamTab::enableRotation(bool enabled)
 			enableRotation(false);
 			return;
 		}
+
+		m_pConfig->writeToLog(QString("Rotation started: %1 (ID: %2)").arg(m_recordInfo.patientName).arg(m_recordInfo.patientId));
     }
     else
     {
@@ -716,14 +755,13 @@ void QStreamTab::enableRotation(bool enabled)
         m_pToggleButton_EnableRotation->setIcon(style()->standardIcon(QStyle::SP_BrowserReload));
         m_pToggleButton_EnableRotation->setText(" Enable Rotation");
         m_pToggleButton_EnableRotation->setStyleSheet("QPushButton{font-size:12pt; font-weight:bold; color:black; background-color:#00ff00}");
+
+		m_pConfig->writeToLog(QString("Rotation stopped: %1 (ID: %2)").arg(m_recordInfo.patientName).arg(m_recordInfo.patientId));
     }	
 }
 
 void QStreamTab::startPullback(bool enabled)
 {
-	//QMessageBox MsgBox(QMessageBox::Critical, "Device error", "Linear motor operation failed.\nCan't prepare for the catheter connection.");
-	//MsgBox.exec();
-
     if (enabled)
     {
 		// Set widgets
@@ -752,6 +790,8 @@ void QStreamTab::startPullback(bool enabled)
 		//m_pCaptureTimer = new QTimer(this);
 		//m_pCaptureTimer->start(1200);
 		//connect(m_pCaptureTimer, &QTimer::timeout, [&]() { emit getCapture(m_recordInfo.preview); m_pCaptureTimer->stop(); });
+
+		m_pConfig->writeToLog(QString("Pullback recording started: %1 (ID: %2)").arg(m_recordInfo.patientName).arg(m_recordInfo.patientId));
     }
     else 
     {
@@ -770,6 +810,8 @@ void QStreamTab::startPullback(bool enabled)
 			m_pMemoryBuffer->stopRecording();
 			m_pDeviceControl->rotate(false);
 
+			m_pConfig->writeToLog(QString("Pullback recording stopped: %1 (ID: %2)").arg(m_recordInfo.patientName).arg(m_recordInfo.patientId));
+
 			// Saving recorded data
 			QDateTime datetime = QDateTime::currentDateTime();
 			m_recordInfo.date = datetime.toString("yyyy-MM-dd hh:mm:ss");
@@ -783,6 +825,8 @@ void QStreamTab::startPullback(bool enabled)
 		m_pToggleButton_StartPullback->setText(" Start Pullback");
 		m_pToggleButton_StartPullback->setStyleSheet("QPushButton{font-size:12pt; font-weight:bold; color:black; background-color:#00ff00}");
 
+		m_pConfig->writeToLog(QString("Recorded data saved: %1 (ID: %2): %3 : record id: %4")
+			.arg(m_recordInfo.patientName).arg(m_recordInfo.patientId).arg(m_recordInfo.date).arg(m_recordInfo.recordId));
     }
 }
 
@@ -792,7 +836,10 @@ void QStreamTab::onTimerSyncMonitor()
 	size_t fp_bfn = getFlimProcessingBufferQueueSize();
 	size_t fv_bfn = getFlimVisualizationBufferQueueSize();
 	size_t ov_bfn = getOctVisualizationBufferQueueSize();
+	double oct_fps = m_pDataAcquisition->getAxsunCapture()->frameRate;
+	double flim_fps = m_pDataAcquisition->getDigitizer()->frameRate;
 
-	m_pLabel_StreamingSyncStatus->setText(QString("[Sync]\nFP#: %1\nFV#: %2\nOV#: %3").arg(fp_bfn, 3).arg(fv_bfn, 3).arg(ov_bfn, 3));
+	m_pLabel_StreamingSyncStatus->setText(QString("[Sync]\nFP#: %1\nFV#: %2\nOV#: %3\nOCT: %4 fps\nFLIM: %5 fps")
+		.arg(fp_bfn, 3).arg(fv_bfn, 3).arg(ov_bfn, 3).arg(oct_fps, 3, 'f', 2).arg(flim_fps, 3, 'f', 2));
 }
 #endif

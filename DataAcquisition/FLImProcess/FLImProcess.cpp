@@ -1,5 +1,6 @@
 
 #include "FLImProcess.h"
+#include "../SignatecDAQ/SignatecDAQ.h"
 
 #include <iostream>
 #include <chrono>

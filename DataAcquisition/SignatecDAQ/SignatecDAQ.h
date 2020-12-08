@@ -10,6 +10,10 @@
 #include <thread>
 #include <chrono>
 
+#define PX14_ADC_RATE		400 // MHz
+#define PX14_VOLT_RANGE     1.2 // Vpp
+#define PX14_BOOTBUF_IDX    0
+
 #define MAX_MSG_LENGTH 2000
 
 
@@ -45,6 +49,7 @@ public:
     unsigned int DcOffset;
     unsigned short BootTimeBufIdx;
     bool UseVirtualDevice, UseInternalTrigger;
+	double frameRate;
 
 	bool _running;
 

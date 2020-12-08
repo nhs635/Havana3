@@ -3,15 +3,18 @@
 
 #include <QObject>
 
+#include <Common/callback.h>
+
 
 class Configuration;
 
 class PullbackMotor;
 class RotaryMotor;
 
-class FreqDivider;
 class PmtGainControl;
 class ElforlightLaser;
+
+class FreqDivider;
 
 class AxsunControl;
 
@@ -28,22 +31,26 @@ public:
 public:
 	void setAllDeviceOff();
 
-public: 
+public:
+	inline RotaryMotor* getRotatyMotor() const { return m_pRotaryMotor; }
 	inline PullbackMotor* getPullbackMotor() const { return m_pPullbackMotor; }
-    inline RotaryMotor* getRotatyMotor() const { return m_pRotaryMotor; }
-    inline FreqDivider* getFlimFreqDivider() const { return m_pFlimFreqDivider; }
-    inline FreqDivider* getAxsunFreqDivider() const { return m_pAxsunFreqDivider; }
     inline PmtGainControl* getPmtGainControl() const { return m_pPmtGainControl; }
     inline ElforlightLaser* getElforlightLaser() const { return m_pElforlightLaser; }
+	inline FreqDivider* getFlimFreqDivider() const { return m_pFlimFreqDivider; }
+	inline FreqDivider* getAxsunFreqDivider() const { return m_pAxsunFreqDivider; }
     inline AxsunControl* getAxsunControl() const { return m_pAxsunControl; }
 
 	inline bool isFlimSystemInitialized() const {
-        return (m_pFlimFreqDivider != nullptr) && (m_pElforlightLaser != nullptr); //  && (m_pAxsunFreqDivider != nullptr)
+		return (m_pFlimFreqDivider != nullptr) && (m_pElforlightLaser != nullptr) && (m_pAxsunFreqDivider != nullptr);
 	}
     inline bool isOctSystemInitialized() const { return (m_pAxsunControl != nullptr); }
 	
 public: 
     // Helical Scanning Control
+	bool connectRotaryMotor(bool);
+	void rotate(bool);
+	void changeRotaryRpm(int);
+
 	bool connectPullbackMotor(bool);
 	void moveAbsolute();
     void pullback() { moveAbsolute(); }
@@ -51,19 +58,7 @@ public:
     void changePullbackLength(float);
 	void home();
     void stop();
-
-	bool connectRotaryMotor(bool);
-	void rotate(bool);
-    void changeRotaryRpm(int);
-
-    // FLIm System Control Initialization
-//    void initializeFlimSystem(bool);
-//	bool isDaqBoardConnected();
-
-    // FLIm-Axsun Synchronization Control
-//	void startFlimAsynchronization(bool);
-    bool startSynchronization(bool);
-
+	
     // FLIm PMT Gain Control
     bool applyPmtGainVoltage(bool);
     void changePmtGainVoltage(float);
@@ -72,6 +67,9 @@ public:
     bool connectFlimLaser(bool);
 	void adjustLaserPower(int);
     void sendLaserCommand(char*);
+	
+	// FLIm System Control Initialization
+	bool startSynchronization(bool);
 
 	// Axsun OCT Control
     bool connectAxsunControl(bool);
@@ -82,10 +80,9 @@ public:
 	void setVDLHome();
     void adjustDecibelRange(double, double);
     void requestOctStatus();
-//	void setVDLWidgets(bool);
 	
-signals:
-	void transferAxsunArray(int);
+//signals:
+//	void transferAxsunArray(int);
 
 // Variables ////////////////////////////////////////////
 private:
@@ -93,19 +90,24 @@ private:
     Configuration* m_pConfig;
 
     // Pullback & Rotary Motor Control
-	PullbackMotor* m_pPullbackMotor;
 	RotaryMotor* m_pRotaryMotor;
+	PullbackMotor* m_pPullbackMotor;
 
-	// NI DAQ class for PMT Gain Control & FLIm Synchronization Control
-	FreqDivider* m_pFlimFreqDivider;
-	FreqDivider* m_pAxsunFreqDivider;
+	// NI DAQ class for PMT Gain Control 
 	PmtGainControl* m_pPmtGainControl;
 
 	// Elforlight Laser Control
 	ElforlightLaser* m_pElforlightLaser;
 
+	// FLIm Synchronization Control
+	FreqDivider* m_pFlimFreqDivider;
+	FreqDivider* m_pAxsunFreqDivider;
+
     // Axsun OCT Control
     AxsunControl* m_pAxsunControl;	
+
+	// Status message handling callback
+	callback2<const char*, bool> SendStatusMessage;
 };
 
 #endif // DEVICECONTROL_H

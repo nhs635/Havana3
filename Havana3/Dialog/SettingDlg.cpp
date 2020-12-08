@@ -17,7 +17,7 @@ SettingDlg::SettingDlg(QWidget *parent) :
     QDialog(parent), m_pPatientSummaryTab(nullptr), m_pStreamTab(nullptr), m_pResultTab(nullptr), m_pViewTab(nullptr)
 {
     // Set default size & frame
-    setFixedSize(650, 350);
+    setFixedSize(600, 350);
     setWindowFlags(Qt::Tool);
     setWindowTitle("Setting");
 
@@ -29,6 +29,7 @@ SettingDlg::SettingDlg(QWidget *parent) :
 		m_pPatientSummaryTab = dynamic_cast<QPatientSummaryTab*>(parent);
 		m_pConfig = m_pPatientSummaryTab->getMainWnd()->m_pConfiguration;
 
+		m_pViewOptionTab = new ViewOptionTab(parent);
 		m_pDeviceOptionTab = new DeviceOptionTab(parent);
 	}
 	else if (parent_title.contains("Streaming"))
@@ -37,7 +38,7 @@ SettingDlg::SettingDlg(QWidget *parent) :
         m_pStreamTab = dynamic_cast<QStreamTab*>(parent);
         m_pConfig = m_pStreamTab->getMainWnd()->m_pConfiguration;
 
-		m_pViewOptionTab = new ViewOptionTab(true, this);
+		m_pViewOptionTab = new ViewOptionTab(parent);
 		m_pDeviceOptionTab = new DeviceOptionTab(parent);
 		m_pFlimCalibTab = new FlimCalibTab(this);
     }
@@ -47,30 +48,61 @@ SettingDlg::SettingDlg(QWidget *parent) :
         m_pResultTab = (QResultTab*)parent;
         m_pConfig = m_pResultTab->getMainWnd()->m_pConfiguration;
 
-		m_pViewOptionTab = new ViewOptionTab(false, this);
+		m_pViewOptionTab = new ViewOptionTab(parent);
 		m_pDeviceOptionTab = new DeviceOptionTab(parent);
     }
 	
 	// Create widgets
     m_pTabWidget_Setting = new QTabWidget(this);
     m_pTabWidget_Setting->setTabPosition(QTabWidget::West);
-    m_pTabWidget_Setting->tabBar()->setStyle(new CustomTabStyle);
+	m_pCusomTabstyle = new CustomTabStyle;
+    m_pTabWidget_Setting->tabBar()->setStyle(m_pCusomTabstyle);
+	m_pTabWidget_Setting->tabBar()->setFixedWidth(120);
     m_pTabWidget_Setting->tabBar()->setStyleSheet("QTabBar::tab { background-color: #2a2a2a; color: #808080 }"
                                                   "QTabBar::tab::selected { background-color: #424242; color: #ffffff }");
 
-    if (parent_name != "Summary") m_pTabWidget_Setting->addTab(m_pViewOptionTab->getLayoutBox(), "Visualization");
-    m_pTabWidget_Setting->addTab(m_pDeviceOptionTab->getHelicalScanLayoutBox(), "Motor Control");
-    m_pTabWidget_Setting->addTab(m_pDeviceOptionTab->getFlimSystemLayoutBox(), "FLIm System");
-    m_pTabWidget_Setting->addTab(m_pDeviceOptionTab->getAxsunOCTSystemLayoutBox(), "Axsun OCT System");
-    if (parent_name == "Streaming") m_pTabWidget_Setting->addTab(m_pFlimCalibTab->getLayoutBox(), "FLIm Calibration");
-    if (parent_name == "Review") m_pTabWidget_Setting->addTab(new QWidget(this), "FLIm Pulse Review");
-    m_pTabWidget_Setting->addTab(new QWidget(this), "Log");
+	// Visualization option tab
+	QScrollArea *pScrollArea_Visualization = new QScrollArea;
+	pScrollArea_Visualization->setWidget(m_pViewOptionTab->getLayoutBox());
+	m_pTabWidget_Setting->addTab(pScrollArea_Visualization, "Visualization");
 
-    m_pPushButton_Ok = new QPushButton(this);
-    m_pPushButton_Ok->setText("OK");
+	// System device tab
+	QScrollArea *pScrollArea_SystemDevice = new QScrollArea;
+	pScrollArea_SystemDevice->setWidget(m_pDeviceOptionTab->getLayoutBox());
+	m_pTabWidget_Setting->addTab(pScrollArea_SystemDevice, "System Device");
+	
+	// FLIm calibration tab
+	if (parent_name == "Streaming")
+	{
+		QScrollArea *pScrollArea_FlimCalibration = new QScrollArea;
+		pScrollArea_FlimCalibration->setWidget(m_pFlimCalibTab->getLayoutBox());
+		m_pTabWidget_Setting->addTab(pScrollArea_FlimCalibration, "FLIm Calibration");
+	}
 
-    m_pPushButton_Cancel = new QPushButton(this);
-    m_pPushButton_Cancel->setText("Cancel");
+	// Pulse review tab ????
+	if (parent_name == "Review")
+	{
+		m_pTabWidget_Setting->addTab(new QWidget(this), "Pulse Review");
+	}
+
+	// Log tab
+	m_pListWidget_Log = new QListWidget(this);
+	m_pListWidget_Log->setStyleSheet("QListWidget { font: 8pt; }");
+	for (int i = 0; i < m_pConfig->log.size(); i++)
+		m_pListWidget_Log->addItem(m_pConfig->log.at(i));
+	m_pListWidget_Log->setCurrentRow(m_pListWidget_Log->count() - 1);
+
+	m_pConfig->DidLogAdded += [&](const QString& msg) {
+		m_pListWidget_Log->addItem(msg);
+		m_pListWidget_Log->setCurrentRow(m_pListWidget_Log->count() - 1);
+	};
+
+	m_pTabWidget_Setting->addTab(m_pListWidget_Log, "Log");
+	   
+	// Close button
+    m_pPushButton_Close = new QPushButton(this);
+	m_pPushButton_Close->setText("Close");
+	
 
 	// Create layout
     QVBoxLayout *pVBoxLayout = new QVBoxLayout;
@@ -80,8 +112,7 @@ SettingDlg::SettingDlg(QWidget *parent) :
     pHBoxLayout_Buttons->setSpacing(3);
     pHBoxLayout_Buttons->setAlignment(Qt::AlignRight);
 
-    pHBoxLayout_Buttons->addWidget(m_pPushButton_Ok);
-    pHBoxLayout_Buttons->addWidget(m_pPushButton_Cancel);
+    pHBoxLayout_Buttons->addWidget(m_pPushButton_Close);
 
     pVBoxLayout->addWidget(m_pTabWidget_Setting);
     pVBoxLayout->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed));
@@ -91,11 +122,13 @@ SettingDlg::SettingDlg(QWidget *parent) :
     this->setLayout(pVBoxLayout);
 
     // Connect
-
+	connect(m_pPushButton_Close, SIGNAL(clicked(bool)), this, SLOT(accept()));
 }
 
 SettingDlg::~SettingDlg()
 {
+	delete m_pCusomTabstyle;
+	m_pConfig->DidLogAdded.clear();
 }
 
 void SettingDlg::keyPressEvent(QKeyEvent *e)

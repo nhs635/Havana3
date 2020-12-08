@@ -75,6 +75,7 @@ private:
     QViewTab* m_pViewTab;
 
 private:
+	CustomTabStyle *m_pCusomTabstyle;
     QTabWidget *m_pTabWidget_Setting;
 	
     ViewOptionTab *m_pViewOptionTab;
@@ -82,8 +83,9 @@ private:
     FlimCalibTab *m_pFlimCalibTab;
     PulseReviewTab *m_pPulseReviewTab;
 
-    QPushButton *m_pPushButton_Ok;
-    QPushButton *m_pPushButton_Cancel;
+	QListWidget *m_pListWidget_Log;
+
+    QPushButton *m_pPushButton_Close;
 };
 
 #endif // PULSEREVIEWDLG_H

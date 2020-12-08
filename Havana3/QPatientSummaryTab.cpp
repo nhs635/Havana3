@@ -39,6 +39,7 @@ QPatientSummaryTab::QPatientSummaryTab(QString patient_id, QWidget *parent) :
 
 QPatientSummaryTab::~QPatientSummaryTab()
 {
+	m_pTableWidget_RecordInformation->clear();
 }
 
 void QPatientSummaryTab::keyPressEvent(QKeyEvent *e)
@@ -123,7 +124,8 @@ void QPatientSummaryTab::createPatientSummaryViewWidgets()
 void QPatientSummaryTab::createPatientSummaryTable()
 {
     m_pTableWidget_RecordInformation = new QTableWidget(this);
-    m_pTableWidget_RecordInformation->setRowCount(0);
+	m_pTableWidget_RecordInformation->clearContents();
+	m_pTableWidget_RecordInformation->setRowCount(0);
     m_pTableWidget_RecordInformation->setColumnCount(8);
 
     QStringList colLabels;
@@ -211,6 +213,7 @@ void QPatientSummaryTab::editPatient()
     {
         m_pEditPatientDlg = new AddPatientDlg(this, m_patientInfo.patientId);
         connect(m_pEditPatientDlg, SIGNAL(finished(int)), this, SLOT(deleteEditPatientDlg()));
+		m_pEditPatientDlg->setAttribute(Qt::WA_DeleteOnClose, true);
         m_pEditPatientDlg->setModal(true);
         m_pEditPatientDlg->exec();
     }
@@ -218,6 +221,7 @@ void QPatientSummaryTab::editPatient()
 
 void QPatientSummaryTab::deleteEditPatientDlg()
 {
+	m_pEditPatientDlg->deleteLater();
     m_pEditPatientDlg = nullptr;
 }
 
@@ -227,10 +231,10 @@ void QPatientSummaryTab::createSettingDlg()
 	{
 		m_pSettingDlg = new SettingDlg(this);
 		connect(m_pSettingDlg, SIGNAL(finished(int)), this, SLOT(deleteSettingDlg()));
-		m_pSettingDlg->show();
+		m_pSettingDlg->setAttribute(Qt::WA_DeleteOnClose, true);
+		m_pSettingDlg->setModal(true);
+		m_pSettingDlg->exec();
 	}
-	m_pSettingDlg->raise();
-	m_pSettingDlg->activateWindow();
 }
 
 void QPatientSummaryTab::deleteSettingDlg()
@@ -374,7 +378,8 @@ void QPatientSummaryTab::loadPatientInformation()
 
 void QPatientSummaryTab::loadRecordDatabase()
 {
-    m_pTableWidget_RecordInformation->setRowCount(0);
+    m_pTableWidget_RecordInformation->clearContents();
+	m_pTableWidget_RecordInformation->setRowCount(0);
     m_pTableWidget_RecordInformation->setSortingEnabled(false);
 
     QString command = QString("SELECT * FROM records WHERE patient_id=%1").arg(m_patientInfo.patientId);

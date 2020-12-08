@@ -5,7 +5,7 @@
 
 PullbackMotor::PullbackMotor() 
 {
-	setPortName(PULLBACK_MOTOR_PORT, 2);
+	setPortName("", 2);
 }
 
 

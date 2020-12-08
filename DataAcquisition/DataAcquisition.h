@@ -33,7 +33,7 @@ public:
 public:
     bool InitializeAcquistion();
     bool StartAcquisition();
-    void StopAcquisition(bool suc_stop);
+    void StopAcquisition();
 
 public: 
     void GetBootTimeBufCfg(int idx, int& buffer_size);

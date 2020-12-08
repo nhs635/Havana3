@@ -5,9 +5,8 @@
 
 RotaryMotor::RotaryMotor()
 {
-	setPortName(ROTARY_MOTOR_PORT);
+	setPortName("");
 }
-
 
 RotaryMotor::~RotaryMotor()
 {

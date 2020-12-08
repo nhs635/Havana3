@@ -5,6 +5,7 @@
 #include <QFile>
 
 #include <Common/array.h>
+#include <Common/callback.h>
 #include <Common/SyncObject.h>
 
 
@@ -41,21 +42,22 @@ private:
 
 signals:
 	void processedSingleFrame(int);
+	void abortedProcessing();
 
 // Variables ////////////////////////////////////////////
 private:
+	Configuration* m_pConfig;
 	Configuration* m_pConfigTemp;
     QResultTab* m_pResultTab;
 	FLImProcess* m_pFLIm;
-
-public:
-	//QString m_path;
-	bool m_bAbort;
-
+	
 private:
     // for threading operation
 	SyncObject<uint8_t> m_syncDeinterleaving;
     SyncObject<uint16_t> m_syncFlimProcessing;
+
+private:
+	callback2<const char*, bool> SendStatusMessage;
 };
 
 #endif // DATAPROCESSING_H

@@ -12,7 +12,8 @@ AxsunCapture::AxsunCapture() :
     dataType(u8),
 	image_width(1024),
 	image_height(1024),
-    returned_image(0)
+    returned_image(0),
+	frameRate(0.0)
 {
 }
 
@@ -216,7 +217,7 @@ void AxsunCapture::captureRun()
 
 	image_data_out = np::Uint8Array2(image_height, 4 * image_width); // 4 frame buffers
 	uint8_t *cur_section = nullptr;
-	uint8_t *prev_section = nullptr;
+	//uint8_t *prev_section = nullptr;
 	
 	ULONG dwTickStart = 0, dwTickLastUpdate;
 
@@ -271,10 +272,11 @@ void AxsunCapture::captureRun()
 					{
 						dRate = double(bytesAcquired / 1024.0 / 1024.0) / double(dwElapsed / 1000.0);
 						dRateUpdate = double(bytesAcquiredUpdate / 1024.0 / 1024.0) / double(dwElapsedUpdate / 1000.0);
+						frameRate = (double)frameIndexUpdate / (double)(dwElapsedUpdate) * 1000.0;
 
 						char msg[256];
-						sprintf(msg, "[Image#] %5d [Data Rate] %3.2f MiB/s [Frame Rate] %.2f fps [%d %d]",
-							frameIndex, dRateUpdate, (double)frameIndexUpdate / (double)(dwElapsedUpdate) * 1000.0, force_trig_status, trig_too_fast_status);
+						sprintf(msg, "[Axsun Catpure] [Image#] %5d [Data Rate] %3.2f MiB/s [Frame Rate] %.2f fps [%d %d]",
+							frameIndex, dRateUpdate, frameRate, force_trig_status, trig_too_fast_status);
 						SendStatusMessage(msg, false);
 					}
 

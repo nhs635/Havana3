@@ -62,6 +62,7 @@ public:
 	int image_height;
 	uint32_t returned_image;
 	np::Uint8Array2 image_data_out;
+	double frameRate;
 
 	// callbacks
 	callback2<uint32_t, const np::Uint8Array2&> DidAcquireData;

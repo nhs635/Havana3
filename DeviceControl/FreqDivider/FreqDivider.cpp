@@ -26,7 +26,7 @@ FreqDivider::~FreqDivider()
 
 bool FreqDivider::initialize()
 {	
-    SendStatusMessage("Initializing NI Counter for triggering FLIm laser...", false);
+    SendStatusMessage("[SYNC] Initializing NI Counter for triggering FLIm laser...", false);
 
     int lowTicks = (int)(ceil(slow / 2));
     int highTicks = (int)(floor(slow / 2));
@@ -35,23 +35,23 @@ bool FreqDivider::initialize()
 
     if ((res = DAQmxCreateTask("", &_taskHandle)) != 0)
     {
-        dumpError(res, "ERROR: Failed to set NI Counter: ");
+        dumpError(res, "[SYNC ERROR] Failed to set NI Counter1: ");
         return false;
     }
 
     if ((res = DAQmxCreateCOPulseChanTicks(_taskHandle, counterChannel, NULL, sourceTerminal, DAQmx_Val_Low, 0, lowTicks, highTicks)) != 0)
     {
-        dumpError(res, "ERROR: Failed to set NI Counter: ");
+        dumpError(res, "[SYNC ERROR] Failed to set NI Counter2: ");
         return false;
     }
 
     if ((res = DAQmxCfgImplicitTiming(_taskHandle, DAQmx_Val_ContSamps, sampsPerChan)) != 0)
     {
-        dumpError(res, "ERROR: Failed to set NI Counter: ");
+        dumpError(res, "[SYNC ERROR] Failed to set NI Counter3: ");
         return false;
     }
 
-    SendStatusMessage("NI Counter for triggering FLIm laser is successfully initialized.", false);
+    SendStatusMessage("[SYNC] NI Counter for triggering FLIm laser is successfully initialized.", false);
 
     return true;
 }
@@ -61,7 +61,7 @@ void FreqDivider::start()
 {
     if (_taskHandle)
     {
-        SendStatusMessage("NI Counter is issueing external triggers for FLIm laser...", false);
+        SendStatusMessage("[SYNC] NI Counter is issueing external triggers for FLIm laser...", false);
         DAQmxStartTask(_taskHandle);
     }
 }
@@ -71,7 +71,7 @@ void FreqDivider::stop()
 {
     if (_taskHandle)
     {
-        SendStatusMessage("NI Counter is stopped.", false);
+        SendStatusMessage("[SYNC] NI Counter is stopped.", false);
         DAQmxStopTask(_taskHandle);
         DAQmxClearTask(_taskHandle);
         _taskHandle = nullptr;
@@ -87,12 +87,12 @@ void FreqDivider::dumpError(int res, const char* pPreamble)
 
     SendStatusMessage(((QString)pPreamble + (QString)errBuff).toUtf8().data(), true);
 
-//    if (_taskHandle)
-//    {
-//        DAQmxStopTask(_taskHandle);
-//        DAQmxClearTask(_taskHandle);
-//        _taskHandle = nullptr;
-//    }
+    if (_taskHandle)
+    {
+        DAQmxStopTask(_taskHandle);
+        DAQmxClearTask(_taskHandle);
+        _taskHandle = nullptr;
+    }
 }
 
 #endif

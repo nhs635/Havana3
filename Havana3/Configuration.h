@@ -1,54 +1,30 @@
 #ifndef CONFIGURATION_H
 #define CONFIGURATION_H
 
-#define VERSION						"0.0.0" //"1.4.0"
+#define VERSION						"0.0.0" ///"1.4.0"
 
 #define POWER_2(x)					(1 << x)
 #define NEAR_2_POWER(x)				(int)(1 << (int)ceil(log2(x)))
 #define ROUND_UP_4S(x)				((x + 3) >> 2) << 2
 
+
+////////////////////// Software Setup ///////////////////////
 #define DEVELOPER_MODE
-
-////////////////////// Database Setup ///////////////////////
 #define ENABLE_DATABASE_ENCRYPTION
+///#define NI_ENABLE
 
-//////////////////////// FLIm Setup /////////////////////////
-#define PX14_ADC_RATE               400 // MHz
-#define PX14_VOLT_RANGE             1.2 // Vpp
-#define PX14_BOOTBUF_IDX            0
-
+//////////////////////// Size Setup /////////////////////////
 #define FLIM_SCANS                  512
 #define FLIM_ALINES                 256
 
-#define ELFORLIGHT_PORT				"COM3"
-
-#define NI_ENABLE
-
-#ifdef NI_ENABLE
-#define NI_PMT_GAIN_CHANNEL		    "Dev1/ao1" // 13
-#define NI_FLIM_TRIG_CHANNEL		"Dev1/ctr1" // PFI5 (7) // 100k/4 Hz
-#define NI_FLIM_TRIG_SOURCE			"/Dev1/PFI2"
-#define NI_AXSUN_TRIG_CHANNEL		"Dev1/ctr0" // PFI4 (6) // 100k/1024 Hz
-#define NI_AXSUN_TRIG_SOURCE		"/Dev1/PFI3"
-#endif
-
-///////////////////////// OCT Setup /////////////////////////
 #define OCT_SCANS                   1024 // The number of Samples in a single OCT A-line
 #define OCT_ALINES                  FLIM_ALINES * 4
 
+//////////////////////// System Setup ///////////////////////
 #define CLOCK_DELAY					10
 
-#define VERTICAL_MIRRORING
-
-///#define OCT_DEFAULT_BACKGROUND      "bg.bin"
-
-/////////////////// Pullback Device Setup ///////////////////
-#define PULLBACK_MOTOR_PORT			"COM100" // 18
 //#define PULLBACK_HOME_OFFSET		0 // mm
-
-#define ROTARY_MOTOR_PORT			"COM17" // COM19
 //#define ROTARY_POSITIVE_ROTATION	false
-
 
 //////////////// Thread & Buffer Processing /////////////////
 #define PROCESSING_BUFFER_SIZE		80
@@ -159,20 +135,34 @@ public:
         }
 		octGrayRange.max = settings.value("octGrayRangeMax").toInt();
 		octGrayRange.min = settings.value("octGrayRangeMin").toInt();
+		rotatedAlines = settings.value("rotatedAlines").toInt();
+		verticalMirroring = settings.value("verticalMirroring").toBool();
 		
 		// Additional synchronization parameters
 		intraFrameSync = settings.value("flimSyncAdjust").toInt();
 		interFrameSync = settings.value("flimSyncInterFrame").toInt();
 
 		// Device control
+		rotaryComPort = settings.value("rotaryComPort").toInt();
+		rotaryRpm = settings.value("rotaryRpm").toInt();
+		pullbackComPort = settings.value("pullbackComPort").toInt();
+		pullbackSpeed = settings.value("pullbackSpeed").toFloat();
+		pullbackLength = settings.value("pullbackLength").toFloat();
+
+		flimTriggerSource = settings.value("flimTriggerSource").toString();
+		flimTriggerChannel = settings.value("flimTriggerChannel").toString();
+		octTriggerSource = settings.value("octTriggerSource").toString();
+		octTriggerChannel = settings.value("octTriggerChannel").toString();
+		pmtGainPort = settings.value("pmtGainPort").toString();
+		
 		pmtGainVoltage = settings.value("pmtGainVoltage").toFloat(); 
+		
+		flimLaserComPort = settings.value("flimLaserComPort").toInt();
+
         px14DcOffset = settings.value("px14DcOffset").toInt();
 		axsunVDLLength = settings.value("axsunVDLLength").toFloat();
 		axsunDbRange.max = settings.value("axsunDbRangeMax").toFloat();
 		axsunDbRange.min = settings.value("axsunDbRangeMin").toFloat();
-        pullbackSpeed = settings.value("pullbackSpeed").toFloat();
-        pullbackLength = settings.value("pullbackLength").toFloat();
-		rotaryRpm = settings.value("rotaryRpm").toInt();
 
         // Database
         dbPath = settings.value("dbPath").toString();
@@ -222,16 +212,29 @@ public:
 		}
 		settings.setValue("octGrayRangeMax", octGrayRange.max);
 		settings.setValue("octGrayRangeMin", octGrayRange.min);
+		settings.setValue("rotatedAlines", rotatedAlines);
+		settings.setValue("verticalMirroring", verticalMirroring);
 
 		// Device control
+		settings.setValue("rotaryComPort", rotaryComPort);
+		settings.setValue("rotaryRpm", rotaryRpm);
+		settings.setValue("pullbackComPort", pullbackComPort);
+		settings.setValue("pullbackSpeed", QString::number(pullbackSpeed, 'f', 2));
+		settings.setValue("pullbackLength", QString::number(pullbackLength, 'f', 2));
+
+		settings.setValue("flimTriggerSource", flimTriggerSource);
+		settings.setValue("flimTriggerChannel", flimTriggerChannel);
+		settings.setValue("octTriggerSource", octTriggerSource);
+		settings.setValue("octTriggerChannel", octTriggerChannel);
+		settings.setValue("pmtGainPort", pmtGainPort);
+
 		settings.setValue("pmtGainVoltage", QString::number(pmtGainVoltage, 'f', 3));
+
+		settings.setValue("flimLaserComPort", flimLaserComPort);
         settings.setValue("px14DcOffset", px14DcOffset);
 		settings.setValue("axsunVDLLength", QString::number(axsunVDLLength, 'f', 2));
 		settings.setValue("axsunDbRangeMax", QString::number(axsunDbRange.max, 'f', 1));
 		settings.setValue("axsunDbRangeMin", QString::number(axsunDbRange.min, 'f', 1));
-        settings.setValue("pullbackSpeed", QString::number(pullbackSpeed, 'f', 2));
-        settings.setValue("pullbackLength", QString::number(pullbackLength, 'f', 2));
-		settings.setValue("rotaryRpm", rotaryRpm);
 
         // Database
         settings.setValue("dbPath", dbPath);
@@ -247,7 +250,9 @@ public:
 
 	void writeToLog(QString msg)
 	{
-		log << QDateTime::currentDateTime().toString("[yyyy-MM-dd hh:mm:ss] ") + msg;
+		QString total_msg = QDateTime::currentDateTime().toString("[yyyy-MM-dd hh:mm:ss] ") + msg;
+		log << total_msg;
+		DidLogAdded(total_msg);
 	}
 	
 public:
@@ -275,28 +280,36 @@ public:
     ContrastRange<float> flimIntensityRatioRange[3][3];
 	float flimIntensityComp[3];
     ContrastRange<int> octGrayRange;
+	int rotatedAlines;
+	bool verticalMirroring;
 
 	// Additional synchronization parameters
 	int intraFrameSync;
 	int interFrameSync;
 
 	// Device control
+	int rotaryComPort;
+	int rotaryRpm;
+	int pullbackComPort;
+	float pullbackSpeed;
+	float pullbackLength;
+	QString flimTriggerSource;
+	QString flimTriggerChannel;
+	QString octTriggerSource;
+	QString octTriggerChannel;
+	QString pmtGainPort;
 	float pmtGainVoltage;
+	int flimLaserComPort;
     int px14DcOffset;
 	float axsunVDLLength;
-    ContrastRange<float> axsunDbRange;
-    float pullbackSpeed;
-    float pullbackLength;
-    int rotaryRpm;
+    ContrastRange<float> axsunDbRange;	
 
     // Database
     QString dbPath;
 	
 	// System log
 	QStringList log;
-
-	// Message callback
-	callback<const char*> msgHandle;
+	callback<const QString&> DidLogAdded;
 };
 
 

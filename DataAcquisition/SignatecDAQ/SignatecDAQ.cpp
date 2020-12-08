@@ -3,14 +3,14 @@
 
 #include <px14.h>
 
-using namespace std;
 
+using namespace std;
 
 SignatecDAQ::SignatecDAQ() :
     nChannels(1), nScans(512), nAlines(256),
     GainLevel(PX14DGAIN_LOW), AcqRate(PX14_ADC_RATE),
     PreTrigger(0), TriggerDelay(0), DcOffset(0), BootTimeBufIdx(0),
-    UseVirtualDevice(false), UseInternalTrigger(false),
+    UseVirtualDevice(false), UseInternalTrigger(false), frameRate(0.0),
     _dirty(true), _running(false), _board(PX14_INVALID_HANDLE),
     dma_bufp(nullptr)
 {
@@ -32,9 +32,9 @@ SignatecDAQ::~SignatecDAQ()
 bool SignatecDAQ::initialize()
 {
 	int result;
-    const char* pPreamble = "Failed to initialize PX14400 device: ";
+    const char* pPreamble = "[SignatecDAQ] Failed to initialize PX14400 device: ";
 
-	SendStatusMessage("Initializing SignatecDAQ PX14400 device...", false);
+	SendStatusMessage("[SignatecDAQ] Initializing SignatecDAQ PX14400 device...", false);
 
 	if (UseVirtualDevice)
 	{
@@ -50,7 +50,7 @@ bool SignatecDAQ::initialize()
 
 	if (result != SIG_SUCCESS)
 	{
-		dumpError(result, "Failed to initialize PX14400 device: ");
+		dumpError(result, pPreamble);
 		return false;
 	}
 
@@ -121,7 +121,7 @@ bool SignatecDAQ::initialize()
 		return false;
 	}	
 	
-	SendStatusMessage("SignatecDAQ PX14400 device is successfully initialized.", false);
+	SendStatusMessage("[SignatecDAQ] PX14400 device is successfully initialized.", false);
 
 	return true;
 }
@@ -131,7 +131,10 @@ bool SignatecDAQ::set_init()
 	if (_dirty)
 	{
 		if (!initialize())
+		{
+			SendStatusMessage("[SignatecDAQ] PX14400 device is failed to initialize.", false);
 			return false;
+		}
 
 		_dirty = false;
 	}
@@ -143,7 +146,7 @@ int SignatecDAQ::getBootTimeBuffer(int idx)
 {
 	int result;
 	unsigned int buffer_size;
-	const char* pPreamble = "Failed to get PX14400 boot-time buffer: ";
+	const char* pPreamble = "[SignatecDAQ] Failed to get PX14400 boot-time buffer: ";
 
 	const int SerialNumber = 1; // 1 : first card
 	result = ConnectToDevicePX14(&_board, SerialNumber);
@@ -166,7 +169,7 @@ int SignatecDAQ::getBootTimeBuffer(int idx)
 bool SignatecDAQ::setBootTimeBuffer(int idx, int buffer_size)
 {
 	int result;
-	const char* pPreamble = "Failed to set PX14400 boot-time buffer: ";
+	const char* pPreamble = "[SignatecDAQ] Failed to set PX14400 boot-time buffer: ";
 
 	const int SerialNumber = 1; // 1 : first card
 	result = ConnectToDevicePX14(&_board, SerialNumber);
@@ -189,7 +192,7 @@ bool SignatecDAQ::setBootTimeBuffer(int idx, int buffer_size)
 bool SignatecDAQ::setDcOffset(int offset)
 {
     int result;
-    const char* pPreamble = "Failed to set PX14400 DC offset: ";
+    const char* pPreamble = "[SignatecDAQ] Failed to set PX14400 DC offset: ";
 
     const int SerialNumber = 1; // 1 : first card
     result = ConnectToDevicePX14(&_board, SerialNumber);
@@ -205,6 +208,10 @@ bool SignatecDAQ::setDcOffset(int offset)
         dumpError(result, pPreamble);
         return false;
     }
+
+	char msg[256];
+	sprintf(msg, "[SignatecDAQ] DC offset set: %d", offset);
+	SendStatusMessage(msg, false);
 
     return true;
 }
@@ -347,6 +354,7 @@ void SignatecDAQ::run()
 			{
 				dRate = (BytesAcquired / 1024.0 / 1024.0) / (dwElapsed / 1000.0);
 				dRateUpdate = (BytesAcquiredUpdate / 1024.0 / 1024.0) / (dwElapsedUpdate / 1000.0);
+				frameRate = (double)frameIndexUpdate / (double)(dwElapsedUpdate) * 1000.0;
 
 				unsigned h = 0, m = 0, s = 0;
 				if (dwElapsed >= 1000)
@@ -363,8 +371,8 @@ void SignatecDAQ::run()
 				}
 
 				char msg[MAX_MSG_LENGTH];
-				sprintf(msg, "[Elapsed Time] %u:%02u:%02u [DAQ Rate] %3.2f MiB/s [Frame Rate] %.2f fps", h, m, s, 
-					dRateUpdate, (double)frameIndexUpdate / (double)(dwElapsedUpdate) * 1000.0);
+				sprintf(msg, "[SignatecDAQ] [Elapsed Time] %u:%02u:%02u [DAQ Rate] %3.2f MiB/s [Frame Rate] %.2f fps", h, m, s, 
+					dRateUpdate, frameRate);
 				SendStatusMessage(msg, false);
 			}
 
@@ -384,16 +392,16 @@ void SignatecDAQ::dumpError(int res, const char* pPreamble)
 	char *pErr = nullptr;
 	int my_res;
 	char msg[MAX_MSG_LENGTH];	
-	memcpy(msg, pPreamble, strlen(pPreamble));
+	memcpy(msg, pPreamble, strlen(pPreamble) + 1);
 
 	my_res = GetErrorTextAPX14(res, &pErr, 0, _board);
 	
 	if ((SIG_SUCCESS == my_res) && pErr)
-		strcat(msg, pErr);
+		strcat_s(msg, MAX_MSG_LENGTH, pErr);
 	else
-		strcat(msg, "Cannot obtain error message..");
+		strcat_s(msg, MAX_MSG_LENGTH, "Cannot obtain error message..");
 	if (res == -6)
-		strcat(msg, " (Please restart the computer.)");
+		strcat_s(msg, MAX_MSG_LENGTH, " (Please restart the computer.)");
 	
 	//printf("%s\n", msg);
 	SendStatusMessage(msg, true);
@@ -409,7 +417,7 @@ void SignatecDAQ::dumpErrorSystem(int res, const char* pPreamble)
 	memcpy(msg, pPreamble, strlen(pPreamble));
 
 	sprintf(pErr, "Error code (%d)", res);
-	strcat(msg, pErr);
+	strcat_s(msg, MAX_MSG_LENGTH, pErr);
 
 	///printf("%s\n", msg);
 	SendStatusMessage(msg, true);

@@ -66,7 +66,7 @@ QImageView::QImageView(ColorTable::colortable ctable, int width, int height, boo
     m_height = height;
 	
     // Create layout
-	m_pHBoxLayout = new QHBoxLayout(this);
+	m_pHBoxLayout = new QHBoxLayout;
     m_pHBoxLayout->setSpacing(0);
     m_pHBoxLayout->setContentsMargins(1, 1, 1, 1); // Remove bezel area
 
@@ -282,10 +282,12 @@ void QImageView::drawRgbImage(uint8_t* pImage)
 {		
     QImage *pImg = new QImage(pImage, m_width4, m_height, QImage::Format_RGB888);
     if (m_width4 == m_width)
-        m_pRenderImage->m_pImage = std::move(pImg);
-    else
-        memcpy(m_pRenderImage->m_pImage->bits(), pImg->copy(0, 0, m_width, m_height).bits(), m_pRenderImage->m_pImage->byteCount());
+		memcpy(m_pRenderImage->m_pImage->bits(), pImg->bits(), m_pRenderImage->m_pImage->byteCount());
+	else
+		memcpy(m_pRenderImage->m_pImage->bits(), pImg->copy(0, 0, m_width, m_height).bits(), m_pRenderImage->m_pImage->byteCount());
+	
 	m_pRenderImage->update();
+	delete pImg;
 }
 
 
@@ -305,6 +307,8 @@ QRenderImage::QRenderImage(QWidget *parent) :
 
 QRenderImage::~QRenderImage()
 {
+	if (m_pImage) delete m_pImage;
+
 	delete m_pHLineInd;
     delete m_pVLineInd;
 }
