@@ -9,23 +9,31 @@ typedef void *TaskHandle;
 class FreqDivider
 {
 public:
-    FreqDivider();
-    ~FreqDivider();
+	explicit FreqDivider();
+    virtual ~FreqDivider();
 
-    int slow;
-    const char* sourceTerminal;
-    const char* counterChannel;
-
+public:
     bool initialize();
     void start();
     void stop();
 
 public:
-    callback2<const char*, bool> SendStatusMessage;
+	inline void setSlow(int _slow) { slow = _slow; }
+	inline void setSourceTerminal(const char* _sourceTerminal) { sourceTerminal = _sourceTerminal; }
+	inline void setCounterChannel(const char* _counterChannel) { counterChannel = _counterChannel; }
 
 private:
-    TaskHandle _taskHandle;
-    void dumpError(int res, const char* pPreamble);
+	void dumpError(int res, const char* pPreamble);
+
+private:
+	TaskHandle _taskHandle;
+
+	int slow;
+	const char* sourceTerminal;
+	const char* counterChannel;
+	
+public:
+	callback2<const char*, bool> SendStatusMessage;
 };
 
 #endif // FREQ_DIVIDER_H_

@@ -75,10 +75,10 @@ DeviceOptionTab::DeviceOptionTab(QWidget *parent) :
 DeviceOptionTab::~DeviceOptionTab()
 {
 	if (!m_pStreamTab)
+	{
+		//m_pDeviceControl->setAllDeviceOff();
 		delete m_pDeviceControl;
-	//{
-	//	m_pDeviceControl->setAllDeviceOff();
-	//}
+	}
 }
 
 

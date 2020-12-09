@@ -1,8 +1,5 @@
 
 #include "PmtGainControl.h"
-#include <Havana3/Configuration.h>
-
-#ifdef NI_ENABLE
 
 #include <iostream>
 
@@ -13,7 +10,7 @@ using namespace std;
 PmtGainControl::PmtGainControl() :
     _taskHandle(nullptr),
     voltage(0),
-    physicalChannel(NI_PMT_GAIN_CHANNEL)
+    physicalChannel("")
 {
 }
 
@@ -88,7 +85,9 @@ void PmtGainControl::dumpError(int res, const char* pPreamble)
 	if (res < 0)
 		DAQmxGetErrorString(res, errBuff, 2048);
 
-    SendStatusMessage(((QString)pPreamble + (QString)errBuff).toUtf8().data(), true);
+	char msg[2048];
+	sprintf_s(msg, 2048, "%s %s", pPreamble, errBuff);
+	SendStatusMessage(msg, true);
 
 	if (_taskHandle)
 	{
@@ -101,5 +100,3 @@ void PmtGainControl::dumpError(int res, const char* pPreamble)
 		_taskHandle = nullptr;
 	}
 }
-
-#endif

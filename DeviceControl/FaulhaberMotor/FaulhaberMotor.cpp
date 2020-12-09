@@ -1,14 +1,12 @@
 
 #include "FaulhaberMotor.h"
-#include <Havana3/Configuration.h>
 
 
 FaulhaberMotor::FaulhaberMotor() :
-	dev_num(1)
+	port_name(""), dev_num(1)
 {
 	m_pSerialComm = new QSerialComm;
 }
-
 
 FaulhaberMotor::~FaulhaberMotor()
 {
@@ -81,7 +79,6 @@ bool FaulhaberMotor::ConnectDevice()
 	return true;
 }
 
-
 void FaulhaberMotor::DisconnectDevice()
 {
 	if (m_pSerialComm->m_bIsConnected)
@@ -121,7 +118,6 @@ void FaulhaberMotor::Controlword(char value)
 	m_pSerialComm->waitUntilResponse();
 }
 
-
 void FaulhaberMotor::EnableMotor()
 {
 	Controlword(0x06);
@@ -132,7 +128,6 @@ void FaulhaberMotor::EnableMotor()
 	SendStatusMessage(msg, false);
 }
 
-
 void FaulhaberMotor::DisableMotor()
 {
 	Controlword(0x0D);
@@ -141,7 +136,6 @@ void FaulhaberMotor::DisableMotor()
 	sprintf(msg, "[FAULHABER] Motor disabled. [%s]", port_name);
 	SendStatusMessage(msg, false);
 }
-
 
 void FaulhaberMotor::RotateMotor(int RPM)
 {
@@ -177,7 +171,6 @@ void FaulhaberMotor::RotateMotor(int RPM)
 	SendStatusMessage(msg, false);
 }
 
-
 void FaulhaberMotor::StopMotor()
 {
 	target_velocity[2] = dev_num;
@@ -210,7 +203,6 @@ void FaulhaberMotor::StopMotor()
 
 	DisableMotor();
 }
-
 
 void FaulhaberMotor::MoveAbsolute(int pos)
 {
@@ -245,7 +237,6 @@ void FaulhaberMotor::MoveAbsolute(int pos)
 	sprintf(msg, "[FAULHABER] Motor moved absolutely. [%s]", port_name);
 	SendStatusMessage(msg, false);
 }
-
 
 void FaulhaberMotor::Home()
 {

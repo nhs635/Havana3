@@ -1,8 +1,6 @@
 #ifndef AXSUN_CONTROL_H
 #define AXSUN_CONTROL_H
 
-#include <Havana3/Configuration.h>
-
 #include <Common/callback.h>
 
 #include <iostream>
@@ -45,17 +43,13 @@ class AxsunControl
 public: // Constructor & Destructor
     explicit AxsunControl();
     virtual ~AxsunControl();
-
-private: // Not to call copy constrcutor and copy assignment operator
-	AxsunControl(const AxsunControl&);
-	AxsunControl& operator=(const AxsunControl&);
-
+	
 public:
     // For Control
     bool initialize();
     bool setLaserEmission(bool status);
     bool setLiveImagingMode(bool status);
-    //bool setBurstRecording(unsigned short n_images, bool recording = true);
+    ///bool setBurstRecording(unsigned short n_images, bool recording = true);
     bool setBackground(const unsigned short* pBackground);
     bool setDispersionCompensation(double a2 = 0, double a3 = 0, int length = SAMPLE_LENGTH);
 	bool setBypassMode(bypass_mode _bypass_mode);
@@ -81,8 +75,6 @@ private:
     // For Control
     IAxsunOCTControlPtr m_pAxsunOCTControl;
     VARIANT_BOOL m_bIsConnected;
-    bool m_bIsLiveImagingModeOn;
-    //bool isBurstRecording;
 };
 
 #endif

@@ -1,6 +1,5 @@
 
 #include "ElforlightLaser.h"
-#include <Havana3/Configuration.h>
 
 #include <iostream>
 #include <thread>
@@ -8,7 +7,7 @@
 
 
 ElforlightLaser::ElforlightLaser() :
-	port_name(""), isLaserEnabled(false)
+	port_name(""), is_laser_enabled(false)
 {
 	m_pSerialComm = new QSerialComm;
 }

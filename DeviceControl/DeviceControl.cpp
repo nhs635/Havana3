@@ -8,9 +8,13 @@
 
 #include <DeviceControl/FaulhaberMotor/RotaryMotor.h>
 #include <DeviceControl/FaulhaberMotor/PullbackMotor.h>
+#ifdef NI_ENABLE
 #include <DeviceControl/PmtGainControl/PmtGainControl.h>
+#endif
 #include <DeviceControl/ElforlightLaser/ElforlightLaser.h>
+#ifdef NI_ENABLE
 #include <DeviceControl/FreqDivider/FreqDivider.h>
+#endif
 #include <DeviceControl/AxsunControl/AxsunControl.h>
 
 #include <DataAcquisition/DataAcquisition.h>
@@ -363,7 +367,7 @@ void DeviceControl::adjustLaserPower(int level)
 void DeviceControl::sendLaserCommand(char* command)
 {
 	if (m_pElforlightLaser) 
-		if (m_pElforlightLaser->isLaserEnabled)
+		if (m_pElforlightLaser->isLaserEnabled())
 			m_pElforlightLaser->SendCommand(command);
 }
 

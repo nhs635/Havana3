@@ -9,8 +9,8 @@
 class PullbackMotor : public FaulhaberMotor
 {
 public:
-	PullbackMotor();
-	~PullbackMotor();
+	explicit PullbackMotor();
+	virtual ~PullbackMotor();
 };
 
 #endif

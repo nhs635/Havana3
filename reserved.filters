@@ -54,9 +54,6 @@
     <Filter Include="DeviceControl\FaulhaberMotor">
       <UniqueIdentifier>{96f1ce77-2e75-4f24-9c13-e6dcf3e056fc}</UniqueIdentifier>
     </Filter>
-    <Filter Include="DeviceControl\ZaberStage">
-      <UniqueIdentifier>{a583f99b-7107-4d46-87c0-d079669dc72d}</UniqueIdentifier>
-    </Filter>
     <Filter Include="DataAcquisition\AxsunCapture">
       <UniqueIdentifier>{8ae13581-64a5-4544-ae37-6ca4ee2e06ed}</UniqueIdentifier>
     </Filter>
@@ -74,19 +71,10 @@
     <ClCompile Include="DataAcquisition\ThreadManager.cpp">
       <Filter>DataAcquisition</Filter>
     </ClCompile>
-    <ClCompile Include="Havana3\QDeviceControlTab.cpp">
-      <Filter>Havana3</Filter>
-    </ClCompile>
-    <ClCompile Include="Havana3\QOperationTab.cpp">
-      <Filter>Havana3</Filter>
-    </ClCompile>
     <ClCompile Include="Havana3\QResultTab.cpp">
       <Filter>Havana3</Filter>
     </ClCompile>
     <ClCompile Include="Havana3\QStreamTab.cpp">
-      <Filter>Havana3</Filter>
-    </ClCompile>
-    <ClCompile Include="Havana3\QVisualizationTab.cpp">
       <Filter>Havana3</Filter>
     </ClCompile>
     <ClCompile Include="Havana3\Havana3.cpp">
@@ -110,20 +98,11 @@
     <ClCompile Include="Havana3\Viewer\QImageView.cpp">
       <Filter>Havana3\Viewer</Filter>
     </ClCompile>
-    <ClCompile Include="Havana3\Dialog\FlimCalibDlg.cpp">
-      <Filter>Havana3\Dialog</Filter>
-    </ClCompile>
     <ClCompile Include="DeviceControl\ElforlightLaser\ElforlightLaser.cpp">
       <Filter>DeviceControl\ElforlightLaser</Filter>
     </ClCompile>
     <ClCompile Include="DeviceControl\FaulhaberMotor\FaulhaberMotor.cpp">
       <Filter>DeviceControl\FaulhaberMotor</Filter>
-    </ClCompile>
-    <ClCompile Include="DeviceControl\ZaberStage\ZaberStage.cpp">
-      <Filter>DeviceControl\ZaberStage</Filter>
-    </ClCompile>
-    <ClCompile Include="DeviceControl\ZaberStage\zb_serial.cpp">
-      <Filter>DeviceControl\ZaberStage</Filter>
     </ClCompile>
     <ClCompile Include="DeviceControl\AxsunControl\AxsunControl.cpp">
       <Filter>DeviceControl\AxsunControl</Filter>
@@ -131,23 +110,56 @@
     <ClCompile Include="DataAcquisition\AxsunCapture\AxsunCapture.cpp">
       <Filter>DataAcquisition\AxsunCapture</Filter>
     </ClCompile>
-    <ClCompile Include="Havana3\Dialog\PulseReviewDlg.cpp">
-      <Filter>Havana3\Dialog</Filter>
-    </ClCompile>
-    <ClCompile Include="Havana3\Dialog\SaveResultDlg.cpp">
-      <Filter>Havana3\Dialog</Filter>
-    </ClCompile>
-    <ClCompile Include="Havana3\QProcessingTab.cpp">
-      <Filter>Havana3</Filter>
-    </ClCompile>
     <ClCompile Include="DeviceControl\FreqDivider\FreqDivider.cpp">
       <Filter>DeviceControl\FreqDivider</Filter>
     </ClCompile>
     <ClCompile Include="DeviceControl\PmtGainControl\PmtGainControl.cpp">
       <Filter>DeviceControl\PmtGainControl</Filter>
     </ClCompile>
-    <ClCompile Include="Havana3\Dialog\LongitudinalViewDlg.cpp">
+    <ClCompile Include="DeviceControl\FaulhaberMotor\PullbackMotor.cpp">
+      <Filter>DeviceControl\FaulhaberMotor</Filter>
+    </ClCompile>
+    <ClCompile Include="DeviceControl\FaulhaberMotor\RotaryMotor.cpp">
+      <Filter>DeviceControl\FaulhaberMotor</Filter>
+    </ClCompile>
+    <ClCompile Include="Havana3\Dialog\AddPatientDlg.cpp">
       <Filter>Havana3\Dialog</Filter>
+    </ClCompile>
+    <ClCompile Include="Havana3\Dialog\ViewOptionTab.cpp">
+      <Filter>Havana3\Dialog</Filter>
+    </ClCompile>
+    <ClCompile Include="Havana3\Dialog\SettingDlg.cpp">
+      <Filter>Havana3\Dialog</Filter>
+    </ClCompile>
+    <ClCompile Include="Havana3\QHomeTab.cpp">
+      <Filter>Havana3</Filter>
+    </ClCompile>
+    <ClCompile Include="Havana3\QPatientSelectionTab.cpp">
+      <Filter>Havana3</Filter>
+    </ClCompile>
+    <ClCompile Include="Havana3\QPatientSummaryTab.cpp">
+      <Filter>Havana3</Filter>
+    </ClCompile>
+    <ClCompile Include="Havana3\QViewTab.cpp">
+      <Filter>Havana3</Filter>
+    </ClCompile>
+    <ClCompile Include="Havana3\HvnSqlDataBase.cpp">
+      <Filter>Havana3</Filter>
+    </ClCompile>
+    <ClCompile Include="Havana3\Dialog\PulseReviewTab.cpp">
+      <Filter>Havana3\Dialog</Filter>
+    </ClCompile>
+    <ClCompile Include="Havana3\Dialog\FlimCalibTab.cpp">
+      <Filter>Havana3\Dialog</Filter>
+    </ClCompile>
+    <ClCompile Include="Havana3\Dialog\DeviceOptionTab.cpp">
+      <Filter>Havana3\Dialog</Filter>
+    </ClCompile>
+    <ClCompile Include="DeviceControl\DeviceControl.cpp">
+      <Filter>DeviceControl</Filter>
+    </ClCompile>
+    <ClCompile Include="DataAcquisition\DataProcessing.cpp">
+      <Filter>DataAcquisition</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -169,17 +181,44 @@
     <ClInclude Include="DeviceControl\ElforlightLaser\ElforlightLaser.h">
       <Filter>DeviceControl\ElforlightLaser</Filter>
     </ClInclude>
-    <QtMoc Include="Havana3\Dialog\PulseReviewDlg.h">
+    <QtMoc Include="Havana3\Dialog\AddPatientDlg.h">
       <Filter>Havana3\Dialog</Filter>
     </QtMoc>
-    <QtMoc Include="Havana3\Dialog\SaveResultDlg.h">
+    <QtMoc Include="Havana3\Dialog\ViewOptionTab.h">
       <Filter>Havana3\Dialog</Filter>
     </QtMoc>
-    <QtMoc Include="Havana3\QProcessingTab.h">
+    <QtMoc Include="Havana3\Dialog\SettingDlg.h">
+      <Filter>Havana3\Dialog</Filter>
+    </QtMoc>
+    <QtMoc Include="Havana3\QHomeTab.h">
       <Filter>Havana3</Filter>
     </QtMoc>
-    <QtMoc Include="Havana3\Dialog\LongitudinalViewDlg.h">
+    <QtMoc Include="Havana3\QViewTab.h">
+      <Filter>Havana3</Filter>
+    </QtMoc>
+    <QtMoc Include="Havana3\QPatientSelectionTab.h">
+      <Filter>Havana3</Filter>
+    </QtMoc>
+    <QtMoc Include="Havana3\QPatientSummaryTab.h">
+      <Filter>Havana3</Filter>
+    </QtMoc>
+    <QtMoc Include="Havana3\HvnSqlDataBase.h">
+      <Filter>Havana3</Filter>
+    </QtMoc>
+    <QtMoc Include="Havana3\Dialog\PulseReviewTab.h">
       <Filter>Havana3\Dialog</Filter>
+    </QtMoc>
+    <QtMoc Include="Havana3\Dialog\FlimCalibTab.h">
+      <Filter>Havana3\Dialog</Filter>
+    </QtMoc>
+    <QtMoc Include="Havana3\Dialog\DeviceOptionTab.h">
+      <Filter>Havana3\Dialog</Filter>
+    </QtMoc>
+    <QtMoc Include="DeviceControl\DeviceControl.h">
+      <Filter>DeviceControl</Filter>
+    </QtMoc>
+    <QtMoc Include="DataAcquisition\DataProcessing.h">
+      <Filter>DataAcquisition</Filter>
     </QtMoc>
   </ItemGroup>
   <ItemGroup>
@@ -189,9 +228,6 @@
     <CustomBuild Include="release\moc_predefs.h.cbt">
       <Filter>Generated Files</Filter>
     </CustomBuild>
-    <ClInclude Include="ui_MainWindow.h">
-      <Filter>Generated Files</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <QtUic Include="Havana3\MainWindow.ui">
@@ -202,19 +238,10 @@
     <ResourceCompile Include="Havana3.rc" />
   </ItemGroup>
   <ItemGroup>
-    <QtMoc Include="Havana3\QDeviceControlTab.h">
-      <Filter>Havana3</Filter>
-    </QtMoc>
-    <QtMoc Include="Havana3\QOperationTab.h">
-      <Filter>Havana3</Filter>
-    </QtMoc>
     <QtMoc Include="Havana3\QResultTab.h">
       <Filter>Havana3</Filter>
     </QtMoc>
     <QtMoc Include="Havana3\QStreamTab.h">
-      <Filter>Havana3</Filter>
-    </QtMoc>
-    <QtMoc Include="Havana3\QVisualizationTab.h">
       <Filter>Havana3</Filter>
     </QtMoc>
     <QtMoc Include="DataAcquisition\DataAcquisition.h">
@@ -232,19 +259,10 @@
     <QtMoc Include="Havana3\Viewer\QImageView.h">
       <Filter>Havana3\Viewer</Filter>
     </QtMoc>
-    <QtMoc Include="Havana3\Dialog\FlimCalibDlg.h">
-      <Filter>Havana3\Dialog</Filter>
-    </QtMoc>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="DeviceControl\FaulhaberMotor\FaulhaberMotor.h">
       <Filter>DeviceControl\FaulhaberMotor</Filter>
-    </ClInclude>
-    <ClInclude Include="DeviceControl\ZaberStage\ZaberStage.h">
-      <Filter>DeviceControl\ZaberStage</Filter>
-    </ClInclude>
-    <ClInclude Include="DeviceControl\ZaberStage\zb_serial.h">
-      <Filter>DeviceControl\ZaberStage</Filter>
     </ClInclude>
     <ClInclude Include="DeviceControl\AxsunControl\AxsunControl.h">
       <Filter>DeviceControl\AxsunControl</Filter>
@@ -257,6 +275,12 @@
     </ClInclude>
     <ClInclude Include="DeviceControl\PmtGainControl\PmtGainControl.h">
       <Filter>DeviceControl\PmtGainControl</Filter>
+    </ClInclude>
+    <ClInclude Include="DeviceControl\FaulhaberMotor\PullbackMotor.h">
+      <Filter>DeviceControl\FaulhaberMotor</Filter>
+    </ClInclude>
+    <ClInclude Include="DeviceControl\FaulhaberMotor\RotaryMotor.h">
+      <Filter>DeviceControl\FaulhaberMotor</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

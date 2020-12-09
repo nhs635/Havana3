@@ -1,11 +1,10 @@
 
 #include "RotaryMotor.h"
-#include <Havana3/Configuration.h>
 
 
 RotaryMotor::RotaryMotor()
 {
-	setPortName("");
+	setPortName("", 1);
 }
 
 RotaryMotor::~RotaryMotor()

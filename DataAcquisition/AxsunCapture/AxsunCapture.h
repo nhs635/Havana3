@@ -1,8 +1,6 @@
 #ifndef AXSUN_CAPTURE_H
 #define AXSUN_CAPTURE_H
 
-#include <Havana3/Configuration.h>
-
 #include <iostream>
 #include <thread>
 

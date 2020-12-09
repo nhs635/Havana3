@@ -4,9 +4,7 @@
 
 AxsunControl::AxsunControl() :
 	m_pAxsunOCTControl(nullptr),
-	m_bIsConnected(DISCONNECTED),
-    m_bIsLiveImagingModeOn(false)
-    //isBurstRecording(false),
+	m_bIsConnected(DISCONNECTED)
 {
 }
 
@@ -175,9 +173,7 @@ bool AxsunControl::setLiveImagingMode(bool status)
 		SendStatusMessage("[Axsun Control] Unable to connect to the devices.", false);
 		return false;
 	}
-
-	m_bIsLiveImagingModeOn = status;
-
+	
 	char msg[256];
     sprintf(msg, "[Axsun Control] Live Imaging is %s.", status ? "started" : "stopped");
 	SendStatusMessage(msg, false);

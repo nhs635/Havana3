@@ -9,24 +9,29 @@ typedef void *TaskHandle;
 class PmtGainControl
 {
 public:
-	PmtGainControl();
-	~PmtGainControl();
+	explicit PmtGainControl();
+	virtual ~PmtGainControl();
 
-	double voltage;	
-
+public:
 	bool initialize();
 	void start();
 	void stop();
-		
+	
 public:
-    callback2<const char*, bool> SendStatusMessage;
+	inline void setVoltage(double _voltage) { voltage = _voltage; }
+	inline void setPhysicalChannel(const char* _physicalChannel) { physicalChannel = _physicalChannel; }
 
 private:
-	const char* physicalChannel;
-	const char* sourceTerminal;
-
-	TaskHandle _taskHandle;	
 	void dumpError(int res, const char* pPreamble);
+
+private:
+	TaskHandle _taskHandle;
+
+	double voltage;
+	const char* physicalChannel;
+
+public:
+	callback2<const char*, bool> SendStatusMessage;
 };
 
 #endif // GAIN_CONTROL_H_

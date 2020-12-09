@@ -7,8 +7,8 @@
 class RotaryMotor : public FaulhaberMotor
 {
 public:
-	RotaryMotor();
-	~RotaryMotor();
+	explicit RotaryMotor();
+	virtual ~RotaryMotor();
 };
 
 #endif

@@ -1,8 +1,5 @@
 
 #include "FreqDivider.h"
-#include <Havana3/Configuration.h>
-
-#ifdef NI_ENABLE
 
 #include <iostream>
 
@@ -12,7 +9,9 @@ using namespace std;
 
 FreqDivider::FreqDivider() :
     _taskHandle(nullptr),
-    slow(4)
+    slow(4),
+	sourceTerminal(""),
+	counterChannel("")
 {
 }
 
@@ -85,7 +84,9 @@ void FreqDivider::dumpError(int res, const char* pPreamble)
     if (res < 0)
         DAQmxGetErrorString(res, errBuff, 2048);
 
-    SendStatusMessage(((QString)pPreamble + (QString)errBuff).toUtf8().data(), true);
+	char msg[2048];
+	sprintf_s(msg, 2048, "%s %s", pPreamble, errBuff);
+    SendStatusMessage(msg, true);
 
     if (_taskHandle)
     {
@@ -94,5 +95,3 @@ void FreqDivider::dumpError(int res, const char* pPreamble)
         _taskHandle = nullptr;
     }
 }
-
-#endif
