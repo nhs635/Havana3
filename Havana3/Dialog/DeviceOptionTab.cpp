@@ -93,11 +93,16 @@ void DeviceOptionTab::createHelicalScanningControl()
 	m_pToggleButton_RotaryConnect->setText("Connect");
 	m_pToggleButton_RotaryConnect->setFixedWidth(100);
 	m_pToggleButton_RotaryConnect->setCheckable(true);
+	m_pToggleButton_RotaryConnect->setStyleSheet("QPushButton { background-color:#ff0000; }");
 	
 	m_pComboBox_RotaryConnect = new QComboBox(this);
 	for (int i = 1; i <= 20; i++)
 		m_pComboBox_RotaryConnect->addItem(QString("COM%1").arg(i));
-	m_pComboBox_RotaryConnect->setCurrentIndex(m_pConfig->rotaryComPort);
+
+	qDebug() << m_pConfig->rotaryComPort;
+	qDebug() << QString::fromLocal8Bit(m_pConfig->rotaryComPort);
+
+	m_pComboBox_RotaryConnect->setCurrentIndex(QString(m_pConfig->rotaryComPort[3]).toInt() - 1);
 	m_pComboBox_RotaryConnect->setFixedWidth(80);
 
 	m_pLabel_RotaryConnect = new QLabel(this);
@@ -129,11 +134,12 @@ void DeviceOptionTab::createHelicalScanningControl()
 	m_pToggleButton_PullbackConnect->setText("Connect");
 	m_pToggleButton_PullbackConnect->setFixedWidth(100);
 	m_pToggleButton_PullbackConnect->setCheckable(true);
+	m_pToggleButton_PullbackConnect->setStyleSheet("QPushButton { background-color:#ff0000; }");
 
 	m_pComboBox_PullbackConnect = new QComboBox(this);
 	for (int i = 1; i <= 20; i++)
 		m_pComboBox_PullbackConnect->addItem(QString("COM%1").arg(i));
-	m_pComboBox_PullbackConnect->setCurrentIndex(m_pConfig->pullbackComPort);
+	m_pComboBox_PullbackConnect->setCurrentIndex(QString(m_pConfig->pullbackComPort[3]).toInt() - 1);
 	m_pComboBox_PullbackConnect->setFixedWidth(80);
 
 	m_pLabel_PullbackConnect = new QLabel(this);
@@ -228,7 +234,7 @@ void DeviceOptionTab::createHelicalScanningControl()
 	connect(m_pToggleButton_Rotate, SIGNAL(toggled(bool)), this, SLOT(rotate(bool)));
 
 	connect(m_pToggleButton_PullbackConnect, SIGNAL(toggled(bool)), this, SLOT(connectPullbackMotor(bool)));
-	connect(m_pComboBox_PullbackConnect, SIGNAL(currentIndexChanged(int)), this, SLOT(setRotaryComPort(int)));
+	connect(m_pComboBox_PullbackConnect, SIGNAL(currentIndexChanged(int)), this, SLOT(setPullbackComPort(int)));
 	connect(m_pLineEdit_PullbackSpeed, SIGNAL(textChanged(const QString &)), this, SLOT(setTargetSpeed(const QString &)));
 	connect(m_pLineEdit_PullbackLength, SIGNAL(textChanged(const QString &)), this, SLOT(changePullbackLength(const QString &)));
 	connect(m_pPushButton_Pullback, SIGNAL(clicked(bool)), this, SLOT(moveAbsolute()));
@@ -275,6 +281,7 @@ void DeviceOptionTab::createFlimSystemControl()
 	m_pToggleButton_AsynchronizedPulsedLaser->setText("On");
 	m_pToggleButton_AsynchronizedPulsedLaser->setFixedWidth(40);
 	m_pToggleButton_AsynchronizedPulsedLaser->setCheckable(true);
+	m_pToggleButton_AsynchronizedPulsedLaser->setStyleSheet("QPushButton { background-color:#ff0000; }");
 	//m_pToggleButton_AsynchronizedPulsedLaser->setDisabled(true);
 
 	m_pLabel_AsynchronizedPulsedLaser = new QLabel("Asynchronized UV Pulsed Laser", this);
@@ -285,6 +292,7 @@ void DeviceOptionTab::createFlimSystemControl()
 	m_pToggleButton_SynchronizedPulsedLaser->setText("On");
 	m_pToggleButton_SynchronizedPulsedLaser->setFixedWidth(40);
 	m_pToggleButton_SynchronizedPulsedLaser->setCheckable(true);
+	m_pToggleButton_SynchronizedPulsedLaser->setStyleSheet("QPushButton { background-color:#ff0000; }");
 	//m_pToggleButton_SynchronizedPulsedLaser->setDisabled(true);
 
 	m_pLabel_SynchronizedPulsedLaser = new QLabel("Synchronized UV Pulsed Laser", this);
@@ -319,6 +327,7 @@ void DeviceOptionTab::createFlimSystemControl()
 	m_pToggleButton_PmtGainVoltage->setText("On");	
 	m_pToggleButton_PmtGainVoltage->setFixedWidth(40);
 	m_pToggleButton_PmtGainVoltage->setCheckable(true);
+	m_pToggleButton_PmtGainVoltage->setStyleSheet("QPushButton { background-color:#ff0000; }");
 	//m_pToggleButton_PmtGainVoltage->setDisabled(true);
 	
 	// Create widgets for FLIM laser power control
@@ -326,11 +335,12 @@ void DeviceOptionTab::createFlimSystemControl()
 	m_pToggleButton_FlimLaserConnect->setText("Connect");
 	m_pToggleButton_FlimLaserConnect->setFixedWidth(100);
 	m_pToggleButton_FlimLaserConnect->setCheckable(true);
+	m_pToggleButton_FlimLaserConnect->setStyleSheet("QPushButton { background-color:#ff0000; }");
 
 	m_pComboBox_FlimLaserConnect = new QComboBox(this);
 	for (int i = 1; i <= 20; i++)
 		m_pComboBox_FlimLaserConnect->addItem(QString("COM%1").arg(i));
-	m_pComboBox_FlimLaserConnect->setCurrentIndex(m_pConfig->rotaryComPort);
+	m_pComboBox_FlimLaserConnect->setCurrentIndex(QString(m_pConfig->flimLaserComPort[3]).toInt() - 1);
 	m_pComboBox_FlimLaserConnect->setFixedWidth(80);
 
 	m_pLabel_FlimLaserConnect = new QLabel(this);
@@ -446,6 +456,7 @@ void DeviceOptionTab::createAxsunOctSystemControl()
 	m_pToggleButton_AxsunOctConnect->setText("Connect");
 	m_pToggleButton_AxsunOctConnect->setFixedWidth(100);
 	m_pToggleButton_AxsunOctConnect->setCheckable(true);
+	m_pToggleButton_AxsunOctConnect->setStyleSheet("QPushButton { background-color:#ff0000; }");
 	
 	m_pLabel_AxsunOctConnect = new QLabel(this);
 	m_pLabel_AxsunOctConnect->setText("Axsun OCT Engine");
@@ -531,9 +542,9 @@ void DeviceOptionTab::createAxsunOctSystemControl()
 
 void DeviceOptionTab::setRotaryComPort(int port)
 {
-	m_pConfig->rotaryComPort = port;
+	m_pConfig->rotaryComPort = QString("COM%1").arg(port + 1).toLocal8Bit().constData();
 
-	m_pConfig->writeToLog(QString("Rotary COM port set: COM%1").arg(port));
+	m_pConfig->writeToLog(QString("Rotary COM port set: %1").arg(m_pConfig->rotaryComPort));
 }
 
 bool DeviceOptionTab::connectRotaryMotor(bool toggled)
@@ -545,6 +556,8 @@ bool DeviceOptionTab::connectRotaryMotor(bool toggled)
 		{
 			// Set widgets
 			m_pToggleButton_RotaryConnect->setText("Disconnect");
+			m_pToggleButton_RotaryConnect->setStyleSheet("QPushButton { background-color:#00ff00; }");
+
 			m_pLabel_RotaryConnect->setDisabled(true);
 			m_pComboBox_RotaryConnect->setDisabled(true);
 
@@ -552,6 +565,7 @@ bool DeviceOptionTab::connectRotaryMotor(bool toggled)
 			m_pLineEdit_RPM->setEnabled(true);
 			m_pLabel_RPM->setEnabled(true);
 			m_pToggleButton_Rotate->setEnabled(true);
+			m_pToggleButton_Rotate->setStyleSheet("QPushButton { background-color:#ff0000; }");
 		}
 		else
 			m_pToggleButton_RotaryConnect->setChecked(false);
@@ -560,6 +574,8 @@ bool DeviceOptionTab::connectRotaryMotor(bool toggled)
 	{
 		// Set widgets
 		m_pToggleButton_RotaryConnect->setText("Connect");
+		m_pToggleButton_RotaryConnect->setStyleSheet("QPushButton { background-color:#ff0000; }");
+
 		m_pLabel_RotaryConnect->setEnabled(true);
 		m_pComboBox_RotaryConnect->setEnabled(true);
 
@@ -567,6 +583,7 @@ bool DeviceOptionTab::connectRotaryMotor(bool toggled)
 		m_pLineEdit_RPM->setDisabled(true);
 		m_pLabel_RPM->setDisabled(true);
 		m_pToggleButton_Rotate->setDisabled(true);
+		m_pToggleButton_Rotate->setStyleSheet("QPushButton { background-color:#353535; }");
 
 		// Disconnect from rotary motor
 		m_pDeviceControl->connectRotaryMotor(false);
@@ -597,9 +614,9 @@ void DeviceOptionTab::changeRotaryRpm(const QString &str)
 
 void DeviceOptionTab::setPullbackComPort(int port)
 {
-	m_pConfig->pullbackComPort = port;
+	m_pConfig->pullbackComPort = QString("COM%1").arg(port + 1).toLocal8Bit().constData();
 
-	m_pConfig->writeToLog(QString("Pullback COM port set: COM%1").arg(port));
+	m_pConfig->writeToLog(QString("Pullback COM port set: %1").arg(m_pConfig->pullbackComPort));
 }
 
 bool DeviceOptionTab::connectPullbackMotor(bool toggled)
@@ -611,8 +628,10 @@ bool DeviceOptionTab::connectPullbackMotor(bool toggled)
 		{
 			// Set widgets
 			m_pToggleButton_PullbackConnect->setText("Disconnect");
-			m_pLabel_RotaryConnect->setDisabled(true);
-			m_pComboBox_RotaryConnect->setDisabled(true);
+			m_pToggleButton_PullbackConnect->setStyleSheet("QPushButton { background-color:#00ff00; }");
+
+			m_pLabel_PullbackConnect->setDisabled(true);
+			m_pComboBox_PullbackConnect->setDisabled(true);
 
 			m_pLabel_PullbackSpeed->setEnabled(true);
 			m_pLineEdit_PullbackSpeed->setEnabled(true);
@@ -625,6 +644,7 @@ bool DeviceOptionTab::connectPullbackMotor(bool toggled)
 			m_pPushButton_Pullback->setEnabled(true);
 			m_pPushButton_Home->setEnabled(true);
 			m_pPushButton_PullbackStop->setEnabled(true);
+			m_pPushButton_Pullback->setStyleSheet("QPushButton { background-color:#ff0000; }");
 		}
 		else
 			m_pToggleButton_PullbackConnect->setChecked(false);
@@ -633,8 +653,10 @@ bool DeviceOptionTab::connectPullbackMotor(bool toggled)
 	{
 		// Set widgets
 		m_pToggleButton_PullbackConnect->setText("Connect");
-		m_pLabel_RotaryConnect->setEnabled(true);
-		m_pComboBox_RotaryConnect->setEnabled(true);
+		m_pToggleButton_PullbackConnect->setStyleSheet("QPushButton { background-color:#ff0000; }");
+
+		m_pLabel_PullbackConnect->setEnabled(true);
+		m_pComboBox_PullbackConnect->setEnabled(true);
 
 		m_pLabel_PullbackSpeed->setDisabled(true);
 		m_pLineEdit_PullbackSpeed->setDisabled(true);
@@ -647,6 +669,7 @@ bool DeviceOptionTab::connectPullbackMotor(bool toggled)
 		m_pPushButton_Pullback->setDisabled(true);
 		m_pPushButton_Home->setDisabled(true);
 		m_pPushButton_PullbackStop->setDisabled(true);
+		m_pPushButton_Pullback->setStyleSheet("QPushButton { background-color:#353535; }");
 
 		// Disconnect from rotary motor
 		m_pDeviceControl->connectRotaryMotor(false);
@@ -722,28 +745,28 @@ void DeviceOptionTab::stop()
 
 void DeviceOptionTab::setFlimTriggerSource(const QString &str)
 {
-	m_pConfig->flimTriggerSource = str;
+	m_pConfig->flimTriggerSource = str.toLocal8Bit().constData();
 
 	m_pConfig->writeToLog(QString("FLIm trigger source set: %1").arg(str));
 }
 
 void DeviceOptionTab::setFlimTriggerChannel(const QString &str)
 {
-	m_pConfig->flimTriggerChannel = str;
+	m_pConfig->flimTriggerChannel = str.toLocal8Bit().constData();
 
 	m_pConfig->writeToLog(QString("FLIm trigger channel set: %1").arg(str));
 }
 
 void DeviceOptionTab::setOctTriggerSource(const QString &str)
 {
-	m_pConfig->octTriggerSource = str;
+	m_pConfig->octTriggerSource = str.toLocal8Bit().constData();
 
 	m_pConfig->writeToLog(QString("OCT trigger source set: %1").arg(str));
 }
 
 void DeviceOptionTab::setOctTriggerChannel(const QString &str)
 {
-	m_pConfig->octTriggerChannel = str;
+	m_pConfig->octTriggerChannel = str.toLocal8Bit().constData();
 
 	m_pConfig->writeToLog(QString("OCT trigger channel set: %1").arg(str));
 }
@@ -755,15 +778,19 @@ void DeviceOptionTab::startFlimAsynchronization(bool toggled)
 	if (toggled)
 	{
 		// Start asynchronous pulsed generation
-		QString flimOrigSource = m_pConfig->flimTriggerSource;
-		QString octOrigSource = m_pConfig->octTriggerSource;
+		const char* flimOrigSource = m_pConfig->flimTriggerSource;
+		const char* octOrigSource = m_pConfig->octTriggerSource;
 
 		m_pConfig->flimTriggerSource = "100kHzTimebase";
 		m_pConfig->octTriggerSource = "100kHzTimebase";
 
-		if (m_pDeviceControl->startSynchronization())
+		if (m_pDeviceControl->startSynchronization(true))
 		{
 			// Set widgets		
+			m_pLabel_FlimTriggerSource->setDisabled(true);
+			m_pLabel_FlimTriggerChannel->setDisabled(true);
+			m_pLabel_OctTriggerSource->setDisabled(true);
+			m_pLabel_OctTriggerChannel->setDisabled(true);
 			m_pLineEdit_FlimTriggerSource->setDisabled(true);
 			m_pLineEdit_FlimTriggerChannel->setDisabled(true);
 			m_pLineEdit_OctTriggerSource->setDisabled(true);
@@ -777,7 +804,7 @@ void DeviceOptionTab::startFlimAsynchronization(bool toggled)
 			m_pToggleButton_SynchronizedPulsedLaser->setStyleSheet("QPushButton { background-color:#353535; }");
 		}
 		else
-			startFlimAsynchronization(false);
+			m_pToggleButton_AsynchronizedPulsedLaser->setChecked(false);
 		
 		m_pConfig->flimTriggerSource = flimOrigSource;
 		m_pConfig->octTriggerSource = octOrigSource;
@@ -785,6 +812,10 @@ void DeviceOptionTab::startFlimAsynchronization(bool toggled)
 	else
 	{
 		// Set widgets
+		m_pLabel_FlimTriggerSource->setEnabled(true);
+		m_pLabel_FlimTriggerChannel->setEnabled(true);
+		m_pLabel_OctTriggerSource->setEnabled(true);
+		m_pLabel_OctTriggerChannel->setEnabled(true);
 		m_pLineEdit_FlimTriggerSource->setEnabled(true);
 		m_pLineEdit_FlimTriggerChannel->setEnabled(true);
 		m_pLineEdit_OctTriggerSource->setEnabled(true);
@@ -798,7 +829,7 @@ void DeviceOptionTab::startFlimAsynchronization(bool toggled)
 		m_pToggleButton_SynchronizedPulsedLaser->setStyleSheet("QPushButton { background-color:#ff0000; }");
 
 		// Stop asynchronous pulsed generation
-		m_pDeviceControl->stopSynchronization();
+		m_pDeviceControl->startSynchronization(false);
 	}
 #else
 	(void)toggled;
@@ -811,19 +842,40 @@ void DeviceOptionTab::startFlimSynchronization(bool toggled)
 	if (toggled)
 	{
 		// Start synchronous FLIm-OCT operation
-		m_pDeviceControl->startSynchronization();
-		
-		// Set widgets		
-		m_pToggleButton_SynchronizedPulsedLaser->setText("Off");
-		m_pToggleButton_SynchronizedPulsedLaser->setStyleSheet("QPushButton { background-color:#00ff00; }");
+		if (m_pDeviceControl->startSynchronization(true))
+		{
+			// Set widgets		
+			m_pLabel_FlimTriggerSource->setDisabled(true);
+			m_pLabel_FlimTriggerChannel->setDisabled(true);
+			m_pLabel_OctTriggerSource->setDisabled(true);
+			m_pLabel_OctTriggerChannel->setDisabled(true);
+			m_pLineEdit_FlimTriggerSource->setDisabled(true);
+			m_pLineEdit_FlimTriggerChannel->setDisabled(true);
+			m_pLineEdit_OctTriggerSource->setDisabled(true);
+			m_pLineEdit_OctTriggerChannel->setDisabled(true);
 
-		m_pLabel_AsynchronizedPulsedLaser->setDisabled(true);
-		m_pToggleButton_AsynchronizedPulsedLaser->setDisabled(true);
-		m_pToggleButton_AsynchronizedPulsedLaser->setStyleSheet("QPushButton { background-color:#353535; }");
+			m_pToggleButton_SynchronizedPulsedLaser->setText("Off");
+			m_pToggleButton_SynchronizedPulsedLaser->setStyleSheet("QPushButton { background-color:#00ff00; }");
+
+			m_pLabel_AsynchronizedPulsedLaser->setDisabled(true);
+			m_pToggleButton_AsynchronizedPulsedLaser->setDisabled(true);
+			m_pToggleButton_AsynchronizedPulsedLaser->setStyleSheet("QPushButton { background-color:#353535; }");
+		}
+		else
+			m_pToggleButton_SynchronizedPulsedLaser->setChecked(false);
 	}
 	else
 	{
 		// Set widgets
+		m_pLabel_FlimTriggerSource->setEnabled(true);
+		m_pLabel_FlimTriggerChannel->setEnabled(true);
+		m_pLabel_OctTriggerSource->setEnabled(true);
+		m_pLabel_OctTriggerChannel->setEnabled(true);
+		m_pLineEdit_FlimTriggerSource->setEnabled(true);
+		m_pLineEdit_FlimTriggerChannel->setEnabled(true);
+		m_pLineEdit_OctTriggerSource->setEnabled(true);
+		m_pLineEdit_OctTriggerChannel->setEnabled(true);
+
 		m_pToggleButton_SynchronizedPulsedLaser->setText("On");
 		m_pToggleButton_SynchronizedPulsedLaser->setStyleSheet("QPushButton { background-color:#ff0000; }");
 
@@ -832,7 +884,7 @@ void DeviceOptionTab::startFlimSynchronization(bool toggled)
 		m_pToggleButton_AsynchronizedPulsedLaser->setStyleSheet("QPushButton { background-color:#ff0000; }");
 
 		// Stop synchronous FLIm-OCT operation
-		m_pDeviceControl->stopSynchronization();
+		m_pDeviceControl->startSynchronization(false);
 	}
 #else
 	(void)toggled;
@@ -841,7 +893,7 @@ void DeviceOptionTab::startFlimSynchronization(bool toggled)
 
 void DeviceOptionTab::setPmtGainPort(const QString &str)
 {
-	m_pConfig->pmtGainPort = str;
+	m_pConfig->pmtGainPort = str.toLocal8Bit().constData();
 
 	m_pConfig->writeToLog(QString("PMT gain port set: %1").arg(str));
 }
@@ -852,18 +904,27 @@ void DeviceOptionTab::applyPmtGainVoltage(bool toggled)
 	if (toggled)
 	{
 		// Apply PMT gain voltage
-		m_pDeviceControl->applyPmtGainVoltage(true);
+		if (m_pDeviceControl->applyPmtGainVoltage(true))
+		{
+			// Set widgets
+			m_pLabel_PmtGainPort->setDisabled(true);
+			m_pLineEdit_PmtGainPort->setDisabled(true);
 
-		// Set widgets
-		m_pToggleButton_PmtGainVoltage->setText("Off");
-		m_pToggleButton_PmtGainVoltage->setStyleSheet("QPushButton { background-color:#00ff00; }");
-						
-		m_pLineEdit_PmtGainVoltage->setDisabled(true);
-		m_pLabel_PmtGainVoltage->setDisabled(true);
+			m_pToggleButton_PmtGainVoltage->setText("Off");
+			m_pToggleButton_PmtGainVoltage->setStyleSheet("QPushButton { background-color:#00ff00; }");
+
+			m_pLineEdit_PmtGainVoltage->setDisabled(true);
+			m_pLabel_PmtGainVoltage->setDisabled(true);
+		}
+		else
+			m_pToggleButton_PmtGainVoltage->setChecked(false);
 	}
 	else
 	{
 		// Set widgets
+		m_pLabel_PmtGainPort->setEnabled(true);
+		m_pLineEdit_PmtGainPort->setEnabled(true);
+
 		m_pToggleButton_PmtGainVoltage->setText("On");
 		m_pToggleButton_PmtGainVoltage->setStyleSheet("QPushButton { background-color:#ff0000; }");
 
@@ -888,7 +949,9 @@ void DeviceOptionTab::changePmtGainVoltage(const QString & str)
 
 void DeviceOptionTab::setFlimLaserComPort(int port)
 {
-	m_pConfig->flimLaserComPort = port;
+	m_pConfig->flimLaserComPort = QString("COM%1").arg(port + 1).toLocal8Bit().constData();
+
+	m_pConfig->writeToLog(QString("FLIm laser COM port set: %1").arg(m_pConfig->flimLaserComPort));
 }
 
 bool DeviceOptionTab::connectFlimLaser(bool toggled)
@@ -900,6 +963,8 @@ bool DeviceOptionTab::connectFlimLaser(bool toggled)
 		{
 			// Set widgets
 			m_pToggleButton_FlimLaserConnect->setText("Disconnect");
+			m_pToggleButton_FlimLaserConnect->setStyleSheet("QPushButton { background-color:#00ff00; }");
+
 			m_pLabel_FlimLaserConnect->setDisabled(true);
 			m_pComboBox_FlimLaserConnect->setDisabled(true);
 
@@ -913,6 +978,8 @@ bool DeviceOptionTab::connectFlimLaser(bool toggled)
 	{
 		// Set widgets
 		m_pToggleButton_FlimLaserConnect->setText("Connect");
+		m_pToggleButton_FlimLaserConnect->setStyleSheet("QPushButton { background-color:#ff0000; }");
+
 		m_pLabel_FlimLaserConnect->setEnabled(true);
 		m_pComboBox_FlimLaserConnect->setEnabled(true);
 
@@ -975,10 +1042,15 @@ void DeviceOptionTab::connectAxsunControl(bool toggled)
 		m_pDeviceControl->connectAxsunControl(toggled);
 
 		// Set widgets		
+		m_pToggleButton_AxsunOctConnect->setText("Disconnect");
+		m_pToggleButton_AxsunOctConnect->setStyleSheet("QPushButton { background-color:#00ff00; }");
+
 		m_pLabel_LightSource->setEnabled(true);
 		m_pLabel_LiveImaging->setEnabled(true);
 		m_pToggleButton_LightSource->setEnabled(true);
 		m_pToggleButton_LiveImaging->setEnabled(true);
+		m_pToggleButton_LightSource->setStyleSheet("QPushButton { background-color:#ff0000; }");
+		m_pToggleButton_LiveImaging->setStyleSheet("QPushButton { background-color:#ff0000; }");
 
 		m_pLabel_VDLLength->setEnabled(true);
 		m_pSpinBox_VDLLength->setEnabled(true);
@@ -987,6 +1059,9 @@ void DeviceOptionTab::connectAxsunControl(bool toggled)
 	else
 	{
 		// Set widgets
+		m_pToggleButton_AxsunOctConnect->setText("Connect");
+		m_pToggleButton_AxsunOctConnect->setStyleSheet("QPushButton { background-color:#ff0000; }");
+
 		if (m_pToggleButton_LightSource->isChecked()) m_pToggleButton_LightSource->setChecked(false);
 		if (m_pToggleButton_LiveImaging->isChecked()) m_pToggleButton_LiveImaging->setChecked(false);
 		m_pToggleButton_LightSource->setText("On");

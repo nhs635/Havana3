@@ -29,7 +29,6 @@ SettingDlg::SettingDlg(QWidget *parent) :
 		m_pPatientSummaryTab = dynamic_cast<QPatientSummaryTab*>(parent);
 		m_pConfig = m_pPatientSummaryTab->getMainWnd()->m_pConfiguration;
 
-		m_pViewOptionTab = new ViewOptionTab(parent);
 		m_pDeviceOptionTab = new DeviceOptionTab(parent);
 	}
 	else if (parent_title.contains("Streaming"))
@@ -62,9 +61,12 @@ SettingDlg::SettingDlg(QWidget *parent) :
                                                   "QTabBar::tab::selected { background-color: #424242; color: #ffffff }");
 
 	// Visualization option tab
-	QScrollArea *pScrollArea_Visualization = new QScrollArea;
-	pScrollArea_Visualization->setWidget(m_pViewOptionTab->getLayoutBox());
-	m_pTabWidget_Setting->addTab(pScrollArea_Visualization, "Visualization");
+	if (parent_name != "Summary")
+	{
+		QScrollArea *pScrollArea_Visualization = new QScrollArea;
+		pScrollArea_Visualization->setWidget(m_pViewOptionTab->getLayoutBox());
+		m_pTabWidget_Setting->addTab(pScrollArea_Visualization, "Visualization");
+	}
 
 	// System device tab
 	QScrollArea *pScrollArea_SystemDevice = new QScrollArea;

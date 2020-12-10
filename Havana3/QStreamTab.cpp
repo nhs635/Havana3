@@ -326,19 +326,17 @@ bool QStreamTab::enableDeviceControl(bool enabled)
 	if (enabled)
 	{		
 		// Set FLIm system control
-		std::this_thread::sleep_for(std::chrono::milliseconds(200));
 		if (!m_pDeviceControl->connectFlimLaser(true)) return false;
 		if (!m_pDeviceControl->applyPmtGainVoltage(true)) return false;
 
 		// Set OCT system control
-		std::this_thread::sleep_for(std::chrono::milliseconds(200));
 		if (!m_pDeviceControl->connectAxsunControl(true)) return false;
 
 		// Set master synchronization control
-		std::this_thread::sleep_for(std::chrono::milliseconds(200));
 		if (!m_pDeviceControl->startSynchronization(true)) return false;
 
 		// Set master trigger generation + Axsun imaging mode on
+		std::this_thread::sleep_for(std::chrono::milliseconds(200));
 		m_pDeviceControl->setLiveImaging(true);
 		m_pDeviceControl->setLightSource(true);
 	}

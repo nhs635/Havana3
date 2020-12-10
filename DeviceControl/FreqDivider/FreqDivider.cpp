@@ -38,6 +38,8 @@ bool FreqDivider::initialize()
         return false;
     }
 
+	printf("%s %s\n", counterChannel, sourceTerminal);
+
     if ((res = DAQmxCreateCOPulseChanTicks(_taskHandle, counterChannel, NULL, sourceTerminal, DAQmx_Val_Low, 0, lowTicks, highTicks)) != 0)
     {
         dumpError(res, "[SYNC ERROR] Failed to set NI Counter2: ");

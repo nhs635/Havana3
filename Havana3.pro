@@ -38,7 +38,7 @@ LIBS += $$PWD/lib/intel64_win/ippcore.lib \
         $$PWD/lib/intel64_win/ipps.lib \
         $$PWD/lib/intel64_win/ippvm.lib
 debug {
-    LIBS += $$PWD/lib/vld.lib
+#    LIBS += $$PWD/lib/vld.lib
     LIBS += $$PWD/lib/intel64_win/vc14/tbb_debug.lib
     LIBS += $$PWD/lib/opencv_world320d.lib
 }

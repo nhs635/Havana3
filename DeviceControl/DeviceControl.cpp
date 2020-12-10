@@ -79,6 +79,10 @@ bool DeviceControl::connectRotaryMotor(bool toggled)
 		if (!m_pRotaryMotor)
 		{
 			m_pRotaryMotor = new RotaryMotor;
+			char port_name[256];
+			sprintf_s(port_name, 256, "%s", QString("COM%1").arg(m_pConfig->rotaryComPort).toUtf8().data());
+			m_pRotaryMotor->setPortName(port_name, 1);
+
 			m_pRotaryMotor->SendStatusMessage += SendStatusMessage;
 		}
 
@@ -138,6 +142,10 @@ bool DeviceControl::connectPullbackMotor(bool enabled)
 		if (!m_pPullbackMotor)
 		{
 			m_pPullbackMotor = new PullbackMotor;
+			char port_name[256];
+			sprintf_s(port_name, 256, "%s", QString("COM%1").arg(m_pConfig->pullbackComPort).toUtf8().data());
+			m_pPullbackMotor->setPortName(port_name, 2); 
+
 			m_pPullbackMotor->SendStatusMessage += SendStatusMessage;
 		}
 
@@ -231,10 +239,15 @@ bool DeviceControl::applyPmtGainVoltage(bool enabled)
 		if (!m_pPmtGainControl)
 		{
 			m_pPmtGainControl = new PmtGainControl;
+			//char port_name[256];
+			//sprintf_s(port_name, 256, "%s", m_pConfig->pmtGainPort.toUtf8().data());
+			m_pPmtGainControl->setPhysicalChannel(m_pConfig->pmtGainPort);
+			m_pPmtGainControl->setVoltage(m_pConfig->pmtGainVoltage);
+
 			m_pPmtGainControl->SendStatusMessage += SendStatusMessage;
 		}
 
-		if (m_pPmtGainControl->voltage > 1.0)
+		if (m_pPmtGainControl->getVoltage() > 1.0)
 		{
 			m_pPmtGainControl->SendStatusMessage("[PMT gain] >1.0V Gain voltage cannot be assigned!", true);
 			applyPmtGainVoltage(false);
@@ -286,6 +299,10 @@ bool DeviceControl::connectFlimLaser(bool state)
 		if (!m_pElforlightLaser)
 		{
 			m_pElforlightLaser = new ElforlightLaser;
+			char port_name[256];
+			sprintf_s(port_name, 256, "%s", QString("COM%1").arg(m_pConfig->flimLaserComPort).toUtf8().data());
+			m_pElforlightLaser->setPortName(port_name);
+
 			m_pElforlightLaser->SendStatusMessage += SendStatusMessage;
 ///			m_pElforlightLaser->UpdateState += [&](double* state) {
 ///				m_pStreamTab->getMainWnd()->updateFlimLaserState(state);
@@ -381,21 +398,33 @@ bool DeviceControl::startSynchronization(bool enabled)
 		if (!m_pFlimFreqDivider)
 		{
 			m_pFlimFreqDivider = new FreqDivider;
+
+			//char trigger_source[256], trigger_channel[256];
+			//sprintf_s(trigger_source, 256, "%s", m_pConfig->flimTriggerSource.toUtf8().data());
+			//sprintf_s(trigger_channel, 256, "%s", m_pConfig->flimTriggerChannel.toUtf8().data());
+
+			m_pFlimFreqDivider->setSourceTerminal(m_pConfig->flimTriggerSource);
+			m_pFlimFreqDivider->setCounterChannel(m_pConfig->flimTriggerChannel);
+			m_pFlimFreqDivider->setSlow(4);
+
 			m_pFlimFreqDivider->SendStatusMessage += SendStatusMessage;
 		}
-		m_pFlimFreqDivider->sourceTerminal = m_pConfig->flimTriggerSource;
-		m_pFlimFreqDivider->counterChannel = m_pConfig->flimTriggerChannel;
-		m_pFlimFreqDivider->slow = 4;
 
 		// Create Axsun OCT sync control objects
 		if (!m_pAxsunFreqDivider)
 		{
 			m_pAxsunFreqDivider = new FreqDivider;
+
+			//char trigger_source[256], trigger_channel[256];
+			//sprintf_s(trigger_source, 256, "%s", m_pConfig->octTriggerSource.toUtf8().data());
+			//sprintf_s(trigger_channel, 256, "%s", m_pConfig->octTriggerChannel.toUtf8().data());
+			
+			m_pAxsunFreqDivider->setSourceTerminal(m_pConfig->octTriggerSource);
+			m_pAxsunFreqDivider->setCounterChannel(m_pConfig->octTriggerChannel);
+			m_pAxsunFreqDivider->setSlow(1024);
+
 			m_pAxsunFreqDivider->SendStatusMessage += SendStatusMessage;
 		}
-		m_pAxsunFreqDivider->sourceTerminal = m_pConfig->octTriggerSource;
-		m_pAxsunFreqDivider->counterChannel = m_pConfig->octTriggerChannel;
-		m_pAxsunFreqDivider->slow = 1024;
 
 		// Initializing
 		if (m_pFlimFreqDivider->initialize() && m_pAxsunFreqDivider->initialize())
@@ -405,7 +434,7 @@ bool DeviceControl::startSynchronization(bool enabled)
 			m_pAxsunFreqDivider->start();
 
 			char msg[256];
-			sprintf_s(msg, 256, "[SYNC] Synchronization started. (source: %s)", m_pConfig->flimTriggerSource.toLocal8Bit().data());
+			sprintf_s(msg, 256, "[SYNC] Synchronization started. (source: %s)", m_pConfig->flimTriggerSource);
 			SendStatusMessage(msg, false);
 		}
 		else

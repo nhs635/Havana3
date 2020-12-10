@@ -11,7 +11,7 @@
 ////////////////////// Software Setup ///////////////////////
 #define DEVELOPER_MODE
 #define ENABLE_DATABASE_ENCRYPTION
-///#define NI_ENABLE
+#define NI_ENABLE
 
 //////////////////////// Size Setup /////////////////////////
 #define FLIM_SCANS                  512
@@ -143,21 +143,21 @@ public:
 		interFrameSync = settings.value("flimSyncInterFrame").toInt();
 
 		// Device control
-		rotaryComPort = settings.value("rotaryComPort").toInt();
+		rotaryComPort = settings.value("rotaryComPort").toString().toLocal8Bit().constData();
 		rotaryRpm = settings.value("rotaryRpm").toInt();
-		pullbackComPort = settings.value("pullbackComPort").toInt();
+		pullbackComPort = settings.value("pullbackComPort").toString().toLocal8Bit().constData();
 		pullbackSpeed = settings.value("pullbackSpeed").toFloat();
 		pullbackLength = settings.value("pullbackLength").toFloat();
 
-		flimTriggerSource = settings.value("flimTriggerSource").toString();
-		flimTriggerChannel = settings.value("flimTriggerChannel").toString();
-		octTriggerSource = settings.value("octTriggerSource").toString();
-		octTriggerChannel = settings.value("octTriggerChannel").toString();
-		pmtGainPort = settings.value("pmtGainPort").toString();
+		flimTriggerSource = settings.value("flimTriggerSource").toString().toLocal8Bit().constData();
+		flimTriggerChannel = settings.value("flimTriggerChannel").toString().toLocal8Bit().constData();
+		octTriggerSource = settings.value("octTriggerSource").toString().toLocal8Bit().constData();
+		octTriggerChannel = settings.value("octTriggerChannel").toString().toLocal8Bit().constData();
+		pmtGainPort = settings.value("pmtGainPort").toString().toLocal8Bit().constData();
 		
 		pmtGainVoltage = settings.value("pmtGainVoltage").toFloat(); 
 		
-		flimLaserComPort = settings.value("flimLaserComPort").toInt();
+		flimLaserComPort = settings.value("flimLaserComPort").toString().toLocal8Bit().constData();
 
         px14DcOffset = settings.value("px14DcOffset").toInt();
 		axsunVDLLength = settings.value("axsunVDLLength").toFloat();
@@ -216,21 +216,21 @@ public:
 		settings.setValue("verticalMirroring", verticalMirroring);
 
 		// Device control
-		settings.setValue("rotaryComPort", rotaryComPort);
+		settings.setValue("rotaryComPort", QString(rotaryComPort));
 		settings.setValue("rotaryRpm", rotaryRpm);
-		settings.setValue("pullbackComPort", pullbackComPort);
+		settings.setValue("pullbackComPort", QString(pullbackComPort));
 		settings.setValue("pullbackSpeed", QString::number(pullbackSpeed, 'f', 2));
 		settings.setValue("pullbackLength", QString::number(pullbackLength, 'f', 2));
 
-		settings.setValue("flimTriggerSource", flimTriggerSource);
-		settings.setValue("flimTriggerChannel", flimTriggerChannel);
-		settings.setValue("octTriggerSource", octTriggerSource);
-		settings.setValue("octTriggerChannel", octTriggerChannel);
-		settings.setValue("pmtGainPort", pmtGainPort);
+		settings.setValue("flimTriggerSource", QString(flimTriggerSource));
+		settings.setValue("flimTriggerChannel", QString(flimTriggerChannel));
+		settings.setValue("octTriggerSource", QString(octTriggerSource));
+		settings.setValue("octTriggerChannel", QString(octTriggerChannel));
+		settings.setValue("pmtGainPort", QString(pmtGainPort));
 
 		settings.setValue("pmtGainVoltage", QString::number(pmtGainVoltage, 'f', 3));
 
-		settings.setValue("flimLaserComPort", flimLaserComPort);
+		settings.setValue("flimLaserComPort", QString(flimLaserComPort));
         settings.setValue("px14DcOffset", px14DcOffset);
 		settings.setValue("axsunVDLLength", QString::number(axsunVDLLength, 'f', 2));
 		settings.setValue("axsunDbRangeMax", QString::number(axsunDbRange.max, 'f', 1));
@@ -288,18 +288,18 @@ public:
 	int interFrameSync;
 
 	// Device control
-	int rotaryComPort;
+	const char* rotaryComPort;
 	int rotaryRpm;
-	int pullbackComPort;
+	const char* pullbackComPort;
 	float pullbackSpeed;
 	float pullbackLength;
-	QString flimTriggerSource;
-	QString flimTriggerChannel;
-	QString octTriggerSource;
-	QString octTriggerChannel;
-	QString pmtGainPort;
+	const char* flimTriggerSource;
+	const char* flimTriggerChannel;
+	const char* octTriggerSource;
+	const char* octTriggerChannel;
+	const char* pmtGainPort;
 	float pmtGainVoltage;
-	int flimLaserComPort;
+	const char* flimLaserComPort;
     int px14DcOffset;
 	float axsunVDLLength;
     ContrastRange<float> axsunDbRange;	

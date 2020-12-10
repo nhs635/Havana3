@@ -88,7 +88,7 @@ void FaulhaberMotor::DisconnectDevice()
 		m_pSerialComm->closeSerialPort();
 
 		char msg[256];
-		sprintf(msg, "[FAULHABER] Success to disconnect to %s.", port_name);
+		sprintf(msg, "[FAULHABER] Success to disconnect from %s.", port_name);
 		SendStatusMessage(msg, false);
 	}
 }
@@ -105,7 +105,7 @@ void FaulhaberMotor::Controlword(char value)
 	controlword[9] = (char)crc_temp;
 
 	char msg[256];
-	sprintf(msg, "[FAULHABER] Send: %2X %2X %2X %2X %2X %2X %2X %2X %2X %2X %2X", 
+	sprintf(msg, "[FAULHABER] Send: %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X", 
 		(unsigned char)controlword[0], (unsigned char)controlword[1],
 		(unsigned char)controlword[2], (unsigned char)controlword[3], 
 		(unsigned char)controlword[4], (unsigned char)controlword[5], 
@@ -154,7 +154,7 @@ void FaulhaberMotor::RotateMotor(int RPM)
 	target_velocity[11] = (char)crc_temp;
 
 	char msg[256]; // str cat으로 교체해야되는데.
-	sprintf(msg, "[FAULHABER] Send: %2X %2X %2X %2X %2X %2X %2X %2X %2X %2X %2X %2X %2X",
+	sprintf(msg, "[FAULHABER] Send: %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X",
 		(unsigned char)target_velocity[0], (unsigned char)target_velocity[1],
 		(unsigned char)target_velocity[2], (unsigned char)target_velocity[3],
 		(unsigned char)target_velocity[4], (unsigned char)target_velocity[5],
@@ -185,7 +185,7 @@ void FaulhaberMotor::StopMotor()
 	target_velocity[11] = (char)crc_temp;
 
 	char msg[256]; // str cat으로 교체해야되는데.
-	sprintf(msg, "[FAULHABER] Send: %2X %2X %2X %2X %2X %2X %2X %2X %2X %2X %2X %2X %2X",
+	sprintf(msg, "[FAULHABER] Send: %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X",
 		(unsigned char)target_velocity[0], (unsigned char)target_velocity[1],
 		(unsigned char)target_velocity[2], (unsigned char)target_velocity[3],
 		(unsigned char)target_velocity[4], (unsigned char)target_velocity[5],
@@ -218,7 +218,7 @@ void FaulhaberMotor::MoveAbsolute(int pos)
 	target_position[11] = (char)crc_temp;
 
 	char msg[256]; // str cat으로 교체해야되는데.
-	sprintf(msg, "[FAULHABER] Send: %2X %2X %2X %2X %2X %2X %2X %2X %2X %2X %2X %2X %2X",
+	sprintf(msg, "[FAULHABER] Send: %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X",
 		(unsigned char)target_position[0], (unsigned char)target_position[1],
 		(unsigned char)target_position[2], (unsigned char)target_position[3],
 		(unsigned char)target_position[4], (unsigned char)target_position[5],
@@ -252,7 +252,7 @@ void FaulhaberMotor::Home()
 	target_position[11] = (char)crc_temp;
 
 	char msg[256]; // str cat으로 교체해야되는데.
-	sprintf(msg, "[FAULHABER] Send: %2X %2X %2X %2X %2X %2X %2X %2X %2X %2X %2X %2X %2X",
+	sprintf(msg, "[FAULHABER] Send: %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X",
 		(unsigned char)target_position[0], (unsigned char)target_position[1],
 		(unsigned char)target_position[2], (unsigned char)target_position[3],
 		(unsigned char)target_position[4], (unsigned char)target_position[5],

@@ -172,7 +172,7 @@ void QResultTab::readRecordData()
 	///	tab_close.detach();
 	///}
 
-	m_pConfig->writeToLog(QString("Record reviewing: %1 (ID: %2): %3 : record id: %4")
+	m_pConfig->writeToLog(QString("Record reviewing: %1 (ID: %2): %3: record id: %4")
 		.arg(m_recordInfo.patientName).arg(m_recordInfo.patientId).arg(m_recordInfo.date).arg(m_recordInfo.recordId));
 }
 

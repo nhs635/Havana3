@@ -25,7 +25,7 @@ DataProcessing::DataProcessing(QWidget *parent)
 		if (is_error)
 		{
 			m_pConfig->writeToLog(QString("[DataProc ERROR] %1").arg(qmsg));
-			QMessageBox MsgBox(QMessageBox::Critical, "Error", qmsg);
+ 			QMessageBox MsgBox(QMessageBox::Critical, "Error", qmsg);
 			MsgBox.exec();
 		}
 		else

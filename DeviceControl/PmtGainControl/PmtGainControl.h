@@ -19,6 +19,7 @@ public:
 	
 public:
 	inline void setVoltage(double _voltage) { voltage = _voltage; }
+	inline double getVoltage() { return voltage; }
 	inline void setPhysicalChannel(const char* _physicalChannel) { physicalChannel = _physicalChannel; }
 
 private:

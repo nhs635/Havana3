@@ -151,8 +151,8 @@ void MainWindow::tabCurrentChanged(int index)
 	{		
 		m_pStreamTab->startLiveImaging(true);
 	
-		//if (!m_pStreamTab->getDataAcquisition()->getAcquisitionState())
-		//	emit m_pTabWidget->tabCloseRequested(index);
+		if (!m_pStreamTab->getDataAcquisition()->getAcquisitionState())
+			emit m_pTabWidget->tabCloseRequested(index);
 	}
 	
 	prev_index = index;
