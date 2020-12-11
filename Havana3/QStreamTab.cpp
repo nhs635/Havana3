@@ -49,6 +49,11 @@ QStreamTab::QStreamTab(QString patient_id, QWidget *parent) :
 	m_pThreadFlimProcess = new ThreadManager("FLIm image process");
 	m_pThreadVisualization = new ThreadManager("Visualization process");
 	
+	// Create buffers for threading operation
+	m_syncFlimProcessing.allocate_queue_buffer(m_pConfig->flimScans, m_pConfig->flimAlines, PROCESSING_BUFFER_SIZE);  // FLIm Processing
+	m_syncFlimVisualization.allocate_queue_buffer(11, m_pConfig->flimAlines, PROCESSING_BUFFER_SIZE);  // FLIm Visualization
+	m_syncOctVisualization.allocate_queue_buffer(m_pConfig->octScans, m_pConfig->octAlines, PROCESSING_BUFFER_SIZE);  // OCT Visualization
+
     // Set signal object
     setFlimAcquisitionCallback();
     setFlimProcessingCallback();
@@ -79,6 +84,10 @@ QStreamTab::~QStreamTab()
 
 	if (m_pThreadVisualization) delete m_pThreadVisualization;
 	if (m_pThreadFlimProcess) delete m_pThreadFlimProcess;
+	
+	m_syncFlimProcessing.deallocate_queue_buffer();
+	m_syncFlimVisualization.deallocate_queue_buffer();
+	m_syncOctVisualization.deallocate_queue_buffer();
 
 #ifdef DEVELOPER_MODE
 	m_pSyncMonitorTimer->stop();
@@ -262,11 +271,6 @@ bool QStreamTab::enableMemoryBuffer(bool enabled)
 	if (enabled)
 	{
         std::thread allocate_buffers([&]() {
-            // Create buffers for threading operation
-            m_syncFlimProcessing.allocate_queue_buffer(m_pConfig->flimScans, m_pConfig->flimAlines, PROCESSING_BUFFER_SIZE);  // FLIm Processing
-            m_syncFlimVisualization.allocate_queue_buffer(11, m_pConfig->flimAlines, PROCESSING_BUFFER_SIZE);  // FLIm Visualization
-            m_syncOctVisualization.allocate_queue_buffer(m_pConfig->octScans, m_pConfig->octAlines, PROCESSING_BUFFER_SIZE);  // OCT Visualization
-
             // Create buffers for data recording
             m_pMemoryBuffer->allocateWritingBuffer();
 		});
@@ -275,9 +279,6 @@ bool QStreamTab::enableMemoryBuffer(bool enabled)
 	else
     {
 		m_pMemoryBuffer->disallocateWritingBuffer();
-        m_syncFlimProcessing.deallocate_queue_buffer();
-        m_syncFlimVisualization.deallocate_queue_buffer();
-        m_syncOctVisualization.deallocate_queue_buffer();
     }
 
 	return true;
@@ -783,7 +784,7 @@ void QStreamTab::startPullback(bool enabled)
 		// Stop motor operation
 		m_pMemoryBuffer->stopRecording();
 		m_pDeviceControl->rotate(false);
-		startLiveImaging(false);
+		//startLiveImaging(false);
 
 		m_pConfig->writeToLog(QString("Pullback recording stopped: %1 (ID: %2)").arg(m_recordInfo.patientName).arg(m_recordInfo.patientId));
 

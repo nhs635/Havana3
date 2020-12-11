@@ -141,6 +141,10 @@ void QResultTab::readRecordData()
 	// Start read and process the reviewing file
 	m_pDataProcessing->startProcessing(m_recordInfo.filename);
 
+	// Write to log...
+	m_pConfig->writeToLog(QString("Record reviewing: %1 (ID: %2): %3: record id: %4")
+		.arg(m_recordInfo.patientName).arg(m_recordInfo.patientId).arg(m_recordInfo.date).arg(m_recordInfo.recordId));
+
 	// Make progress dialog
 	QProgressDialog progress("Processing...", "Cancel", 0, 100, this);
 	connect(m_pDataProcessing, SIGNAL(processedSingleFrame(int)), &progress, SLOT(setValue(int)));
@@ -171,9 +175,6 @@ void QResultTab::readRecordData()
 	///	});
 	///	tab_close.detach();
 	///}
-
-	m_pConfig->writeToLog(QString("Record reviewing: %1 (ID: %2): %3: record id: %4")
-		.arg(m_recordInfo.patientName).arg(m_recordInfo.patientId).arg(m_recordInfo.date).arg(m_recordInfo.recordId));
 }
 
 void QResultTab::loadRecordInfo()

@@ -232,9 +232,10 @@ void MemoryBuffer::startSaving(RecordInfo& record_info)
 	record_info.filename += "/pullback.data";
 	m_fileName = record_info.filename;
 
-	// Start writing thread
-	std::thread _thread = std::thread(&MemoryBuffer::write, this);
-	_thread.detach();
+	// Start writing  thread
+	write();
+	//std::thread _thread = std::thread(&MemoryBuffer::write, this);
+	//_thread.detach();
 	
 	// Add to database
 	QString command = QString("INSERT INTO records(patient_id, datetime_taken, preview, title, filename, procedure_id, vessel_id) "
@@ -328,16 +329,16 @@ void MemoryBuffer::write()
 			res = file.write(reinterpret_cast<char*>(buffer_flim + m_pConfig->flimScans * INTRA_FRAME_SYNC), sizeof(uint16_t) * flimSamplesToWrite);
 			if (!(res == sizeof(uint16_t) * flimSamplesToWrite))
 			{
-				SendStatusMessage("Error occurred while writing...", true);
-				emit errorWhileWriting();
+				SendStatusMessage("Error occurred while writing1...", true);
+				//emit errorWhileWriting();
 				return;
 			}	
 			flimSamplesToWrite = m_pConfig->flimScans * INTRA_FRAME_SYNC;
 			res = file.write(reinterpret_cast<char*>(buffer_flim), sizeof(uint16_t) * flimSamplesToWrite);
 			if (!(res == sizeof(uint16_t) * flimSamplesToWrite))
 			{
-				SendStatusMessage("Error occurred while writing...", true);
-				emit errorWhileWriting();
+				SendStatusMessage("Error occurred while writing2...", true);
+				//emit errorWhileWriting();
 				return;
 			}
 			m_queueWritingFlimBuffer.push(buffer_flim);
@@ -348,8 +349,8 @@ void MemoryBuffer::write()
 			res = file.write(reinterpret_cast<char*>(buffer_oct), sizeof(uint8_t) * octSamplesToWrite);
 			if (!(res == sizeof(uint8_t) * octSamplesToWrite))
 			{
-				SendStatusMessage("Error occurred while writing...", true);
-				emit finishedWritingThread();
+				SendStatusMessage("Error occurred while writing3...", true);
+				//emit finishedWritingThread();
 				return;
 			}		
 			m_queueWritingOctBuffer.push(buffer_oct);
@@ -394,7 +395,7 @@ void MemoryBuffer::write()
 		SendStatusMessage("Error occurred while copying MATLAB processing data.\n", false);
 	
 	// Send a signal to notify this thread is finished
-	emit finishedWritingThread();
+	//emit finishedWritingThread();
 
 	// Status update
 	char msg[256];

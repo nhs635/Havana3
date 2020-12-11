@@ -603,10 +603,11 @@ void QViewTab::play(bool enabled)
 			for (int i = cur_frame; i < end_frame; i++)
 			{
 				m_pSlider_SelectFrame->setValue(i);
-				std::this_thread::sleep_for(std::chrono::milliseconds(150));
+				std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
 				if (is_stop) break;
 			}
+			m_pToggleButton_Play->setChecked(false);
 		});
 		playing.detach();
 
