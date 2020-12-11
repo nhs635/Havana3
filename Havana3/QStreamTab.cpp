@@ -48,11 +48,6 @@ QStreamTab::QStreamTab(QString patient_id, QWidget *parent) :
     // Create thread managers for data processing
 	m_pThreadFlimProcess = new ThreadManager("FLIm image process");
 	m_pThreadVisualization = new ThreadManager("Visualization process");
-
-    // Create buffers for threading operation
-    m_syncFlimProcessing.allocate_queue_buffer(m_pConfig->flimScans, m_pConfig->flimAlines, PROCESSING_BUFFER_SIZE);  // FLIm Processing
-    m_syncFlimVisualization.allocate_queue_buffer(11, m_pConfig->flimAlines, PROCESSING_BUFFER_SIZE);  // FLIm Visualization
-    m_syncOctVisualization.allocate_queue_buffer(m_pConfig->octScans, m_pConfig->octAlines, PROCESSING_BUFFER_SIZE);  // OCT Visualization
 	
     // Set signal object
     setFlimAcquisitionCallback();
@@ -84,7 +79,7 @@ QStreamTab::~QStreamTab()
 
 	if (m_pThreadVisualization) delete m_pThreadVisualization;
 	if (m_pThreadFlimProcess) delete m_pThreadFlimProcess;
-		
+
 #ifdef DEVELOPER_MODE
 	m_pSyncMonitorTimer->stop();
 #endif
@@ -266,13 +261,24 @@ bool QStreamTab::enableMemoryBuffer(bool enabled)
 {
 	if (enabled)
 	{
-		std::thread allocate_writing_buffer([&]() {
-			m_pMemoryBuffer->allocateWritingBuffer();
+        std::thread allocate_buffers([&]() {
+            // Create buffers for threading operation
+            m_syncFlimProcessing.allocate_queue_buffer(m_pConfig->flimScans, m_pConfig->flimAlines, PROCESSING_BUFFER_SIZE);  // FLIm Processing
+            m_syncFlimVisualization.allocate_queue_buffer(11, m_pConfig->flimAlines, PROCESSING_BUFFER_SIZE);  // FLIm Visualization
+            m_syncOctVisualization.allocate_queue_buffer(m_pConfig->octScans, m_pConfig->octAlines, PROCESSING_BUFFER_SIZE);  // OCT Visualization
+
+            // Create buffers for data recording
+            m_pMemoryBuffer->allocateWritingBuffer();
 		});
-		allocate_writing_buffer.detach();
+        allocate_buffers.detach();
 	}
 	else
+    {
 		m_pMemoryBuffer->disallocateWritingBuffer();
+        m_syncFlimProcessing.deallocate_queue_buffer();
+        m_syncFlimVisualization.deallocate_queue_buffer();
+        m_syncOctVisualization.deallocate_queue_buffer();
+    }
 
 	return true;
 }

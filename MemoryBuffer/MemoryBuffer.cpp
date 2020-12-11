@@ -108,6 +108,9 @@ void MemoryBuffer::disallocateWritingBuffer()
 			}
 		}
 
+		m_syncFlimBuffering.deallocate_queue_buffer();
+		m_syncOctBuffering.deallocate_queue_buffer();
+
 		SendStatusMessage("Writing buffers are successfully disallocated.", false);
 
 		m_bIsAllocatedWritingBuffer = false;
