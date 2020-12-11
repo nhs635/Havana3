@@ -69,7 +69,7 @@ public:
     void sendLaserCommand(char*);
 	
 	// FLIm System Control Initialization
-	bool startSynchronization(bool);
+	bool startSynchronization(bool enabled, bool async = false);
 
 	// Axsun OCT Control
     bool connectAxsunControl(bool);

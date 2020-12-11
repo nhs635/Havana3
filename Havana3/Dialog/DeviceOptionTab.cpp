@@ -95,16 +95,6 @@ void DeviceOptionTab::createHelicalScanningControl()
 	m_pToggleButton_RotaryConnect->setCheckable(true);
 	m_pToggleButton_RotaryConnect->setStyleSheet("QPushButton { background-color:#ff0000; }");
 	
-	m_pComboBox_RotaryConnect = new QComboBox(this);
-	for (int i = 1; i <= 20; i++)
-		m_pComboBox_RotaryConnect->addItem(QString("COM%1").arg(i));
-
-	qDebug() << m_pConfig->rotaryComPort;
-	qDebug() << QString::fromLocal8Bit(m_pConfig->rotaryComPort);
-
-	m_pComboBox_RotaryConnect->setCurrentIndex(QString(m_pConfig->rotaryComPort[3]).toInt() - 1);
-	m_pComboBox_RotaryConnect->setFixedWidth(80);
-
 	m_pLabel_RotaryConnect = new QLabel(this);
 	m_pLabel_RotaryConnect->setText("Rotary Motor COM Port");
 
@@ -135,13 +125,7 @@ void DeviceOptionTab::createHelicalScanningControl()
 	m_pToggleButton_PullbackConnect->setFixedWidth(100);
 	m_pToggleButton_PullbackConnect->setCheckable(true);
 	m_pToggleButton_PullbackConnect->setStyleSheet("QPushButton { background-color:#ff0000; }");
-
-	m_pComboBox_PullbackConnect = new QComboBox(this);
-	for (int i = 1; i <= 20; i++)
-		m_pComboBox_PullbackConnect->addItem(QString("COM%1").arg(i));
-	m_pComboBox_PullbackConnect->setCurrentIndex(QString(m_pConfig->pullbackComPort[3]).toInt() - 1);
-	m_pComboBox_PullbackConnect->setFixedWidth(80);
-
+	
 	m_pLabel_PullbackConnect = new QLabel(this);
 	m_pLabel_PullbackConnect->setText("Pullback Motor COM Port");
 
@@ -185,8 +169,7 @@ void DeviceOptionTab::createHelicalScanningControl()
 	pGridLayout_RotaryMotor->setSpacing(3);
 
 	pGridLayout_RotaryMotor->addWidget(m_pLabel_RotaryConnect, 0, 0);
-	pGridLayout_RotaryMotor->addItem(new QSpacerItem(0, 0, QSizePolicy::MinimumExpanding, QSizePolicy::Fixed), 0, 1);
-	pGridLayout_RotaryMotor->addWidget(m_pComboBox_RotaryConnect, 0, 2, 1, 2);
+	pGridLayout_RotaryMotor->addItem(new QSpacerItem(0, 0, QSizePolicy::MinimumExpanding, QSizePolicy::Fixed), 0, 1, 1, 3);
 	pGridLayout_RotaryMotor->addWidget(m_pToggleButton_RotaryConnect, 0, 4);
 
 	pGridLayout_RotaryMotor->addWidget(m_pLabel_RotationSpeed, 1, 0);
@@ -199,8 +182,7 @@ void DeviceOptionTab::createHelicalScanningControl()
 	pGridLayout_PullbackMotor->setSpacing(3);
 
 	pGridLayout_PullbackMotor->addWidget(m_pLabel_PullbackConnect, 0, 0);
-	pGridLayout_PullbackMotor->addItem(new QSpacerItem(0, 0, QSizePolicy::MinimumExpanding, QSizePolicy::Fixed), 0, 1);
-	pGridLayout_PullbackMotor->addWidget(m_pComboBox_PullbackConnect, 0, 2, 1, 2);
+	pGridLayout_PullbackMotor->addItem(new QSpacerItem(0, 0, QSizePolicy::MinimumExpanding, QSizePolicy::Fixed), 0, 1, 1, 3);
 	pGridLayout_PullbackMotor->addWidget(m_pToggleButton_PullbackConnect, 0, 4, 1, 2);
 
 	pGridLayout_PullbackMotor->addWidget(m_pLabel_PullbackSpeed, 1, 0);
@@ -229,12 +211,10 @@ void DeviceOptionTab::createHelicalScanningControl()
 	
 	// Connect signal and slot
 	connect(m_pToggleButton_RotaryConnect, SIGNAL(toggled(bool)), this, SLOT(connectRotaryMotor(bool)));
-	connect(m_pComboBox_RotaryConnect, SIGNAL(currentIndexChanged(int)), this, SLOT(setRotaryComPort(int)));
 	connect(m_pLineEdit_RPM, SIGNAL(textChanged(const QString &)), this, SLOT(changeRotaryRpm(const QString &)));
 	connect(m_pToggleButton_Rotate, SIGNAL(toggled(bool)), this, SLOT(rotate(bool)));
 
 	connect(m_pToggleButton_PullbackConnect, SIGNAL(toggled(bool)), this, SLOT(connectPullbackMotor(bool)));
-	connect(m_pComboBox_PullbackConnect, SIGNAL(currentIndexChanged(int)), this, SLOT(setPullbackComPort(int)));
 	connect(m_pLineEdit_PullbackSpeed, SIGNAL(textChanged(const QString &)), this, SLOT(setTargetSpeed(const QString &)));
 	connect(m_pLineEdit_PullbackLength, SIGNAL(textChanged(const QString &)), this, SLOT(changePullbackLength(const QString &)));
 	connect(m_pPushButton_Pullback, SIGNAL(clicked(bool)), this, SLOT(moveAbsolute()));
@@ -248,35 +228,7 @@ void DeviceOptionTab::createFlimSystemControl()
 	pGroupBox_FlimControl->setStyleSheet("QGroupBox{padding-top:15px; margin-top:-15px}");
 	pGroupBox_FlimControl->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::MinimumExpanding);
 
-    // Create widgets for FLIM laser control	
-	m_pLabel_FlimTriggerSource = new QLabel(this);
-	m_pLabel_FlimTriggerSource->setText("FLIm Trigger Source");
-	m_pLineEdit_FlimTriggerSource = new QLineEdit(this);
-	m_pLineEdit_FlimTriggerSource->setText(m_pConfig->flimTriggerSource);
-	m_pLineEdit_FlimTriggerSource->setAlignment(Qt::AlignCenter);
-	m_pLineEdit_FlimTriggerSource->setFixedWidth(110);
-
-	m_pLabel_FlimTriggerChannel = new QLabel(this);
-	m_pLabel_FlimTriggerChannel->setText("FLIm Trigger Channel");
-	m_pLineEdit_FlimTriggerChannel = new QLineEdit(this);
-	m_pLineEdit_FlimTriggerChannel->setText(m_pConfig->flimTriggerChannel);
-	m_pLineEdit_FlimTriggerChannel->setAlignment(Qt::AlignCenter);
-	m_pLineEdit_FlimTriggerChannel->setFixedWidth(110);
-
-	m_pLabel_OctTriggerSource = new QLabel(this);
-	m_pLabel_OctTriggerSource->setText("OCT Trigger Source");
-	m_pLineEdit_OctTriggerSource = new QLineEdit(this);
-	m_pLineEdit_OctTriggerSource->setText(m_pConfig->octTriggerSource);
-	m_pLineEdit_OctTriggerSource->setAlignment(Qt::AlignCenter);
-	m_pLineEdit_OctTriggerSource->setFixedWidth(110);
-
-	m_pLabel_OctTriggerChannel = new QLabel(this);
-	m_pLabel_OctTriggerChannel->setText("OCT Trigger Channel");
-	m_pLineEdit_OctTriggerChannel = new QLineEdit(this);
-	m_pLineEdit_OctTriggerChannel->setText(m_pConfig->octTriggerChannel);
-	m_pLineEdit_OctTriggerChannel->setAlignment(Qt::AlignCenter);
-	m_pLineEdit_OctTriggerChannel->setFixedWidth(110);
-	
+    // Create widgets for FLIM laser control		
 	m_pToggleButton_AsynchronizedPulsedLaser = new QPushButton(this);
 	m_pToggleButton_AsynchronizedPulsedLaser->setText("On");
 	m_pToggleButton_AsynchronizedPulsedLaser->setFixedWidth(40);
@@ -300,14 +252,6 @@ void DeviceOptionTab::createFlimSystemControl()
 	//m_pLabel_SynchronizedPulsedLaser->setDisabled(true);
 	
 	// Create widgets for PMT gain control
-	m_pLabel_PmtGainPort = new QLabel(this);
-	m_pLabel_PmtGainPort->setText("PMT Gain Port");
-
-	m_pLineEdit_PmtGainPort = new QLineEdit(this);
-	m_pLineEdit_PmtGainPort->setText(m_pConfig->pmtGainPort);
-	m_pLineEdit_PmtGainPort->setAlignment(Qt::AlignCenter);
-	m_pLineEdit_PmtGainPort->setFixedWidth(110);
-
 	m_pLineEdit_PmtGainVoltage = new QLineEdit(this);
 	m_pLineEdit_PmtGainVoltage->setFixedWidth(45);
 	m_pLineEdit_PmtGainVoltage->setText(QString::number(m_pConfig->pmtGainVoltage, 'f', 3));
@@ -336,13 +280,7 @@ void DeviceOptionTab::createFlimSystemControl()
 	m_pToggleButton_FlimLaserConnect->setFixedWidth(100);
 	m_pToggleButton_FlimLaserConnect->setCheckable(true);
 	m_pToggleButton_FlimLaserConnect->setStyleSheet("QPushButton { background-color:#ff0000; }");
-
-	m_pComboBox_FlimLaserConnect = new QComboBox(this);
-	for (int i = 1; i <= 20; i++)
-		m_pComboBox_FlimLaserConnect->addItem(QString("COM%1").arg(i));
-	m_pComboBox_FlimLaserConnect->setCurrentIndex(QString(m_pConfig->flimLaserComPort[3]).toInt() - 1);
-	m_pComboBox_FlimLaserConnect->setFixedWidth(80);
-
+	
 	m_pLabel_FlimLaserConnect = new QLabel(this);
 	m_pLabel_FlimLaserConnect->setText("FLIm Laser COM Port");
 
@@ -359,25 +297,6 @@ void DeviceOptionTab::createFlimSystemControl()
 	m_pLabel_FlimLaserPowerControl->setDisabled(true);
 
 	// Set Layout	
-	QGridLayout *pGridLayout_TriggerPort = new QGridLayout;
-	pGridLayout_TriggerPort->setSpacing(3);
-
-	pGridLayout_TriggerPort->addWidget(m_pLabel_FlimTriggerSource, 0, 0);
-	pGridLayout_TriggerPort->addItem(new QSpacerItem(0, 0, QSizePolicy::MinimumExpanding, QSizePolicy::Fixed), 0, 1);
-	pGridLayout_TriggerPort->addWidget(m_pLineEdit_FlimTriggerSource, 0, 2);
-
-	pGridLayout_TriggerPort->addWidget(m_pLabel_FlimTriggerChannel, 1, 0);
-	pGridLayout_TriggerPort->addItem(new QSpacerItem(0, 0, QSizePolicy::MinimumExpanding, QSizePolicy::Fixed), 1, 1);
-	pGridLayout_TriggerPort->addWidget(m_pLineEdit_FlimTriggerChannel, 1, 2);
-
-	pGridLayout_TriggerPort->addWidget(m_pLabel_OctTriggerSource, 2, 0);
-	pGridLayout_TriggerPort->addItem(new QSpacerItem(0, 0, QSizePolicy::MinimumExpanding, QSizePolicy::Fixed), 2, 1);
-	pGridLayout_TriggerPort->addWidget(m_pLineEdit_OctTriggerSource, 2, 2);
-
-	pGridLayout_TriggerPort->addWidget(m_pLabel_OctTriggerChannel, 3, 0);
-	pGridLayout_TriggerPort->addItem(new QSpacerItem(0, 0, QSizePolicy::MinimumExpanding, QSizePolicy::Fixed), 3, 1);
-	pGridLayout_TriggerPort->addWidget(m_pLineEdit_OctTriggerChannel, 3, 2);
-
 	QGridLayout *pGridLayout_Synchornization = new QGridLayout;
 	pGridLayout_Synchornization->setSpacing(3);
 
@@ -391,23 +310,18 @@ void DeviceOptionTab::createFlimSystemControl()
 
 	QGridLayout *pGridLayout_PmtGainControl = new QGridLayout;
 	pGridLayout_PmtGainControl->setSpacing(3);
-
-	pGridLayout_PmtGainControl->addWidget(m_pLabel_PmtGainPort, 0, 0);
+	
+	pGridLayout_PmtGainControl->addWidget(m_pLabel_PmtGainControl, 0, 0);
 	pGridLayout_PmtGainControl->addItem(new QSpacerItem(0, 0, QSizePolicy::MinimumExpanding, QSizePolicy::Fixed), 0, 1);
-	pGridLayout_PmtGainControl->addWidget(m_pLineEdit_PmtGainPort, 0, 2, 1, 3);
-
-	pGridLayout_PmtGainControl->addWidget(m_pLabel_PmtGainControl, 1, 0);
-	pGridLayout_PmtGainControl->addItem(new QSpacerItem(0, 0, QSizePolicy::MinimumExpanding, QSizePolicy::Fixed), 1, 1);
-	pGridLayout_PmtGainControl->addWidget(m_pLineEdit_PmtGainVoltage, 1, 2);
-	pGridLayout_PmtGainControl->addWidget(m_pLabel_PmtGainVoltage, 1, 3);
-	pGridLayout_PmtGainControl->addWidget(m_pToggleButton_PmtGainVoltage, 1, 4);
+	pGridLayout_PmtGainControl->addWidget(m_pLineEdit_PmtGainVoltage, 0, 2);
+	pGridLayout_PmtGainControl->addWidget(m_pLabel_PmtGainVoltage, 0, 3);
+	pGridLayout_PmtGainControl->addWidget(m_pToggleButton_PmtGainVoltage, 0, 4);
 	
 	QGridLayout *pGridLayout_FlimLaser = new QGridLayout;
 	pGridLayout_FlimLaser->setSpacing(3);
 
 	pGridLayout_FlimLaser->addWidget(m_pLabel_FlimLaserConnect, 0, 0);
-	pGridLayout_FlimLaser->addItem(new QSpacerItem(0, 0, QSizePolicy::MinimumExpanding, QSizePolicy::Fixed), 0, 1);
-	pGridLayout_FlimLaser->addWidget(m_pComboBox_FlimLaserConnect, 0, 2);
+	pGridLayout_FlimLaser->addItem(new QSpacerItem(0, 0, QSizePolicy::MinimumExpanding, QSizePolicy::Fixed), 0, 1, 1, 2);	
 	pGridLayout_FlimLaser->addWidget(m_pToggleButton_FlimLaserConnect, 0, 3);
 
 	pGridLayout_FlimLaser->addWidget(m_pLabel_FlimLaserPowerControl, 1, 0);
@@ -418,7 +332,6 @@ void DeviceOptionTab::createFlimSystemControl()
 	QVBoxLayout *pVBoxLayout_FlimControl = new QVBoxLayout;
 	pVBoxLayout_FlimControl->setSpacing(10);
 
-	pVBoxLayout_FlimControl->addItem(pGridLayout_TriggerPort);
 	pVBoxLayout_FlimControl->addItem(pGridLayout_Synchornization);
 	pVBoxLayout_FlimControl->addItem(pGridLayout_PmtGainControl);
 	pVBoxLayout_FlimControl->addItem(pGridLayout_FlimLaser);
@@ -427,21 +340,14 @@ void DeviceOptionTab::createFlimSystemControl()
 
 	m_pVBoxLayout_DeviceOption->addWidget(pGroupBox_FlimControl);
 	
-    // Connect signal and slot	
-	connect(m_pLineEdit_FlimTriggerSource, SIGNAL(textChanged(const QString &)), this, SLOT(setFlimTriggerSource(const QString &)));
-	connect(m_pLineEdit_FlimTriggerChannel, SIGNAL(textChanged(const QString &)), this, SLOT(setFlimTriggerChannel(const QString &)));
-	connect(m_pLineEdit_OctTriggerSource, SIGNAL(textChanged(const QString &)), this, SLOT(setOctTriggerSource(const QString &)));
-	connect(m_pLineEdit_OctTriggerChannel, SIGNAL(textChanged(const QString &)), this, SLOT(setOctTriggerChannel(const QString &)));
-
+    // Connect signal and slot		
 	connect(m_pToggleButton_AsynchronizedPulsedLaser, SIGNAL(toggled(bool)), this, SLOT(startFlimAsynchronization(bool)));
 	connect(m_pToggleButton_SynchronizedPulsedLaser, SIGNAL(toggled(bool)), this, SLOT(startFlimSynchronization(bool)));
-
-	connect(m_pLineEdit_PmtGainPort, SIGNAL(textChanged(const QString &)), this, SLOT(setPmtGainPort(const QString &)));
+		
 	connect(m_pLineEdit_PmtGainVoltage, SIGNAL(textChanged(const QString &)), this, SLOT(changePmtGainVoltage(const QString &)));
     connect(m_pToggleButton_PmtGainVoltage, SIGNAL(toggled(bool)), this, SLOT(applyPmtGainVoltage(bool)));
 
-	connect(m_pToggleButton_FlimLaserConnect, SIGNAL(toggled(bool)), this, SLOT(connectFlimLaser(bool)));
-	connect(m_pComboBox_FlimLaserConnect, SIGNAL(currentIndexChanged(int)), this, SLOT(setFlimLaserComPort(int)));
+	connect(m_pToggleButton_FlimLaserConnect, SIGNAL(toggled(bool)), this, SLOT(connectFlimLaser(bool)));	
 	connect(m_pSpinBox_FlimLaserPowerControl, SIGNAL(valueChanged(int)), this, SLOT(adjustLaserPower(int)));
 }
 
@@ -540,13 +446,6 @@ void DeviceOptionTab::createAxsunOctSystemControl()
 }
 
 
-void DeviceOptionTab::setRotaryComPort(int port)
-{
-	m_pConfig->rotaryComPort = QString("COM%1").arg(port + 1).toLocal8Bit().constData();
-
-	m_pConfig->writeToLog(QString("Rotary COM port set: %1").arg(m_pConfig->rotaryComPort));
-}
-
 bool DeviceOptionTab::connectRotaryMotor(bool toggled)
 {
 	if (toggled)
@@ -559,7 +458,6 @@ bool DeviceOptionTab::connectRotaryMotor(bool toggled)
 			m_pToggleButton_RotaryConnect->setStyleSheet("QPushButton { background-color:#00ff00; }");
 
 			m_pLabel_RotaryConnect->setDisabled(true);
-			m_pComboBox_RotaryConnect->setDisabled(true);
 
 			m_pLabel_RotationSpeed->setEnabled(true);
 			m_pLineEdit_RPM->setEnabled(true);
@@ -577,7 +475,6 @@ bool DeviceOptionTab::connectRotaryMotor(bool toggled)
 		m_pToggleButton_RotaryConnect->setStyleSheet("QPushButton { background-color:#ff0000; }");
 
 		m_pLabel_RotaryConnect->setEnabled(true);
-		m_pComboBox_RotaryConnect->setEnabled(true);
 
 		m_pLabel_RotationSpeed->setDisabled(true);
 		m_pLineEdit_RPM->setDisabled(true);
@@ -612,13 +509,6 @@ void DeviceOptionTab::changeRotaryRpm(const QString &str)
 }
 
 
-void DeviceOptionTab::setPullbackComPort(int port)
-{
-	m_pConfig->pullbackComPort = QString("COM%1").arg(port + 1).toLocal8Bit().constData();
-
-	m_pConfig->writeToLog(QString("Pullback COM port set: %1").arg(m_pConfig->pullbackComPort));
-}
-
 bool DeviceOptionTab::connectPullbackMotor(bool toggled)
 {
 	if (toggled)
@@ -631,7 +521,6 @@ bool DeviceOptionTab::connectPullbackMotor(bool toggled)
 			m_pToggleButton_PullbackConnect->setStyleSheet("QPushButton { background-color:#00ff00; }");
 
 			m_pLabel_PullbackConnect->setDisabled(true);
-			m_pComboBox_PullbackConnect->setDisabled(true);
 
 			m_pLabel_PullbackSpeed->setEnabled(true);
 			m_pLineEdit_PullbackSpeed->setEnabled(true);
@@ -656,7 +545,6 @@ bool DeviceOptionTab::connectPullbackMotor(bool toggled)
 		m_pToggleButton_PullbackConnect->setStyleSheet("QPushButton { background-color:#ff0000; }");
 
 		m_pLabel_PullbackConnect->setEnabled(true);
-		m_pComboBox_PullbackConnect->setEnabled(true);
 
 		m_pLabel_PullbackSpeed->setDisabled(true);
 		m_pLineEdit_PullbackSpeed->setDisabled(true);
@@ -743,59 +631,15 @@ void DeviceOptionTab::stop()
 }
 
 
-void DeviceOptionTab::setFlimTriggerSource(const QString &str)
-{
-	m_pConfig->flimTriggerSource = str.toLocal8Bit().constData();
-
-	m_pConfig->writeToLog(QString("FLIm trigger source set: %1").arg(str));
-}
-
-void DeviceOptionTab::setFlimTriggerChannel(const QString &str)
-{
-	m_pConfig->flimTriggerChannel = str.toLocal8Bit().constData();
-
-	m_pConfig->writeToLog(QString("FLIm trigger channel set: %1").arg(str));
-}
-
-void DeviceOptionTab::setOctTriggerSource(const QString &str)
-{
-	m_pConfig->octTriggerSource = str.toLocal8Bit().constData();
-
-	m_pConfig->writeToLog(QString("OCT trigger source set: %1").arg(str));
-}
-
-void DeviceOptionTab::setOctTriggerChannel(const QString &str)
-{
-	m_pConfig->octTriggerChannel = str.toLocal8Bit().constData();
-
-	m_pConfig->writeToLog(QString("OCT trigger channel set: %1").arg(str));
-}
-
-
 void DeviceOptionTab::startFlimAsynchronization(bool toggled)
 {
 #ifdef NI_ENABLE
 	if (toggled)
 	{
 		// Start asynchronous pulsed generation
-		const char* flimOrigSource = m_pConfig->flimTriggerSource;
-		const char* octOrigSource = m_pConfig->octTriggerSource;
-
-		m_pConfig->flimTriggerSource = "100kHzTimebase";
-		m_pConfig->octTriggerSource = "100kHzTimebase";
-
-		if (m_pDeviceControl->startSynchronization(true))
+		if (m_pDeviceControl->startSynchronization(true, true))
 		{
 			// Set widgets		
-			m_pLabel_FlimTriggerSource->setDisabled(true);
-			m_pLabel_FlimTriggerChannel->setDisabled(true);
-			m_pLabel_OctTriggerSource->setDisabled(true);
-			m_pLabel_OctTriggerChannel->setDisabled(true);
-			m_pLineEdit_FlimTriggerSource->setDisabled(true);
-			m_pLineEdit_FlimTriggerChannel->setDisabled(true);
-			m_pLineEdit_OctTriggerSource->setDisabled(true);
-			m_pLineEdit_OctTriggerChannel->setDisabled(true);
-
 			m_pToggleButton_AsynchronizedPulsedLaser->setText("Off");
 			m_pToggleButton_AsynchronizedPulsedLaser->setStyleSheet("QPushButton { background-color:#00ff00; }");
 
@@ -805,22 +649,10 @@ void DeviceOptionTab::startFlimAsynchronization(bool toggled)
 		}
 		else
 			m_pToggleButton_AsynchronizedPulsedLaser->setChecked(false);
-		
-		m_pConfig->flimTriggerSource = flimOrigSource;
-		m_pConfig->octTriggerSource = octOrigSource;
 	}
 	else
 	{
 		// Set widgets
-		m_pLabel_FlimTriggerSource->setEnabled(true);
-		m_pLabel_FlimTriggerChannel->setEnabled(true);
-		m_pLabel_OctTriggerSource->setEnabled(true);
-		m_pLabel_OctTriggerChannel->setEnabled(true);
-		m_pLineEdit_FlimTriggerSource->setEnabled(true);
-		m_pLineEdit_FlimTriggerChannel->setEnabled(true);
-		m_pLineEdit_OctTriggerSource->setEnabled(true);
-		m_pLineEdit_OctTriggerChannel->setEnabled(true);
-
 		m_pToggleButton_AsynchronizedPulsedLaser->setText("On");
 		m_pToggleButton_AsynchronizedPulsedLaser->setStyleSheet("QPushButton { background-color:#ff0000; }");
 				
@@ -845,15 +677,6 @@ void DeviceOptionTab::startFlimSynchronization(bool toggled)
 		if (m_pDeviceControl->startSynchronization(true))
 		{
 			// Set widgets		
-			m_pLabel_FlimTriggerSource->setDisabled(true);
-			m_pLabel_FlimTriggerChannel->setDisabled(true);
-			m_pLabel_OctTriggerSource->setDisabled(true);
-			m_pLabel_OctTriggerChannel->setDisabled(true);
-			m_pLineEdit_FlimTriggerSource->setDisabled(true);
-			m_pLineEdit_FlimTriggerChannel->setDisabled(true);
-			m_pLineEdit_OctTriggerSource->setDisabled(true);
-			m_pLineEdit_OctTriggerChannel->setDisabled(true);
-
 			m_pToggleButton_SynchronizedPulsedLaser->setText("Off");
 			m_pToggleButton_SynchronizedPulsedLaser->setStyleSheet("QPushButton { background-color:#00ff00; }");
 
@@ -867,15 +690,6 @@ void DeviceOptionTab::startFlimSynchronization(bool toggled)
 	else
 	{
 		// Set widgets
-		m_pLabel_FlimTriggerSource->setEnabled(true);
-		m_pLabel_FlimTriggerChannel->setEnabled(true);
-		m_pLabel_OctTriggerSource->setEnabled(true);
-		m_pLabel_OctTriggerChannel->setEnabled(true);
-		m_pLineEdit_FlimTriggerSource->setEnabled(true);
-		m_pLineEdit_FlimTriggerChannel->setEnabled(true);
-		m_pLineEdit_OctTriggerSource->setEnabled(true);
-		m_pLineEdit_OctTriggerChannel->setEnabled(true);
-
 		m_pToggleButton_SynchronizedPulsedLaser->setText("On");
 		m_pToggleButton_SynchronizedPulsedLaser->setStyleSheet("QPushButton { background-color:#ff0000; }");
 
@@ -891,12 +705,6 @@ void DeviceOptionTab::startFlimSynchronization(bool toggled)
 #endif
 }
 
-void DeviceOptionTab::setPmtGainPort(const QString &str)
-{
-	m_pConfig->pmtGainPort = str.toLocal8Bit().constData();
-
-	m_pConfig->writeToLog(QString("PMT gain port set: %1").arg(str));
-}
 
 void DeviceOptionTab::applyPmtGainVoltage(bool toggled)
 {
@@ -907,9 +715,6 @@ void DeviceOptionTab::applyPmtGainVoltage(bool toggled)
 		if (m_pDeviceControl->applyPmtGainVoltage(true))
 		{
 			// Set widgets
-			m_pLabel_PmtGainPort->setDisabled(true);
-			m_pLineEdit_PmtGainPort->setDisabled(true);
-
 			m_pToggleButton_PmtGainVoltage->setText("Off");
 			m_pToggleButton_PmtGainVoltage->setStyleSheet("QPushButton { background-color:#00ff00; }");
 
@@ -922,9 +727,6 @@ void DeviceOptionTab::applyPmtGainVoltage(bool toggled)
 	else
 	{
 		// Set widgets
-		m_pLabel_PmtGainPort->setEnabled(true);
-		m_pLineEdit_PmtGainPort->setEnabled(true);
-
 		m_pToggleButton_PmtGainVoltage->setText("On");
 		m_pToggleButton_PmtGainVoltage->setStyleSheet("QPushButton { background-color:#ff0000; }");
 
@@ -947,13 +749,6 @@ void DeviceOptionTab::changePmtGainVoltage(const QString & str)
 }
 
 
-void DeviceOptionTab::setFlimLaserComPort(int port)
-{
-	m_pConfig->flimLaserComPort = QString("COM%1").arg(port + 1).toLocal8Bit().constData();
-
-	m_pConfig->writeToLog(QString("FLIm laser COM port set: %1").arg(m_pConfig->flimLaserComPort));
-}
-
 bool DeviceOptionTab::connectFlimLaser(bool toggled)
 {
 	if (toggled)
@@ -966,7 +761,6 @@ bool DeviceOptionTab::connectFlimLaser(bool toggled)
 			m_pToggleButton_FlimLaserConnect->setStyleSheet("QPushButton { background-color:#00ff00; }");
 
 			m_pLabel_FlimLaserConnect->setDisabled(true);
-			m_pComboBox_FlimLaserConnect->setDisabled(true);
 
 			m_pLabel_FlimLaserPowerControl->setEnabled(true);
 			m_pSpinBox_FlimLaserPowerControl->setEnabled(true);
@@ -981,7 +775,6 @@ bool DeviceOptionTab::connectFlimLaser(bool toggled)
 		m_pToggleButton_FlimLaserConnect->setStyleSheet("QPushButton { background-color:#ff0000; }");
 
 		m_pLabel_FlimLaserConnect->setEnabled(true);
-		m_pComboBox_FlimLaserConnect->setEnabled(true);
 
 		m_pLabel_FlimLaserPowerControl->setDisabled(true);
 		m_pSpinBox_FlimLaserPowerControl->setDisabled(true);

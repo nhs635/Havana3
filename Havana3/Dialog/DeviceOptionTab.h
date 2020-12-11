@@ -45,36 +45,26 @@ private:
 
 private slots:
     // Helical Scanning Control
-	void setRotaryComPort(int);
 	bool connectRotaryMotor(bool);
 	void rotate(bool);
 	void changeRotaryRpm(const QString &);
 	
-	void setPullbackComPort(int);
 	bool connectPullbackMotor(bool);
 	void moveAbsolute();
 	void setTargetSpeed(const QString &);
 	void changePullbackLength(const QString &);
 	void home();
 	void stop();
-
-    // Synchronization port setup
-	void setFlimTriggerSource(const QString &);
-	void setFlimTriggerChannel(const QString &);
-	void setOctTriggerSource(const QString &);
-	void setOctTriggerChannel(const QString &);
-
+	
     // FLIm Laser Synchronization Control
 	void startFlimAsynchronization(bool);
     void startFlimSynchronization(bool);
 
     // FLIm PMT Gain Control
-	void setPmtGainPort(const QString &);
     void applyPmtGainVoltage(bool);
 	void changePmtGainVoltage(const QString &);
 
     // FLIm Laser Power Control
-	void setFlimLaserComPort(int);
     bool connectFlimLaser(bool);
 	void adjustLaserPower(int);
 
@@ -105,7 +95,6 @@ private:
 
 	// Faulhaber rotation motor control widgets
 	QLabel *m_pLabel_RotaryConnect;
-	QComboBox *m_pComboBox_RotaryConnect;
 	QPushButton *m_pToggleButton_RotaryConnect;
 
 	QLabel *m_pLabel_RotationSpeed;
@@ -115,7 +104,6 @@ private:
 
     // Faulhaber pullback stage control widgets
 	QLabel *m_pLabel_PullbackConnect;
-	QComboBox *m_pComboBox_PullbackConnect;
 	QPushButton *m_pToggleButton_PullbackConnect;
 
 	QLabel *m_pLabel_PullbackSpeed;
@@ -131,24 +119,12 @@ private:
 	QPushButton *m_pPushButton_PullbackStop;
 	
     // FLIm control - Laser sync control widgets
-	QLabel *m_pLabel_FlimTriggerSource;
-	QLineEdit *m_pLineEdit_FlimTriggerSource;
-	QLabel *m_pLabel_FlimTriggerChannel;
-	QLineEdit *m_pLineEdit_FlimTriggerChannel;
-	QLabel *m_pLabel_OctTriggerSource;
-	QLineEdit *m_pLineEdit_OctTriggerSource;
-	QLabel *m_pLabel_OctTriggerChannel;
-	QLineEdit *m_pLineEdit_OctTriggerChannel;
-
 	QLabel *m_pLabel_AsynchronizedPulsedLaser;
 	QPushButton *m_pToggleButton_AsynchronizedPulsedLaser;
 	QLabel *m_pLabel_SynchronizedPulsedLaser;
 	QPushButton *m_pToggleButton_SynchronizedPulsedLaser;
 
     // FLIm control	- PMT Gain control widgets
-	QLabel *m_pLabel_PmtGainPort;
-	QLineEdit *m_pLineEdit_PmtGainPort;
-
     QLabel *m_pLabel_PmtGainControl;
 	QLineEdit *m_pLineEdit_PmtGainVoltage;
     QLabel *m_pLabel_PmtGainVoltage;
@@ -156,7 +132,6 @@ private:
 
     // FLIm control - Laser power control widgets
 	QLabel *m_pLabel_FlimLaserConnect;
-	QComboBox *m_pComboBox_FlimLaserConnect;
 	QPushButton *m_pToggleButton_FlimLaserConnect;
 
 	QLabel *m_pLabel_FlimLaserPowerControl;

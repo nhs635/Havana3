@@ -79,9 +79,7 @@ bool DeviceControl::connectRotaryMotor(bool toggled)
 		if (!m_pRotaryMotor)
 		{
 			m_pRotaryMotor = new RotaryMotor;
-			char port_name[256];
-			sprintf_s(port_name, 256, "%s", QString("COM%1").arg(m_pConfig->rotaryComPort).toUtf8().data());
-			m_pRotaryMotor->setPortName(port_name, 1);
+			m_pRotaryMotor->setPortName(ROTARY_MOTOR_COM_PORT, 1);
 
 			m_pRotaryMotor->SendStatusMessage += SendStatusMessage;
 		}
@@ -142,9 +140,7 @@ bool DeviceControl::connectPullbackMotor(bool enabled)
 		if (!m_pPullbackMotor)
 		{
 			m_pPullbackMotor = new PullbackMotor;
-			char port_name[256];
-			sprintf_s(port_name, 256, "%s", QString("COM%1").arg(m_pConfig->pullbackComPort).toUtf8().data());
-			m_pPullbackMotor->setPortName(port_name, 2); 
+			m_pPullbackMotor->setPortName(PULLBACK_MOTOR_COM_PORT, 2); 
 
 			m_pPullbackMotor->SendStatusMessage += SendStatusMessage;
 		}
@@ -239,9 +235,7 @@ bool DeviceControl::applyPmtGainVoltage(bool enabled)
 		if (!m_pPmtGainControl)
 		{
 			m_pPmtGainControl = new PmtGainControl;
-			//char port_name[256];
-			//sprintf_s(port_name, 256, "%s", m_pConfig->pmtGainPort.toUtf8().data());
-			m_pPmtGainControl->setPhysicalChannel(m_pConfig->pmtGainPort);
+			m_pPmtGainControl->setPhysicalChannel(PMT_GAIN_AO_PORT);
 			m_pPmtGainControl->setVoltage(m_pConfig->pmtGainVoltage);
 
 			m_pPmtGainControl->SendStatusMessage += SendStatusMessage;
@@ -299,9 +293,7 @@ bool DeviceControl::connectFlimLaser(bool state)
 		if (!m_pElforlightLaser)
 		{
 			m_pElforlightLaser = new ElforlightLaser;
-			char port_name[256];
-			sprintf_s(port_name, 256, "%s", QString("COM%1").arg(m_pConfig->flimLaserComPort).toUtf8().data());
-			m_pElforlightLaser->setPortName(port_name);
+			m_pElforlightLaser->setPortName(FLIM_LASER_COM_PORT);
 
 			m_pElforlightLaser->SendStatusMessage += SendStatusMessage;
 ///			m_pElforlightLaser->UpdateState += [&](double* state) {
@@ -389,7 +381,7 @@ void DeviceControl::sendLaserCommand(char* command)
 }
 
 
-bool DeviceControl::startSynchronization(bool enabled)
+bool DeviceControl::startSynchronization(bool enabled, bool async)
 {
 #ifdef NI_ENABLE
 	if (enabled)
@@ -397,14 +389,9 @@ bool DeviceControl::startSynchronization(bool enabled)
 		// Create FLIm laser sync control objects
 		if (!m_pFlimFreqDivider)
 		{
-			m_pFlimFreqDivider = new FreqDivider;
-
-			//char trigger_source[256], trigger_channel[256];
-			//sprintf_s(trigger_source, 256, "%s", m_pConfig->flimTriggerSource.toUtf8().data());
-			//sprintf_s(trigger_channel, 256, "%s", m_pConfig->flimTriggerChannel.toUtf8().data());
-
-			m_pFlimFreqDivider->setSourceTerminal(m_pConfig->flimTriggerSource);
-			m_pFlimFreqDivider->setCounterChannel(m_pConfig->flimTriggerChannel);
+			m_pFlimFreqDivider = new FreqDivider;			
+			m_pFlimFreqDivider->setSourceTerminal(!async ? FLIM_SOURCE_TERMINAL : "100kHzTimebase");
+			m_pFlimFreqDivider->setCounterChannel(FLIM_COUNTER_CHANNEL);
 			m_pFlimFreqDivider->setSlow(4);
 
 			m_pFlimFreqDivider->SendStatusMessage += SendStatusMessage;
@@ -413,14 +400,9 @@ bool DeviceControl::startSynchronization(bool enabled)
 		// Create Axsun OCT sync control objects
 		if (!m_pAxsunFreqDivider)
 		{
-			m_pAxsunFreqDivider = new FreqDivider;
-
-			//char trigger_source[256], trigger_channel[256];
-			//sprintf_s(trigger_source, 256, "%s", m_pConfig->octTriggerSource.toUtf8().data());
-			//sprintf_s(trigger_channel, 256, "%s", m_pConfig->octTriggerChannel.toUtf8().data());
-			
-			m_pAxsunFreqDivider->setSourceTerminal(m_pConfig->octTriggerSource);
-			m_pAxsunFreqDivider->setCounterChannel(m_pConfig->octTriggerChannel);
+			m_pAxsunFreqDivider = new FreqDivider;			
+			m_pAxsunFreqDivider->setSourceTerminal(AXSUN_SOURCE_TERMINAL);
+			m_pAxsunFreqDivider->setCounterChannel(AXSUN_COUNTER_CHANNEL);
 			m_pAxsunFreqDivider->setSlow(1024);
 
 			m_pAxsunFreqDivider->SendStatusMessage += SendStatusMessage;
@@ -434,7 +416,7 @@ bool DeviceControl::startSynchronization(bool enabled)
 			m_pAxsunFreqDivider->start();
 
 			char msg[256];
-			sprintf_s(msg, 256, "[SYNC] Synchronization started. (source: %s)", m_pConfig->flimTriggerSource);
+			sprintf_s(msg, 256, "[SYNC] Synchronization started. (source: %s)", !async ? FLIM_SOURCE_TERMINAL : "100kHzTimebase");
 			SendStatusMessage(msg, false);
 		}
 		else
