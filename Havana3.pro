@@ -38,13 +38,13 @@ LIBS += $$PWD/lib/intel64_win/ippcore.lib \
         $$PWD/lib/intel64_win/ipps.lib \
         $$PWD/lib/intel64_win/ippvm.lib
 debug {
-#    LIBS += $$PWD/lib/vld.lib
-    LIBS += $$PWD/lib/intel64_win/vc14/tbb_debug.lib
-    LIBS += $$PWD/lib/opencv_world320d.lib
+    LIBS += $$PWD/lib/vld.lib
+    LIBS += $$PWD/lib/intel64_win/vc14/tbb_debug.lib \
+            $$PWD/lib/opencv_world320d.lib
 }
 release {
-    LIBS += $$PWD/lib/intel64_win/vc14/tbb.lib
-    LIBS += $$PWD/lib/opencv_world320.lib
+    LIBS += $$PWD/lib/intel64_win/vc14/tbb.lib \
+            $$PWD/lib/opencv_world320.lib
 }
 LIBS += $$PWD/lib/intel64_win/mkl_core.lib \
         $$PWD/lib/intel64_win/mkl_tbb_thread.lib \

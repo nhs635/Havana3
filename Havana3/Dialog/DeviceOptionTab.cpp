@@ -70,15 +70,33 @@ DeviceOptionTab::DeviceOptionTab(QWidget *parent) :
 	// Set layout
 	m_pVBoxLayout_DeviceOption->addStretch(1);
 	m_pGroupBox_DeviceOption->setLayout(m_pVBoxLayout_DeviceOption);
+
+	// Initialize
+	if (parent_name == "Streaming")
+	{
+		m_pToggleButton_RotaryConnect->setChecked(true);
+		m_pToggleButton_PullbackConnect->setChecked(true);
+		m_pToggleButton_SynchronizedPulsedLaser->setChecked(true);
+		m_pToggleButton_PmtGainVoltage->setChecked(true);
+		m_pToggleButton_FlimLaserConnect->setChecked(true);
+		m_pToggleButton_AxsunOctConnect->setChecked(true);
+		m_pToggleButton_LightSource->setChecked(true);
+		m_pToggleButton_LiveImaging->setChecked(true);
+
+		m_pToggleButton_RotaryConnect->setDisabled(true);
+		m_pToggleButton_PullbackConnect->setDisabled(true);
+		m_pToggleButton_SynchronizedPulsedLaser->setDisabled(true);
+		m_pToggleButton_FlimLaserConnect->setDisabled(true);
+		m_pToggleButton_AxsunOctConnect->setDisabled(true);
+		m_pToggleButton_LightSource->setDisabled(true);
+		m_pToggleButton_LiveImaging->setDisabled(true);
+	}
 }
 
 DeviceOptionTab::~DeviceOptionTab()
 {
 	if (!m_pStreamTab)
-	{
-		//m_pDeviceControl->setAllDeviceOff();
 		delete m_pDeviceControl;
-	}
 }
 
 
@@ -86,6 +104,7 @@ void DeviceOptionTab::createHelicalScanningControl()
 {
 	QGroupBox *pGroupBox_HelicalScanning = new QGroupBox;
 	pGroupBox_HelicalScanning->setStyleSheet("QGroupBox{padding-top:15px; margin-top:-15px}");
+	pGroupBox_HelicalScanning->setFixedWidth(415);
 	pGroupBox_HelicalScanning->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::MinimumExpanding);
 	
 	// Create widgets for Faulhaber motor control	
@@ -226,6 +245,7 @@ void DeviceOptionTab::createFlimSystemControl()
 {
 	QGroupBox *pGroupBox_FlimControl = new QGroupBox;
 	pGroupBox_FlimControl->setStyleSheet("QGroupBox{padding-top:15px; margin-top:-15px}");
+	pGroupBox_FlimControl->setFixedWidth(415);
 	pGroupBox_FlimControl->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::MinimumExpanding);
 
     // Create widgets for FLIM laser control		
@@ -355,6 +375,7 @@ void DeviceOptionTab::createAxsunOctSystemControl()
 {
 	QGroupBox *pGroupBox_OctControl = new QGroupBox;
 	pGroupBox_OctControl->setStyleSheet("QGroupBox{padding-top:15px; margin-top:-15px}");
+	pGroupBox_OctControl->setFixedWidth(415);
 	pGroupBox_OctControl->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::MinimumExpanding);
 
 	// Create widgets for Axsun OCT control

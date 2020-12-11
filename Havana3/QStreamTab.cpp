@@ -62,8 +62,8 @@ QStreamTab::QStreamTab(QString patient_id, QWidget *parent) :
 
     // Create memory buffer object
     m_pMemoryBuffer = new MemoryBuffer(this);
-	//connect(m_pMemoryBuffer, &MemoryBuffer::finishedBufferAllocation, [&]() { m_pToggleButton_StartPullback->setEnabled(true); });
-	//(m_pMemoryBuffer, &MemoryBuffer::finishedWritingThread, [&]() { emit requestReview(m_recordInfo.recordId); });
+	///connect(m_pMemoryBuffer, &MemoryBuffer::finishedBufferAllocation, [&]() { m_pToggleButton_StartPullback->setEnabled(true); });
+	///(m_pMemoryBuffer, &MemoryBuffer::finishedWritingThread, [&]() { emit requestReview(m_recordInfo.recordId); });
 
     // Create device control object
     m_pDeviceControl = new DeviceControl(m_pConfig);
@@ -75,9 +75,6 @@ QStreamTab::QStreamTab(QString patient_id, QWidget *parent) :
     pHBoxLayout->addWidget(m_pGroupBox_LiveStreaming);
 
     this->setLayout(pHBoxLayout);
-
-    // Initialize & start live streaming	
-	//startLiveImaging(true);
 }
 
 QStreamTab::~QStreamTab()
@@ -232,36 +229,25 @@ void QStreamTab::startLiveImaging(bool start)
 	if (start)
 	{	
 		// Show message box
-		//QProgressDialog progress("Device intialization...", "Cancel", 0, 100, this);
-		////connect(m_pDataProcessing, SIGNAL(processedSingleFrame(int)), &progress, SLOT(setValue(int)));
-		////connect(&progress, &QProgressDialog::canceled, [&]() { m_pDataProcessing->m_bAbort = true; });
-		//progress.setWindowTitle("Live Streaming");
-		//progress.setCancelButton(0);
-		//progress.setWindowModality(Qt::WindowModal);
-		//progress.setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::CustomizeWindowHint);
-		//progress.move((m_pMainWnd->width() - progress.width()) / 2, (m_pMainWnd->height() - progress.height()) / 2);
-		//progress.setFixedSize(progress.width(), progress.height());
+		QMessageBox msg_box(QMessageBox::NoIcon, "Device Initialization...", "", QMessageBox::NoButton, this);
+		msg_box.setStandardButtons(0);
+		msg_box.setWindowModality(Qt::WindowModal);
+		msg_box.setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::CustomizeWindowHint);
+		msg_box.move((m_pMainWnd->width() - msg_box.width()) / 2, (m_pMainWnd->height() - msg_box.height()) / 2);
+		msg_box.setFixedSize(msg_box.width(), msg_box.height());
+		connect(this, SIGNAL(deviceInitialized()), &msg_box, SLOT(accept()));
+		msg_box.show();
 
-		//QMessageBox msg_box(QMessageBox::NoIcon, "Device Initialization...", "Done.", QMessageBox::NoButton, this);
-		//msg_box.setStandardButtons(0);
-		//msg_box.setWindowModality(Qt::WindowModal);
-		//msg_box.setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::CustomizeWindowHint);
-		//msg_box.move((m_pMainWnd->width() - msg_box.width()) / 2, (m_pMainWnd->height() - msg_box.height()) / 2);
-		//msg_box.setFixedSize(msg_box.width(), msg_box.height());
-		//connect(this, SIGNAL(devInit()), &msg_box, SLOT(accept()));
-		//msg_box.show();
-
-		// Enable memory, data acq, device control
-		//progress.setValue(0);
+		// Enable memory, data acq, device control			
 		if (!enableMemoryBuffer(true) || !enableDataAcquisition(true) || !enableDeviceControl(true))
 		{
 			startLiveImaging(false);
 			m_pConfig->writeToLog(QString("Live streaming failed: %1 (ID: %2)").arg(m_recordInfo.patientName).arg(m_recordInfo.patientId));
+
+			return;
 		}
 		
-		//else
-		//	progress.setValue(1);
-		//	//emit devInit();
+		emit deviceInitialized();
 
 		m_pConfig->writeToLog(QString("Live streaming started: %1 (ID: %2)").arg(m_recordInfo.patientName).arg(m_recordInfo.patientId));
 	}
@@ -783,40 +769,24 @@ void QStreamTab::startPullback(bool enabled)
 		//	}
 		//};
 		m_pMemoryBuffer->startRecording();
-
-		// Capture timer
-		//m_pCaptureTimer = new QTimer(this);
-		//m_pCaptureTimer->start(1200);
-		//connect(m_pCaptureTimer, &QTimer::timeout, [&]() { emit getCapture(m_recordInfo.preview); m_pCaptureTimer->stop(); });
-
+		
 		m_pConfig->writeToLog(QString("Pullback recording started: %1 (ID: %2)").arg(m_recordInfo.patientName).arg(m_recordInfo.patientId));
     }
     else 
-    {
-		//if (m_pDeviceControl->getPullbackMotor())
-		{
-			// Preview capture
-			//if (m_pCaptureTimer->isActive())
-			//{
-			//	m_pCaptureTimer->stop();
-			//	delete m_pCaptureTimer;
+    {		
+		// Stop motor operation
+		m_pMemoryBuffer->stopRecording();
+		m_pDeviceControl->rotate(false);
+		startLiveImaging(false);
 
-			//	emit getCapture(m_recordInfo.preview);
-			//}
+		m_pConfig->writeToLog(QString("Pullback recording stopped: %1 (ID: %2)").arg(m_recordInfo.patientName).arg(m_recordInfo.patientId));
 
-			// Stop motor operation
-			m_pMemoryBuffer->stopRecording();
-			m_pDeviceControl->rotate(false);
-
-			m_pConfig->writeToLog(QString("Pullback recording stopped: %1 (ID: %2)").arg(m_recordInfo.patientName).arg(m_recordInfo.patientId));
-
-			// Saving recorded data
-			QDateTime datetime = QDateTime::currentDateTime();
-			m_recordInfo.date = datetime.toString("yyyy-MM-dd hh:mm:ss");
-			m_recordInfo.filename = m_pConfig->dbPath + "/record/" + m_recordInfo.patientId + datetime.toString("/yyyy-MM-dd_hh-mm-ss");
-			m_pMemoryBuffer->startSaving(m_recordInfo);
-			emit requestReview(m_recordInfo.recordId);
-		}
+		// Saving recorded data
+		QDateTime datetime = QDateTime::currentDateTime();
+		m_recordInfo.date = datetime.toString("yyyy-MM-dd hh:mm:ss");
+		m_recordInfo.filename = m_pConfig->dbPath + "/record/" + m_recordInfo.patientId + datetime.toString("/yyyy-MM-dd_hh-mm-ss");
+		m_pMemoryBuffer->startSaving(m_recordInfo);
+		emit requestReview(m_recordInfo.recordId);
 		
 		// Set widgets
 		m_pToggleButton_StartPullback->setIcon(style()->standardIcon(QStyle::SP_ArrowRight));

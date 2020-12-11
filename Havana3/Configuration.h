@@ -10,7 +10,7 @@
 ////////////////////// Software Setup ///////////////////////
 #define DEVELOPER_MODE
 #define ENABLE_DATABASE_ENCRYPTION
-//#define NI_ENABLE
+#define NI_ENABLE
 
 //////////////////////// Size Setup /////////////////////////
 #define FLIM_SCANS                  512
@@ -28,9 +28,9 @@
 #define PMT_GAIN_AO_PORT			"Dev1/ao1"
 
 #define FLIM_SOURCE_TERMINAL		"/Dev1/PFI2"
-#define FLIM_COUNTER_CHANNEL		"Dev1/ctr0"
+#define FLIM_COUNTER_CHANNEL		"Dev1/ctr1"
 #define AXSUN_SOURCE_TERMINAL		"/Dev1/PFI3"
-#define AXSUN_COUNTER_CHANNEL		"Dev1/ctr1"
+#define AXSUN_COUNTER_CHANNEL		"Dev1/ctr0"
 
 #define CLOCK_DELAY					10
 //#define PULLBACK_HOME_OFFSET		0 // mm

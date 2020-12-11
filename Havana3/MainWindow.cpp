@@ -276,7 +276,6 @@ void MainWindow::makeStreamTab(const QString& patient_id)
 	{
 		m_pStreamTab->changePatient(patient_id);
 		addTabView(m_pStreamTab);
-		//m_pTabWidget->setCurrentWidget(m_pStreamTab);
 	}
 }
 

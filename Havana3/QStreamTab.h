@@ -81,7 +81,7 @@ private slots:
 #endif
 
 signals:
-	void devInit();
+	void deviceInitialized();
 	void getCapture(QByteArray &);
 	void requestReview(const QString &);
 

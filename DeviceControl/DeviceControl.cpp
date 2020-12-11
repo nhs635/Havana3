@@ -83,6 +83,8 @@ bool DeviceControl::connectRotaryMotor(bool toggled)
 
 			m_pRotaryMotor->SendStatusMessage += SendStatusMessage;
 		}
+		else
+			return true;
 
 		// Connect the motor
 		if (!(m_pRotaryMotor->ConnectDevice()))
@@ -144,6 +146,8 @@ bool DeviceControl::connectPullbackMotor(bool enabled)
 
 			m_pPullbackMotor->SendStatusMessage += SendStatusMessage;
 		}
+		else
+			return true;
 
 		// Connect the motor
 		if (!(m_pPullbackMotor->ConnectDevice()))
@@ -240,6 +244,8 @@ bool DeviceControl::applyPmtGainVoltage(bool enabled)
 
 			m_pPmtGainControl->SendStatusMessage += SendStatusMessage;
 		}
+		else
+			return true;
 
 		if (m_pPmtGainControl->getVoltage() > 1.0)
 		{
@@ -300,6 +306,8 @@ bool DeviceControl::connectFlimLaser(bool state)
 ///				m_pStreamTab->getMainWnd()->updateFlimLaserState(state);
 ///			};
 		}
+		else
+			return true;
 
 		// Connect the laser
 		if (!(m_pElforlightLaser->ConnectDevice()))
@@ -396,6 +404,8 @@ bool DeviceControl::startSynchronization(bool enabled, bool async)
 
 			m_pFlimFreqDivider->SendStatusMessage += SendStatusMessage;
 		}
+		else
+			return true;
 
 		// Create Axsun OCT sync control objects
 		if (!m_pAxsunFreqDivider)
@@ -462,39 +472,38 @@ bool DeviceControl::connectAxsunControl(bool toggled)
 		{
 			m_pAxsunControl = new AxsunControl;
 			m_pAxsunControl->SendStatusMessage += SendStatusMessage;
-///			m_pAxsunControl->DidTransferArray += [&](int i) {
-///				emit transferAxsunArray(i);
-///			};
+		}
+		else
+			return true;
 			
-			// Initialize the Axsun OCT control
-			if (!(m_pAxsunControl->initialize()))
-			{
-				connectAxsunControl(false);
-                return false;
-			}
+		// Initialize the Axsun OCT control
+		if (!(m_pAxsunControl->initialize()))
+		{
+			connectAxsunControl(false);
+            return false;
+		}
 			
-			// Default Bypass Mode
-			m_pAxsunControl->setBypassMode(bypass_mode::jpeg_compressed);
+		// Default Bypass Mode
+		m_pAxsunControl->setBypassMode(bypass_mode::jpeg_compressed);
 		
-			// Default Clock Delay
-			setClockDelay(CLOCK_GAIN * CLOCK_DELAY + CLOCK_OFFSET);
+		// Default Clock Delay
+		setClockDelay(CLOCK_GAIN * CLOCK_DELAY + CLOCK_OFFSET);
 
-			// Default VDL Length
-			m_pAxsunControl->setVDLHome();
-			std::thread vdl_length([&]() {
-				//std::this_thread::sleep_for(std::chrono::milliseconds(1500));
-				//m_pAxsunControl->setVDLLength(m_pConfig->axsunVDLLength);
+		// Default VDL Length
+		m_pAxsunControl->setVDLHome();
+		std::thread vdl_length([&]() {
+			//std::this_thread::sleep_for(std::chrono::milliseconds(1500));
+			//m_pAxsunControl->setVDLLength(m_pConfig->axsunVDLLength);
 
-				//std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+			//std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 //				if (m_pStreamTab->getOperationTab()->getAcquisitionButton()->isChecked())
 //					setVDLWidgets(true);
-			});
-			vdl_length.detach();
+		});
+		vdl_length.detach();
 
-			// Default Contrast Range
-			adjustDecibelRange(m_pConfig->axsunDbRange.min, m_pConfig->axsunDbRange.max);
-			//		m_pStreamTab->getVisTab()->setOctDecibelContrastWidgets(true);
-		}						
+		// Default Contrast Range
+		adjustDecibelRange(m_pConfig->axsunDbRange.min, m_pConfig->axsunDbRange.max);
+		//		m_pStreamTab->getVisTab()->setOctDecibelContrastWidgets(true);					
 	}
 	else
 	{
