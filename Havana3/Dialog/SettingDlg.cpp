@@ -17,7 +17,8 @@ SettingDlg::SettingDlg(QWidget *parent) :
     QDialog(parent), m_pPatientSummaryTab(nullptr), m_pStreamTab(nullptr), m_pResultTab(nullptr), m_pViewTab(nullptr)
 {
     // Set default size & frame
-    setFixedSize(600, 350);
+    setFixedWidth(600);
+	setMinimumHeight(350);
     setWindowFlags(Qt::Tool);
     setWindowTitle("Setting");
 
@@ -65,26 +66,26 @@ SettingDlg::SettingDlg(QWidget *parent) :
 	{
 		QScrollArea *pScrollArea_Visualization = new QScrollArea;
 		pScrollArea_Visualization->setWidget(m_pViewOptionTab->getLayoutBox());
-		m_pTabWidget_Setting->addTab(pScrollArea_Visualization, "Visualization");
+		m_pTabWidget_Setting->addTab(pScrollArea_Visualization, " Visualization ");
 	}
 
 	// System device tab
 	QScrollArea *pScrollArea_SystemDevice = new QScrollArea;
 	pScrollArea_SystemDevice->setWidget(m_pDeviceOptionTab->getLayoutBox());
-	m_pTabWidget_Setting->addTab(pScrollArea_SystemDevice, "System Device");
+	m_pTabWidget_Setting->addTab(pScrollArea_SystemDevice, " System Device ");
 	
 	// FLIm calibration tab
 	if (parent_name == "Streaming")
 	{
 		QScrollArea *pScrollArea_FlimCalibration = new QScrollArea;
 		pScrollArea_FlimCalibration->setWidget(m_pFlimCalibTab->getLayoutBox());
-		m_pTabWidget_Setting->addTab(pScrollArea_FlimCalibration, "FLIm Calibration");
+		m_pTabWidget_Setting->addTab(pScrollArea_FlimCalibration,  "FLIm Calibration");
 	}
 
 	// Pulse review tab ????
 	if (parent_name == "Review")
 	{
-		m_pTabWidget_Setting->addTab(new QWidget(this), "Pulse Review");
+		m_pTabWidget_Setting->addTab(new QWidget(this), "   Pulse Review   ");
 	}
 
 	// Log tab

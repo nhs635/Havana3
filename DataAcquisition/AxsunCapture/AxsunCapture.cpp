@@ -202,6 +202,10 @@ void AxsunCapture::captureRun()
 	int32_t result;
 
 	// define & initialize variables
+	uint32_t imaging;
+	uint32_t last_packet, last_frame, last_image = 0, last_image0 = 0;
+	uint32_t frames_since_sync;
+
     returned_image = 0;
     uint32_t required_buffer_size = 0;
     int32_t height, width = 0;
@@ -217,7 +221,6 @@ void AxsunCapture::captureRun()
 
 	image_data_out = np::Uint8Array2(image_height, 4 * image_width); // 4 frame buffers
 	uint8_t *cur_section = nullptr;
-	//uint8_t *prev_section = nullptr;
 	
 	ULONG dwTickStart = 0, dwTickLastUpdate;
 
@@ -227,7 +230,15 @@ void AxsunCapture::captureRun()
 	capture_running = true;
     while (capture_running)
 	{
-		Sleep(1);
+		Sleep(0);
+
+		// get status information
+		result = axGetStatus(&imaging, &last_packet, &last_frame, &last_image, &dropped_packets, &frames_since_sync);
+		
+		// only new image allowed
+		if (last_image == last_image0)
+			continue;
+		last_image0 = last_image;
 
 		// get information about an image to be retreived from the main image buffer.
         result = axGetImageInfoAdv(-1, &returned_image, &height, &width, &dataType, &required_buffer_size,
@@ -238,13 +249,10 @@ void AxsunCapture::captureRun()
 			cur_section = &image_data_out(0, image_width * (loop_counter % 4));
 
 			// if the image exists in the main image buffer, request for it to be rendered directly to the OpenGL window			
-			if (width > image_width) required_buffer_size = height * image_width;
             result = axRequestImageAdv(returned_image, cur_section, meta_data, &height, &width, &dataType,
 				required_buffer_size, 1, req_mode, &force_trig_status, &trig_too_fast_status);
 			if (result == CAPTURE_OK)
-			{
-				//prev_section = &image_data_out(0, image_width * (loop_counter % 4));
-			
+			{		
 				np::Uint8Array2 frame(cur_section, image_height, image_width);
 				DidAcquireData(frameIndex++, frame);
 				frameIndexUpdate++;
@@ -277,6 +285,8 @@ void AxsunCapture::captureRun()
 						char msg[256];
 						sprintf(msg, "[Axsun Catpure] [Image#] %5d [Data Rate] %3.2f MiB/s [Frame Rate] %.2f fps [%d %d]",
 							frameIndex, dRateUpdate, frameRate, force_trig_status, trig_too_fast_status);
+						sprintf(msg, "imaging: %d, last_packet: %d, last_frame: %d, last_image: %d, dropped_packets: %d, frame_since_sync: %d",
+							imaging, last_packet, last_frame, last_image, dropped_packets, frames_since_sync);
 						SendStatusMessage(msg, false);
 					}
 

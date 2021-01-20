@@ -12,7 +12,7 @@
 // Capture
 #define ENABLE_OPENGL_WINDOW false
 #define CAPTURE_OK           1
-#define PACKET_CAPACITY      1000000
+#define PACKET_CAPACITY      100000
 #define METADATA_BYTES       34
 #define FIXED_WIDTH			 256
 #define SYNC_WIDTH			 1024
@@ -56,6 +56,7 @@ public:
 	bool _dirty;
 	bool capture_running;
 	data_type dataType;
+	uint32_t dropped_packets;
 	int image_width;
 	int image_height;
 	uint32_t returned_image;

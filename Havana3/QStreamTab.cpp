@@ -7,6 +7,7 @@
 #include <Havana3/HvnSqlDataBase.h>
 #include <Havana3/QViewTab.h>
 #include <Havana3/Dialog/SettingDlg.h>
+#include <Havana3/Dialog/FlimCalibTab.h>
 
 #include <DataAcquisition/DataAcquisition.h>
 #include <DataAcquisition/ThreadManager.h>
@@ -318,20 +319,20 @@ bool QStreamTab::enableDeviceControl(bool enabled)
 {
 	if (enabled)
 	{		
-		// Set FLIm system control
-		if (!m_pDeviceControl->connectFlimLaser(true)) return false;
-		if (!m_pDeviceControl->applyPmtGainVoltage(true)) return false;
+		//// Set FLIm system control
+		//if (!m_pDeviceControl->connectFlimLaser(true)) return false;
+		//if (!m_pDeviceControl->applyPmtGainVoltage(true)) return false;
 
-		// Set OCT system control
-		if (!m_pDeviceControl->connectAxsunControl(true)) return false;
+		//// Set OCT system control
+		//if (!m_pDeviceControl->connectAxsunControl(true)) return false;
 
-		// Set master synchronization control
-		if (!m_pDeviceControl->startSynchronization(true)) return false;
+		//// Set master synchronization control
+		//if (!m_pDeviceControl->startSynchronization(true)) return false;
 
-		// Set master trigger generation + Axsun imaging mode on
-		std::this_thread::sleep_for(std::chrono::milliseconds(200));
-		m_pDeviceControl->setLiveImaging(true);
-		m_pDeviceControl->setLightSource(true);
+		//// Set master trigger generation + Axsun imaging mode on
+		//std::this_thread::sleep_for(std::chrono::milliseconds(200));
+		//m_pDeviceControl->setLiveImaging(true);
+		//m_pDeviceControl->setLightSource(true);
 	}
 	else
 	{
@@ -472,8 +473,9 @@ void QStreamTab::setFlimProcessingCallback()
                 }
 
                 // Transfer to FLIm calibration dlg
-//				if (m_pDeviceControlTab->getFlimCalibDlgDlg())
-//					emit m_pDeviceControlTab->getFlimCalibDlgDlg()->plotRoiPulse(pFLIm, 0);
+				if (m_pSettingDlg)
+					if (m_pSettingDlg->getTabWidget()->currentWidget() == m_pSettingDlg->getFlimCalibTab())
+						emit m_pSettingDlg->getFlimCalibTab()->plotRoiPulse(pFLIm, 0);
 				
                 // Push the buffers to sync Queues
                 m_syncFlimVisualization.Queue_sync.push(flim_ptr);
@@ -613,7 +615,7 @@ void QStreamTab::setVisualizationCallback()
         // Get the buffers from the previous sync Queues
         float* flim_data = m_syncFlimVisualization.Queue_sync.pop();
         uint8_t* oct_data = m_syncOctVisualization.Queue_sync.pop();
-        if ((flim_data != nullptr) && (oct_data != nullptr))
+        if ((flim_data != nullptr) && (oct_data != nullptr))  
         {
             // Body
             if (m_pDataAcquisition->getAcquisitionState()) // Only valid if acquisition is running
@@ -649,7 +651,8 @@ void QStreamTab::setVisualizationCallback()
                     flim_temp = m_syncFlimVisualization.Queue_sync.pop();
                 } while (flim_temp != nullptr);
             }
-            else if (oct_data != nullptr)
+            else 
+				if (oct_data != nullptr)
             {
                 uint8_t* oct_temp = oct_data;
                 do
@@ -813,8 +816,9 @@ void QStreamTab::onTimerSyncMonitor()
 	size_t ov_bfn = getOctVisualizationBufferQueueSize();
 	double oct_fps = m_pDataAcquisition->getAxsunCapture()->frameRate;
 	double flim_fps = m_pDataAcquisition->getDigitizer()->frameRate;
+	uint32_t dropped_packets = m_pDataAcquisition->getAxsunCapture()->dropped_packets;
 
-	m_pLabel_StreamingSyncStatus->setText(QString("[Sync]\nFP#: %1\nFV#: %2\nOV#: %3\nOCT: %4 fps\nFLIM: %5 fps")
-		.arg(fp_bfn, 3).arg(fv_bfn, 3).arg(ov_bfn, 3).arg(oct_fps, 3, 'f', 2).arg(flim_fps, 3, 'f', 2));
+	m_pLabel_StreamingSyncStatus->setText(QString("[Sync]\nFP#: %1\nFV#: %2\nOV#: %3\nOCT: %4 fps\nFLIM: %5 fps\ndrop ptks: %6")
+		.arg(fp_bfn, 3).arg(fv_bfn, 3).arg(ov_bfn, 3).arg(oct_fps, 3, 'f', 2).arg(flim_fps, 3, 'f', 2).arg(dropped_packets));
 }
 #endif

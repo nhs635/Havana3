@@ -9,6 +9,7 @@
 
 ////////////////////// Software Setup ///////////////////////
 #define DEVELOPER_MODE
+#define NEXT_GEN_SYSTEM
 #define ENABLE_DATABASE_ENCRYPTION
 #define NI_ENABLE
 

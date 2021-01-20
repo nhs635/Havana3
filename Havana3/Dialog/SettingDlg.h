@@ -61,6 +61,7 @@ public:
 	inline QPatientSummaryTab* getPatientSummaryTab() const { return m_pPatientSummaryTab; }
     inline QStreamTab* getStreamTab() const { return m_pStreamTab; }
     inline QResultTab* getResultTab() const { return m_pResultTab; }
+	inline QTabWidget* getTabWidget() const { return m_pTabWidget_Setting; }
     inline ViewOptionTab* getViewOptionTab() const { return m_pViewOptionTab; }
     inline DeviceOptionTab* getDeviceOptionTab() const { return m_pDeviceOptionTab; }
     inline FlimCalibTab* getFlimCalibTab() const { return m_pFlimCalibTab; }

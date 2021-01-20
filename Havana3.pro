@@ -11,7 +11,7 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets serialport
 TARGET = Havana3
 TEMPLATE = app
 
-CONFIG += console
+CONFIG += c++11 console
 RC_FILE += Havana3.rc
 
 # The following define makes your compiler emit warnings if you use
@@ -30,7 +30,8 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 INCLUDEPATH += $$PWD/include
 
-LIBS += $$PWD/lib/PX14_64.lib
+LIBS += $$PWD/lib/PX14_64.lib \
+        $$PWD/lib/ATSApi.lib
 LIBS += $$PWD/lib/AxsunOCTCapture.lib
 LIBS += $$PWD/lib/NIDAQmx.lib
 LIBS += $$PWD/lib/intel64_win/ippcore.lib \
@@ -71,6 +72,7 @@ SOURCES += Havana3/Havana3.cpp \
     Havana3/Dialog/PulseReviewTab.cpp
 
 SOURCES += DataAcquisition/SignatecDAQ/SignatecDAQ.cpp \
+    DataAcquisition/AlazarDAQ/AlazarDAQ.cpp \
     DataAcquisition/FLImProcess/FLImProcess.cpp \
     DataAcquisition/AxsunCapture/AxsunCapture.cpp \
     DataAcquisition/ThreadManager.cpp \
@@ -82,6 +84,9 @@ SOURCES += MemoryBuffer/MemoryBuffer.cpp
 SOURCES += DeviceControl/FreqDivider/FreqDivider.cpp \
     DeviceControl/PmtGainControl/PmtGainControl.cpp \
     DeviceControl/ElforlightLaser/ElforlightLaser.cpp \
+    DeviceControl/IPGPhotonicsLaser/DigitalInput/DigitalInput.cpp \
+    DeviceControl/IPGPhotonicsLaser/DigitalOutput/DigitalOutput.cpp \
+    DeviceControl/IPGPhotonicsLaser/IPGPhotonicsLaser.cpp \
     DeviceControl/AxsunControl/AxsunControl.cpp \
     DeviceControl/FaulhaberMotor/FaulhaberMotor.cpp \
     DeviceControl/FaulhaberMotor/PullbackMotor.cpp \

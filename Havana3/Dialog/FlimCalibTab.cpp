@@ -25,7 +25,7 @@ FlimCalibTab::FlimCalibTab(QWidget *parent) :
 		
     // Create layout
     m_pVBoxLayout = new QVBoxLayout;
-    m_pVBoxLayout->setSpacing(10);
+    m_pVBoxLayout->setSpacing(15);
 
     // Create widgets for pulse view and FLIM calibration
     createPulseView();
@@ -52,14 +52,15 @@ FlimCalibTab::~FlimCalibTab()
 void FlimCalibTab::createPulseView()
 {
     // Create widgets for FLIM pulse view layout
-    QGridLayout *pGridLayout_PulseView = new QGridLayout;
-    pGridLayout_PulseView->setSpacing(2);
+    QVBoxLayout *pVBoxLayout_PulseView = new QVBoxLayout;
+	pVBoxLayout_PulseView->setSpacing(2);
 
     // Create widgets for FLIM pulse view
     m_pScope_PulseView = new QScope({ 0, (double)m_pFLIm->_resize.crop_src.size(0) }, { 0, POWER_2(16) },
                                     2, 2, m_pFLIm->_params.samp_intv, PX14_VOLT_RANGE / (double)POWER_2(16), 0, 0, " nsec", " V", true);
     m_pScope_PulseView->getRender()->m_bMaskUse = false;
-    m_pScope_PulseView->setMinimumHeight(180);
+	m_pScope_PulseView->setFixedWidth(420);
+    m_pScope_PulseView->setMinimumHeight(200);
     m_pScope_PulseView->getRender()->setGrid(8, 32, 1, true);
     m_pScope_PulseView->setDcLine(m_pFLIm->_params.bg);
 
@@ -68,17 +69,17 @@ void FlimCalibTab::createPulseView()
 
 
     m_pCheckBox_ShowWindow = new QCheckBox(this);
-    m_pCheckBox_ShowWindow->setText("Show Window");
+    m_pCheckBox_ShowWindow->setText("Show Window  ");
     m_pCheckBox_ShowMeanDelay = new QCheckBox(this);
-    m_pCheckBox_ShowMeanDelay->setText("Show Mean Delay");
+    m_pCheckBox_ShowMeanDelay->setText("Show Mean Delay  ");
     m_pCheckBox_SplineView = new QCheckBox(this);
     m_pCheckBox_SplineView->setText("Spline View");
 
     // Create widgets for pulse mask view & modification
     m_pCheckBox_ShowMask = new QCheckBox(this);
-    m_pCheckBox_ShowMask->setText("Show Mask");
+    m_pCheckBox_ShowMask->setText("Show Mask  ");
     m_pPushButton_ModifyMask = new QPushButton(this);
-    m_pPushButton_ModifyMask->setText("Modify Mask");
+    m_pPushButton_ModifyMask->setText("  Modify Mask  ");
     m_pPushButton_ModifyMask->setCheckable(true);
     m_pPushButton_ModifyMask->setDisabled(true);
     m_pPushButton_AddMask = new QPushButton(this);
@@ -91,20 +92,29 @@ void FlimCalibTab::createPulseView()
     m_pPushButton_RemoveMask->setDisabled(true);
 
     // Set layout
-    pGridLayout_PulseView->addWidget(m_pScope_PulseView, 0, 0, 1, 8);
+	pVBoxLayout_PulseView->addWidget(m_pScope_PulseView);
 
-    pGridLayout_PulseView->addWidget(m_pCheckBox_ShowWindow, 1, 0);
-    pGridLayout_PulseView->addWidget(m_pCheckBox_ShowMeanDelay, 1, 1);
-    pGridLayout_PulseView->addWidget(m_pCheckBox_SplineView, 1, 2);
+	QHBoxLayout *pHBoxLayout_VisOption = new QHBoxLayout;
+	pHBoxLayout_VisOption->setSpacing(0);
 
-    pGridLayout_PulseView->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed), 1, 3);
+	pHBoxLayout_VisOption->addWidget(m_pCheckBox_ShowWindow);
+	pHBoxLayout_VisOption->addWidget(m_pCheckBox_ShowMeanDelay);
+	pHBoxLayout_VisOption->addWidget(m_pCheckBox_SplineView);
+	pHBoxLayout_VisOption->addItem(new QSpacerItem(0, 0, QSizePolicy::MinimumExpanding, QSizePolicy::Fixed));
 
-    pGridLayout_PulseView->addWidget(m_pCheckBox_ShowMask, 1, 4);
-    pGridLayout_PulseView->addWidget(m_pPushButton_ModifyMask, 1, 5);
-    pGridLayout_PulseView->addWidget(m_pPushButton_AddMask, 1, 6);
-    pGridLayout_PulseView->addWidget(m_pPushButton_RemoveMask, 1, 7);
+	QHBoxLayout *pHBoxLayout_MaskingOption = new QHBoxLayout;
+	pHBoxLayout_MaskingOption->setSpacing(0);
 
-    m_pVBoxLayout->addItem(pGridLayout_PulseView);
+	pHBoxLayout_MaskingOption->addWidget(m_pCheckBox_ShowMask);
+	pHBoxLayout_MaskingOption->addItem(new QSpacerItem(0, 0, QSizePolicy::MinimumExpanding, QSizePolicy::Fixed));
+	pHBoxLayout_MaskingOption->addWidget(m_pPushButton_ModifyMask);
+	pHBoxLayout_MaskingOption->addWidget(m_pPushButton_AddMask);
+	pHBoxLayout_MaskingOption->addWidget(m_pPushButton_RemoveMask);
+
+	pVBoxLayout_PulseView->addItem(pHBoxLayout_VisOption);
+	pVBoxLayout_PulseView->addItem(pHBoxLayout_MaskingOption);
+
+	m_pVBoxLayout->addItem(pVBoxLayout_PulseView);
 
     // Connect
     connect(this, SIGNAL(plotRoiPulse(FLImProcess*, int)), this, SLOT(drawRoiPulse(FLImProcess*, int)));
@@ -122,22 +132,23 @@ void FlimCalibTab::createPulseView()
 void FlimCalibTab::createCalibWidgets()
 {
     // Create widgets for FLIM calibration layout
-    QGridLayout *pGridLayout_PulseView = new QGridLayout;
-    pGridLayout_PulseView->setSpacing(2);
+	QHBoxLayout *pHBoxLayout_Background = new QHBoxLayout;
+	pHBoxLayout_Background->setSpacing(2);
+    QGridLayout *pGridLayout_CalibWidgets = new QGridLayout;
+	pGridLayout_CalibWidgets->setSpacing(2);
 
     // Create widgets for FLIM calibration
 	m_pSlider_PX14DcOffset = new QSlider(this);
 	m_pSlider_PX14DcOffset->setOrientation(Qt::Horizontal);
-	m_pSlider_PX14DcOffset->setFixedWidth(110);
+	m_pSlider_PX14DcOffset->setFixedWidth(90);
 	m_pSlider_PX14DcOffset->setRange(0, 4095);
 	m_pSlider_PX14DcOffset->setValue(m_pConfig->px14DcOffset);
 
-	m_pLabel_PX14DcOffset = new QLabel(QString("Set DC Offset (%1)").arg(m_pConfig->px14DcOffset, 4, 10), this);
-	m_pLabel_PX14DcOffset->setFixedWidth(110);
+	m_pLabel_PX14DcOffset = new QLabel(QString(" DC Offset (%1) ").arg(m_pConfig->px14DcOffset, 4, 10), this);
 	m_pLabel_PX14DcOffset->setBuddy(m_pSlider_PX14DcOffset);
 
     m_pPushButton_CaptureBackground = new QPushButton(this);
-    m_pPushButton_CaptureBackground->setText("Capture Background");
+    m_pPushButton_CaptureBackground->setText("  Capture Background  ");
     m_pLineEdit_Background = new QLineEdit(this);
     m_pLineEdit_Background->setText(QString::number(m_pFLIm->_params.bg, 'f', 2));
     m_pLineEdit_Background->setFixedWidth(60);
@@ -147,22 +158,22 @@ void FlimCalibTab::createCalibWidgets()
     m_pLabel_DelayTimeOffset = new QLabel("Delay Time Offset", this);
 
     m_pLabel_Ch[0] = new QLabel("Ch 0 (IRF)", this);
-    m_pLabel_Ch[0]->setFixedWidth(60);
+    m_pLabel_Ch[0]->setFixedWidth(65);
     m_pLabel_Ch[0]->setAlignment(Qt::AlignCenter);
     m_pLabel_Ch[1] = new QLabel("Ch 1 (390)", this);
-    m_pLabel_Ch[1]->setFixedWidth(60);
+    m_pLabel_Ch[1]->setFixedWidth(65);
     m_pLabel_Ch[1]->setAlignment(Qt::AlignCenter);
     m_pLabel_Ch[2] = new QLabel("Ch 2 (450)", this);
-    m_pLabel_Ch[2]->setFixedWidth(60);
+    m_pLabel_Ch[2]->setFixedWidth(65);
     m_pLabel_Ch[2]->setAlignment(Qt::AlignCenter);
     m_pLabel_Ch[3] = new QLabel("Ch 3 (540)", this);
-    m_pLabel_Ch[3]->setFixedWidth(60);
+    m_pLabel_Ch[3]->setFixedWidth(65);
     m_pLabel_Ch[3]->setAlignment(Qt::AlignCenter);
 
     for (int i = 0; i < 4; i++)
     {
         m_pSpinBox_ChStart[i] = new QMySpinBox2(this);
-        m_pSpinBox_ChStart[i]->setFixedWidth(60);
+        m_pSpinBox_ChStart[i]->setFixedWidth(65);
         m_pSpinBox_ChStart[i]->setRange(0.0, m_pConfig->flimScans * m_pFLIm->_params.samp_intv);
         m_pSpinBox_ChStart[i]->setSingleStep(m_pFLIm->_params.samp_intv);
         m_pSpinBox_ChStart[i]->setValue((float)m_pFLIm->_params.ch_start_ind[i] * m_pFLIm->_params.samp_intv);
@@ -172,7 +183,7 @@ void FlimCalibTab::createCalibWidgets()
         if (i != 0)
         {
             m_pLineEdit_DelayTimeOffset[i - 1] = new QLineEdit(this);
-            m_pLineEdit_DelayTimeOffset[i - 1]->setFixedWidth(60);
+            m_pLineEdit_DelayTimeOffset[i - 1]->setFixedWidth(65);
             m_pLineEdit_DelayTimeOffset[i - 1]->setText(QString::number(m_pFLIm->_params.delay_offset[i - 1], 'f', 3));
             m_pLineEdit_DelayTimeOffset[i - 1]->setAlignment(Qt::AlignCenter);
         }
@@ -183,41 +194,35 @@ void FlimCalibTab::createCalibWidgets()
     resetChStart3((double)m_pFLIm->_params.ch_start_ind[3] * (double)m_pFLIm->_params.samp_intv);
 	
     m_pLabel_NanoSec[0] = new QLabel("nsec", this);
-    m_pLabel_NanoSec[0]->setFixedWidth(25);
+    m_pLabel_NanoSec[0]->setFixedWidth(30);
     m_pLabel_NanoSec[1] = new QLabel("nsec", this);
-    m_pLabel_NanoSec[1]->setFixedWidth(25);
+    m_pLabel_NanoSec[1]->setFixedWidth(30);
 
     // Set layout
-    QHBoxLayout *pHBoxLayout_Background = new QHBoxLayout;
-    pHBoxLayout_Background->setSpacing(2);
-	pHBoxLayout_Background->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed));
 	pHBoxLayout_Background->addWidget(m_pLabel_PX14DcOffset);
 	pHBoxLayout_Background->addWidget(m_pSlider_PX14DcOffset);
-	pHBoxLayout_Background->addWidget(new QLabel("   ", this));
+	pHBoxLayout_Background->addItem(new QSpacerItem(0, 0, QSizePolicy::MinimumExpanding, QSizePolicy::Fixed));
     pHBoxLayout_Background->addWidget(m_pPushButton_CaptureBackground);
     pHBoxLayout_Background->addWidget(m_pLineEdit_Background);
-	
-    pGridLayout_PulseView->addItem(pHBoxLayout_Background, 0, 0, 1, 6);
-    pGridLayout_PulseView->addItem(new QSpacerItem(0, 0, QSizePolicy::Fixed, QSizePolicy::Fixed), 0, 6);
-
-    pGridLayout_PulseView->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed), 2, 0);
-    pGridLayout_PulseView->addWidget(m_pLabel_ChStart, 2, 1);
-    pGridLayout_PulseView->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed), 3, 0);
-    pGridLayout_PulseView->addWidget(m_pLabel_DelayTimeOffset, 3, 1, 1, 2);
+		
+	pGridLayout_CalibWidgets->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed), 1, 0);
+	pGridLayout_CalibWidgets->addWidget(m_pLabel_ChStart, 1, 1);
+	pGridLayout_CalibWidgets->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed), 2, 0);
+	pGridLayout_CalibWidgets->addWidget(m_pLabel_DelayTimeOffset, 2, 1, 1, 2);
 
     for (int i = 0; i < 4; i++)
     {
-        pGridLayout_PulseView->addWidget(m_pLabel_Ch[i], 1, i + 2);
-        pGridLayout_PulseView->addWidget(m_pSpinBox_ChStart[i], 2, i + 2);
+		pGridLayout_CalibWidgets->addWidget(m_pLabel_Ch[i], 0, i + 2);
+		pGridLayout_CalibWidgets->addWidget(m_pSpinBox_ChStart[i], 1, i + 2);
     }
     for (int i = 0; i < 3; i++)
-    {
-        pGridLayout_PulseView->addWidget(m_pLineEdit_DelayTimeOffset[i], 3, i + 3);
-    }
-    pGridLayout_PulseView->addWidget(m_pLabel_NanoSec[0], 2, 6);
-    pGridLayout_PulseView->addWidget(m_pLabel_NanoSec[1], 3, 6);
+		pGridLayout_CalibWidgets->addWidget(m_pLineEdit_DelayTimeOffset[i], 2, i + 3);
+ 
+	pGridLayout_CalibWidgets->addWidget(m_pLabel_NanoSec[0], 1, 6);
+	pGridLayout_CalibWidgets->addWidget(m_pLabel_NanoSec[1], 2, 6);
 
-    m_pVBoxLayout->addItem(pGridLayout_PulseView);
+	m_pVBoxLayout->addItem(pHBoxLayout_Background);
+    m_pVBoxLayout->addItem(pGridLayout_CalibWidgets);
 
     // Connect
 	connect(m_pSlider_PX14DcOffset, SIGNAL(valueChanged(int)), this, SLOT(setPX14DcOffset(int)));
@@ -247,31 +252,34 @@ void FlimCalibTab::createHistogram()
     pGridLayout_IntensityHistogram->setSpacing(1);
 
     m_pLabel_FluIntensity = new QLabel("Fluorescence Intensity (AU)", this);
+	m_pLabel_FluIntensity->setFixedWidth(180);
 
     m_pRenderArea_FluIntensity = new QRenderArea(this);
     m_pRenderArea_FluIntensity->setSize({ 0, (double)N_BINS }, { 0, (double)m_pConfig->flimAlines });
-    m_pRenderArea_FluIntensity->setFixedSize(250, 150);
+    m_pRenderArea_FluIntensity->setFixedSize(210, 130);
     m_pRenderArea_FluIntensity->setGrid(4, 16, 1);
 
     m_pHistogramIntensity = new Histogram(N_BINS, m_pConfig->flimAlines);
 	
     m_pColorbar_FluIntensity = new QImageView(ColorTable::colortable(INTENSITY_COLORTABLE), 256, 1, false, this);
     m_pColorbar_FluIntensity->drawImage(color);
-    m_pColorbar_FluIntensity->getRender()->setFixedSize(250, 10);
+    m_pColorbar_FluIntensity->getRender()->setFixedSize(210, 10);
 
     m_pLabel_FluIntensityMin = new QLabel(this);
+	m_pLabel_FluIntensityMin->setFixedWidth(80);
     m_pLabel_FluIntensityMin->setText(QString::number(m_pConfig->flimIntensityRange[m_pConfig->flimEmissionChannel - 1].min, 'f', 1));
     m_pLabel_FluIntensityMin->setAlignment(Qt::AlignLeft);
     m_pLabel_FluIntensityMax = new QLabel(this);
+	m_pLabel_FluIntensityMax->setFixedWidth(80);
     m_pLabel_FluIntensityMax->setText(QString::number(m_pConfig->flimIntensityRange[m_pConfig->flimEmissionChannel - 1].max, 'f', 1));
     m_pLabel_FluIntensityMax->setAlignment(Qt::AlignRight);
 
     m_pLabel_FluIntensityMean = new QLabel(this);
-    m_pLabel_FluIntensityMean->setFixedWidth(125);
+    m_pLabel_FluIntensityMean->setFixedWidth(80);
     m_pLabel_FluIntensityMean->setText(QString("Mean: %1").arg(0.0, 4, 'f', 3));
     m_pLabel_FluIntensityMean->setAlignment(Qt::AlignCenter);
     m_pLabel_FluIntensityStd = new QLabel(this);
-    m_pLabel_FluIntensityStd->setFixedWidth(125);
+    m_pLabel_FluIntensityStd->setFixedWidth(80);
     m_pLabel_FluIntensityStd->setText(QString("Std: %1").arg(0.0, 4, 'f', 3));
     m_pLabel_FluIntensityStd->setAlignment(Qt::AlignCenter);
 
@@ -280,31 +288,34 @@ void FlimCalibTab::createHistogram()
     pGridLayout_LifetimeHistogram->setSpacing(1);
 
     m_pLabel_FluLifetime = new QLabel("Fluorescence Lifetime (nsec)", this);
+	m_pLabel_FluLifetime->setFixedWidth(180);
 
     m_pRenderArea_FluLifetime = new QRenderArea(this);
     m_pRenderArea_FluLifetime->setSize({ 0, (double)N_BINS }, { 0, (double)m_pConfig->flimAlines });
-    m_pRenderArea_FluLifetime->setFixedSize(250, 150);
+    m_pRenderArea_FluLifetime->setFixedSize(210, 130);
     m_pRenderArea_FluLifetime->setGrid(4, 16, 1);
 
     m_pHistogramLifetime = new Histogram(N_BINS, m_pConfig->flimAlines);
 
     m_pColorbar_FluLifetime = new QImageView(ColorTable::colortable(LIFETIME_COLORTABLE), 256, 1, false, this);
     m_pColorbar_FluLifetime->drawImage(color);
-    m_pColorbar_FluLifetime->getRender()->setFixedSize(250, 10);
+    m_pColorbar_FluLifetime->getRender()->setFixedSize(210, 10);
 
     m_pLabel_FluLifetimeMin = new QLabel(this);
+	m_pLabel_FluLifetimeMin->setFixedWidth(80);
     m_pLabel_FluLifetimeMin->setText(QString::number(m_pConfig->flimLifetimeRange[m_pConfig->flimEmissionChannel - 1].min, 'f', 1));
     m_pLabel_FluLifetimeMin->setAlignment(Qt::AlignLeft);
     m_pLabel_FluLifetimeMax = new QLabel(this);
+	m_pLabel_FluLifetimeMax->setFixedWidth(80);
     m_pLabel_FluLifetimeMax->setText(QString::number(m_pConfig->flimLifetimeRange[m_pConfig->flimEmissionChannel - 1].max, 'f', 1));
     m_pLabel_FluLifetimeMax->setAlignment(Qt::AlignRight);
 
     m_pLabel_FluLifetimeMean = new QLabel(this);
-    m_pLabel_FluLifetimeMean->setFixedWidth(125);
+    m_pLabel_FluLifetimeMean->setFixedWidth(80);
     m_pLabel_FluLifetimeMean->setText(QString("Mean: %1").arg(0.0, 4, 'f', 3));
     m_pLabel_FluLifetimeMean->setAlignment(Qt::AlignCenter);
     m_pLabel_FluLifetimeStd = new QLabel(this);
-    m_pLabel_FluLifetimeStd->setFixedWidth(125);
+    m_pLabel_FluLifetimeStd->setFixedWidth(80);
     m_pLabel_FluLifetimeStd->setText(QString("Std: %1").arg(0.0, 4, 'f', 3));
     m_pLabel_FluLifetimeStd->setAlignment(Qt::AlignCenter);
 	
@@ -313,24 +324,22 @@ void FlimCalibTab::createHistogram()
     pGridLayout_IntensityHistogram->addWidget(m_pRenderArea_FluIntensity, 1, 0, 1, 4);
     pGridLayout_IntensityHistogram->addWidget(m_pColorbar_FluIntensity->getRender(), 2, 0, 1, 4);
 
-    pGridLayout_IntensityHistogram->addWidget(m_pLabel_FluIntensityMin, 3, 0);
-    pGridLayout_IntensityHistogram->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed), 3, 1, 1, 2);
-    pGridLayout_IntensityHistogram->addWidget(m_pLabel_FluIntensityMax, 3, 3);
+    pGridLayout_IntensityHistogram->addWidget(m_pLabel_FluIntensityMin, 3, 0, 1, 2, Qt::AlignLeft);
+    pGridLayout_IntensityHistogram->addWidget(m_pLabel_FluIntensityMax, 3, 2, 1, 2, Qt::AlignRight);
 
-    pGridLayout_IntensityHistogram->addWidget(m_pLabel_FluIntensityMean, 4, 0, 1, 2);
-    pGridLayout_IntensityHistogram->addWidget(m_pLabel_FluIntensityStd, 4, 2, 1, 2);
+    pGridLayout_IntensityHistogram->addWidget(m_pLabel_FluIntensityMean, 4, 0, 1, 2, Qt::AlignCenter);
+    pGridLayout_IntensityHistogram->addWidget(m_pLabel_FluIntensityStd, 4, 2, 1, 2, Qt::AlignCenter);
 
 
     pGridLayout_LifetimeHistogram->addWidget(m_pLabel_FluLifetime, 0, 0, 1, 4);
     pGridLayout_LifetimeHistogram->addWidget(m_pRenderArea_FluLifetime, 1, 0, 1, 4);
     pGridLayout_LifetimeHistogram->addWidget(m_pColorbar_FluLifetime->getRender(), 2, 0, 1, 4);
 
-    pGridLayout_LifetimeHistogram->addWidget(m_pLabel_FluLifetimeMin, 3, 0);
-    pGridLayout_LifetimeHistogram->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed), 3, 1, 1, 2);
-    pGridLayout_LifetimeHistogram->addWidget(m_pLabel_FluLifetimeMax, 3, 3);
+    pGridLayout_LifetimeHistogram->addWidget(m_pLabel_FluLifetimeMin, 3, 0, 1, 2, Qt::AlignLeft);
+    pGridLayout_LifetimeHistogram->addWidget(m_pLabel_FluLifetimeMax, 3, 2, 1, 2, Qt::AlignRight);
 
-    pGridLayout_LifetimeHistogram->addWidget(m_pLabel_FluLifetimeMean, 4, 0, 1, 2);
-    pGridLayout_LifetimeHistogram->addWidget(m_pLabel_FluLifetimeStd, 4, 2, 1, 2);
+    pGridLayout_LifetimeHistogram->addWidget(m_pLabel_FluLifetimeMean, 4, 0, 1, 2, Qt::AlignCenter);
+    pGridLayout_LifetimeHistogram->addWidget(m_pLabel_FluLifetimeStd, 4, 2, 1, 2, Qt::AlignCenter);
 
 
     pHBoxLayout_Histogram->addItem(pGridLayout_IntensityHistogram);
@@ -590,7 +599,7 @@ void FlimCalibTab::setPX14DcOffset(int offset)
 //	pDataAcq->SetDcOffset(offset);
 	
 	m_pConfig->px14DcOffset = offset;
-	m_pLabel_PX14DcOffset->setText(QString("Set DC Offset (%1)").arg(m_pConfig->px14DcOffset, 4, 10));
+	m_pLabel_PX14DcOffset->setText(QString(" DC Offset (%1) ").arg(m_pConfig->px14DcOffset, 4, 10));
 }
 
 void FlimCalibTab::captureBackground()

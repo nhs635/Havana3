@@ -79,7 +79,7 @@ bool DataAcquisition::InitializeAcquistion()
 	m_pAxsunCapture->image_width = m_pConfig->octAlines;
 	
     // Initialization for DAQ & Axsun Capture
-    if (!m_pDaq->set_init() || !m_pAxsunCapture->initializeCapture())
+    if (!m_pDaq->set_init() || !m_pAxsunCapture->initializeCapture()) 
     {
 		StopAcquisition();
 
