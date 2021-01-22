@@ -4,7 +4,9 @@
 
 AxsunControl::AxsunControl() :
 	m_pAxsunOCTControl(nullptr),
-	m_bIsConnected(DISCONNECTED)
+	m_bIsConnected(DISCONNECTED),
+	m_daq_device(-1),
+	m_laser_device(-1)
 {
 }
 
@@ -22,7 +24,7 @@ AxsunControl::~AxsunControl()
 }
 
 
-bool AxsunControl::initialize()
+bool AxsunControl::initialize(int n_device)
 {
 	HRESULT result;
 	unsigned long retvallong;
@@ -43,12 +45,12 @@ bool AxsunControl::initialize()
 		dumpControlError(result, pPreamble);
 		return false;
 	}
-	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+	std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
-	// Connect Device (DAQ, Laser)
+	// Connect Device (DAQ and/or Laser)
 	unsigned long deviceNum = 0;
 	BSTR systemTypeString = SysAllocString(L"");
-	for (int i = 0; i < 2; i++) // 0: DAQ [42], 1: Light Source [40]
+	for (int i = 0; i < n_device; i++) // DAQ [42], Light Source [40]
 	{
 		result = m_pAxsunOCTControl->ConnectToOCTDevice(i, &m_bIsConnected);
 		if (result != S_OK)
@@ -65,6 +67,11 @@ bool AxsunControl::initialize()
 				dumpControlError(result, pPreamble);
 				return false;
 			}
+			
+			if (deviceNum == DAQ_DEVICE)
+				m_daq_device = i;
+			else if (deviceNum == LASER_DEVICE)
+				m_laser_device = i;
 
 			char msg[256];
 			sprintf(msg, "[Axsun Control] %S (deviceNum: %d) is successfully connected.", systemTypeString, deviceNum);
@@ -80,21 +87,24 @@ bool AxsunControl::initialize()
 	}
 	SysFreeString(systemTypeString);
 
-	// Image_Sync Setting (LVCMOS)
-	if (writeFPGARegSingleBit(2, 11, false) != true) return false; // external image sync
-	if (writeFPGARegSingleBit(2, 9, true) != true) return false;   // LVCMOS input (X)
-	if (writeFPGARegSingleBit(2, 10, true) != true) return false;  
-	if (result != S_OK)
+	if (m_daq_device > 0)
 	{
-		dumpControlError(result, pPreamble);
-		return false;
-	}
-	SendStatusMessage("[Axsun Control] Image_Sync mode is set to LVCMOS.", false);
+		// Image_Sync Setting (LVCMOS)
+		if (writeFPGARegSingleBit(2, 11, false) != true) return false; // external image sync
+		if (writeFPGARegSingleBit(2, 9, true) != true) return false;   // LVCMOS input (X)
+		if (writeFPGARegSingleBit(2, 10, true) != true) return false;
+		if (result != S_OK)
+		{
+			dumpControlError(result, pPreamble);
+			return false;
+		}
+		SendStatusMessage("[Axsun Control] Image_Sync mode is set to LVCMOS.", false);
 
-	// Image Channel Setting (Ch 1 H Only)
-	if (writeFPGARegSingleBit(20, 13, true) != true) return false;
-	if (writeFPGARegSingleBit(20, 5, true) != true) return false;
-	SendStatusMessage("[Axsun Control] Ch 1(H) signal is considered only.", false);
+		// Image Channel Setting (Ch 1 H Only)
+		if (writeFPGARegSingleBit(20, 13, true) != true) return false;
+		if (writeFPGARegSingleBit(20, 5, true) != true) return false;
+		SendStatusMessage("[Axsun Control] Ch 1(H) signal is considered only.", false);
+	}
 
 	return true;
 }
@@ -106,7 +116,7 @@ bool AxsunControl::setLaserEmission(bool status)
 	unsigned long retvallong;
 	const char* pPreamble = "[Axsun Control] Failed to set Laser Emission: ";
 	
-	result = m_pAxsunOCTControl->ConnectToOCTDevice(LASER_DEVICE, &m_bIsConnected);
+	result = m_pAxsunOCTControl->ConnectToOCTDevice(m_laser_device, &m_bIsConnected);
 	if (result != S_OK)
 	{
 		dumpControlError(result, pPreamble);
@@ -145,7 +155,7 @@ bool AxsunControl::setLiveImagingMode(bool status)
 	HRESULT result;
 	const char* pPreamble = "[Axsun Control] Failed to set Live Imaging mode: ";
 
-	result = m_pAxsunOCTControl->ConnectToOCTDevice(DAQ_DEVICE, &m_bIsConnected);
+	result = m_pAxsunOCTControl->ConnectToOCTDevice(m_daq_device, &m_bIsConnected);
 	if (result != S_OK)
 	{
 		dumpControlError(result, pPreamble);
@@ -232,7 +242,7 @@ bool AxsunControl::setBackground(const unsigned short* pBackground)
 	unsigned long retvallong;
 	const char* pPreamble = "[Axsun Control] Failed to set background: ";
 
-	result = m_pAxsunOCTControl->ConnectToOCTDevice(DAQ_DEVICE, &m_bIsConnected);
+	result = m_pAxsunOCTControl->ConnectToOCTDevice(m_daq_device, &m_bIsConnected);
 	if (result != S_OK)
 	{
 		dumpControlError(result, pPreamble);
@@ -276,7 +286,7 @@ bool AxsunControl::setDispersionCompensation(double a2, double a3, int length)
     unsigned long retvallong;
     const char* pPreamble = "[Axsun Control] Failed to set dispersion compensating window function: ";
 
-    result = m_pAxsunOCTControl->ConnectToOCTDevice(DAQ_DEVICE, &m_bIsConnected);
+    result = m_pAxsunOCTControl->ConnectToOCTDevice(m_daq_device, &m_bIsConnected);
     if (result != S_OK)
     {
         dumpControlError(result, pPreamble);
@@ -358,7 +368,7 @@ bool AxsunControl::setBypassMode(bypass_mode _bypass_mode)
     unsigned long retvallong;
     const char* pPreamble = "[Axsun Control] Failed to set bypass mode: ";
 
-    result = m_pAxsunOCTControl->ConnectToOCTDevice(DAQ_DEVICE, &m_bIsConnected);
+    result = m_pAxsunOCTControl->ConnectToOCTDevice(m_daq_device, &m_bIsConnected);
     if (result != S_OK)
     {
         dumpControlError(result, pPreamble);
@@ -464,7 +474,7 @@ bool AxsunControl::setVDLHome()
     unsigned long retvallong;
     const char* pPreamble = "[Axsun Control] Failed to set VDL home: ";
 
-    result = m_pAxsunOCTControl->ConnectToOCTDevice(DAQ_DEVICE, &m_bIsConnected);
+    result = m_pAxsunOCTControl->ConnectToOCTDevice(m_daq_device, &m_bIsConnected);
     if (result != S_OK)
     {
         dumpControlError(result, pPreamble);
@@ -499,7 +509,7 @@ bool AxsunControl::setVDLLength(float position)
 	unsigned long retvallong;
 	const char* pPreamble = "[Axsun Control] Failed to set VDL length: ";
 
-	result = m_pAxsunOCTControl->ConnectToOCTDevice(DAQ_DEVICE, &m_bIsConnected);
+	result = m_pAxsunOCTControl->ConnectToOCTDevice(m_daq_device, &m_bIsConnected);
 	if (result != S_OK)
 	{
 		dumpControlError(result, pPreamble);
@@ -537,7 +547,7 @@ bool AxsunControl::setClockDelay(unsigned long delay)
 	unsigned long retvallong;
 	const char* pPreamble = "[Axsun Control] Failed to set clock delay: ";
 
-    result = m_pAxsunOCTControl->ConnectToOCTDevice(LASER_DEVICE, &m_bIsConnected);
+    result = m_pAxsunOCTControl->ConnectToOCTDevice(m_laser_device, &m_bIsConnected);
 	if (result != S_OK)
 	{
 		dumpControlError(result, pPreamble);
@@ -602,7 +612,7 @@ bool AxsunControl::getDeviceState()
 	//unsigned long retvallong;
 	const char* pPreamble = "[Axsun Control] Failed to get device state: ";
 
-	result = m_pAxsunOCTControl->ConnectToOCTDevice(LASER_DEVICE, &m_bIsConnected);
+	result = m_pAxsunOCTControl->ConnectToOCTDevice(m_laser_device, &m_bIsConnected);
 	if (result != S_OK)
 	{
 		dumpControlError(result, pPreamble);
@@ -662,7 +672,7 @@ bool AxsunControl::writeFPGARegSingleBit(unsigned long regNum, int bitNum, bool 
 	unsigned long retvallong;
 	const char* pPreamble = "[Axsun Control] Failed to write FPGA single register bit: ";
 
-	result = m_pAxsunOCTControl->ConnectToOCTDevice(DAQ_DEVICE, &m_bIsConnected);
+	result = m_pAxsunOCTControl->ConnectToOCTDevice(m_daq_device, &m_bIsConnected);
 	if (result != S_OK)
 	{
 		dumpControlError(result, pPreamble);
@@ -716,7 +726,7 @@ bool AxsunControl::setOffset(double offset)
 	unsigned long retvallong;
 	const char* pPreamble = "[Axsun Control] Failed to set Offset: ";
 
-	result = m_pAxsunOCTControl->ConnectToOCTDevice(DAQ_DEVICE, &m_bIsConnected);
+	result = m_pAxsunOCTControl->ConnectToOCTDevice(m_daq_device, &m_bIsConnected);
 	if (result != S_OK)
 	{
 		dumpControlError(result, pPreamble);
@@ -785,7 +795,7 @@ bool AxsunControl::setGain(double gain)
 	unsigned long retvallong;
 	const char* pPreamble = "[Axsun Control] Failed to set Gain: ";
 
-	result = m_pAxsunOCTControl->ConnectToOCTDevice(DAQ_DEVICE, &m_bIsConnected);
+	result = m_pAxsunOCTControl->ConnectToOCTDevice(m_daq_device, &m_bIsConnected);
 	if (result != S_OK)
 	{
 		dumpControlError(result, pPreamble);

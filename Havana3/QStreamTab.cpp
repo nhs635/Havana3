@@ -11,8 +11,12 @@
 
 #include <DataAcquisition/DataAcquisition.h>
 #include <DataAcquisition/ThreadManager.h>
+#ifndef NEXT_GEN_SYSTEM
 #include <DataAcquisition/AxsunCapture/AxsunCapture.h>
 #include <DataAcquisition/SignatecDAQ/SignatecDAQ.h>
+#else
+#include <DataAcquisition/AlazarDAQ/AlazarDAQ.h>
+#endif
 #include <DataAcquisition/FLImProcess/FLImProcess.h>
 
 #include <MemoryBuffer/MemoryBuffer.h>
@@ -319,26 +323,30 @@ bool QStreamTab::enableDeviceControl(bool enabled)
 {
 	if (enabled)
 	{		
-		//// Set FLIm system control
-		//if (!m_pDeviceControl->connectFlimLaser(true)) return false;
-		//if (!m_pDeviceControl->applyPmtGainVoltage(true)) return false;
+		// Set FLIm system control
+		if (!m_pDeviceControl->connectFlimLaser(true)) return false;
+		if (!m_pDeviceControl->applyPmtGainVoltage(true)) return false;
 
-		//// Set OCT system control
-		//if (!m_pDeviceControl->connectAxsunControl(true)) return false;
+		// Set OCT system control
+		if (!m_pDeviceControl->connectAxsunControl(true)) return false;
 
-		//// Set master synchronization control
-		//if (!m_pDeviceControl->startSynchronization(true)) return false;
+		// Set master synchronization control
+		if (!m_pDeviceControl->startSynchronization(true)) return false;
 
-		//// Set master trigger generation + Axsun imaging mode on
-		//std::this_thread::sleep_for(std::chrono::milliseconds(200));
-		//m_pDeviceControl->setLiveImaging(true);
-		//m_pDeviceControl->setLightSource(true);
+		// Set master trigger generation + Axsun imaging mode on
+		std::this_thread::sleep_for(std::chrono::milliseconds(200));
+#ifndef NEXT_GEN_SYSTEM
+		m_pDeviceControl->setLiveImaging(true);
+#endif
+		m_pDeviceControl->setLightSource(true);
 	}
 	else
 	{
 		// Turn off the master trigger generation
 		m_pDeviceControl->setLightSource(false);
+#ifndef NEXT_GEN_SYSTEM
 		m_pDeviceControl->setLiveImaging(false);
+#endif
 
 		// Turn off all the devices
 		m_pDeviceControl->setAllDeviceOff();
@@ -350,7 +358,7 @@ bool QStreamTab::enableDeviceControl(bool enabled)
 
 void QStreamTab::setFlimAcquisitionCallback()
 {
-    m_pDataAcquisition->ConnectDaqAcquiredFlimData([&](int frame_count, const np::Array<uint16_t, 2>& frame) {
+    m_pDataAcquisition->ConnectAcquiredFlimData([&](int frame_count, const np::Array<uint16_t, 2>& frame) {
 
         // Data transfer
         if (!(frame_count % RENEWAL_COUNT))
@@ -415,11 +423,11 @@ void QStreamTab::setFlimAcquisitionCallback()
 		}
     });
 
-    m_pDataAcquisition->ConnectDaqStopFlimData([&]() {
+    m_pDataAcquisition->ConnectStopFlimData([&]() {
         m_syncFlimProcessing.Queue_sync.push(nullptr);
     });
 
-    m_pDataAcquisition->ConnectDaqSendStatusMessage([&](const char * msg, bool is_error) {
+    m_pDataAcquisition->ConnectFlimSendStatusMessage([&](const char * msg, bool is_error) {
 		if (is_error)
 		{
 			if (m_pDataAcquisition->getAcquisitionState())
@@ -474,12 +482,14 @@ void QStreamTab::setFlimProcessingCallback()
 
                 // Transfer to FLIm calibration dlg
 				if (m_pSettingDlg)
-					if (m_pSettingDlg->getTabWidget()->currentWidget() == m_pSettingDlg->getFlimCalibTab())
+				{
+					if (m_pSettingDlg->getTabWidget()->currentIndex() == 2) // FLIm calibration view
 						emit m_pSettingDlg->getFlimCalibTab()->plotRoiPulse(pFLIm, 0);
+				}
 				
                 // Push the buffers to sync Queues
                 m_syncFlimVisualization.Queue_sync.push(flim_ptr);
-                //m_syncVisualization.n_exec++;
+                ///m_syncVisualization.n_exec++;
 
                 // Return (push) the buffer to the previous threading queue
                 {
@@ -523,7 +533,7 @@ void QStreamTab::setFlimProcessingCallback()
 
 void QStreamTab::setOctProcessingCallback()
 {
-    m_pDataAcquisition->ConnectAxsunAcquiredOctData([&](uint32_t frame_count, const np::Uint8Array2& frame) {
+    m_pDataAcquisition->ConnectAcquiredOctData([&](uint32_t frame_count, const np::Uint8Array2& frame) {
 				
         // Mirroring
 		if (m_pConfig->verticalMirroring)
@@ -557,7 +567,7 @@ void QStreamTab::setOctProcessingCallback()
 
                 // Push the buffer to sync Queue
                 m_syncOctVisualization.Queue_sync.push(oct_ptr);
-                //m_syncOctVisualization.n_exec++;
+                ///m_syncOctVisualization.n_exec++;
             }
         }
 
@@ -590,11 +600,11 @@ void QStreamTab::setOctProcessingCallback()
         }
     });
 
-    m_pDataAcquisition->ConnectAxsunStopOctData([&]() {
+    m_pDataAcquisition->ConnectStopOctData([&]() {
         m_syncOctVisualization.Queue_sync.push(nullptr);
     });
 
-    m_pDataAcquisition->ConnectAxsunSendStatusMessage([&](const char * msg, bool is_error) {
+    m_pDataAcquisition->ConnectFlimSendStatusMessage([&](const char * msg, bool is_error) {
 		if (is_error)
 		{
 			if (m_pDataAcquisition->getAcquisitionState())
@@ -814,11 +824,19 @@ void QStreamTab::onTimerSyncMonitor()
 	size_t fp_bfn = getFlimProcessingBufferQueueSize();
 	size_t fv_bfn = getFlimVisualizationBufferQueueSize();
 	size_t ov_bfn = getOctVisualizationBufferQueueSize();
+#ifndef NEXT_GEN_SYSTEM
 	double oct_fps = m_pDataAcquisition->getAxsunCapture()->frameRate;
 	double flim_fps = m_pDataAcquisition->getDigitizer()->frameRate;
 	uint32_t dropped_packets = m_pDataAcquisition->getAxsunCapture()->dropped_packets;
 
 	m_pLabel_StreamingSyncStatus->setText(QString("[Sync]\nFP#: %1\nFV#: %2\nOV#: %3\nOCT: %4 fps\nFLIM: %5 fps\ndrop ptks: %6")
 		.arg(fp_bfn, 3).arg(fv_bfn, 3).arg(ov_bfn, 3).arg(oct_fps, 3, 'f', 2).arg(flim_fps, 3, 'f', 2).arg(dropped_packets));
+#else
+	double oct_fps;// = m_pDataAcquisition->getOctDigitizer()->frameRate;
+	double flim_fps;// = m_pDataAcquisition->getFlimDigitizer()->frameRate;
+
+	m_pLabel_StreamingSyncStatus->setText(QString("[Sync]\nFP#: %1\nFV#: %2\nOV#: %3\nOCT: %4 fps\nFLIM: %5 fps")
+		.arg(fp_bfn, 3).arg(fv_bfn, 3).arg(ov_bfn, 3).arg(oct_fps, 3, 'f', 2).arg(flim_fps, 3, 'f', 2));
+#endif
 }
 #endif

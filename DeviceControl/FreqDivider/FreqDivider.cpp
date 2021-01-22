@@ -29,7 +29,7 @@ bool FreqDivider::initialize()
 
     int lowTicks = (int)(ceil(slow / 2));
     int highTicks = (int)(floor(slow / 2));
-    uint64_t sampsPerChan = 120000;
+    uint64_t sampsPerChan = 210000;
     int res;
 
     if ((res = DAQmxCreateTask("", &_taskHandle)) != 0)
@@ -37,9 +37,7 @@ bool FreqDivider::initialize()
         dumpError(res, "[SYNC ERROR] Failed to set NI Counter1: ");
         return false;
     }
-
-	printf("%s %s\n", counterChannel, sourceTerminal);
-
+	
     if ((res = DAQmxCreateCOPulseChanTicks(_taskHandle, counterChannel, NULL, sourceTerminal, DAQmx_Val_Low, 0, lowTicks, highTicks)) != 0)
     {
         dumpError(res, "[SYNC ERROR] Failed to set NI Counter2: ");

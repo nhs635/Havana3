@@ -227,14 +227,14 @@ void QViewTab::setStreamingBuffersObjects()
 	if (m_pImgObjCircImage) delete m_pImgObjCircImage;
     m_pImgObjCircImage = new ImageObject(2 * m_pConfig->octScans, 2 * m_pConfig->octScans, temp_ctable.m_colorTableVector.at(OCT_COLORTABLE));
 	if (m_pImgObjIntensity) delete m_pImgObjIntensity;
-    m_pImgObjIntensity = new ImageObject(m_pConfig->flimAlines, RING_THICKNESS, temp_ctable.m_colorTableVector.at(ColorTable::gray));
+    m_pImgObjIntensity = new ImageObject(m_pConfig->flimAlines, 1, temp_ctable.m_colorTableVector.at(ColorTable::gray));
 	if (m_pImgObjLifetime) delete m_pImgObjLifetime;
-    m_pImgObjLifetime = new ImageObject(m_pConfig->flimAlines, RING_THICKNESS, temp_ctable.m_colorTableVector.at(LIFETIME_COLORTABLE));
+    m_pImgObjLifetime = new ImageObject(m_pConfig->flimAlines, 1, temp_ctable.m_colorTableVector.at(LIFETIME_COLORTABLE));
 
 	if (m_pCirc) delete m_pCirc;
     m_pCirc = new circularize(m_pConfig->octScans, m_pConfig->octAlines, false);
 	if (m_pMedfiltRect) delete m_pMedfiltRect;
-	m_pMedfiltRect = new medfilt(m_pConfig->octAlines, m_pConfig->octScans, 3, 3);
+	m_pMedfiltRect = new medfilt(m_pConfig->octScans, m_pConfig->octAlines, 3, 3);
 
 	m_pConfig->writeToLog("Streaming buffers and objects are initialized.");
 }
@@ -256,8 +256,8 @@ void QViewTab::setBuffers(Configuration* pConfig)
 	// Data buffers
 	for (int i = 0; i < pConfig->frames; i++)
 	{
-		np::Uint8Array2 buffer = np::Uint8Array2(pConfig->octAlines, pConfig->octScans);
-		memset(buffer, 0, sizeof(uint8_t) * pConfig->octAlines * pConfig->octScans);
+		np::Uint8Array2 buffer = np::Uint8Array2(pConfig->octScans, pConfig->octAlines);
+		memset(buffer, 0, sizeof(uint8_t) * pConfig->octScans * pConfig->octAlines);
 		m_vectorOctImage.push_back(buffer);
 	}
 	m_octProjection = np::Uint8Array2(pConfig->octAlines, pConfig->frames);
@@ -282,13 +282,13 @@ void QViewTab::setObjects(Configuration * pConfig)
 	ColorTable temp_ctable;
 
 	if (m_pImgObjRectImage) delete m_pImgObjRectImage;
-	m_pImgObjRectImage = new ImageObject(pConfig->octAlines, pConfig->octScans, temp_ctable.m_colorTableVector.at(OCT_COLORTABLE));
+	m_pImgObjRectImage = new ImageObject(pConfig->octScans, pConfig->octAlines, temp_ctable.m_colorTableVector.at(OCT_COLORTABLE));
 	if (m_pImgObjCircImage) delete m_pImgObjCircImage;
 	m_pImgObjCircImage = new ImageObject(2 * m_pConfig->octScans, 2 * m_pConfig->octScans, temp_ctable.m_colorTableVector.at(OCT_COLORTABLE));
-	if (m_pImgObjIntensity) delete m_pImgObjIntensity;
-	m_pImgObjIntensity = new ImageObject(pConfig->flimAlines, RING_THICKNESS, temp_ctable.m_colorTableVector.at(ColorTable::gray));
-	if (m_pImgObjLifetime) delete m_pImgObjLifetime;
-	m_pImgObjLifetime = new ImageObject(RING_THICKNESS, pConfig->flimAlines, temp_ctable.m_colorTableVector.at(LIFETIME_COLORTABLE));
+	///if (m_pImgObjIntensity) delete m_pImgObjIntensity;
+	///m_pImgObjIntensity = new ImageObject(RING_THICKNESS, pConfig->flimAlines, temp_ctable.m_colorTableVector.at(ColorTable::gray));
+	///if (m_pImgObjLifetime) delete m_pImgObjLifetime;
+	///m_pImgObjLifetime = new ImageObject(RING_THICKNESS, pConfig->flimAlines, temp_ctable.m_colorTableVector.at(LIFETIME_COLORTABLE));
 
 	// En face map visualization buffers
 	if (m_pImgObjOctProjection) delete m_pImgObjOctProjection;
@@ -304,10 +304,10 @@ void QViewTab::setObjects(Configuration * pConfig)
 	
 	// Circ & Medfilt objects
 	if (m_pCirc) delete m_pCirc;
-	m_pCirc = new circularize(pConfig->octAlines, pConfig->octScans, false);
+	m_pCirc = new circularize(pConfig->octScans, pConfig->octAlines, false);
 
 	if (m_pMedfiltRect) delete m_pMedfiltRect;
-	m_pMedfiltRect = new medfilt(pConfig->octAlines, pConfig->octScans, 3, 3);
+	m_pMedfiltRect = new medfilt(pConfig->octScans, pConfig->octAlines, 3, 3);
 	if (m_pMedfiltIntensityMap) delete m_pMedfiltIntensityMap;
 	m_pMedfiltIntensityMap = new medfilt(frames4, pConfig->flimAlines, 3, 5);
 	if (m_pMedfiltLifetimeMap) delete m_pMedfiltLifetimeMap;
@@ -369,7 +369,7 @@ void QViewTab::visualizeEnFaceMap(bool scaling)
 	{
 		if (scaling)
 		{
-			//// Scaling OCT projection
+			// Scaling OCT projection
 			//IppiSize roi_proj = { m_octProjection.size(0), m_octProjection.size(1) };
 			//IppiSize roi_proj4 = { roi_proj.width, ROUND_UP_4S(roi_proj.height) };
 
@@ -385,37 +385,7 @@ void QViewTab::visualizeEnFaceMap(bool scaling)
 			//circShift(m_pImgObjOctProjection->arr, m_pConfig->rotatedAlines);
 
 			// Scaling FLIM map
-			IppiSize roi_flimproj = { m_intensityMap.at(0).size(0), m_intensityMap.at(0).size(1) };
-			IppiSize roi_flimproj4 = { roi_flimproj.width, ((roi_flimproj.height + 3) >> 2) << 2 };
-
-			np::Uint8Array2 scale_temp(roi_flimproj4.width, roi_flimproj4.height);
-
-			// Intensity map			
-			ippiScale_32f8u_C1R(m_intensityMap.at(m_pComboBox_ViewMode->currentIndex()), sizeof(float) * roi_flimproj.width,
-				scale_temp.raw_ptr(), sizeof(uint8_t) * roi_flimproj4.width, roi_flimproj,
-				m_pConfig->flimIntensityRange[m_pConfig->flimEmissionChannel - 1].min,
-				m_pConfig->flimIntensityRange[m_pConfig->flimEmissionChannel - 1].max);
-			ippiTranspose_8u_C1R(scale_temp.raw_ptr(), sizeof(uint8_t) * roi_flimproj4.width,
-				m_pImgObjIntensityMap->arr.raw_ptr(), sizeof(uint8_t) * roi_flimproj4.height, roi_flimproj4);
-			circShift(m_pImgObjIntensityMap->arr, int(m_pConfig->rotatedAlines / 4));
-			(*m_pMedfiltIntensityMap)(m_pImgObjIntensityMap->arr.raw_ptr());
-
-			// Lifetime map
-			ippiScale_32f8u_C1R(m_lifetimeMap.at(m_pComboBox_ViewMode->currentIndex()), sizeof(float) * roi_flimproj.width,
-				scale_temp.raw_ptr(), sizeof(uint8_t) * roi_flimproj4.width, roi_flimproj,
-				m_pConfig->flimLifetimeRange[m_pConfig->flimEmissionChannel - 1].min,
-				m_pConfig->flimLifetimeRange[m_pConfig->flimEmissionChannel - 1].max);
-			ippiTranspose_8u_C1R(scale_temp.raw_ptr(), sizeof(uint8_t) * roi_flimproj4.width,
-				m_pImgObjLifetimeMap->arr.raw_ptr(), sizeof(uint8_t) * roi_flimproj4.height, roi_flimproj);
-			circShift(m_pImgObjLifetimeMap->arr, int(m_pConfig->rotatedAlines / 4));
-			(*m_pMedfiltLifetimeMap)(m_pImgObjLifetimeMap->arr.raw_ptr());
-
-			// RGB conversion
-			m_pImgObjIntensityMap->convertRgb();
-			m_pImgObjLifetimeMap->convertRgb();
-
-			// Intensity-weight lifetime map
-			ippsMul_8u_ISfs(m_pImgObjIntensityMap->qrgbimg.bits(), m_pImgObjLifetimeMap->qrgbimg.bits(), m_pImgObjIntensityMap->qrgbimg.byteCount(), 8);
+			scaleFLImEnFaceMap(m_pImgObjIntensityMap, m_pImgObjLifetimeMap, m_pComboBox_ViewMode->currentIndex());
 		}
 
 		emit paintEnFaceMap(m_pImgObjLifetimeMap->qrgbimg.bits());
@@ -450,7 +420,7 @@ void QViewTab::visualizeImage(uint8_t* oct_im, float* intensity, float* lifetime
 	ippsMul_8u_ISfs(m_pImgObjIntensity->qrgbimg.bits(), m_pImgObjLifetime->qrgbimg.bits(), m_pImgObjIntensity->qrgbimg.byteCount(), 8);
 
 	// Copy FLIM rings
-	tbb::parallel_for(tbb::blocked_range<size_t>(1, (size_t)RING_THICKNESS),
+	tbb::parallel_for(tbb::blocked_range<size_t>(0, (size_t)RING_THICKNESS),
 		[&](const tbb::blocked_range<size_t>& r) {
 		for (size_t i = r.begin(); i != r.end(); ++i)
 		{
@@ -493,7 +463,8 @@ void QViewTab::visualizeImage(int frame)
 			for (size_t i = r.begin(); i != r.end(); ++i)
 			{
 				ippiCopy_8u_C3R(temp_imgobj.qrgbimg.constBits(), 3 * roi_flimring.width,
-					m_pImgObjRectImage->qrgbimg.bits() + 3 * (m_pImgObjRectImage->arr.size(0) - RING_THICKNESS + i), 3 * m_pImgObjRectImage->arr.size(0), { 1, m_pImgObjRectImage->arr.size(1) });
+					m_pImgObjRectImage->qrgbimg.bits() + 3 * (m_pImgObjRectImage->arr.size(0) - RING_THICKNESS + i), 
+					3 * m_pImgObjRectImage->arr.size(0), { 1, m_pImgObjRectImage->arr.size(1) });
 			}
 		});
 				
@@ -581,7 +552,7 @@ void QViewTab::constructCircImage()
 {
     // Circularizing
     np::Uint8Array2 rect_temp(m_pImgObjRectImage->qrgbimg.bits(), 3 * m_pImgObjRectImage->arr.size(0), m_pImgObjRectImage->arr.size(1));
-    (*m_pCirc)(rect_temp, m_pImgObjCircImage->qrgbimg.bits(), false, true); // aline-frame domain, rgb coordinate
+    (*m_pCirc)(rect_temp, m_pImgObjCircImage->qrgbimg.bits(), false, true); // depth-aline domain, rgb coordinate
 	
     // Draw image
     emit paintCircImage(m_pImgObjCircImage->qrgbimg.bits());
@@ -650,6 +621,40 @@ void QViewTab::changeEmissionChannel(int index)
 	visualizeEnFaceMap(true);
 	visualizeImage(getCurrentFrame());
 	visualizeLongiImage(getCurrentAline());
+}
+
+void QViewTab::scaleFLImEnFaceMap(ImageObject* pImgObjIntensityMap, ImageObject* pImgObjLifetimeMap, int ch)
+{
+	IppiSize roi_flimproj = { m_intensityMap.at(0).size(0), m_intensityMap.at(0).size(1) };
+	IppiSize roi_flimproj4 = { roi_flimproj.width, ((roi_flimproj.height + 3) >> 2) << 2 };
+
+	np::Uint8Array2 scale_temp(roi_flimproj4.width, roi_flimproj4.height);
+
+	// Intensity map			
+	ippiScale_32f8u_C1R(m_intensityMap.at(ch), sizeof(float) * roi_flimproj.width,
+		scale_temp.raw_ptr(), sizeof(uint8_t) * roi_flimproj4.width, roi_flimproj,
+		m_pConfig->flimIntensityRange[ch].min, m_pConfig->flimIntensityRange[ch].max);
+	ippiTranspose_8u_C1R(scale_temp.raw_ptr(), sizeof(uint8_t) * roi_flimproj4.width,
+		pImgObjIntensityMap->arr.raw_ptr(), sizeof(uint8_t) * roi_flimproj4.height, roi_flimproj4);
+	circShift(pImgObjIntensityMap->arr, int(m_pConfig->rotatedAlines / 4));
+	(*m_pMedfiltIntensityMap)(pImgObjIntensityMap->arr.raw_ptr());
+
+	// Lifetime map
+	ippiScale_32f8u_C1R(m_lifetimeMap.at(ch), sizeof(float) * roi_flimproj.width,
+		scale_temp.raw_ptr(), sizeof(uint8_t) * roi_flimproj4.width, roi_flimproj,
+		m_pConfig->flimLifetimeRange[ch].min, m_pConfig->flimLifetimeRange[ch].max);
+	ippiTranspose_8u_C1R(scale_temp.raw_ptr(), sizeof(uint8_t) * roi_flimproj4.width,
+		pImgObjLifetimeMap->arr.raw_ptr(), sizeof(uint8_t) * roi_flimproj4.height, roi_flimproj);
+	circShift(pImgObjLifetimeMap->arr, int(m_pConfig->rotatedAlines / 4));
+	(*m_pMedfiltLifetimeMap)(pImgObjLifetimeMap->arr.raw_ptr());
+
+	// RGB conversion
+	pImgObjIntensityMap->convertRgb();
+	pImgObjLifetimeMap->convertRgb();
+
+	// Intensity-weight lifetime map
+	ippsMul_8u_ISfs(pImgObjIntensityMap->qrgbimg.bits(), pImgObjLifetimeMap->qrgbimg.bits(), pImgObjIntensityMap->qrgbimg.byteCount(), 8);
+
 }
 
 void QViewTab::circShift(np::Uint8Array2& image, int shift)

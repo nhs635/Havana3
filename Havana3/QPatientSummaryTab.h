@@ -22,6 +22,7 @@ struct RecordInfo
 	int vessel = 0;
 	int procedure = 0;
 	QString filename;
+	QString comment = "";
 };
 
 class QPatientSummaryTab : public QDialog
@@ -53,8 +54,6 @@ private slots:
     void deleteEditPatientDlg();
 	void createSettingDlg();
 	void deleteSettingDlg();
-    void modifyRecordComment(int, int);
-    void finishedModifyRecordComment(QTableWidgetItem*);
 	void deleteRecordData(const QString &);
 
 public:

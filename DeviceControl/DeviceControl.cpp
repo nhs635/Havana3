@@ -11,7 +11,11 @@
 #ifdef NI_ENABLE
 #include <DeviceControl/PmtGainControl/PmtGainControl.h>
 #endif
+#ifndef NEXT_GEN_SYSTEM
 #include <DeviceControl/ElforlightLaser/ElforlightLaser.h>
+#else
+#include <DeviceControl/IPGPhotonicsLaser/IPGPhotonicsLaser.h>
+#endif
 #ifdef NI_ENABLE
 #include <DeviceControl/FreqDivider/FreqDivider.h>
 #endif
@@ -31,8 +35,8 @@
 DeviceControl::DeviceControl(Configuration *pConfig) :
     m_pConfig(pConfig),
 	m_pPullbackMotor(nullptr), m_pRotaryMotor(nullptr),
-	m_pPmtGainControl(nullptr), m_pElforlightLaser(nullptr),
-	m_pFlimFreqDivider(nullptr), m_pAxsunFreqDivider(nullptr), 
+	m_pPmtGainControl(nullptr), m_pElforlightLaser(nullptr), m_pIPGPhotonicsLaser(nullptr),
+	m_pFlimLaserFreqDivider(nullptr), m_pFlimDaqFreqDivider(nullptr), m_pAxsunFreqDivider(nullptr), 
 	m_pAxsunControl(nullptr)
 {
 	// Message & error handling function object
@@ -295,6 +299,7 @@ bool DeviceControl::connectFlimLaser(bool state)
 {
 	if (state)
 	{
+#ifndef NEXT_GEN_SYSTEM
 		// Create FLIM laser power control objects
 		if (!m_pElforlightLaser)
 		{
@@ -307,7 +312,7 @@ bool DeviceControl::connectFlimLaser(bool state)
 ///			};
 		}
 		else
-			return true;
+			return false;
 
 		// Connect the laser
 		if (!(m_pElforlightLaser->ConnectDevice()))
@@ -319,11 +324,43 @@ bool DeviceControl::connectFlimLaser(bool state)
 
 			return false;
 		}
+#else
+		// Create FLIM laser control objects
+		if (!m_pIPGPhotonicsLaser)
+		{
+			m_pIPGPhotonicsLaser = new IPGPhotonicsLaser;
+			m_pIPGPhotonicsLaser->SetPortName(FLIM_LASER_COM_PORT);
 
+			m_pIPGPhotonicsLaser->SendStatusMessage += SendStatusMessage;
+		}
+		else
+			return false;
+
+		// Connect the laser
+		if (!(m_pIPGPhotonicsLaser->ConnectDevice()))
+		{
+			m_pIPGPhotonicsLaser->SendStatusMessage("[IPGPhotonics] UV Pulsed Laser is not connected!", true);
+
+			delete m_pIPGPhotonicsLaser;
+			m_pIPGPhotonicsLaser = nullptr;
+
+			return false;
+		}
+		else
+		{
+			// Default setup
+			m_pIPGPhotonicsLaser->SetIntTrigMode(false);
+			m_pIPGPhotonicsLaser->SetIntModulation(false);
+			m_pIPGPhotonicsLaser->SetIntPowerControl(false);
+			m_pIPGPhotonicsLaser->SetIntEmissionControl(false);
+			m_pIPGPhotonicsLaser->EnableEmissionD(true);
+		}
+#endif
 		return true;
 	}
 	else
 	{
+#ifndef NEXT_GEN_SYSTEM
 		if (m_pElforlightLaser)
 		{
 			// Disconnect the laser
@@ -333,7 +370,17 @@ bool DeviceControl::connectFlimLaser(bool state)
 			delete m_pElforlightLaser;
             m_pElforlightLaser = nullptr;
 		}
-		
+#else
+		if (m_pIPGPhotonicsLaser)
+		{
+			// Disconnect the laser
+			m_pIPGPhotonicsLaser->DisconnectDevice();
+
+			// Delete FLIM laser power control objects
+			delete m_pIPGPhotonicsLaser;
+			m_pIPGPhotonicsLaser = nullptr;
+		}
+#endif		
 		return true;
 	}
 }
@@ -363,6 +410,7 @@ void DeviceControl::adjustLaserPower(int level)
 //		}
 //	}
 
+#ifndef NEXT_GEN_SYSTEM
 	static int flim_laser_power_level = 0;
 
 	if (level > flim_laser_power_level)
@@ -379,13 +427,39 @@ void DeviceControl::adjustLaserPower(int level)
 	char msg[256];
 	sprintf(msg, "[ELFORLIGHT] Laser power adjuset: %d", flim_laser_power_level);
 	SendStatusMessage(msg, false);
+#else
+	if (m_pIPGPhotonicsLaser)
+		m_pIPGPhotonicsLaser->SetPowerLevel((uint8_t)level);
+
+	char msg[256];
+	sprintf(msg, "[IPGPhotonics] Laser power adjuset: %d", (uint8_t)level);
+	SendStatusMessage(msg, false);
+#endif
 }
 
 void DeviceControl::sendLaserCommand(char* command)
 {
+#ifndef NEXT_GEN_SYSTEM
 	if (m_pElforlightLaser) 
 		if (m_pElforlightLaser->isLaserEnabled())
 			m_pElforlightLaser->SendCommand(command);
+#else
+	(void)command;
+#endif
+}
+
+void DeviceControl::monitorLaserStatus()
+{
+#ifndef NEXT_GEN_SYSTEM
+
+#else
+	if (m_pIPGPhotonicsLaser)
+	{
+		m_pIPGPhotonicsLaser->ReadStatus();
+		m_pIPGPhotonicsLaser->MonitorLaserStatus();
+		m_pIPGPhotonicsLaser->ReadExtTrigFreq();
+	}
+#endif
 }
 
 
@@ -395,38 +469,62 @@ bool DeviceControl::startSynchronization(bool enabled, bool async)
 	if (enabled)
 	{
 		// Create FLIm laser sync control objects
-		if (!m_pFlimFreqDivider)
+		if (!m_pFlimLaserFreqDivider)
 		{
-			m_pFlimFreqDivider = new FreqDivider;			
-			m_pFlimFreqDivider->setSourceTerminal(!async ? FLIM_SOURCE_TERMINAL : "100kHzTimebase");
-			m_pFlimFreqDivider->setCounterChannel(FLIM_COUNTER_CHANNEL);
-			m_pFlimFreqDivider->setSlow(4);
+			m_pFlimLaserFreqDivider = new FreqDivider;
+			m_pFlimLaserFreqDivider->setSourceTerminal(!async ? FLIM_LASER_SOURCE_TERMINAL : "100kHzTimebase");
+			m_pFlimLaserFreqDivider->setCounterChannel(FLIM_LASER_COUNTER_CHANNEL);
+			m_pFlimLaserFreqDivider->setSlow(4);
 
-			m_pFlimFreqDivider->SendStatusMessage += SendStatusMessage;
+			m_pFlimLaserFreqDivider->SendStatusMessage += SendStatusMessage;
 		}
 		else
-			return true;
+			return false;
 
+#ifndef NEXT_GEN_SYSTEM
 		// Create Axsun OCT sync control objects
 		if (!m_pAxsunFreqDivider)
 		{
-			m_pAxsunFreqDivider = new FreqDivider;			
+			m_pAxsunFreqDivider = new FreqDivider;
 			m_pAxsunFreqDivider->setSourceTerminal(AXSUN_SOURCE_TERMINAL);
 			m_pAxsunFreqDivider->setCounterChannel(AXSUN_COUNTER_CHANNEL);
 			m_pAxsunFreqDivider->setSlow(1024);
 
 			m_pAxsunFreqDivider->SendStatusMessage += SendStatusMessage;
 		}
+		else
+			return false;
+#else
+		// Create FLIm DAQ sync control objects
+		if (!m_pFlimDaqFreqDivider)
+		{
+			m_pFlimDaqFreqDivider = new FreqDivider;
+			m_pFlimDaqFreqDivider->setSourceTerminal(!async ? FLIM_DAQ_SOURCE_TERMINAL : "100kHzTimebase");
+			m_pFlimDaqFreqDivider->setCounterChannel(FLIM_DAQ_COUNTER_CHANNEL);
+			m_pFlimDaqFreqDivider->setSlow(4);
+
+			m_pFlimDaqFreqDivider->SendStatusMessage += SendStatusMessage;
+		}
+		else
+			return false;
+#endif
 
 		// Initializing
-		if (m_pFlimFreqDivider->initialize() && m_pAxsunFreqDivider->initialize())
+#ifndef NEXT_GEN_SYSTEM
+		if (m_pFlimLaserFreqDivider->initialize() && m_pAxsunFreqDivider->initialize())
 		{
 			// Generate FLIm laser & Axsun OCT sync
-			m_pFlimFreqDivider->start();
+			m_pFlimLaserFreqDivider->start();
 			m_pAxsunFreqDivider->start();
-
+#else
+		if (m_pFlimLaserFreqDivider->initialize() && m_pFlimDaqFreqDivider->initialize())
+		{
+			// Generate FLIm laser sync
+			m_pFlimLaserFreqDivider->start();
+			m_pFlimDaqFreqDivider->start();
+#endif
 			char msg[256];
-			sprintf_s(msg, 256, "[SYNC] Synchronization started. (source: %s)", !async ? FLIM_SOURCE_TERMINAL : "100kHzTimebase");
+			sprintf_s(msg, 256, "[SYNC] Synchronization started. (source: %s)", !async ? FLIM_LASER_SOURCE_TERMINAL : "100kHzTimebase");
 			SendStatusMessage(msg, false);
 		}
 		else
@@ -440,13 +538,14 @@ bool DeviceControl::startSynchronization(bool enabled, bool async)
 	else
 	{
 		// Delete FLIm laser sync control objects
-		if (m_pFlimFreqDivider)
+		if (m_pFlimLaserFreqDivider)
 		{
-			m_pFlimFreqDivider->stop();
-			delete m_pFlimFreqDivider;
-			m_pFlimFreqDivider = nullptr;
+			m_pFlimLaserFreqDivider->stop();
+			delete m_pFlimLaserFreqDivider;
+			m_pFlimLaserFreqDivider = nullptr;
 		}
 
+#ifndef NEXT_GEN_SYSTEM
 		// Delete Axsun OCT sync control objects
 		if (m_pAxsunFreqDivider)
 		{
@@ -454,6 +553,15 @@ bool DeviceControl::startSynchronization(bool enabled, bool async)
 			delete m_pAxsunFreqDivider;
 			m_pAxsunFreqDivider = nullptr;
 		}
+#else
+		// Delete FLIm DAQ sync control objects
+		if (m_pFlimDaqFreqDivider)
+		{
+			m_pFlimDaqFreqDivider->stop();
+			delete m_pFlimDaqFreqDivider;
+			m_pFlimDaqFreqDivider = nullptr;
+		}
+#endif
 	}
 #else
 	(void)enabled;
@@ -475,9 +583,10 @@ bool DeviceControl::connectAxsunControl(bool toggled)
 		}
 		else
 			return true;
-			
+		
+#ifndef NEXT_GEN_SYSTEM
 		// Initialize the Axsun OCT control
-		if (!(m_pAxsunControl->initialize()))
+		if (!(m_pAxsunControl->initialize(2)))
 		{
 			connectAxsunControl(false);
             return false;
@@ -485,6 +594,14 @@ bool DeviceControl::connectAxsunControl(bool toggled)
 			
 		// Default Bypass Mode
 		m_pAxsunControl->setBypassMode(bypass_mode::jpeg_compressed);
+#else
+		// Initialize the Axsun OCT control
+		if (!(m_pAxsunControl->initialize(1)))
+		{
+			connectAxsunControl(false);
+			return false;
+		}
+#endif
 		
 		// Default Clock Delay
 		setClockDelay(CLOCK_GAIN * CLOCK_DELAY + CLOCK_OFFSET);
@@ -501,14 +618,18 @@ bool DeviceControl::connectAxsunControl(bool toggled)
 		});
 		vdl_length.detach();
 
+#ifndef NEXT_GEN_SYSTEM
 		// Default Contrast Range
 		adjustDecibelRange(m_pConfig->axsunDbRange.min, m_pConfig->axsunDbRange.max);
-		//		m_pStreamTab->getVisTab()->setOctDecibelContrastWidgets(true);					
+		// m_pStreamTab->getVisTab()->setOctDecibelContrastWidgets(true);					
+#endif
 	}
 	else
 	{
 		// Set status
+#ifndef NEXT_GEN_SYSTEM
 		setLiveImaging(false);
+#endif
 		setLightSource(false);
 				
 		if (m_pAxsunControl)
@@ -533,21 +654,30 @@ void DeviceControl::setLightSource(bool toggled)
 
 void DeviceControl::setLiveImaging(bool toggled)
 {
+#ifndef NEXT_GEN_SYSTEM
 	if (m_pAxsunControl)
 	{
 		// Start or stop Axsun live imaging operation
 		m_pAxsunControl->setLiveImagingMode(toggled);	
 	}
+#else
+	(void)toggled;
+#endif
 }
 
 void DeviceControl::adjustDecibelRange(double min, double max)
 {
+#ifndef NEXT_GEN_SYSTEM
 	if (m_pAxsunControl)
 	{
 		m_pConfig->axsunDbRange.min = min;
 		m_pConfig->axsunDbRange.max = max;
 		m_pAxsunControl->setDecibelRange(m_pConfig->axsunDbRange.min, m_pConfig->axsunDbRange.max);
 	}
+#else
+
+
+#endif
 }
 
 void DeviceControl::setClockDelay(double)

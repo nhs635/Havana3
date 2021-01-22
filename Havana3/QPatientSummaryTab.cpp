@@ -164,8 +164,6 @@ void QPatientSummaryTab::createPatientSummaryTable()
 
     // Connect signal and slot
 	connect(this, SIGNAL(requestDelete(QString)), this, SLOT(deleteRecordData(QString)));
-    connect(m_pTableWidget_RecordInformation, SIGNAL(cellDoubleClicked(int, int)), this, SLOT(modifyRecordComment(int, int)));
-//    connect(m_pTableWidget_RecordInformation, SIGNAL(itemChanged(QTableWidgetItem*)), this, SLOT(finishedModifyRecordComment(QTableWidgetItem*)));
 }
 
 
@@ -243,47 +241,6 @@ void QPatientSummaryTab::deleteSettingDlg()
 	m_pSettingDlg = nullptr;
 }
 
-
-void QPatientSummaryTab::modifyRecordComment(int row, int col)
-{
-	// Double Click하여 Comment 수정할 수 있도록 하기..
-
-    //if (col == 5)
-    //{
-    //    m_pTableWidget_RecordInformation->setEditTriggers(QAbstractItemView::AllEditTriggers);
-
-    //    auto item = m_pTableWidget_RecordInformation->item(row, col);
-    //    item->setFlags(item->flags() | Qt::ItemIsEditable);
-
-    //    if (item->text() == "Double click to add...")
-    //    {
-    //        item->setText("");
-    //        item->setTextColor(QColor(255, 255, 255));
-
-    //        QFont font;
-    //        font.setItalic(false);
-    //        item->setFont(font);
-    //    }
-    //}
-}
-
-void QPatientSummaryTab::finishedModifyRecordComment(QTableWidgetItem* item)
-{
-//    m_pTableWidget_RecordInformation->set
-//    m_pTableWidget_RecordInformation->setEditTriggers(QAbstractItemView::NoEditTriggers);
-
-//    item->setFlags(item->flags() & ~Qt::ItemIsEditable);
-
-//    if (item->text() == "")
-//    {
-//        item->setText("Double click to add...");
-//        item->setTextColor(QColor(128, 128, 128));
-
-//        QFont font;
-//        font.setItalic(true);
-//        item->setFont(font);
-//    }
-}
 
 void QPatientSummaryTab::deleteRecordData(const QString& record_id)
 {
@@ -437,18 +394,9 @@ void QPatientSummaryTab::loadRecordDatabase()
             pTitleItem->setText(_sqlQuery.value(7).toString()); pTitleItem->setTextAlignment(Qt::AlignCenter);            
             pDateTimeItem->setText(_sqlQuery.value(3).toString()); pDateTimeItem->setTextAlignment(Qt::AlignCenter);
             pVesselItem->setText(m_pHvnSqlDataBase->getVessel(_sqlQuery.value(12).toInt())); pVesselItem->setTextAlignment(Qt::AlignCenter);
-            pProcedureItem->setText(m_pHvnSqlDataBase->getProcedure(_sqlQuery.value(11).toInt())); pProcedureItem->setTextAlignment(Qt::AlignCenter);
-            if (!(_sqlQuery.value(8).toString() == ""))
-                pCommentItem->setText(_sqlQuery.value(8).toString());
-            else
-            {
-                pCommentItem->setText("Double click to add...");
-                pCommentItem->setTextColor(QColor(128, 128, 128));
-
-                QFont font;
-                font.setItalic(true);
-                pCommentItem->setFont(font);
-            }
+            pProcedureItem->setText(m_pHvnSqlDataBase->getProcedure(_sqlQuery.value(11).toInt())); pProcedureItem->setTextAlignment(Qt::AlignCenter);            
+            pCommentItem->setText(_sqlQuery.value(8).toString()); pCommentItem->setTextAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+            
 
             QString record_id = _sqlQuery.value(0).toString();
             connect(pPushButton_Review, &QPushButton::clicked, [&, record_id]() { emit requestReview(record_id); });

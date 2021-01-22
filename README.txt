@@ -47,4 +47,6 @@ Havana3.VC*
 - 200311 Havana3 v1.2.2
   (Minor error corrected)
 - 201130 Havana3 v1.4.0
-  (Patient selection & summary view, Major modification - still developing)
+  (Patient selection & summary view, major modification)
+- 210123 Havana3 v1.4.1
+  (Result view + export finalizing, FLIm calibration, next gen system coding)

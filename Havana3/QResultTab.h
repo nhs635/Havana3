@@ -48,6 +48,9 @@ public:
 private slots:
     void changeVesselInfo(int);
     void changeProcedureInfo(int);
+	void openContainingFolder();
+	void createCommentDlg();
+	void updateComment();
     void createSettingDlg();
     void deleteSettingDlg();
     void createExportDlg();
@@ -76,6 +79,8 @@ private:
     QComboBox *m_pComboBox_Vessel;
     QComboBox *m_pComboBox_Procedure;
 
+	QPushButton *m_pPushButton_OpenFolder;
+	QPushButton *m_pPushButton_Comment;
     QPushButton *m_pPushButton_Setting;
     QPushButton *m_pPushButton_Export;
 

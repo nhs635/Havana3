@@ -10,8 +10,8 @@
 using namespace AxsunOCTControl;
 
 // Devices
-#define DAQ_DEVICE           0
-#define LASER_DEVICE         1
+#define DAQ_DEVICE           42
+#define LASER_DEVICE         40
 
 // Connection
 #define DISCONNECTED         0
@@ -46,7 +46,7 @@ public: // Constructor & Destructor
 	
 public:
     // For Control
-    bool initialize();
+    bool initialize(int n_device);
     bool setLaserEmission(bool status);
     bool setLiveImagingMode(bool status);
     ///bool setBurstRecording(unsigned short n_images, bool recording = true);
@@ -75,6 +75,9 @@ private:
     // For Control
     IAxsunOCTControlPtr m_pAxsunOCTControl;
     VARIANT_BOOL m_bIsConnected;
+
+	int m_daq_device;
+	int m_laser_device;
 };
 
 #endif

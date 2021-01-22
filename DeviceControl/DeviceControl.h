@@ -13,6 +13,7 @@ class RotaryMotor;
 
 class PmtGainControl;
 class ElforlightLaser;
+class IPGPhotonicsLaser;
 
 class FreqDivider;
 
@@ -36,14 +37,15 @@ public:
 	inline PullbackMotor* getPullbackMotor() const { return m_pPullbackMotor; }
     inline PmtGainControl* getPmtGainControl() const { return m_pPmtGainControl; }
     inline ElforlightLaser* getElforlightLaser() const { return m_pElforlightLaser; }
-	inline FreqDivider* getFlimFreqDivider() const { return m_pFlimFreqDivider; }
+	inline FreqDivider* getFlimLaserFreqDivider() const { return m_pFlimLaserFreqDivider; }
+	inline FreqDivider* getFlimDaqFreqDivider() const { return m_pFlimDaqFreqDivider; }
 	inline FreqDivider* getAxsunFreqDivider() const { return m_pAxsunFreqDivider; }
     inline AxsunControl* getAxsunControl() const { return m_pAxsunControl; }
 
-	inline bool isFlimSystemInitialized() const {
-		return (m_pFlimFreqDivider != nullptr) && (m_pElforlightLaser != nullptr) && (m_pAxsunFreqDivider != nullptr);
-	}
-    inline bool isOctSystemInitialized() const { return (m_pAxsunControl != nullptr); }
+	//inline bool isFlimSystemInitialized() const {
+	//	return (m_pFlimLaserFreqDivider != nullptr) && (m_pElforlightLaser != nullptr) && (m_pAxsunFreqDivider != nullptr);
+	//}
+ //   inline bool isOctSystemInitialized() const { return (m_pAxsunControl != nullptr); }
 	
 public: 
     // Helical Scanning Control
@@ -67,6 +69,7 @@ public:
     bool connectFlimLaser(bool);
 	void adjustLaserPower(int);
     void sendLaserCommand(char*);
+	void monitorLaserStatus();
 	
 	// FLIm System Control Initialization
 	bool startSynchronization(bool enabled, bool async = false);
@@ -99,8 +102,12 @@ private:
 	// Elforlight Laser Control
 	ElforlightLaser* m_pElforlightLaser;
 
+	// IPG Photonics Laser Control
+	IPGPhotonicsLaser* m_pIPGPhotonicsLaser;
+
 	// FLIm Synchronization Control
-	FreqDivider* m_pFlimFreqDivider;
+	FreqDivider* m_pFlimLaserFreqDivider;
+	FreqDivider* m_pFlimDaqFreqDivider;
 	FreqDivider* m_pAxsunFreqDivider;
 
     // Axsun OCT Control

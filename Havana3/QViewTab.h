@@ -39,6 +39,11 @@ public:
 	inline QImageView* getCircImageView() const { return m_pImageView_CircImage; }
     inline QImageView* getEnFaceImageView() const { return m_pImageView_EnFace; }
     inline QImageView* getLongiImageView() const { return m_pImageView_Longi; }
+	inline circularize* getCirc() const { return m_pCirc; }
+	inline medfilt* getMedfiltRect() const { return m_pMedfiltRect; }
+	inline medfilt* getMedfiltIntensityMap() const { return m_pMedfiltIntensityMap; }
+	inline medfilt* getMedfiltLifetimeMap() const { return m_pMedfiltLifetimeMap; }
+	inline medfilt* getMedfiltLongi() const { return m_pMedfiltLongi; }
     inline QSlider* getSliderSelectFrame() const { return m_pSlider_SelectFrame; }
 	inline void setEmissionChannel(int ch) { m_pComboBox_ViewMode->setCurrentIndex(ch - 1); }
 	inline void setCurrentFrame(int frame) { m_pSlider_SelectFrame->setValue(frame); }
@@ -71,7 +76,8 @@ private slots:
 	void measureDistance(bool);
 	void changeEmissionChannel(int);
 
-private:
+public:
+	void scaleFLImEnFaceMap(ImageObject* pImgObjIntensityMap, ImageObject* pImgObjLifetimeMap, int ch);
 	void circShift(np::Uint8Array2& image, int shift);
 
 public slots:

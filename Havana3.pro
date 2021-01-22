@@ -69,7 +69,8 @@ SOURCES += Havana3/Havana3.cpp \
     Havana3/Dialog/ViewOptionTab.cpp \
     Havana3/Dialog/DeviceOptionTab.cpp \
     Havana3/Dialog/FlimCalibTab.cpp \
-    Havana3/Dialog/PulseReviewTab.cpp
+    Havana3/Dialog/PulseReviewTab.cpp \
+    Havana3/Dialog/ExportDlg.cpp
 
 SOURCES += DataAcquisition/SignatecDAQ/SignatecDAQ.cpp \
     DataAcquisition/AlazarDAQ/AlazarDAQ.cpp \
@@ -110,9 +111,11 @@ HEADERS += Havana3/Configuration.h \
     Havana3/Dialog/ViewOptionTab.h \
     Havana3/Dialog/DeviceOptionTab.h \
     Havana3/Dialog/FlimCalibTab.h \
-    Havana3/Dialog/PulseReviewTab.h
+    Havana3/Dialog/PulseReviewTab.h \
+    Havana3/Dialog/ExportDlg.h
 
 HEADERS += DataAcquisition/SignatecDAQ/SignatecDAQ.h \
+    DataAcquisition/AlazarDAQ/AlazarDAQ.h \
     DataAcquisition/FLImProcess/FLImProcess.h \
     DataAcquisition/AxsunCapture/AxsunCapture.h \
     DataAcquisition/ThreadManager.h \

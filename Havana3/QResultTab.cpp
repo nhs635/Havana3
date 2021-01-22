@@ -9,7 +9,7 @@
 #include <Havana3/QViewTab.h>
 
 #include <Havana3/Dialog/SettingDlg.h>
-//#include <Havana3/Dialog/ExportDlg.h>
+#include <Havana3/Dialog/ExportDlg.h>
 
 #include <DataAcquisition/DataProcessing.h>
 
@@ -84,15 +84,25 @@ void QResultTab::createResultReviewWidgets()
 
     m_pViewTab = new QViewTab(false, this);
 
+	m_pPushButton_OpenFolder = new QPushButton(this);
+	m_pPushButton_OpenFolder->setText("  Open Folder");
+	m_pPushButton_OpenFolder->setIcon(style()->standardIcon(QStyle::SP_DirHomeIcon));
+	m_pPushButton_OpenFolder->setFixedSize(125, 25);
+
+	m_pPushButton_Comment = new QPushButton(this);
+	m_pPushButton_Comment->setText("  Comment");
+	m_pPushButton_Comment->setIcon(style()->standardIcon(QStyle::SP_FileDialogContentsView));
+	m_pPushButton_Comment->setFixedSize(125, 25);
+
     m_pPushButton_Setting = new QPushButton(this);
     m_pPushButton_Setting->setText("  Setting");
     m_pPushButton_Setting->setIcon(style()->standardIcon(QStyle::SP_FileDialogInfoView));
-    m_pPushButton_Setting->setFixedSize(100, 25);
+    m_pPushButton_Setting->setFixedSize(125, 25);
 
     m_pPushButton_Export = new QPushButton(this);
     m_pPushButton_Export->setText("  Export");
     m_pPushButton_Export->setIcon(style()->standardIcon(QStyle::SP_DialogSaveButton));
-    m_pPushButton_Export->setFixedSize(100, 25);
+    m_pPushButton_Export->setFixedSize(125, 25);
 
     // Set layout: result review
     QVBoxLayout *pVBoxLayout_ResultReview = new QVBoxLayout;
@@ -107,7 +117,8 @@ void QResultTab::createResultReviewWidgets()
 
     QGridLayout *pGridLayout_Buttons = new QGridLayout;
     pGridLayout_Buttons->setSpacing(5);
-    pGridLayout_Buttons->addWidget(new QLabel(this), 0, 0, 1, 2);
+	pGridLayout_Buttons->addWidget(m_pPushButton_OpenFolder, 0, 0);
+	pGridLayout_Buttons->addWidget(m_pPushButton_Comment, 0, 1);
     pGridLayout_Buttons->addWidget(m_pPushButton_Export, 1, 0);
     pGridLayout_Buttons->addWidget(m_pPushButton_Setting, 1, 1);
 
@@ -131,6 +142,8 @@ void QResultTab::createResultReviewWidgets()
 	connect(this, SIGNAL(getCapture(QByteArray &)), m_pViewTab, SLOT(getCapture(QByteArray &)));
     connect(m_pComboBox_Vessel, SIGNAL(currentIndexChanged(int)), this, SLOT(changeVesselInfo(int)));
     connect(m_pComboBox_Procedure, SIGNAL(currentIndexChanged(int)), this, SLOT(changeProcedureInfo(int)));
+	connect(m_pPushButton_OpenFolder, SIGNAL(clicked(bool)), this, SLOT(openContainingFolder()));
+	connect(m_pPushButton_Comment, SIGNAL(clicked(bool)), this, SLOT(createCommentDlg()));
     connect(m_pPushButton_Setting, SIGNAL(clicked(bool)), this, SLOT(createSettingDlg()));
     connect(m_pPushButton_Export, SIGNAL(clicked(bool)), this, SLOT(createExportDlg()));
 }
@@ -189,6 +202,7 @@ void QResultTab::loadRecordInfo()
 			m_recordInfo.vessel = _sqlQuery.value(12).toInt();
 			m_recordInfo.procedure = _sqlQuery.value(11).toInt();
 			m_recordInfo.filename = _sqlQuery.value(9).toString();
+			m_recordInfo.comment = _sqlQuery.value(8).toString();
 
 			m_pLabel_RecordInformation->setText(QString("<b><font size=6>%1</font></b>"
 				"&nbsp;&nbsp;&nbsp;<font size=4>%2</font>")
@@ -253,6 +267,50 @@ void QResultTab::changeProcedureInfo(int info)
 		.arg(m_recordInfo.patientName).arg(m_recordInfo.patientId).arg(m_recordInfo.date).arg(m_recordInfo.recordId));
 }
 
+void QResultTab::openContainingFolder()
+{
+	QString folderPath = m_recordInfo.filename;
+	for (int i = folderPath.size() - 1; i >= 0; i--)
+	{
+		int slash_pos = i;
+		if (folderPath.at(i) == '/')
+		{
+			folderPath = folderPath.left(slash_pos);
+			break;
+		}
+	}
+	QDesktopServices::openUrl(QUrl("file:///" + folderPath));
+}
+
+void QResultTab::createCommentDlg()
+{
+	QDialog *pDialog = new QDialog(this);
+	{		
+		QTextEdit *pTextEdit_Comment = new QTextEdit(this);
+		pTextEdit_Comment->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+		pTextEdit_Comment->setAlignment(Qt::AlignLeft | Qt::AlignTop);
+		pTextEdit_Comment->setPlainText(m_recordInfo.comment);
+		connect(pTextEdit_Comment, &QTextEdit::textChanged, [&, pTextEdit_Comment]() { m_recordInfo.comment = pTextEdit_Comment->toPlainText(); });
+		connect(pDialog, SIGNAL(finished(int)), this, SLOT(updateComment()));
+
+		QVBoxLayout *pVBoxLayout = new QVBoxLayout;
+		pVBoxLayout->addWidget(pTextEdit_Comment);
+		pDialog->setLayout(pVBoxLayout);
+	}
+	pDialog->setWindowTitle("Comment");
+	pDialog->setFixedSize(300, 200);
+	pDialog->setModal(true);
+	pDialog->exec();
+}
+
+void QResultTab::updateComment()
+{
+	QString command = QString("UPDATE records SET comment='%1' WHERE id=%2").arg(m_recordInfo.comment).arg(m_recordInfo.recordId);
+	m_pHvnSqlDataBase->queryDatabase(command);
+
+	m_pConfig->writeToLog(QString("Record comment updated: %1 (ID: %2): %3 : record id: %4")
+		.arg(m_recordInfo.patientName).arg(m_recordInfo.patientId).arg(m_recordInfo.date).arg(m_recordInfo.recordId));
+}
 
 void QResultTab::createSettingDlg()
 {
@@ -273,22 +331,17 @@ void QResultTab::deleteSettingDlg()
 
 void QResultTab::createExportDlg()
 {
-	// EXPORT DIALOG 기능 구현!!!
-//    if (m_pExportDlg == nullptr)
-//    {
-//        m_pExportDlg = new SettingDlg(false, this);
-//        connect(m_pExportDlg, SIGNAL(finished(int)), this, SLOT(deleteExportDlg()));
-//        m_pExportDlg->show();
-//    }
-//    m_pExportDlg->raise();
-//    m_pExportDlg->activateWindow();
+    if (m_pExportDlg == nullptr)
+    {
+        m_pExportDlg = new ExportDlg(this);
+        connect(m_pExportDlg, SIGNAL(finished(int)), this, SLOT(deleteExportDlg()));
+		m_pExportDlg->setModal(true);
+		m_pExportDlg->exec();
+    }
 }
 
 void QResultTab::deleteExportDlg()
 {
-//    m_pExportDlg->deleteLater();
-//    m_pExportDlg = nullptr;
+    m_pExportDlg->deleteLater();
+    m_pExportDlg = nullptr;
 }
-
-
-

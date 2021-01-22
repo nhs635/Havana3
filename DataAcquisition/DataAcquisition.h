@@ -9,9 +9,11 @@
 
 class Configuration;
 
-class SignatecDAQ;
-class FLImProcess;
 class AxsunCapture;
+class SignatecDAQ;
+class AlazarDAQ;
+class FLImProcess;
+
 
 class DataAcquisition : public QObject
 {
@@ -23,10 +25,12 @@ public:
     virtual ~DataAcquisition();
 
 // Methods //////////////////////////////////////////////
-public: 
-	inline SignatecDAQ* getDigitizer() const { return m_pDaq; }
-    inline FLImProcess* getFLIm() const { return m_pFLIm; }
+public:
 	inline AxsunCapture* getAxsunCapture() const { return m_pAxsunCapture; }
+	inline SignatecDAQ* getDigitizer() const { return m_pDaq; }
+	inline AlazarDAQ* getOctDigitizer() const { return m_pDaqOct; }
+	inline AlazarDAQ* getFlimDigitizer() const { return m_pDaqFlim; }
+    inline FLImProcess* getFLIm() const { return m_pFLIm; }
 	inline bool getAcquisitionState() { return m_bAcquisitionState; }
 	inline bool getPauseState() { return m_bIsPaused; }
 
@@ -41,13 +45,15 @@ public:
     void SetDcOffset(int offset);
 	
 public:
-    void ConnectDaqAcquiredFlimData(const std::function<void(int, const np::Array<uint16_t, 2>&)> &slot);
-    void ConnectDaqStopFlimData(const std::function<void(void)> &slot);
-    void ConnectDaqSendStatusMessage(const std::function<void(const char*, bool)> &slot);
+    void ConnectAcquiredFlimData(const std::function<void(int, const np::Array<uint16_t, 2>&)> &slot);
+	void ConnectAcquiredFlimData(const std::function<void(int, const void*)> &slot);
+    void ConnectStopFlimData(const std::function<void(void)> &slot);
+    void ConnectFlimSendStatusMessage(const std::function<void(const char*, bool)> &slot);
 
-	void ConnectAxsunAcquiredOctData(const std::function<void(uint32_t, const np::Uint8Array2&)> &slot);
-	void ConnectAxsunStopOctData(const std::function<void(void)> &slot);
-	void ConnectAxsunSendStatusMessage(const std::function<void(const char*, bool)> &slot);
+	void ConnectAcquiredOctData(const std::function<void(uint32_t, const np::Uint8Array2&)> &slot);
+	void ConnectAcquiredOctData(const std::function<void(int, const void*)> &slot);
+	void ConnectStopOctData(const std::function<void(void)> &slot);
+	void ConnectOctSendStatusMessage(const std::function<void(const char*, bool)> &slot);
 	
 // Variables ////////////////////////////////////////////
 private: 
@@ -59,9 +65,11 @@ private:
 	bool m_bIsPaused;
 
     // Object related to data acquisition
+	AxsunCapture* m_pAxsunCapture;
     SignatecDAQ* m_pDaq;
-    FLImProcess* m_pFLIm;
-    AxsunCapture* m_pAxsunCapture;
+	AlazarDAQ* m_pDaqOct;
+	AlazarDAQ* m_pDaqFlim;
+    FLImProcess* m_pFLIm;    
 };
 
 #endif // DATAACQUISITION_H

@@ -1,7 +1,7 @@
 #ifndef CONFIGURATION_H
 #define CONFIGURATION_H
 
-#define VERSION						"0.0.0" ///"1.4.0"
+#define VERSION						"0.0.0" ///"1.4.1"
 
 #define POWER_2(x)					(1 << x)
 #define NEAR_2_POWER(x)				(int)(1 << (int)ceil(log2(x)))
@@ -9,7 +9,8 @@
 
 ////////////////////// Software Setup ///////////////////////
 #define DEVELOPER_MODE
-#define NEXT_GEN_SYSTEM
+//#define NEXT_GEN_SYSTEM
+//#define ENABLE_FPGA_FFT
 #define ENABLE_DATABASE_ENCRYPTION
 #define NI_ENABLE
 
@@ -26,12 +27,18 @@
 
 #define FLIM_LASER_COM_PORT			"COM3"
 
-#define PMT_GAIN_AO_PORT			"Dev1/ao1"
+#define PMT_GAIN_AO_PORT			"Dev1/ao1"  /// "Dev1/ao0"
 
-#define FLIM_SOURCE_TERMINAL		"/Dev1/PFI2"
-#define FLIM_COUNTER_CHANNEL		"Dev1/ctr1"
+#define FLIM_LASER_SOURCE_TERMINAL	"/Dev1/PFI2"  /// "/Dev1/PFI10"
+#define FLIM_LASER_COUNTER_CHANNEL	"Dev1/ctr1"  /// "Dev1/ctr0"
+
+#ifndef NEXT_GEN_SYSTEM
 #define AXSUN_SOURCE_TERMINAL		"/Dev1/PFI3"
 #define AXSUN_COUNTER_CHANNEL		"Dev1/ctr0"
+#else
+#define FLIM_DAQ_SOURCE_TERMINAL	"/Dev1/PFI11"
+#define FLIM_DAQ_COUNTER_CHANNEL	"Dev1/ctr1"
+#endif
 
 #define CLOCK_DELAY					10
 //#define PULLBACK_HOME_OFFSET		0 // mm
@@ -54,7 +61,7 @@
 #define INTENSITY_THRES				0.001f
 
 /////////////////////// Visualization ///////////////////////
-#define RING_THICKNESS				150
+#define RING_THICKNESS				160
 
 #define OCT_COLORTABLE              0 // gray
 #define INTENSITY_COLORTABLE		6 // fire
