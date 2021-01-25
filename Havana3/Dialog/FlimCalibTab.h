@@ -4,12 +4,9 @@
 #include <QtWidgets>
 #include <QtCore>
 
-#include <Havana3/Configuration.h>
-//#include <Havana3/QDeviceControlTab.h>
 #include <Havana3/Viewer/QScope.h>
 #include <Havana3/Viewer/QImageView.h>
 
-#include <Common/array.h>
 #include <Common/callback.h>
 
 #include <ipps.h>
@@ -18,10 +15,10 @@
 
 #define N_BINS 50
 
+
 class Configuration;
 class QStreamTab;
 class FLImProcess;
-
 
 class QMySpinBox2 : public QDoubleSpinBox
 {

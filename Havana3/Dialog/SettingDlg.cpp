@@ -14,7 +14,8 @@
 
 
 SettingDlg::SettingDlg(QWidget *parent) :
-    QDialog(parent), m_pPatientSummaryTab(nullptr), m_pStreamTab(nullptr), m_pResultTab(nullptr), m_pViewTab(nullptr)
+    QDialog(parent), m_pPatientSummaryTab(nullptr), m_pStreamTab(nullptr), m_pResultTab(nullptr), m_pViewTab(nullptr), 
+	m_pViewOptionTab(nullptr), m_pDeviceOptionTab(nullptr), m_pFlimCalibTab(nullptr), m_pPulseReviewTab(nullptr)
 {
     // Set default size & frame
     setFixedWidth(600);
@@ -50,6 +51,7 @@ SettingDlg::SettingDlg(QWidget *parent) :
 
 		m_pViewOptionTab = new ViewOptionTab(parent);
 		m_pDeviceOptionTab = new DeviceOptionTab(parent);
+		m_pPulseReviewTab = new PulseReviewTab(parent);
     }
 	
 	// Create widgets
@@ -79,13 +81,15 @@ SettingDlg::SettingDlg(QWidget *parent) :
 	{
 		QScrollArea *pScrollArea_FlimCalibration = new QScrollArea;
 		pScrollArea_FlimCalibration->setWidget(m_pFlimCalibTab->getLayoutBox());
-		m_pTabWidget_Setting->addTab(pScrollArea_FlimCalibration,  "FLIm Calibration");
+		m_pTabWidget_Setting->addTab(pScrollArea_FlimCalibration, "FLIm Calibration");
 	}
 
-	// Pulse review tab ????
+	// Pulse review tab
 	if (parent_name == "Review")
 	{
-		m_pTabWidget_Setting->addTab(new QWidget(this), "   Pulse Review   ");
+		QScrollArea *pScrollArea_PulseReview = new QScrollArea;
+		pScrollArea_PulseReview->setWidget(m_pPulseReviewTab->getLayoutBox());
+		m_pTabWidget_Setting->addTab(pScrollArea_PulseReview, "   Pulse Review   ");
 	}
 
 	// Log tab

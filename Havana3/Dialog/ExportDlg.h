@@ -4,8 +4,6 @@
 #include <QtWidgets>
 #include <QtCore>
 
-#include <Havana3/Configuration.h>
-
 #include <iostream>
 #include <vector>
 
@@ -16,6 +14,7 @@
 #include <Common/ImageObject.h>
 #include <Common/basic_functions.h>
 
+class Configuration;
 class QResultTab;
 class QViewTab;
 

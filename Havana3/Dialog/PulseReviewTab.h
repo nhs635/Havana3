@@ -1,19 +1,15 @@
 #ifndef PULSEREVIEWTAB_H
 #define PULSEREVIEWTAB_H
 
-#include <QObject>
 #include <QtWidgets>
 #include <QtCore>
 
-#include <Havana3/Configuration.h>
 #include <Havana3/Viewer/QScope.h>
 
-#include <Common/array.h>
-#include <Common/callback.h>
-
+class Configuration;
+class QResultTab;
 class QViewTab;
 class FLImProcess;
-
 
 class PulseReviewTab : public QDialog
 {
@@ -21,18 +17,17 @@ class PulseReviewTab : public QDialog
 
 // Constructer & Destructer /////////////////////////////
 public:
-    explicit PulseReviewTab(QWidget *parent = 0);
+    explicit PulseReviewTab(QWidget *parent = nullptr);
     virtual ~PulseReviewTab();
 
 // Methods //////////////////////////////////////////////
-private:
-	void keyPressEvent(QKeyEvent *e);
-
 public:
+	inline QResultTab* getResultTab() const { return m_pResultTab; }
+	inline QGroupBox* getLayoutBox() const { return m_pGroupBox_PulseReview; }
 	inline int getCurrentAline() const { return m_pSlider_CurrentAline->value(); }
 	inline void setCurrentAline(int aline) { m_pSlider_CurrentAline->setValue(aline); }
 	
-public slots : // widgets
+public slots :
 	void drawPulse(int);
 	void changeType();
 
@@ -41,11 +36,16 @@ signals:
 
 // Variables ////////////////////////////////////////////
 private:	
-	Configuration* m_pConfig;
+	Configuration* m_pConfigTemp;
+	QResultTab* m_pResultTab;
     QViewTab* m_pViewTab;
 	FLImProcess* m_pFLIm;
 
 private:
+	// Layout
+	QGridLayout *m_pGridLayout;
+	QGroupBox *m_pGroupBox_PulseReview;
+
 	// Widgets for pulse view
 	QScope *m_pScope_PulseView;
 	

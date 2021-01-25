@@ -39,6 +39,7 @@ DataProcessing::DataProcessing(QWidget *parent)
 DataProcessing::~DataProcessing()
 {
 	if (m_pConfigTemp) delete m_pConfigTemp;
+	if (m_pFLIm) delete m_pFLIm;
 }
 
 
@@ -107,12 +108,12 @@ void DataProcessing::startProcessing(QString fileName)
 				load_data.join();
 				deinterleave.join();
 				flim_proc.join();
-
+				
 				// Generate en face maps ////////////////////////////////////////////////////////////////////
                 getOctProjection(m_pResultTab->getViewTab()->m_vectorOctImage, m_pResultTab->getViewTab()->m_octProjection);
 
 				// Delete OCT FLIM Object & threading sync buffers //////////////////////////////////////////
-				if (m_pFLIm) delete m_pFLIm;
+				//if (m_pFLIm) delete m_pFLIm;
 
 				m_syncDeinterleaving.deallocate_queue_buffer();
 				m_syncFlimProcessing.deallocate_queue_buffer();
@@ -225,7 +226,7 @@ void DataProcessing::deinterleaving(Configuration* pConfig)
 
 void DataProcessing::flimProcessing(FLImProcess* pFLIm, Configuration* pConfig)
 {
-    QViewTab* pVisTab = m_pResultTab->getViewTab();
+    QViewTab* pViewTab = m_pResultTab->getViewTab();
 
 	np::Array<float, 2> itn(pConfig->flimAlines, 4); // temp intensity
 	np::Array<float, 2> md(pConfig->flimAlines, 4); // temp mean delay
@@ -259,8 +260,8 @@ void DataProcessing::flimProcessing(FLImProcess* pFLIm, Configuration* pConfig)
 				np::Array<float, 2> mask(pFLIm->_resize.nx, pFLIm->_resize.ny);
 				memcpy(crop, pFLIm->_resize.crop_src, crop.length() * sizeof(float));
 				memcpy(mask, pFLIm->_resize.mask_src, mask.length() * sizeof(float));
-//				pVisTab->m_vectorPulseCrop.push_back(crop);
-//				pVisTab->m_vectorPulseMask.push_back(mask);
+				pViewTab->m_vectorPulseCrop.push_back(crop);
+				pViewTab->m_vectorPulseMask.push_back(mask);
 				
 				// Intensity compensation
 				for (int i = 0; i < 3; i++)
@@ -269,12 +270,12 @@ void DataProcessing::flimProcessing(FLImProcess* pFLIm, Configuration* pConfig)
 				///file.write(reinterpret_cast<const char*>(pFLIm->_resize.filt_src.raw_ptr()), sizeof(float) * pFLIm->_resize.nsite);
 
 				// Copy for Intensity & Lifetime			
-                memcpy(&pVisTab->m_intensityMap.at(0)(0, frameCount), &itn(0, 1), sizeof(float) * pConfig->flimAlines);
-                memcpy(&pVisTab->m_intensityMap.at(1)(0, frameCount), &itn(0, 2), sizeof(float) * pConfig->flimAlines);
-                memcpy(&pVisTab->m_intensityMap.at(2)(0, frameCount), &itn(0, 3), sizeof(float) * pConfig->flimAlines);
-                memcpy(&pVisTab->m_lifetimeMap.at(0)(0, frameCount), &ltm(0, 0), sizeof(float) * pConfig->flimAlines);
-                memcpy(&pVisTab->m_lifetimeMap.at(1)(0, frameCount), &ltm(0, 1), sizeof(float) * pConfig->flimAlines);
-                memcpy(&pVisTab->m_lifetimeMap.at(2)(0, frameCount), &ltm(0, 2), sizeof(float) * pConfig->flimAlines);
+                memcpy(&pViewTab->m_intensityMap.at(0)(0, frameCount), &itn(0, 1), sizeof(float) * pConfig->flimAlines);
+                memcpy(&pViewTab->m_intensityMap.at(1)(0, frameCount), &itn(0, 2), sizeof(float) * pConfig->flimAlines);
+                memcpy(&pViewTab->m_intensityMap.at(2)(0, frameCount), &itn(0, 3), sizeof(float) * pConfig->flimAlines);
+                memcpy(&pViewTab->m_lifetimeMap.at(0)(0, frameCount), &ltm(0, 0), sizeof(float) * pConfig->flimAlines);
+                memcpy(&pViewTab->m_lifetimeMap.at(1)(0, frameCount), &ltm(0, 1), sizeof(float) * pConfig->flimAlines);
+                memcpy(&pViewTab->m_lifetimeMap.at(2)(0, frameCount), &ltm(0, 2), sizeof(float) * pConfig->flimAlines);
             }
 			emit processedSingleFrame(int(double(100 * frameCount++) / (double)pConfig->frames + 1));
 

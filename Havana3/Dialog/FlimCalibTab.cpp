@@ -26,6 +26,7 @@ FlimCalibTab::FlimCalibTab(QWidget *parent) :
     // Create layout
     m_pVBoxLayout = new QVBoxLayout;
     m_pVBoxLayout->setSpacing(15);
+	setWindowTitle("FLIm Calibration");
 
     // Create widgets for pulse view and FLIM calibration
     createPulseView();

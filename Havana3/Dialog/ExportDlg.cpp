@@ -2,6 +2,7 @@
 #include "ExportDlg.h"
 
 #include <Havana3/MainWindow.h>
+#include <Havana3/Configuration.h>
 #include <Havana3/QResultTab.h>
 #include <Havana3/QViewTab.h>
 
