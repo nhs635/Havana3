@@ -13,6 +13,7 @@
 class MainWindow;
 class HvnSqlDataBase;
 
+class QScope;
 class QViewTab;
 class SettingDlg;
 
@@ -41,11 +42,14 @@ public:
     inline DataAcquisition* getDataAcquisition() const { return m_pDataAcquisition; }
     inline DeviceControl* getDeviceControl() const { return m_pDeviceControl; }
     inline QViewTab* getViewTab() const { return m_pViewTab; }
+	inline QScrollBar* getCalibScrollBar() const { return m_pScrollBar_CatheterCalibration; }
+	inline QScope* getAlineScope() const { return m_pScope_Alines; }
 
 	inline void setFirstImplemented(bool impl) { m_bFirstImplemented = impl; }
 	inline bool getFirstImplemented() { return m_bFirstImplemented; }
 
 	inline size_t getFlimProcessingBufferQueueSize() const { return m_syncFlimProcessing.queue_buffer.size(); }
+	inline size_t getOctProcessingBufferQueueSize() const { return m_syncOctProcessing.queue_buffer.size(); }
 	inline size_t getFlimVisualizationBufferQueueSize() const { return m_syncFlimVisualization.queue_buffer.size(); }
 	inline size_t getOctVisualizationBufferQueueSize() const { return m_syncOctVisualization.queue_buffer.size(); }
 	
@@ -66,6 +70,7 @@ private:
 private:		
 // Set thread callback objects
     void setFlimAcquisitionCallback();
+	void setOctAcquisitionCallback();
 	void setFlimProcessingCallback();
 	void setOctProcessingCallback();
     void setVisualizationCallback();
@@ -84,6 +89,9 @@ signals:
 	void deviceInitialized();
 	void getCapture(QByteArray &);
 	void requestReview(const QString &);
+#ifdef DEVELOPER_MODE
+	void plotAline(const float*);
+#endif
 
 // Variables ////////////////////////////////////////////
 private:
@@ -108,11 +116,13 @@ private:
 public:
 	// Thread manager objects
 	ThreadManager* m_pThreadFlimProcess;
+	ThreadManager* m_pThreadOctProcess;
 	ThreadManager* m_pThreadVisualization;
 
 private:
 	// Thread synchronization objects
 	SyncObject<uint16_t> m_syncFlimProcessing;
+	SyncObject<float> m_syncOctProcessing;
 	SyncObject<float> m_syncFlimVisualization;
 	SyncObject<uint8_t> m_syncOctVisualization;
 
@@ -132,6 +142,7 @@ private:
     QPushButton *m_pToggleButton_StartPullback;
 
 #ifdef DEVELOPER_MODE
+	QScope *m_pScope_Alines;
 	QLabel *m_pLabel_StreamingSyncStatus;
 #endif
 

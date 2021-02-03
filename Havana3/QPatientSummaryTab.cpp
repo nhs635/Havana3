@@ -396,11 +396,15 @@ void QPatientSummaryTab::loadRecordDatabase()
             pVesselItem->setText(m_pHvnSqlDataBase->getVessel(_sqlQuery.value(12).toInt())); pVesselItem->setTextAlignment(Qt::AlignCenter);
             pProcedureItem->setText(m_pHvnSqlDataBase->getProcedure(_sqlQuery.value(11).toInt())); pProcedureItem->setTextAlignment(Qt::AlignCenter);            
             pCommentItem->setText(_sqlQuery.value(8).toString()); pCommentItem->setTextAlignment(Qt::AlignLeft | Qt::AlignVCenter);
-            
-
+            			
             QString record_id = _sqlQuery.value(0).toString();
             connect(pPushButton_Review, &QPushButton::clicked, [&, record_id]() { emit requestReview(record_id); });
 			connect(pPushButton_Delete, &QPushButton::clicked, [&, record_id]() { emit requestDelete(record_id); });
+
+			QFileInfo check_file(_sqlQuery.value(9).toString());
+
+			if (!(check_file.exists() && check_file.isFile()))
+				pPushButton_Review->setDisabled(true);
 
             m_pTableWidget_RecordInformation->setItem(rowCount, 0, pTitleItem);
             m_pTableWidget_RecordInformation->setItem(rowCount, 1, pPreviewItem);

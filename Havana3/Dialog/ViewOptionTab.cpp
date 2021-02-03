@@ -8,6 +8,7 @@
 #include <Havana3/QViewTab.h>
 
 #include <Havana3/Dialog/SettingDlg.h>
+#include <Havana3/Viewer/QScope.h>
 #include <Havana3/Viewer/QImageView.h>
 
 #include <DataAcquisition/DataAcquisition.h>
@@ -235,8 +236,10 @@ void ViewOptionTab::createOctVisualizationOptionTab()
 	}
 
 	// Create line edit widgets for OCT contrast adjustment
+#ifndef NEXT_GEN_SYSTEM
 	if (m_pStreamTab)
 	{
+#endif
 		m_pLineEdit_DecibelMax = new QLineEdit(this);
         m_pLineEdit_DecibelMax->setFixedWidth(35);
 		m_pLineEdit_DecibelMax->setText(QString::number(m_pConfig->axsunDbRange.max));
@@ -245,6 +248,7 @@ void ViewOptionTab::createOctVisualizationOptionTab()
         m_pLineEdit_DecibelMin->setFixedWidth(35);
 		m_pLineEdit_DecibelMin->setText(QString::number(m_pConfig->axsunDbRange.min));
 		m_pLineEdit_DecibelMin->setAlignment(Qt::AlignCenter);
+#ifndef NEXT_GEN_SYSTEM
 	}
 	else
 	{
@@ -257,6 +261,7 @@ void ViewOptionTab::createOctVisualizationOptionTab()
 		m_pLineEdit_OctGrayMin->setText(QString::number(m_pConfig->octGrayRange.min));
 		m_pLineEdit_OctGrayMin->setAlignment(Qt::AlignCenter);
 	}
+#endif
 
 	// Create color bar for OCT visualization
 	uint8_t color[256];
@@ -267,10 +272,14 @@ void ViewOptionTab::createOctVisualizationOptionTab()
 	m_pImageView_OctColorbar->setFixedSize(190, 20);
 	m_pImageView_OctColorbar->drawImage(color);
 
+#ifndef NEXT_GEN_SYSTEM
 	if (m_pStreamTab)
+#endif
 		m_pLabel_OctContrast = new QLabel("OCT Contrast (dB) ", this);
+#ifndef NEXT_GEN_SYSTEM
 	else
 		m_pLabel_OctContrast = new QLabel("OCT Gray Range (AU) ", this);
+#endif
 	m_pLabel_OctContrast->setFixedWidth(140);
 	m_pLabel_OctContrast->setAlignment(Qt::AlignVCenter | Qt::AlignLeft);
 	m_pLabel_OctContrast->setBuddy(m_pImageView_OctColorbar);
@@ -281,9 +290,15 @@ void ViewOptionTab::createOctVisualizationOptionTab()
 	pHBoxLayout_OctContrast->setSpacing(1);
 	pHBoxLayout_OctContrast->addWidget(m_pLabel_OctContrast);
 	pHBoxLayout_OctContrast->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed));
+#ifndef NEXT_GEN_SYSTEM
 	pHBoxLayout_OctContrast->addWidget(m_pStreamTab ? m_pLineEdit_DecibelMin : m_pLineEdit_OctGrayMin);
 	pHBoxLayout_OctContrast->addWidget(m_pImageView_OctColorbar);
 	pHBoxLayout_OctContrast->addWidget(m_pStreamTab ? m_pLineEdit_DecibelMax : m_pLineEdit_OctGrayMax);
+#else
+	pHBoxLayout_OctContrast->addWidget(m_pLineEdit_DecibelMin);
+	pHBoxLayout_OctContrast->addWidget(m_pImageView_OctColorbar);
+	pHBoxLayout_OctContrast->addWidget(m_pLineEdit_DecibelMax);
+#endif
 
 
 	QVBoxLayout *pVBoxLayout_OctVisualization = new QVBoxLayout;
@@ -310,11 +325,16 @@ void ViewOptionTab::createOctVisualizationOptionTab()
 	
     // Connect signal and slot
 	if (!m_pStreamTab) connect(m_pScrollBar_Rotation, SIGNAL(valueChanged(int)), this, SLOT(rotateImage(int)));
-	if (m_pStreamTab) connect(m_pCheckBox_VerticalMirroring, SIGNAL(toggeld(bool)), this, SLOT(verticalMirriong(bool)));
+	if (m_pStreamTab) connect(m_pCheckBox_VerticalMirroring, SIGNAL(toggled(bool)), this, SLOT(verticalMirriong(bool)));
+#ifndef NEXT_GEN_SYSTEM
 	if (m_pStreamTab) connect(m_pLineEdit_DecibelMax, SIGNAL(textEdited(const QString &)), this, SLOT(adjustDecibelRange()));
 	if (m_pStreamTab) connect(m_pLineEdit_DecibelMin, SIGNAL(textEdited(const QString &)), this, SLOT(adjustDecibelRange()));
 	if (!m_pStreamTab) connect(m_pLineEdit_OctGrayMax, SIGNAL(textEdited(const QString &)), this, SLOT(adjustOctGrayContrast()));
 	if (!m_pStreamTab) connect(m_pLineEdit_OctGrayMin, SIGNAL(textEdited(const QString &)), this, SLOT(adjustOctGrayContrast()));
+#else
+	connect(m_pLineEdit_DecibelMax, SIGNAL(textEdited(const QString &)), this, SLOT(adjustDecibelRange()));
+	connect(m_pLineEdit_DecibelMin, SIGNAL(textEdited(const QString &)), this, SLOT(adjustDecibelRange()));
+#endif
 }
 
 
@@ -426,6 +446,8 @@ void ViewOptionTab::enableIntensityRatioMode(bool toggled)
 	//// Only result tab function
 	////	visualizeEnFaceMap(true);
 	////	visualizeImage(m_pSlider_SelectFrame->value());
+
+	(void)toggled;
 }
 
 void ViewOptionTab::changeIntensityRatioRef(int index)
@@ -445,6 +467,8 @@ void ViewOptionTab::changeIntensityRatioRef(int index)
 	//// Only result tab function
 	////	visualizeEnFaceMap(true);
 	////	visualizeImage(m_pSlider_SelectFrame->value());
+
+	(void)index;
 }
 
 void ViewOptionTab::enableClassification(bool toggled)
@@ -472,6 +496,8 @@ void ViewOptionTab::enableClassification(bool toggled)
 	//// Only result tab function
 	////	visualizeEnFaceMap(true);
 	////	visualizeImage(m_pSlider_SelectFrame->value());
+
+	(void)toggled;
 }
 
 void ViewOptionTab::adjustFlimContrast()
@@ -505,7 +531,7 @@ void ViewOptionTab::adjustFlimContrast()
 		if (m_pViewTab) m_pViewTab->invalidate();
 	}
 
-	m_pConfig->writeToLog(QString("FLIm contrast range set: ch%1 i[%2 %3] l[%4 %4]")
+	m_pConfig->writeToLog(QString("FLIm contrast range set: ch%1 i[%2 %3] l[%4 %5]")
 		.arg(m_pConfig->flimEmissionChannel)
 		.arg(m_pConfig->flimIntensityRange[m_pConfig->flimEmissionChannel - 1].min)
 		.arg(m_pConfig->flimIntensityRange[m_pConfig->flimEmissionChannel - 1].max)
@@ -541,14 +567,29 @@ void ViewOptionTab::adjustDecibelRange()
 	m_pConfig->axsunDbRange.min = m_pLineEdit_DecibelMin->text().toDouble();
 	m_pConfig->axsunDbRange.max = m_pLineEdit_DecibelMax->text().toDouble();
 
+#ifndef NEXT_GEN_SYSTEM
 	m_pStreamTab->getDeviceControl()->adjustDecibelRange(m_pConfig->axsunDbRange.min, m_pConfig->axsunDbRange.max);
+#else
+	if (m_pResultTab) 
+		if (m_pViewTab) 
+			m_pViewTab->invalidate();
+#endif
 
 	m_pConfig->writeToLog(QString("OCT decibel range set: [%1 %2]")
 		.arg(m_pConfig->axsunDbRange.min, 3, 'f', 2).arg(m_pConfig->axsunDbRange.max, 3, 'f', 2));
+
+#ifdef DEVELOPER_MODE
+#ifndef NEXT_GEN_SYSTEM
+	if (m_pStreamTab) m_pStreamTab->getAlineScope()->resetAxis({ 0, (double)m_pConfig->octScans }, { m_pConfig->axsunDbRange.min, m_pConfig->axsunDbRange.max }, 2, 2, 1, 1, 0, 0);
+#else
+	if (m_pStreamTab) m_pStreamTab->getAlineScope()->resetAxis({ 0, (double)m_pConfig->octScansFFT / 2.0 }, { m_pConfig->axsunDbRange.min, m_pConfig->axsunDbRange.max }, 2, 2, 1, 1, 0, 0);
+#endif		
+#endif
 }
 
 void ViewOptionTab::adjustOctGrayContrast()
 {
+#ifndef NEXT_GEN_SYSTEM
 	// Only result tab function
 	m_pConfig->octGrayRange.min = m_pLineEdit_OctGrayMin->text().toFloat();
 	m_pConfig->octGrayRange.max = m_pLineEdit_OctGrayMax->text().toFloat();
@@ -557,4 +598,5 @@ void ViewOptionTab::adjustOctGrayContrast()
 
 	m_pConfig->writeToLog(QString("OCT decibel range set: [%1 %2]")
 		.arg(m_pConfig->octGrayRange.min).arg(m_pConfig->octGrayRange.max));
+#endif
 }

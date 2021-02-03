@@ -2,7 +2,6 @@
 #include "DataProcessing.h"
 
 #include <Havana3/MainWindow.h>
-#include <Havana3/Configuration.h>
 #include <Havana3/QResultTab.h>
 #include <Havana3/QViewTab.h>
 
@@ -13,7 +12,7 @@
 
 
 DataProcessing::DataProcessing(QWidget *parent)
-    : m_pConfigTemp(nullptr), m_pFLIm(nullptr)
+    : m_pConfigTemp(nullptr), m_pFLIm(nullptr), m_bIsDataLoaded(false)
 {
 	// Set main window objects    
     m_pResultTab = dynamic_cast<QResultTab*>(parent);
@@ -72,7 +71,11 @@ void DataProcessing::startProcessing(QString fileName)
                 m_pConfigTemp = new Configuration;
 
                 m_pConfigTemp->getConfigFile(iniName);
+#ifndef NEXT_GEN_SYSTEM
                 m_pConfigTemp->frames = (int)(file.size() / (sizeof(uint8_t) * (qint64)m_pConfigTemp->octFrameSize + sizeof(uint16_t) * (qint64)m_pConfigTemp->flimFrameSize));
+#else
+				m_pConfigTemp->frames = (int)(file.size() / (sizeof(float) * (qint64)m_pConfigTemp->octFrameSize + sizeof(uint16_t) * (qint64)m_pConfigTemp->flimFrameSize));
+#endif
                 m_pConfigTemp->frames -= m_pConfigTemp->interFrameSync;
 
 				char msg[256];
@@ -85,7 +88,11 @@ void DataProcessing::startProcessing(QString fileName)
 				// Set Buffers & Objects ////////////////////////////////////////////////////////////////////
                 m_pResultTab->getViewTab()->setBuffers(m_pConfigTemp);
 				m_pResultTab->getViewTab()->setObjects(m_pConfigTemp);				
+#ifndef NEXT_GEN_SYSTEM
 				m_syncDeinterleaving.allocate_queue_buffer(m_pConfigTemp->flimScans + m_pConfigTemp->octScans, m_pConfigTemp->octAlines, PROCESSING_BUFFER_SIZE);
+#else
+				m_syncDeinterleaving.allocate_queue_buffer(sizeof(uint16_t) * m_pConfigTemp->flimScans / 4 + sizeof(float) * m_pConfigTemp->octScansFFT / 2, m_pConfigTemp->octAlines, PROCESSING_BUFFER_SIZE);
+#endif
 				m_syncFlimProcessing.allocate_queue_buffer(m_pConfigTemp->flimScans, m_pConfigTemp->flimAlines, PROCESSING_BUFFER_SIZE);
 
 				// Set FLIm Object ///////////////////////////////////////////////////////////////////////////
@@ -119,7 +126,10 @@ void DataProcessing::startProcessing(QString fileName)
 				m_syncFlimProcessing.deallocate_queue_buffer();
 				
 				// Visualization /////////////////////////////////////////////////////////////////////////////
-				m_pResultTab->getViewTab()->invalidate();				
+				m_pResultTab->getViewTab()->invalidate();		
+
+				// Flag //////////////////////////////////////////////////////////////////////////////////////
+				m_bIsDataLoaded = true;
 			}
 
 			file.close();
@@ -157,7 +167,11 @@ void DataProcessing::loadingRawData(QFile* pFile, Configuration* pConfig)
 			if (frame_data)
 			{
 				// Read data from the external data
+#ifndef NEXT_GEN_SYSTEM
 				pFile->read(reinterpret_cast<char *>(frame_data), sizeof(uint16_t) * pConfig->flimFrameSize + sizeof(uint8_t) * pConfig->octFrameSize);
+#else
+				pFile->read(reinterpret_cast<char *>(frame_data), sizeof(uint16_t) * pConfig->flimFrameSize + sizeof(float) * pConfig->octFrameSize);
+#endif
 				frameCount++;
 
 				// Push the buffers to sync Queues
@@ -198,8 +212,13 @@ void DataProcessing::deinterleaving(Configuration* pConfig)
 					// Data deinterleaving
 					memcpy(pulse_ptr, frame_ptr, sizeof(uint16_t) * pConfig->flimFrameSize);
 					if (frameCount >= pConfig->interFrameSync)
+#ifndef NEXT_GEN_SYSTEM
 						memcpy(pVisTab->m_vectorOctImage.at(frameCount - pConfig->interFrameSync).raw_ptr(),
 							frame_ptr + sizeof(uint16_t) * pConfig->flimFrameSize, sizeof(uint8_t) * pConfig->octFrameSize);
+#else
+						memcpy(pVisTab->m_vectorOctImage.at(frameCount - pConfig->interFrameSync).raw_ptr(),
+							frame_ptr + sizeof(uint16_t) * pConfig->flimFrameSize, sizeof(float) * pConfig->octFrameSize);
+#endif
 					//else
 					//	memset(pVisTab->m_vectorOctImage.at(frameCount - pConfig->interFrameSync).raw_ptr(), 0, sizeof(uint8_t) * pConfig->octFrameSize);
 
@@ -296,17 +315,29 @@ void DataProcessing::flimProcessing(FLImProcess* pFLIm, Configuration* pConfig)
 }
 
 
+#ifndef NEXT_GEN_SYSTEM
 void DataProcessing::getOctProjection(std::vector<np::Uint8Array2>& vecImg, np::Uint8Array2& octProj, int offset)
+#else
+void DataProcessing::getOctProjection(std::vector<np::FloatArray2>& vecImg, np::FloatArray2& octProj, int offset)
+#endif
 {
 	int len = vecImg.at(0).size(1);
 	tbb::parallel_for(tbb::blocked_range<size_t>(0, (size_t)vecImg.size()),
 		[&](const tbb::blocked_range<size_t>& r) {
 		for (size_t i = r.begin(); i != r.end(); ++i)
 		{
+#ifndef NEXT_GEN_SYSTEM
 			uint8_t maxVal, minVal;
+#else
+			Ipp32f maxVal, minVal;
+#endif
 			for (int j = 0; j < octProj.size(0); j++)
 			{
+#ifndef NEXT_GEN_SYSTEM
 				ippsMinMax_8u(&vecImg.at((int)i)(offset + OUTER_SHEATH_POSITION, j), len - OUTER_SHEATH_POSITION, &minVal, &maxVal);
+#else
+				ippsMinMax_32f(&vecImg.at((int)i)(offset + OUTER_SHEATH_POSITION, j), len - OUTER_SHEATH_POSITION, &minVal, &maxVal);
+#endif
 				octProj(j, (int)i) = maxVal;
 			}
 		}

@@ -8,7 +8,7 @@ AlazarDAQ::AlazarDAQ() :
     SystemId(1), nChannels(1), nScans(1000), nScansFFT(1024), nAlines(1024),
     VoltRange1(INPUT_RANGE_PM_400_MV), VoltRange2(INPUT_RANGE_PM_400_MV),
     AcqRate(SAMPLE_RATE_500MSPS), TriggerDelay(0), TriggerSlope(TRIGGER_SLOPE_POSITIVE),
-    UseExternalClock(false), UseAutoTrigger(false), UseFFTModule(false),
+    UseExternalClock(false), UseAutoTrigger(false), UseFFTModule(false), frameRate(0.0),
     _dirty(true), _running(false), boardHandle(nullptr), fftHandle(nullptr)
 {
 }
@@ -57,9 +57,6 @@ bool AlazarDAQ::initialize()
 	// - select clock source INTERNAL_CLOCK and sample rate SAMPLE_RATE_100MSPS
 	// - select clock source FAST_EXTERNAL_CLOCK, sample rate SAMPLE_RATE_USER_DEF,
 	//   and connect a 100 MHz signalto the EXT CLK BNC connector.
-
-
-
 	retCode = 
 		AlazarSetCaptureClock(
 			boardHandle,			// HANDLE -- board handle
@@ -131,7 +128,7 @@ bool AlazarDAQ::initialize()
 			TRIG_ENGINE_J,			// U32 -- trigger engine id
 			TRIG_EXTERNAL,			// U32 -- trigger source id
 			TRIGGER_SLOPE_POSITIVE,	// U32 -- trigger slope id
-			128 + (int)(128 * 0.5),	// Utrigger32 -- trigger level from 0 (-range) to 255 (+range)
+			150,					// Utrigger32 -- trigger level from 0 (-range) to 255 (+range)
 			TRIG_ENGINE_K,			// U32 -- trigger engine id
 			TRIG_DISABLE,			// U32 -- trigger source id for engine K
 			TRIGGER_SLOPE_POSITIVE,	// U32 -- trigger slope id
@@ -498,11 +495,11 @@ void AlazarDAQ::run()
         else if (UseFFTModule)
         {
             // NPT AutoMDA acquisition
-            admaFlags = ADMA_EXTERNAL_STARTCAPTURE |
+            admaFlags = ADMA_EXTERNAL_STARTCAPTURE | ADMA_TRADITIONAL_MODE |
                     ADMA_NPT | ADMA_DSP;
         }
         else
-        {
+		{
             // Acquire records per each trigger
             admaFlags = ADMA_EXTERNAL_STARTCAPTURE |	// Start acquisition when AlazarStartCapture is called
                 ADMA_FIFO_ONLY_STREAMING |		// The ATS9360-FIFO does not have on-board memory
@@ -534,7 +531,7 @@ void AlazarDAQ::run()
         retCode = AlazarPostAsyncBuffer(boardHandle, pBuffer, bytesPerBuffer);
         if (retCode != ApiSuccess)
         {
-            dumpError(retCode, "[AlazarDAQ] ERROR: AlazarPostAsyncBuffer failed: ");
+            dumpError(retCode, "[AlazarDAQ] ERROR: AlazarPostAsyncBuffer failed 1: ");
             success = FALSE;
         }
     }
@@ -675,8 +672,8 @@ void AlazarDAQ::run()
                 retCode = AlazarPostAsyncBuffer(boardHandle, pBuffer, bytesPerBuffer);
                 if (retCode != ApiSuccess)
                 {
-                    dumpError(retCode, "[AlazarDAQ] ERROR: AlazarPostAsyncBuffer failed: ");
-                    success = FALSE;
+                    //dumpError(retCode, "[AlazarDAQ] ERROR: AlazarPostAsyncBuffer failed 2: ");
+                    //success = FALSE;
                 }
             }
 
@@ -703,6 +700,7 @@ void AlazarDAQ::run()
                 {
                     dRate = (bytesTransferred / 1000000.0) / (dwElapsed / 1000.0);
                     dRateUpdate = (bytesTransferredPerUpdate / 1000000.0) / (dwElapsedUpdate / 1000.0);
+					frameRate = (double)buffersCompletedUpdate / (double)(dwElapsedUpdate) * 1000.0;
 
                     unsigned h = 0, m = 0, s = 0;
                     if (dwElapsed >= 1000)
@@ -720,7 +718,7 @@ void AlazarDAQ::run()
 
 					char msg[MAX_MSG_LENGTH];
 					sprintf(msg, "[AlazarDAQ] [SystemId: %d] [Elapsed Time] %u:%02u:%02u [DAQ Rate] %4.2f MB/s [Frame Rate] %3.2f fps ", 
-						SystemId, h, m, s, dRateUpdate, (double)buffersCompletedUpdate / (double)(dwElapsedUpdate) * 1000.0);
+						SystemId, h, m, s, dRateUpdate, frameRate);
 					SendStatusMessage(msg, false);
                 }
 

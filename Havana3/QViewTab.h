@@ -4,6 +4,8 @@
 #include <QtWidgets>
 #include <QtCore>
 
+#include <Havana3/Configuration.h>
+
 #include <Havana3/Viewer/QImageView.h>
 
 #include <Common/array.h>
@@ -17,7 +19,6 @@
 #include <vector>
 
 
-class Configuration;
 class QStreamTab;
 class QResultTab;
 class QImageView;
@@ -104,8 +105,13 @@ public:
 	np::FloatArray2 m_visLifetime;
 
 public: // for post processing
+#ifndef NEXT_GEN_SYSTEM
 	std::vector<np::Uint8Array2> m_vectorOctImage;
 	np::Uint8Array2 m_octProjection;
+#else
+	std::vector<np::FloatArray2> m_vectorOctImage;
+	np::FloatArray2 m_octProjection;
+#endif
 	std::vector<np::FloatArray2> m_intensityMap; // (256 x N) x 3
 	std::vector<np::FloatArray2> m_lifetimeMap; // (256 x N) x 3
 	std::vector<np::FloatArray2> m_vectorPulseCrop;

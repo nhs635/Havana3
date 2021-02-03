@@ -13,6 +13,7 @@
 #include <Havana3/QResultTab.h>
 
 #include <DataAcquisition/DataAcquisition.h>
+#include <DataAcquisition/DataProcessing.h>
 
 
 MainWindow::MainWindow(QWidget *parent) :
@@ -32,6 +33,9 @@ MainWindow::MainWindow(QWidget *parent) :
     m_pConfiguration->flimScans = FLIM_SCANS;
     m_pConfiguration->flimAlines = FLIM_ALINES;
     m_pConfiguration->octScans = OCT_SCANS;
+#ifdef NEXT_GEN_SYSTEM
+	m_pConfiguration->octScansFFT = OCT_SCANS_FFT;
+#endif
     m_pConfiguration->octAlines = OCT_ALINES;
 
     // Create sql database object
@@ -154,6 +158,11 @@ void MainWindow::tabCurrentChanged(int index)
 		if (!m_pStreamTab->getDataAcquisition()->getAcquisitionState())
 			emit m_pTabWidget->tabCloseRequested(index);
 	}
+	//else if (currentTab->windowTitle().contains("Review"))
+	//{
+	//	if (!dynamic_cast<QResultTab*>(currentTab)->getDataProcessing()->getIsDataLoaded())
+	//		emit m_pTabWidget->tabCloseRequested(index);
+	//}
 	
 	prev_index = index;
 

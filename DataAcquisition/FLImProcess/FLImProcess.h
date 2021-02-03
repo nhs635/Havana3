@@ -148,12 +148,12 @@ public:
 				float max_val; int max_ind;
 
 				// 3. Jitter compensation - is it valid?
-				int cpos = 4, rpos = 4;
-				ippsMaxIndx_32f(&mask_src(0, (int)i), start_ind[0], &max_val, &cpos);
+				//int cpos = 4, rpos = 4;
+				//ippsMaxIndx_32f(&mask_src(0, (int)i), start_ind[0], &max_val, &cpos);
 
-				int offset = cpos - rpos;
-				if (offset < 0) offset += mask_src.size(0);
-				std::rotate(&mask_src(0, (int)i), &mask_src(offset, (int)i), &mask_src(mask_src.size(0) - 1, (int)i));
+				//int offset = cpos - rpos;
+				//if (offset < 0) offset += mask_src.size(0);
+				//std::rotate(&mask_src(0, (int)i), &mask_src(offset, (int)i), &mask_src(mask_src.size(0) - 1, (int)i));
 
                 ///int end_ind4[4]; memcpy(end_ind4, ch_ind4 + 1, sizeof(int) * 4);
                 ///ippsSubC_32s_ISfs(ch_ind4[0], end_ind4, 4, 0);
@@ -176,7 +176,7 @@ public:
                 }
 				
 				// 5. Determine whether saturated
-				int thres = 31000;
+				Ipp32f thres = 61000.0 - pParams.bg;
 				ippsThreshold_32f(&mask_src(0, (int)i), &sat_src(0, (int)i), sat_src.size(0), thres, ippCmpLess);
 				ippsSubC_32f_I(thres, &sat_src(0, (int)i), sat_src.size(0));
 				for (int j = 1; j < 4; j++)

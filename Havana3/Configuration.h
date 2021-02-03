@@ -9,8 +9,8 @@
 
 ////////////////////// Software Setup ///////////////////////
 #define DEVELOPER_MODE
-//#define NEXT_GEN_SYSTEM
-//#define ENABLE_FPGA_FFT
+#define NEXT_GEN_SYSTEM
+#define ENABLE_FPGA_FFT
 #define ENABLE_DATABASE_ENCRYPTION
 #define NI_ENABLE
 
@@ -18,7 +18,12 @@
 #define FLIM_SCANS                  512
 #define FLIM_ALINES                 256
 
+#ifndef NEXT_GEN_SYSTEM
 #define OCT_SCANS                   1024  
+#else
+#define OCT_SCANS					1280
+#define OCT_SCANS_FFT				NEAR_2_POWER(OCT_SCANS)
+#endif
 #define OCT_ALINES                  FLIM_ALINES * 4
 
 //////////////////////// System Setup ///////////////////////
@@ -27,10 +32,10 @@
 
 #define FLIM_LASER_COM_PORT			"COM3"
 
-#define PMT_GAIN_AO_PORT			"Dev1/ao1"  /// "Dev1/ao0"
+#define PMT_GAIN_AO_PORT			"Dev1/ao0"  /// "Dev1/ao1"
 
-#define FLIM_LASER_SOURCE_TERMINAL	"/Dev1/PFI2"  /// "/Dev1/PFI10"
-#define FLIM_LASER_COUNTER_CHANNEL	"Dev1/ctr1"  /// "Dev1/ctr0"
+#define FLIM_LASER_SOURCE_TERMINAL	"/Dev1/PFI10"  /// "/Dev1/PFI2"
+#define FLIM_LASER_COUNTER_CHANNEL	"Dev1/ctr0"  /// "Dev1/ctr1"
 
 #ifndef NEXT_GEN_SYSTEM
 #define AXSUN_SOURCE_TERMINAL		"/Dev1/PFI3"
@@ -48,15 +53,15 @@
 #define PROCESSING_BUFFER_SIZE		80
 
 #ifdef _DEBUG
-#define WRITING_BUFFER_SIZE			100
+#define WRITING_BUFFER_SIZE			1000
 #else
 #define WRITING_BUFFER_SIZE	        2000
 #endif
 
 ///////////////////// FLIm Processing ///////////////////////
-#define FLIM_CH_START_5				30
-#define GAUSSIAN_FILTER_WIDTH		200 // 200 vs 230
-#define GAUSSIAN_FILTER_STD			48 // 48 vs 55 // 48 => 80MHz
+#define FLIM_CH_START_5				45
+#define GAUSSIAN_FILTER_WIDTH		250 // 200 // 200 vs 230
+#define GAUSSIAN_FILTER_STD			60 // 48 // 48 vs 55 // 48 => 80MHz
 #define FLIM_SPLINE_FACTOR			20
 #define INTENSITY_THRES				0.001f
 
@@ -70,7 +75,7 @@
 #define INTER_FRAME_SYNC			0 //10 //9  // Frames
 #define INTRA_FRAME_SYNC			0 //30 // A-lines
 
-#define RENEWAL_COUNT				10
+#define RENEWAL_COUNT				20
 #define PIXEL_RESOLUTION			5.7 // micrometer
 #define OUTER_SHEATH_POSITION		120 // (int)((150 * 1.45 + 180 * 1 + 150 * 1.33) / PIXEL_RESOLUTION)
 
@@ -113,8 +118,15 @@ public:
         flimAlines = settings.value("flimAlines").toInt();
         flimFrameSize = flimScans * flimAlines;
         octScans = settings.value("octScans").toInt();
+#ifdef NEXT_GEN_SYSTEM
+		octScansFFT = NEAR_2_POWER(octScans);
+#endif
         octAlines = settings.value("octAlines").toInt();
+#ifndef NEXT_GEN_SYSTEM
         octFrameSize = octScans * octAlines;
+#else
+		octFrameSize = octScansFFT / 2 * octAlines;
+#endif
 
         // FLIm processing
 		flimBg = settings.value("flimBg").toFloat();
@@ -151,8 +163,10 @@ public:
 			float temp = settings.value(QString("flimIntensityComp_%1").arg(i + 1)).toFloat();
 			flimIntensityComp[i] = (temp == 0.0f) ? 1.0f : temp;			
         }
+#ifndef NEXT_GEN_SYSTEM
 		octGrayRange.max = settings.value("octGrayRangeMax").toInt();
 		octGrayRange.min = settings.value("octGrayRangeMin").toInt();
+#endif
 		rotatedAlines = settings.value("rotatedAlines").toInt();
 		verticalMirroring = settings.value("verticalMirroring").toBool();
 		
@@ -165,7 +179,11 @@ public:
 		pullbackSpeed = settings.value("pullbackSpeed").toFloat();
 		pullbackLength = settings.value("pullbackLength").toFloat();		
 		pmtGainVoltage = settings.value("pmtGainVoltage").toFloat(); 
+#ifndef NEXT_GEN_SYSTEM
         px14DcOffset = settings.value("px14DcOffset").toInt();
+#else
+		flimLaserPower = settings.value("flimLaserPower").toInt();
+#endif
 		axsunVDLLength = settings.value("axsunVDLLength").toFloat();
 		axsunDbRange.max = settings.value("axsunDbRangeMax").toFloat();
 		axsunDbRange.min = settings.value("axsunDbRangeMin").toFloat();
@@ -187,6 +205,9 @@ public:
 		settings.setValue("flimScans", flimScans);
 		settings.setValue("flimAlines", flimAlines);
 		settings.setValue("octScans", octScans);
+#ifdef NEXT_GEN_SYSTEM
+		settings.setValue("octScansFFT", octScansFFT);
+#endif
 		settings.setValue("octAlines", octAlines);
 
 		// FLIm processing
@@ -216,8 +237,10 @@ public:
 				settings.setValue(QString("flimIntensityRatioRangeMin_Ch%1_%2").arg(i + 1).arg(ratio_index[i][j]), QString::number(flimIntensityRatioRange[i][j].min, 'f', 1));
 			}
 		}
+#ifndef NEXT_GEN_SYSTEM
 		settings.setValue("octGrayRangeMax", octGrayRange.max);
 		settings.setValue("octGrayRangeMin", octGrayRange.min);
+#endif
 		settings.setValue("rotatedAlines", rotatedAlines);
 		settings.setValue("verticalMirroring", verticalMirroring);
 
@@ -226,7 +249,11 @@ public:
 		settings.setValue("pullbackSpeed", QString::number(pullbackSpeed, 'f', 2));
 		settings.setValue("pullbackLength", QString::number(pullbackLength, 'f', 2));
 		settings.setValue("pmtGainVoltage", QString::number(pmtGainVoltage, 'f', 3));
+#ifndef NEXT_GEN_SYSTEM
         settings.setValue("px14DcOffset", px14DcOffset);
+#else
+		settings.setValue("flimLaserPower", flimLaserPower);
+#endif
 		settings.setValue("axsunVDLLength", QString::number(axsunVDLLength, 'f', 2));
 		settings.setValue("axsunDbRangeMax", QString::number(axsunDbRange.max, 'f', 1));
 		settings.setValue("axsunDbRangeMin", QString::number(axsunDbRange.min, 'f', 1));
@@ -255,6 +282,9 @@ public:
     int frames;
     int flimScans, flimAlines, flimFrameSize;
     int octScans, octAlines, octFrameSize;
+#ifdef NEXT_GEN_SYSTEM
+	int octScansFFT;
+#endif
 
     // FLIm processing
 	float flimBg;
@@ -274,7 +304,9 @@ public:
 	int flimIntensityRatioRefIdx[3];
     ContrastRange<float> flimIntensityRatioRange[3][3];
 	float flimIntensityComp[3];
+#ifndef NEXT_GEN_SYSTEM
     ContrastRange<int> octGrayRange;
+#endif
 	int rotatedAlines;
 	bool verticalMirroring;
 
@@ -287,7 +319,11 @@ public:
 	float pullbackSpeed;
 	float pullbackLength;
 	float pmtGainVoltage;
+#ifndef NEXT_GEN_SYSTEM
     int px14DcOffset;
+#else
+	int flimLaserPower;
+#endif
 	float axsunVDLLength;
     ContrastRange<float> axsunDbRange;	
 

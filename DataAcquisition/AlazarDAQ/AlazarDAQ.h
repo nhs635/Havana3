@@ -73,6 +73,7 @@ public:
 	bool UseExternalClock;
     bool UseAutoTrigger;
     bool UseFFTModule;
+	double frameRate;
 	bool _running;
 	
 	// On-FPGA FFT processing

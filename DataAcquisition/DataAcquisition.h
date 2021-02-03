@@ -46,12 +46,12 @@ public:
 	
 public:
     void ConnectAcquiredFlimData(const std::function<void(int, const np::Array<uint16_t, 2>&)> &slot);
-	void ConnectAcquiredFlimData(const std::function<void(int, const void*)> &slot);
+	void ConnectAcquiredFlimData1(const std::function<void(int, const void*)> &slot);
     void ConnectStopFlimData(const std::function<void(void)> &slot);
     void ConnectFlimSendStatusMessage(const std::function<void(const char*, bool)> &slot);
 
 	void ConnectAcquiredOctData(const std::function<void(uint32_t, const np::Uint8Array2&)> &slot);
-	void ConnectAcquiredOctData(const std::function<void(int, const void*)> &slot);
+	void ConnectAcquiredOctData1(const std::function<void(int, const void*)> &slot);
 	void ConnectStopOctData(const std::function<void(void)> &slot);
 	void ConnectOctSendStatusMessage(const std::function<void(const char*, bool)> &slot);
 	

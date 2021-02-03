@@ -7,6 +7,8 @@
 #include <iostream>
 #include <vector>
 
+#include <Havana3/Configuration.h>
+
 #include <Common/array.h>
 #include <Common/circularize.h>
 #include <Common/medfilt.h>
@@ -71,7 +73,11 @@ signals:
 	void savedSingleFrame(int);
 
 private:
+#ifndef NEXT_GEN_SYSTEM
 	void scaling(std::vector<np::Uint8Array2>& vectorOctImage, std::vector<ImageObject*>& vectorLifetimeMap, CrossSectionCheckList checkList);
+#else
+	void scaling(std::vector<np::FloatArray2>& vectorOctImage, std::vector<ImageObject*>& vectorLifetimeMap, CrossSectionCheckList checkList);
+#endif
 	void converting(CrossSectionCheckList checkList);
 	void circularizing(CrossSectionCheckList checkList);
 	void circWriting(CrossSectionCheckList checkList);

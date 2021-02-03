@@ -1,8 +1,7 @@
-
+ï»¿
 #include "QViewTab.h"
 
 #include <Havana3/MainWindow.h>
-#include <Havana3/Configuration.h>
 #include <Havana3/QStreamTab.h>
 #include <Havana3/QResultTab.h>
 #include <Havana3/Viewer/QImageView.h>
@@ -60,16 +59,18 @@ QViewTab::~QViewTab()
 void QViewTab::createViewTabWidgets(bool is_streaming)
 {
     // Create image view : cross-section
-	if (is_streaming)
-	{
-		m_pImageView_CircImage = new QImageView(ColorTable::colortable(OCT_COLORTABLE), 2 * m_pConfig->octScans, 2 * m_pConfig->octScans, true, this);
+#ifndef NEXT_GEN_SYSTEM
+	int diameter = 2 * m_pConfig->octScans;
+#else
+	int diameter = m_pConfig->octScansFFT;
+#endif
+
+	m_pImageView_CircImage = new QImageView(ColorTable::colortable(OCT_COLORTABLE), diameter, diameter, true, this);
+	if (is_streaming)		
 		m_pImageView_CircImage->setMinimumSize(810, 810);
-	}
 	else
-	{
-		m_pImageView_CircImage = new QImageView(ColorTable::colortable(OCT_COLORTABLE), 2 * m_pConfig->octScans, 2 * m_pConfig->octScans, true, this);
 		m_pImageView_CircImage->setMinimumSize(650, 650);
-	}
+
 	m_pImageView_CircImage->setSquare(true);
 	m_pImageView_CircImage->setCircle(1, OUTER_SHEATH_POSITION);
 
@@ -81,7 +82,7 @@ void QViewTab::createViewTabWidgets(bool is_streaming)
         m_pImageView_EnFace->setMinimumSize(500, 250);
 		        
         // Create image view : longitudinal
-        m_pImageView_Longi = new QImageView(ColorTable::colortable(OCT_COLORTABLE), 1, 2 * m_pConfig->octScans, true, this);
+        m_pImageView_Longi = new QImageView(ColorTable::colortable(OCT_COLORTABLE), 1, diameter, true, this);
         m_pImageView_Longi->setMinimumSize(500, 350);		
 		
         // Create image view : colorbar
@@ -214,8 +215,14 @@ void QViewTab::invalidate()
 
 void QViewTab::setStreamingBuffersObjects()
 {
+#ifndef NEXT_GEN_SYSTEM
+	int diameter = 2 * m_pConfig->octScans;
+#else
+	int diameter = m_pConfig->octScansFFT;
+#endif
+
     // Create visualization buffers
-    m_visImage = np::Uint8Array2(m_pConfig->octScans, m_pConfig->octAlines);
+	m_visImage = np::Uint8Array2(diameter / 2, m_pConfig->octAlines);
     m_visIntensity = np::FloatArray2(m_pConfig->flimAlines, 4); memset(m_visIntensity.raw_ptr(), 0, sizeof(float) * m_visIntensity.length());
     m_visMeanDelay = np::FloatArray2(m_pConfig->flimAlines, 4); memset(m_visMeanDelay.raw_ptr(), 0, sizeof(float) * m_visMeanDelay.length());
     m_visLifetime = np::FloatArray2(m_pConfig->flimAlines, 3); memset(m_visLifetime.raw_ptr(), 0, sizeof(float) * m_visLifetime.length());
@@ -223,27 +230,38 @@ void QViewTab::setStreamingBuffersObjects()
     // Create image visualization buffers
     ColorTable temp_ctable;
 	if (m_pImgObjRectImage) delete m_pImgObjRectImage;
-	m_pImgObjRectImage = new ImageObject(m_pConfig->octScans, m_pConfig->octAlines, temp_ctable.m_colorTableVector.at(OCT_COLORTABLE));
+	m_pImgObjRectImage = new ImageObject(diameter / 2, m_pConfig->octAlines, temp_ctable.m_colorTableVector.at(OCT_COLORTABLE));
 	if (m_pImgObjCircImage) delete m_pImgObjCircImage;
-    m_pImgObjCircImage = new ImageObject(2 * m_pConfig->octScans, 2 * m_pConfig->octScans, temp_ctable.m_colorTableVector.at(OCT_COLORTABLE));
+	m_pImgObjCircImage = new ImageObject(diameter, diameter, temp_ctable.m_colorTableVector.at(OCT_COLORTABLE));
 	if (m_pImgObjIntensity) delete m_pImgObjIntensity;
     m_pImgObjIntensity = new ImageObject(m_pConfig->flimAlines, 1, temp_ctable.m_colorTableVector.at(ColorTable::gray));
 	if (m_pImgObjLifetime) delete m_pImgObjLifetime;
     m_pImgObjLifetime = new ImageObject(m_pConfig->flimAlines, 1, temp_ctable.m_colorTableVector.at(LIFETIME_COLORTABLE));
 
 	if (m_pCirc) delete m_pCirc;
-    m_pCirc = new circularize(m_pConfig->octScans, m_pConfig->octAlines, false);
+	m_pCirc = new circularize(diameter / 2, m_pConfig->octAlines, false);
 	if (m_pMedfiltRect) delete m_pMedfiltRect;
-	m_pMedfiltRect = new medfilt(m_pConfig->octScans, m_pConfig->octAlines, 3, 3);
+	m_pMedfiltRect = new medfilt(diameter / 2, m_pConfig->octAlines, 3, 3);
 
 	m_pConfig->writeToLog("Streaming buffers and objects are initialized.");
 }
 
 void QViewTab::setBuffers(Configuration* pConfig)
 {
+#ifndef NEXT_GEN_SYSTEM
+	int diameter = 2 * m_pConfig->octScans;
+#else
+	int diameter = m_pConfig->octScansFFT;
+#endif
+
 	// Clear existed buffers
+#ifndef NEXT_GEN_SYSTEM
 	std::vector<np::Uint8Array2> clear_vector;
 	clear_vector.swap(m_vectorOctImage);
+#else
+	std::vector<np::FloatArray2> clear_vector;
+	clear_vector.swap(m_vectorOctImage);
+#endif
 	std::vector<np::FloatArray2> clear_vector1;
 	clear_vector1.swap(m_intensityMap);
 	std::vector<np::FloatArray2> clear_vector2;
@@ -256,11 +274,20 @@ void QViewTab::setBuffers(Configuration* pConfig)
 	// Data buffers
 	for (int i = 0; i < pConfig->frames; i++)
 	{
-		np::Uint8Array2 buffer = np::Uint8Array2(pConfig->octScans, pConfig->octAlines);
-		memset(buffer, 0, sizeof(uint8_t) * pConfig->octScans * pConfig->octAlines);
+#ifndef NEXT_GEN_SYSTEM
+		np::Uint8Array2 buffer = np::Uint8Array2(diameter / 2, pConfig->octAlines);
+		memset(buffer, 0, sizeof(uint8_t) * diameter / 2 * pConfig->octAlines);
+#else
+		np::FloatArray2 buffer = np::FloatArray2(diameter / 2, pConfig->octAlines);
+		memset(buffer, 0, sizeof(float) * diameter / 2 * pConfig->octAlines);
+#endif
 		m_vectorOctImage.push_back(buffer);
 	}
+#ifndef NEXT_GEN_SYSTEM
 	m_octProjection = np::Uint8Array2(pConfig->octAlines, pConfig->frames);
+#else
+	m_octProjection = np::FloatArray2(pConfig->octAlines, pConfig->frames);
+#endif
 
 	for (int i = 0; i < 3; i++)
 	{
@@ -278,13 +305,18 @@ void QViewTab::setObjects(Configuration * pConfig)
 	// Non-4's multiple width
 	int frames4 = ROUND_UP_4S(pConfig->frames);
 
+#ifndef NEXT_GEN_SYSTEM
+	int diameter = 2 * m_pConfig->octScans;
+#else
+	int diameter = m_pConfig->octScansFFT;
+#endif
+
 	// Visualization buffers
 	ColorTable temp_ctable;
-
 	if (m_pImgObjRectImage) delete m_pImgObjRectImage;
-	m_pImgObjRectImage = new ImageObject(pConfig->octScans, pConfig->octAlines, temp_ctable.m_colorTableVector.at(OCT_COLORTABLE));
+	m_pImgObjRectImage = new ImageObject(diameter / 2, pConfig->octAlines, temp_ctable.m_colorTableVector.at(OCT_COLORTABLE));
 	if (m_pImgObjCircImage) delete m_pImgObjCircImage;
-	m_pImgObjCircImage = new ImageObject(2 * m_pConfig->octScans, 2 * m_pConfig->octScans, temp_ctable.m_colorTableVector.at(OCT_COLORTABLE));
+	m_pImgObjCircImage = new ImageObject(diameter, diameter, temp_ctable.m_colorTableVector.at(OCT_COLORTABLE));
 	///if (m_pImgObjIntensity) delete m_pImgObjIntensity;
 	///m_pImgObjIntensity = new ImageObject(RING_THICKNESS, pConfig->flimAlines, temp_ctable.m_colorTableVector.at(ColorTable::gray));
 	///if (m_pImgObjLifetime) delete m_pImgObjLifetime;
@@ -300,20 +332,20 @@ void QViewTab::setObjects(Configuration * pConfig)
 
 	// Longitudinal image visualization buffers
 	if (m_pImgObjLongiImage) delete m_pImgObjLongiImage;
-	m_pImgObjLongiImage = new ImageObject(frames4, 2 * pConfig->octScans, temp_ctable.m_colorTableVector.at(OCT_COLORTABLE));
+	m_pImgObjLongiImage = new ImageObject(frames4, diameter, temp_ctable.m_colorTableVector.at(OCT_COLORTABLE));
 	
 	// Circ & Medfilt objects
 	if (m_pCirc) delete m_pCirc;
-	m_pCirc = new circularize(pConfig->octScans, pConfig->octAlines, false);
+	m_pCirc = new circularize(diameter / 2, pConfig->octAlines, false);
 
 	if (m_pMedfiltRect) delete m_pMedfiltRect;
-	m_pMedfiltRect = new medfilt(pConfig->octScans, pConfig->octAlines, 3, 3);
+	m_pMedfiltRect = new medfilt(diameter / 2, pConfig->octAlines, 3, 3);
 	if (m_pMedfiltIntensityMap) delete m_pMedfiltIntensityMap;
 	m_pMedfiltIntensityMap = new medfilt(frames4, pConfig->flimAlines, 3, 5);
 	if (m_pMedfiltLifetimeMap) delete m_pMedfiltLifetimeMap;
-	m_pMedfiltLifetimeMap = new medfilt(frames4, pConfig->flimAlines, 5, 7); 
+	m_pMedfiltLifetimeMap = new medfilt(frames4, pConfig->flimAlines, 5, 7);
 	if (m_pMedfiltLongi) delete m_pMedfiltLongi;
-	m_pMedfiltLongi = new medfilt(frames4, 2 * pConfig->octScans, 3, 3); 
+	m_pMedfiltLongi = new medfilt(frames4, diameter, 3, 3);
 
 	m_pConfig->writeToLog("Reviewing objects are initialized.");
 }
@@ -323,13 +355,19 @@ void QViewTab::setWidgets(Configuration* pConfig)
 	// Non-4's multiple width
 	int frames4 = (pConfig->frames);
 
+#ifndef NEXT_GEN_SYSTEM
+	int diameter = 2 * m_pConfig->octScans;
+#else
+	int diameter = m_pConfig->octScansFFT;
+#endif
+
 	// Set slider 
 	m_pSlider_SelectFrame->setRange(0, pConfig->frames - 1);
 	m_pSlider_SelectFrame->setValue(0);
 	m_pSlider_SelectFrame->setTickInterval(int(pConfig->frames / 5));
 
 	// ImageView objects
-	m_pImageView_CircImage->resetSize(2 * pConfig->octScans, 2 * pConfig->octScans);
+	m_pImageView_CircImage->resetSize(diameter, diameter);
 	m_pImageView_CircImage->setRLineChangeCallback([&](int aline) { visualizeLongiImage(aline); });
 	m_pImageView_CircImage->setVerticalLine(1, 0);
 	m_pImageView_CircImage->getRender()->m_bRadial = true;
@@ -345,13 +383,13 @@ void QViewTab::setWidgets(Configuration* pConfig)
 	m_pImageView_EnFace->setHLineChangeCallback([&](int aline) { visualizeLongiImage(4 * aline); });
 	m_pImageView_EnFace->setHorizontalLine(1, 0);
 	m_pImageView_EnFace->setEnterCallback([&]() { m_pImageView_EnFace->setText(QPoint(8, 18), 
-												  QString::fromLocal8Bit("2-D FLIm En Face Mapping - Channel %1 (z-¥è)").arg(m_pConfig->flimEmissionChannel)); });
+												  QString::fromLocal8Bit("2-D FLIm En Face Mapping - Channel %1 (z-theta)").arg(m_pConfig->flimEmissionChannel)); });
 	m_pImageView_EnFace->setLeaveCallback([&]() { m_pImageView_EnFace->setText(QPoint(8, 18), ""); });
 
-	m_pImageView_Longi->resetSize(frames4, 2 * pConfig->octScans);
+	m_pImageView_Longi->resetSize(frames4, diameter);
 	m_pImageView_Longi->setVLineChangeCallback([&](int frame) { m_pSlider_SelectFrame->setValue(frame); });
 	m_pImageView_Longi->setVerticalLine(1, 0);
-	m_pImageView_Longi->setHorizontalLine(2, pConfig->octScans + OUTER_SHEATH_POSITION, pConfig->octScans - OUTER_SHEATH_POSITION);
+	m_pImageView_Longi->setHorizontalLine(2, diameter / 2 + OUTER_SHEATH_POSITION, diameter / 2 - OUTER_SHEATH_POSITION);
 	m_pImageView_Longi->setEnterCallback([&]() { m_pImageView_Longi->setText(QPoint(8, 18), "Longitudinal View (z-r)"); });
 	m_pImageView_Longi->setLeaveCallback([&]() { m_pImageView_Longi->setText(QPoint(8, 18), ""); });
 
@@ -395,7 +433,11 @@ void QViewTab::visualizeEnFaceMap(bool scaling)
 void QViewTab::visualizeImage(uint8_t* oct_im, float* intensity, float* lifetime)
 {
 	// OCT Visualization
+#ifndef NEXT_GEN_SYSTEM
 	IppiSize roi_oct = { m_pConfig->octScans, m_pConfig->octAlines };
+#else
+	IppiSize roi_oct = { m_pConfig->octScansFFT / 2, m_pConfig->octAlines };
+#endif	
 
 	memcpy(m_pImgObjRectImage->arr.raw_ptr(), oct_im, sizeof(uint8_t) * roi_oct.width * roi_oct.height);		
 	(*m_pMedfiltRect)(m_pImgObjRectImage->arr.raw_ptr());
@@ -440,10 +482,15 @@ void QViewTab::visualizeImage(int frame)
         // OCT Visualization
 		IppiSize roi_oct = { m_pImgObjRectImage->getWidth(), m_pImgObjRectImage->getHeight() };
 
+#ifndef NEXT_GEN_SYSTEM
         np::FloatArray2 scale_temp(roi_oct.width, roi_oct.height);
         ippsConvert_8u32f(m_vectorOctImage.at(frame).raw_ptr(), scale_temp.raw_ptr(), scale_temp.length());
         ippiScale_32f8u_C1R(scale_temp.raw_ptr(), roi_oct.width * sizeof(float),
             m_pImgObjRectImage->arr.raw_ptr(), roi_oct.width * sizeof(uint8_t), roi_oct, (float)m_pConfig->octGrayRange.min, (float)m_pConfig->octGrayRange.max);
+#else
+		ippiScale_32f8u_C1R(m_vectorOctImage.at(frame).raw_ptr(), roi_oct.width * sizeof(float),
+			m_pImgObjRectImage->arr.raw_ptr(), roi_oct.width * sizeof(uint8_t), roi_oct, (float)m_pConfig->axsunDbRange.min, (float)m_pConfig->axsunDbRange.max);
+#endif
 		circShift(m_pImgObjRectImage->arr, m_pConfig->rotatedAlines);
         (*m_pMedfiltRect)(m_pImgObjRectImage->arr.raw_ptr());
 		
@@ -488,11 +535,9 @@ void QViewTab::visualizeImage(int frame)
 void QViewTab::visualizeLongiImage(int aline)
 {
 	// Pre-determined values
-	int frames = m_vectorOctImage.size();
-	int frames4 = ((frames + 3) >> 2) << 2;
+	int frames = (int)m_vectorOctImage.size();
 	int octScans = m_pImageView_Longi->getHeight() / 2;
     int octAlines = m_octProjection.size(0);
-	int flimAlines = octAlines / 4;
 
     // Specified A line
 	int aline0 = (aline + m_pConfig->rotatedAlines) % octAlines;
@@ -507,17 +552,28 @@ void QViewTab::visualizeLongiImage(int aline)
 		[&](const tbb::blocked_range<size_t>& r) {
 		for (size_t i = r.begin(); i != r.end(); ++i)
 		{
+#ifndef NEXT_GEN_SYSTEM
 			memcpy(&scale_temp(0, (int)i), &m_vectorOctImage.at((int)i)(0, aline0), sizeof(uint8_t) * octScans);
 			memcpy(&scale_temp(octScans, (int)i), &m_vectorOctImage.at((int)i)(0, aline1), sizeof(uint8_t) * octScans);
 			ippsFlip_8u_I(&scale_temp(0, (int)i), octScans);
+#else
+			memcpy(&longi_temp(0, (int)i), &m_vectorOctImage.at((int)i)(0, aline0), sizeof(float) * octScans);
+			memcpy(&longi_temp(octScans, (int)i), &m_vectorOctImage.at((int)i)(0, aline1), sizeof(float) * octScans);
+			ippsFlip_32f_I(&longi_temp(0, (int)i), octScans);
+#endif
 		}
 	});
 
+#ifndef NEXT_GEN_SYSTEM
     ippsConvert_8u32f(scale_temp.raw_ptr(), longi_temp.raw_ptr(), scale_temp.length());
     ippiScale_32f8u_C1R(longi_temp.raw_ptr(), roi_longi.width * sizeof(float),
         scale_temp.raw_ptr(), roi_longi.width * sizeof(uint8_t), roi_longi, m_pConfig->octGrayRange.min, m_pConfig->octGrayRange.max);
-    //if (aline0 > (octAlines / 2))
-    //    ippiMirror_8u_C1IR(scale_temp.raw_ptr(), sizeof(uint8_t) * roi_longi.width, roi_longi, ippAxsVertical);
+#else
+	ippiScale_32f8u_C1R(longi_temp.raw_ptr(), roi_longi.width * sizeof(float),
+		scale_temp.raw_ptr(), roi_longi.width * sizeof(uint8_t), roi_longi, m_pConfig->axsunDbRange.min, m_pConfig->axsunDbRange.max);
+#endif
+    ///if (aline0 > (octAlines / 2))
+    ///    ippiMirror_8u_C1IR(scale_temp.raw_ptr(), sizeof(uint8_t) * roi_longi.width, roi_longi, ippAxsVertical);
     ippiTranspose_8u_C1R(scale_temp.raw_ptr(), roi_longi.width * sizeof(uint8_t), m_pImgObjLongiImage->arr.raw_ptr(), roi_longi.height * sizeof(uint8_t), roi_longi);
     (*m_pMedfiltLongi)(m_pImgObjLongiImage->arr.raw_ptr());
 
@@ -568,7 +624,7 @@ void QViewTab::play(bool enabled)
 		m_pToggleButton_Play->setIcon(style()->standardIcon(QStyle::SP_MediaStop));
 		
 		int cur_frame = m_pSlider_SelectFrame->value();
-		int end_frame = m_vectorOctImage.size();
+		int end_frame = (int)m_vectorOctImage.size();
 
 		std::thread playing([&, cur_frame, end_frame]() {
 			for (int i = cur_frame; i < end_frame; i++)
@@ -606,7 +662,7 @@ void QViewTab::measureDistance(bool toggled)
 	}
 	else
 	{
-		m_pImageView_CircImage->setRLineChangeCallback([&](int aline) {});		
+		m_pImageView_CircImage->setRLineChangeCallback([&](int aline) { (void)aline; });
 
 		m_pConfig->writeToLog("Measure distance off.");
 	}
@@ -673,13 +729,16 @@ void QViewTab::circShift(np::Uint8Array2& image, int shift)
 void QViewTab::getCapture(QByteArray & arr)
 {
 	// Capture preview
-	QImage capture = m_pImgObjCircImage->qrgbimg.scaled(144, 144, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+	if (m_pImgObjCircImage)
+	{
+		QImage capture = m_pImgObjCircImage->qrgbimg.scaled(144, 144, Qt::KeepAspectRatio, Qt::SmoothTransformation);
 
-	QPixmap inPixmap = QPixmap::fromImage(capture);
+		QPixmap inPixmap = QPixmap::fromImage(capture);
 
-	QBuffer inBuffer(&arr);
-	inBuffer.open(QIODevice::WriteOnly);
-	inPixmap.save(&inBuffer, "BMP");
+		QBuffer inBuffer(&arr);
+		inBuffer.open(QIODevice::WriteOnly);
+		inPixmap.save(&inBuffer, "BMP");
 
-	m_pConfig->writeToLog("Preview image is captured.");
+		m_pConfig->writeToLog("Preview image is captured.");
+	}
 }

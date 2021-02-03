@@ -2,7 +2,6 @@
 #include "ExportDlg.h"
 
 #include <Havana3/MainWindow.h>
-#include <Havana3/Configuration.h>
 #include <Havana3/QResultTab.h>
 #include <Havana3/QViewTab.h>
 
@@ -309,7 +308,7 @@ void ExportDlg::saveCrossSections()
 		if (checkList.bCirc || checkList.bLongi)
 		{
 			// Scaling en face FLIm maps first //////////////////////////////////////////////////////////
-			int frames = m_pViewTab->m_vectorOctImage.size();
+			int frames = (int)m_pViewTab->m_vectorOctImage.size();
 			int frames4 = ROUND_UP_4S(frames);
 			int alines = m_pViewTab->m_lifetimeMap.at(0).size(0);
 			ColorTable temp_ctable;
@@ -327,7 +326,7 @@ void ExportDlg::saveCrossSections()
 			delete pImgObjIntensityMap;
 
 			// Set Widgets //////////////////////////////////////////////////////////////////////////////
-			emit setWidgets(false, (checkList.bCirc ? frames - 1 : 0) + (checkList.bLongi ? alines / 2 - 1 : 0) + 1);
+			emit setWidgets(false, frames + (checkList.bLongi ? alines / 2 - 1 : 0));
 			m_nSavedFrames = 0;
 
 			// Scaling Images ///////////////////////////////////////////////////////////////////////////
@@ -377,8 +376,7 @@ void ExportDlg::saveEnFaceMaps()
 	int end = m_pLineEdit_RangeEnd->text().toInt();
 
 	int flimAlines = m_pViewTab->m_intensityMap.at(0).size(0);
-	int frames = m_pViewTab->m_vectorOctImage.size();
-	int frames4 = ROUND_UP_4S(frames);
+	int frames = (int)m_pViewTab->m_vectorOctImage.size();
 
 	if (checkList.bRaw || checkList.bScaled)
 	{
@@ -464,7 +462,7 @@ void ExportDlg::saveEnFaceMaps()
 		// Scaled en face map writing ///////////////////////////////////////////////////////////////
 		if (checkList.bScaled)
 		{
-			int frame4 = ROUND_UP_4S(m_pViewTab->m_vectorOctImage.size());
+			int frame4 = ROUND_UP_4S((int)m_pViewTab->m_vectorOctImage.size());
 			int alines = m_pViewTab->m_lifetimeMap.at(0).size(0);
 
 			ColorTable temp_ctable;
@@ -681,7 +679,11 @@ void ExportDlg::setWidgetsEnabled(bool enabled, int num_proc)
 }
 
 
+#ifndef NEXT_GEN_SYSTEM
 void ExportDlg::scaling(std::vector<np::Uint8Array2>& vectorOctImage, std::vector<ImageObject*>& vectorLifetimeMap, CrossSectionCheckList checkList)
+#else
+void ExportDlg::scaling(std::vector<np::FloatArray2>& vectorOctImage, std::vector<ImageObject*>& vectorLifetimeMap, CrossSectionCheckList checkList)
+#endif
 {
 	// Range parameters
 	int nTotalFrame = (int)m_pViewTab->m_vectorOctImage.size();
@@ -714,9 +716,14 @@ void ExportDlg::scaling(std::vector<np::Uint8Array2>& vectorOctImage, std::vecto
 
 			// OCT Visualization
 			np::FloatArray2 scale_temp(roi_oct.width, roi_oct.height);
+#ifndef NEXT_GEN_SYSTEM
 			ippsConvert_8u32f(vectorOctImage.at(frameCount).raw_ptr(), scale_temp.raw_ptr(), scale_temp.length());
 			ippiScale_32f8u_C1R(scale_temp.raw_ptr(), roi_oct.width * sizeof(float),
 				pImgObjVec->at(0)->arr.raw_ptr(), roi_oct.width * sizeof(uint8_t), roi_oct, (float)m_pConfig->octGrayRange.min, (float)m_pConfig->octGrayRange.max);
+#else
+			ippiScale_32f8u_C1R(vectorOctImage.at(frameCount).raw_ptr(), roi_oct.width * sizeof(float),
+				pImgObjVec->at(0)->arr.raw_ptr(), roi_oct.width * sizeof(uint8_t), roi_oct, (float)m_pConfig->axsunDbRange.min, (float)m_pConfig->axsunDbRange.max);
+#endif
 			m_pViewTab->circShift(pImgObjVec->at(0)->arr, m_pConfig->rotatedAlines);
 			(*m_pViewTab->getMedfiltRect())(pImgObjVec->at(0)->arr.raw_ptr());
 
@@ -789,9 +796,6 @@ void ExportDlg::circularizing(CrossSectionCheckList checkList) // with longitudi
 	int octScans = m_pViewTab->m_vectorOctImage.at(0).size(0);
 	int octAlines = m_pViewTab->m_vectorOctImage.at(0).size(1);
 	int n2Alines = int(octAlines / 2);
-
-	int start = m_pLineEdit_RangeStart->text().toInt();
-	int end = m_pLineEdit_RangeEnd->text().toInt();
 
 	// Colortable
 	ColorTable temp_ctable;
@@ -954,7 +958,11 @@ void ExportDlg::circularizing(CrossSectionCheckList checkList) // with longitudi
 
 		if (!checkList.bCh[0] && !checkList.bCh[1] && !checkList.bCh[2])
 		{
+#ifndef NEXT_GEN_SYSTEM
 			QString longiPath = m_exportPath + QString("/longi_image[%1 %2]_gray[%3 %4]/").arg(start).arg(end).arg(m_pConfig->octGrayRange.min).arg(m_pConfig->octGrayRange.max);
+#else
+			QString longiPath = m_exportPath + QString("/longi_image[%1 %2]_dB[%3 %4]/").arg(start).arg(end).arg(m_pConfig->axsunDbRange.min).arg(m_pConfig->axsunDbRange.max);
+#endif
 			QDir().mkdir(longiPath);
 
 			int alineCount = 0;
@@ -987,11 +995,18 @@ void ExportDlg::circularizing(CrossSectionCheckList checkList) // with longitudi
 				for (int i = 0; i < 3; i++)
 				{
 					if (checkList.bCh[i])
-					{						
+					{		
+#ifndef NEXT_GEN_SYSTEM
 						longiPath[i] = m_exportPath + QString("/longi_image[%1 %2]_gray[%3 %4]_ch%5_i[%6 %7]_t[%8 %9]/")
 							.arg(start).arg(end).arg(m_pConfig->octGrayRange.min).arg(m_pConfig->octGrayRange.max)
 							.arg(i + 1).arg(m_pConfig->flimIntensityRange[i].min, 2, 'f', 1).arg(m_pConfig->flimIntensityRange[i].max, 2, 'f', 1)
 							.arg(m_pConfig->flimLifetimeRange[i].min, 2, 'f', 1).arg(m_pConfig->flimLifetimeRange[i].max, 2, 'f', 1);
+#else
+						longiPath[i] = m_exportPath + QString("/longi_image[%1 %2]_dB[%3 %4]_ch%5_i[%6 %7]_t[%8 %9]/")
+							.arg(start).arg(end).arg(m_pConfig->axsunDbRange.min).arg(m_pConfig->axsunDbRange.max)
+							.arg(i + 1).arg(m_pConfig->flimIntensityRange[i].min, 2, 'f', 1).arg(m_pConfig->flimIntensityRange[i].max, 2, 'f', 1)
+							.arg(m_pConfig->flimLifetimeRange[i].min, 2, 'f', 1).arg(m_pConfig->flimLifetimeRange[i].max, 2, 'f', 1);
+#endif
 
 						if (checkList.bLongi) QDir().mkdir(longiPath[i]);
 					}
@@ -1071,9 +1086,9 @@ void ExportDlg::circularizing(CrossSectionCheckList checkList) // with longitudi
 					//		scaled(checkList.nLongiWidth, checkList.nLongiHeight, Qt::IgnoreAspectRatio, m_defaultTransformation).
 					//		save(longiPath[0] + QString("longi_%1_%2.bmp").arg(folderName).arg(alineCount + 1, 4, 10, (QChar)'0'), "bmp");
 					//}
-				}
 
-				emit savedSingleFrame(m_nSavedFrames++);
+					emit savedSingleFrame(m_nSavedFrames++);
+				}
 
 				// Delete ImageObjects
 				delete pImgObjVecLongi[0]->at(alineCount);
@@ -1094,7 +1109,11 @@ void ExportDlg::circWriting(CrossSectionCheckList checkList)
 
 	if (!checkList.bCh[0] && !checkList.bCh[1] && !checkList.bCh[2]) // Grayscale OCT
 	{
+#ifndef NEXT_GEN_SYSTEM
 		QString circPath = m_exportPath + QString("/circ_image_gray[%1 %2]/").arg(m_pConfig->octGrayRange.min).arg(m_pConfig->octGrayRange.max);;
+#else
+		QString circPath = m_exportPath + QString("/circ_image_gray[%1 %2]/").arg(m_pConfig->axsunDbRange.min).arg(m_pConfig->axsunDbRange.max);;
+#endif
 		if (checkList.bCirc) QDir().mkdir(circPath);
 
 		int frameCount = 0;
@@ -1134,10 +1153,17 @@ void ExportDlg::circWriting(CrossSectionCheckList checkList)
 			{
 				if (checkList.bCh[i])
 				{					
+#ifndef NEXT_GEN_SYSTEM
 					circPath[i] = m_exportPath + QString("/circ_image_gray[%1 %2]_ch%3_i[%4 %5]_t[%6 %7]/")
 					.arg(m_pConfig->octGrayRange.min).arg(m_pConfig->octGrayRange.max)
 					.arg(i + 1).arg(m_pConfig->flimIntensityRange[i].min, 2, 'f', 1).arg(m_pConfig->flimIntensityRange[i].max, 2, 'f', 1)
 					.arg(m_pConfig->flimLifetimeRange[i].min, 2, 'f', 1).arg(m_pConfig->flimLifetimeRange[i].max, 2, 'f', 1);			
+#else
+					circPath[i] = m_exportPath + QString("/circ_image_dB[%1 %2]_ch%3_i[%4 %5]_t[%6 %7]/")
+						.arg(m_pConfig->axsunDbRange.min).arg(m_pConfig->axsunDbRange.max)
+						.arg(i + 1).arg(m_pConfig->flimIntensityRange[i].min, 2, 'f', 1).arg(m_pConfig->flimIntensityRange[i].max, 2, 'f', 1)
+						.arg(m_pConfig->flimLifetimeRange[i].min, 2, 'f', 1).arg(m_pConfig->flimLifetimeRange[i].max, 2, 'f', 1);
+#endif
 					
 					if (checkList.bCirc) QDir().mkdir(circPath[i]);
 				}

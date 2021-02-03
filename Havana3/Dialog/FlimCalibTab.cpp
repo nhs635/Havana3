@@ -139,6 +139,7 @@ void FlimCalibTab::createCalibWidgets()
 	pGridLayout_CalibWidgets->setSpacing(2);
 
     // Create widgets for FLIM calibration
+#ifndef NEXT_GEN_SYSTEM
 	m_pSlider_PX14DcOffset = new QSlider(this);
 	m_pSlider_PX14DcOffset->setOrientation(Qt::Horizontal);
 	m_pSlider_PX14DcOffset->setFixedWidth(90);
@@ -147,6 +148,7 @@ void FlimCalibTab::createCalibWidgets()
 
 	m_pLabel_PX14DcOffset = new QLabel(QString(" DC Offset (%1) ").arg(m_pConfig->px14DcOffset, 4, 10), this);
 	m_pLabel_PX14DcOffset->setBuddy(m_pSlider_PX14DcOffset);
+#endif
 
     m_pPushButton_CaptureBackground = new QPushButton(this);
     m_pPushButton_CaptureBackground->setText("  Capture Background  ");
@@ -200,8 +202,10 @@ void FlimCalibTab::createCalibWidgets()
     m_pLabel_NanoSec[1]->setFixedWidth(30);
 
     // Set layout
+#ifndef NEXT_GEN_SYSTEM
 	pHBoxLayout_Background->addWidget(m_pLabel_PX14DcOffset);
 	pHBoxLayout_Background->addWidget(m_pSlider_PX14DcOffset);
+#endif
 	pHBoxLayout_Background->addItem(new QSpacerItem(0, 0, QSizePolicy::MinimumExpanding, QSizePolicy::Fixed));
     pHBoxLayout_Background->addWidget(m_pPushButton_CaptureBackground);
     pHBoxLayout_Background->addWidget(m_pLineEdit_Background);
@@ -226,7 +230,9 @@ void FlimCalibTab::createCalibWidgets()
     m_pVBoxLayout->addItem(pGridLayout_CalibWidgets);
 
     // Connect
+#ifndef NEXT_GEN_SYSTEM
 	connect(m_pSlider_PX14DcOffset, SIGNAL(valueChanged(int)), this, SLOT(setPX14DcOffset(int)));
+#endif
     connect(m_pPushButton_CaptureBackground, SIGNAL(clicked(bool)), this, SLOT(captureBackground()));
     connect(m_pLineEdit_Background, SIGNAL(textChanged(const QString &)), this, SLOT(captureBackground(const QString &)));
     connect(m_pSpinBox_ChStart[0], SIGNAL(valueChanged(double)), this, SLOT(resetChStart0(double)));
@@ -303,20 +309,20 @@ void FlimCalibTab::createHistogram()
     m_pColorbar_FluLifetime->getRender()->setFixedSize(210, 10);
 
     m_pLabel_FluLifetimeMin = new QLabel(this);
-	m_pLabel_FluLifetimeMin->setFixedWidth(80);
+	m_pLabel_FluLifetimeMin->setFixedWidth(90);
     m_pLabel_FluLifetimeMin->setText(QString::number(m_pConfig->flimLifetimeRange[m_pConfig->flimEmissionChannel - 1].min, 'f', 1));
     m_pLabel_FluLifetimeMin->setAlignment(Qt::AlignLeft);
     m_pLabel_FluLifetimeMax = new QLabel(this);
-	m_pLabel_FluLifetimeMax->setFixedWidth(80);
+	m_pLabel_FluLifetimeMax->setFixedWidth(90);
     m_pLabel_FluLifetimeMax->setText(QString::number(m_pConfig->flimLifetimeRange[m_pConfig->flimEmissionChannel - 1].max, 'f', 1));
     m_pLabel_FluLifetimeMax->setAlignment(Qt::AlignRight);
 
     m_pLabel_FluLifetimeMean = new QLabel(this);
-    m_pLabel_FluLifetimeMean->setFixedWidth(80);
+    m_pLabel_FluLifetimeMean->setFixedWidth(90);
     m_pLabel_FluLifetimeMean->setText(QString("Mean: %1").arg(0.0, 4, 'f', 3));
     m_pLabel_FluLifetimeMean->setAlignment(Qt::AlignCenter);
     m_pLabel_FluLifetimeStd = new QLabel(this);
-    m_pLabel_FluLifetimeStd->setFixedWidth(80);
+    m_pLabel_FluLifetimeStd->setFixedWidth(90);
     m_pLabel_FluLifetimeStd->setText(QString("Std: %1").arg(0.0, 4, 'f', 3));
     m_pLabel_FluLifetimeStd->setAlignment(Qt::AlignCenter);
 	
@@ -354,7 +360,7 @@ void FlimCalibTab::drawRoiPulse(FLImProcess* pFLIm, int aline)
 {
     // Reset pulse view (if necessary)
     static int roi_width = 0;
-    np::FloatArray2 data0((!m_pCheckBox_SplineView->isChecked()) ? pFLIm->_resize.crop_src: pFLIm->_resize.ext_src);
+    np::FloatArray2 data0((!m_pCheckBox_SplineView->isChecked()) ? pFLIm->_resize.crop_src: pFLIm->_resize.filt_src);
     np::FloatArray2 data(data0.size(0), data0.size(1));
     memcpy(data.raw_ptr(), data0.raw_ptr(), sizeof(float) * data0.length());
 
@@ -596,11 +602,15 @@ void FlimCalibTab::removeMask()
 
 void FlimCalibTab::setPX14DcOffset(int offset)
 {
-//	DataAcquisition *pDataAcq = m_pDeviceControlTab->getStreamTab()->getOperationTab()->m_pDataAcquisition;
-//	pDataAcq->SetDcOffset(offset);
+#ifndef NEXT_GEN_SYSTEM
+	DataAcquisition *pDataAcq = m_pStreamTab->getDataAcquisition();
+	pDataAcq->SetDcOffset(offset);
 	
 	m_pConfig->px14DcOffset = offset;
 	m_pLabel_PX14DcOffset->setText(QString(" DC Offset (%1) ").arg(m_pConfig->px14DcOffset, 4, 10));
+#else
+	(void)offset;
+#endif
 }
 
 void FlimCalibTab::captureBackground()

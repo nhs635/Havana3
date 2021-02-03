@@ -81,7 +81,9 @@ DeviceOptionTab::DeviceOptionTab(QWidget *parent) :
 		m_pToggleButton_FlimLaserConnect->setChecked(true);
 		m_pToggleButton_AxsunOctConnect->setChecked(true);
 		m_pToggleButton_LightSource->setChecked(true);
+#ifndef NEXT_GEN_SYSTEM
 		m_pToggleButton_LiveImaging->setChecked(true);
+#endif
 
 		m_pToggleButton_RotaryConnect->setDisabled(true);
 		m_pToggleButton_PullbackConnect->setDisabled(true);
@@ -89,14 +91,14 @@ DeviceOptionTab::DeviceOptionTab(QWidget *parent) :
 		m_pToggleButton_FlimLaserConnect->setDisabled(true);
 		m_pToggleButton_AxsunOctConnect->setDisabled(true);
 		m_pToggleButton_LightSource->setDisabled(true);
+#ifndef NEXT_GEN_SYSTEM
 		m_pToggleButton_LiveImaging->setDisabled(true);
+#endif
 	}
 }
 
 DeviceOptionTab::~DeviceOptionTab()
 {
-	if (!m_pStreamTab)
-		delete m_pDeviceControl;
 }
 
 
@@ -115,7 +117,7 @@ void DeviceOptionTab::createHelicalScanningControl()
 	m_pToggleButton_RotaryConnect->setStyleSheet("QPushButton { background-color:#ff0000; }");
 	
 	m_pLabel_RotaryConnect = new QLabel(this);
-	m_pLabel_RotaryConnect->setText("Rotary Motor COM Port");
+	m_pLabel_RotaryConnect->setText("Rotary Motor");
 
 	m_pLineEdit_RPM = new QLineEdit(this);
 	m_pLineEdit_RPM->setFixedWidth(40);
@@ -146,7 +148,7 @@ void DeviceOptionTab::createHelicalScanningControl()
 	m_pToggleButton_PullbackConnect->setStyleSheet("QPushButton { background-color:#ff0000; }");
 	
 	m_pLabel_PullbackConnect = new QLabel(this);
-	m_pLabel_PullbackConnect->setText("Pullback Motor COM Port");
+	m_pLabel_PullbackConnect->setText("Pullback Motor");
 
 	m_pLineEdit_PullbackSpeed = new QLineEdit(this);
 	m_pLineEdit_PullbackSpeed->setFixedWidth(35);
@@ -302,18 +304,31 @@ void DeviceOptionTab::createFlimSystemControl()
 	m_pToggleButton_FlimLaserConnect->setStyleSheet("QPushButton { background-color:#ff0000; }");
 	
 	m_pLabel_FlimLaserConnect = new QLabel(this);
-	m_pLabel_FlimLaserConnect->setText("FLIm Laser COM Port");
+	m_pLabel_FlimLaserConnect->setText("FLIm UV Pulsed Laser");
 
+#ifndef NEXT_GEN_SYSTEM
 	m_pSpinBox_FlimLaserPowerControl = new QSpinBox(this);
 	m_pSpinBox_FlimLaserPowerControl->setValue(0);
 	m_pSpinBox_FlimLaserPowerControl->setRange(-10000, 10000);
 	m_pSpinBox_FlimLaserPowerControl->setFixedWidth(15);
 	m_pSpinBox_FlimLaserPowerControl->setDisabled(true);
 	static int flim_laser_power_level = 0;
+#else
+	m_pLineEdit_FlimLaserPowerControl = new QLineEdit(this);
+	m_pLineEdit_FlimLaserPowerControl->setValidator(new QIntValidator(0, 255, this));
+	m_pLineEdit_FlimLaserPowerControl->setText(QString::number(m_pConfig->flimLaserPower));
+	m_pLineEdit_FlimLaserPowerControl->setAlignment(Qt::AlignCenter);
+	m_pLineEdit_FlimLaserPowerControl->setFixedWidth(40);
+	m_pLineEdit_FlimLaserPowerControl->setDisabled(true);
+
+	m_pPushButton_FlimLaserPowerControl = new QPushButton(this);
+	m_pPushButton_FlimLaserPowerControl->setText("Apply");
+	m_pPushButton_FlimLaserPowerControl->setFixedWidth(50);
+	m_pPushButton_FlimLaserPowerControl->setDisabled(true);
+#endif
 
 	m_pLabel_FlimLaserPowerControl = new QLabel("Laser Power Level Adjustment", this);
-	m_pLabel_FlimLaserPowerControl->setFixedWidth(205);
-	m_pLabel_FlimLaserPowerControl->setBuddy(m_pSpinBox_FlimLaserPowerControl);
+	m_pLabel_FlimLaserPowerControl->setFixedWidth(205);	
 	m_pLabel_FlimLaserPowerControl->setDisabled(true);
 
 	// Set Layout	
@@ -342,12 +357,16 @@ void DeviceOptionTab::createFlimSystemControl()
 
 	pGridLayout_FlimLaser->addWidget(m_pLabel_FlimLaserConnect, 0, 0);
 	pGridLayout_FlimLaser->addItem(new QSpacerItem(0, 0, QSizePolicy::MinimumExpanding, QSizePolicy::Fixed), 0, 1, 1, 2);	
-	pGridLayout_FlimLaser->addWidget(m_pToggleButton_FlimLaserConnect, 0, 3);
+	pGridLayout_FlimLaser->addWidget(m_pToggleButton_FlimLaserConnect, 0, 3, 1, 2);
 
 	pGridLayout_FlimLaser->addWidget(m_pLabel_FlimLaserPowerControl, 1, 0);
 	pGridLayout_FlimLaser->addItem(new QSpacerItem(0, 0, QSizePolicy::MinimumExpanding, QSizePolicy::Fixed), 1, 1, 1, 2);
-	pGridLayout_FlimLaser->addWidget(m_pSpinBox_FlimLaserPowerControl, 1, 3, Qt::AlignRight);
-
+#ifndef NEXT_GEN_SYSTEM
+	pGridLayout_FlimLaser->addWidget(m_pSpinBox_FlimLaserPowerControl, 1, 3, 1, 2, Qt::AlignRight);
+#else
+	pGridLayout_FlimLaser->addWidget(m_pLineEdit_FlimLaserPowerControl, 1, 3, Qt::AlignRight);
+	pGridLayout_FlimLaser->addWidget(m_pPushButton_FlimLaserPowerControl, 1, 4, Qt::AlignRight);
+#endif
 
 	QVBoxLayout *pVBoxLayout_FlimControl = new QVBoxLayout;
 	pVBoxLayout_FlimControl->setSpacing(10);
@@ -368,7 +387,12 @@ void DeviceOptionTab::createFlimSystemControl()
     connect(m_pToggleButton_PmtGainVoltage, SIGNAL(toggled(bool)), this, SLOT(applyPmtGainVoltage(bool)));
 
 	connect(m_pToggleButton_FlimLaserConnect, SIGNAL(toggled(bool)), this, SLOT(connectFlimLaser(bool)));	
+#ifndef NEXT_GEN_SYSTEM
 	connect(m_pSpinBox_FlimLaserPowerControl, SIGNAL(valueChanged(int)), this, SLOT(adjustLaserPower(int)));
+#else
+	connect(m_pLineEdit_FlimLaserPowerControl, SIGNAL(textChanged(const QString &)), this, SLOT(changeFlimLaserPower(const QString &)));
+	connect(m_pPushButton_FlimLaserPowerControl, SIGNAL(clicked(bool)), this, SLOT(applyFlimLaserPower()));
+#endif
 }
 
 void DeviceOptionTab::createAxsunOctSystemControl()
@@ -398,6 +422,7 @@ void DeviceOptionTab::createAxsunOctSystemControl()
 	m_pLabel_LightSource->setBuddy(m_pToggleButton_LightSource);
 	m_pLabel_LightSource->setDisabled(true);
 
+#ifndef NEXT_GEN_SYSTEM
 	m_pToggleButton_LiveImaging = new QPushButton(this);
 	m_pToggleButton_LiveImaging->setCheckable(true);
 	m_pToggleButton_LiveImaging->setFixedWidth(48);
@@ -407,6 +432,7 @@ void DeviceOptionTab::createAxsunOctSystemControl()
 	m_pLabel_LiveImaging = new QLabel("Axsun OCT Live Imaging Mode", this);
 	m_pLabel_LiveImaging->setBuddy(m_pToggleButton_LiveImaging);
 	m_pLabel_LiveImaging->setDisabled(true);
+#endif
 	
     m_pSpinBox_VDLLength = new QMySpinBox(this);
     m_pSpinBox_VDLLength->setFixedWidth(55);
@@ -438,9 +464,11 @@ void DeviceOptionTab::createAxsunOctSystemControl()
 	pGridLayout_AxsunControl->addItem(new QSpacerItem(0, 0, QSizePolicy::MinimumExpanding, QSizePolicy::Fixed), 1, 1, 1, 2);
 	pGridLayout_AxsunControl->addWidget(m_pToggleButton_LightSource, 1, 3);
 
+#ifndef NEXT_GEN_SYSTEM
 	pGridLayout_AxsunControl->addWidget(m_pLabel_LiveImaging, 2, 0);
 	pGridLayout_AxsunControl->addItem(new QSpacerItem(0, 0, QSizePolicy::MinimumExpanding, QSizePolicy::Fixed), 2, 1, 1, 2);
 	pGridLayout_AxsunControl->addWidget(m_pToggleButton_LiveImaging, 2, 3);
+#endif
 	
 	pGridLayout_AxsunControl->addWidget(m_pLabel_VDLLength, 3, 0);
 	pGridLayout_AxsunControl->addItem(new QSpacerItem(0, 0, QSizePolicy::MinimumExpanding, QSizePolicy::Fixed), 3, 1);
@@ -460,7 +488,9 @@ void DeviceOptionTab::createAxsunOctSystemControl()
     // Connect signal and slot
 	connect(m_pToggleButton_AxsunOctConnect, SIGNAL(toggled(bool)), this, SLOT(connectAxsunControl(bool)));
 	connect(m_pToggleButton_LightSource, SIGNAL(toggled(bool)), this, SLOT(setLightSource(bool)));
+#ifndef NEXT_GEN_SYSTEM
 	connect(m_pToggleButton_LiveImaging, SIGNAL(toggled(bool)), this, SLOT(setLiveImaging(bool)));
+#endif
 	connect(m_pSpinBox_VDLLength, SIGNAL(valueChanged(double)), this, SLOT(setVDLLength(double)));
 	connect(m_pPushButton_VDLHome, SIGNAL(clicked(bool)), this, SLOT(setVDLHome()));
 //	connect(this, SIGNAL(transferAxsunArray(int)), m_pStreamTab->getOperationTab()->getProgressBar(), SLOT(setValue(int)));
@@ -472,7 +502,7 @@ bool DeviceOptionTab::connectRotaryMotor(bool toggled)
 	if (toggled)
 	{
 		// Connect to rotary motor
-		if (m_pDeviceControl->connectRotaryMotor(true))
+		if (m_pStreamTab || m_pDeviceControl->connectRotaryMotor(true))
 		{
 			// Set widgets
 			m_pToggleButton_RotaryConnect->setText("Disconnect");
@@ -535,7 +565,7 @@ bool DeviceOptionTab::connectPullbackMotor(bool toggled)
 	if (toggled)
 	{
 		// Connect to pullback motor
-		if (m_pDeviceControl->connectPullbackMotor(true))
+		if (m_pStreamTab || m_pDeviceControl->connectPullbackMotor(true))
 		{
 			// Set widgets
 			m_pToggleButton_PullbackConnect->setText("Disconnect");
@@ -695,7 +725,7 @@ void DeviceOptionTab::startFlimSynchronization(bool toggled)
 	if (toggled)
 	{
 		// Start synchronous FLIm-OCT operation
-		if (m_pDeviceControl->startSynchronization(true))
+		if (m_pStreamTab || m_pDeviceControl->startSynchronization(true))
 		{
 			// Set widgets		
 			m_pToggleButton_SynchronizedPulsedLaser->setText("Off");
@@ -733,7 +763,7 @@ void DeviceOptionTab::applyPmtGainVoltage(bool toggled)
 	if (toggled)
 	{
 		// Apply PMT gain voltage
-		if (m_pDeviceControl->applyPmtGainVoltage(true))
+		if (m_pDeviceControl->applyPmtGainVoltage(true)) // m_pStreamTab || 
 		{
 			// Set widgets
 			m_pToggleButton_PmtGainVoltage->setText("Off");
@@ -775,7 +805,7 @@ bool DeviceOptionTab::connectFlimLaser(bool toggled)
 	if (toggled)
 	{
 		// Connect to FLIm laser
-		if (m_pDeviceControl->connectFlimLaser(true))
+		if (m_pStreamTab || m_pDeviceControl->connectFlimLaser(true))
 		{
 			// Set widgets
 			m_pToggleButton_FlimLaserConnect->setText("Disconnect");
@@ -784,7 +814,12 @@ bool DeviceOptionTab::connectFlimLaser(bool toggled)
 			m_pLabel_FlimLaserConnect->setDisabled(true);
 
 			m_pLabel_FlimLaserPowerControl->setEnabled(true);
+#ifndef NEXT_GEN_SYSTEM
 			m_pSpinBox_FlimLaserPowerControl->setEnabled(true);
+#else
+			m_pLineEdit_FlimLaserPowerControl->setEnabled(true);
+			m_pPushButton_FlimLaserPowerControl->setEnabled(true);
+#endif
 		}
 		else
 			m_pToggleButton_FlimLaserConnect->setChecked(false);
@@ -798,7 +833,12 @@ bool DeviceOptionTab::connectFlimLaser(bool toggled)
 		m_pLabel_FlimLaserConnect->setEnabled(true);
 
 		m_pLabel_FlimLaserPowerControl->setDisabled(true);
+#ifndef NEXT_GEN_SYSTEM
 		m_pSpinBox_FlimLaserPowerControl->setDisabled(true);
+#else
+		m_pLineEdit_FlimLaserPowerControl->setDisabled(true);
+		m_pPushButton_FlimLaserPowerControl->setDisabled(true);
+#endif
 
 		// Disconnect from rotary motor
 		m_pDeviceControl->connectFlimLaser(false);
@@ -847,28 +887,44 @@ void DeviceOptionTab::adjustLaserPower(int level)
 	}
 }
 
+void DeviceOptionTab::changeFlimLaserPower(const QString &str)
+{
+	(void)str;
+}
+
+void DeviceOptionTab::applyFlimLaserPower()
+{
+	m_pConfig->flimLaserPower = m_pLineEdit_FlimLaserPowerControl->text().toInt();
+	m_pDeviceControl->adjustLaserPower(m_pConfig->flimLaserPower);
+
+	m_pConfig->writeToLog(QString("FLIm laser power set: %1").arg(m_pConfig->flimLaserPower));
+}
+
 
 void DeviceOptionTab::connectAxsunControl(bool toggled)
 {
 	if (toggled)
 	{
 		// Connect to Axsun OCT engine
-		m_pDeviceControl->connectAxsunControl(toggled);
+		if (m_pStreamTab || m_pDeviceControl->connectAxsunControl(toggled))
+		{
+			// Set widgets		
+			m_pToggleButton_AxsunOctConnect->setText("Disconnect");
+			m_pToggleButton_AxsunOctConnect->setStyleSheet("QPushButton { background-color:#00ff00; }");
 
-		// Set widgets		
-		m_pToggleButton_AxsunOctConnect->setText("Disconnect");
-		m_pToggleButton_AxsunOctConnect->setStyleSheet("QPushButton { background-color:#00ff00; }");
+			m_pLabel_LightSource->setEnabled(true);
+			m_pToggleButton_LightSource->setEnabled(true);
+			m_pToggleButton_LightSource->setStyleSheet("QPushButton { background-color:#ff0000; }");
+#ifndef NEXT_GEN_SYSTEM
+			m_pLabel_LiveImaging->setEnabled(true);
+			m_pToggleButton_LiveImaging->setEnabled(true);
+			m_pToggleButton_LiveImaging->setStyleSheet("QPushButton { background-color:#ff0000; }");
+#endif
 
-		m_pLabel_LightSource->setEnabled(true);
-		m_pLabel_LiveImaging->setEnabled(true);
-		m_pToggleButton_LightSource->setEnabled(true);
-		m_pToggleButton_LiveImaging->setEnabled(true);
-		m_pToggleButton_LightSource->setStyleSheet("QPushButton { background-color:#ff0000; }");
-		m_pToggleButton_LiveImaging->setStyleSheet("QPushButton { background-color:#ff0000; }");
-
-		m_pLabel_VDLLength->setEnabled(true);
-		m_pSpinBox_VDLLength->setEnabled(true);
-		m_pPushButton_VDLHome->setEnabled(true);
+			m_pLabel_VDLLength->setEnabled(true);
+			m_pSpinBox_VDLLength->setEnabled(true);
+			m_pPushButton_VDLHome->setEnabled(true);
+		}
 	}
 	else
 	{
@@ -877,16 +933,17 @@ void DeviceOptionTab::connectAxsunControl(bool toggled)
 		m_pToggleButton_AxsunOctConnect->setStyleSheet("QPushButton { background-color:#ff0000; }");
 
 		if (m_pToggleButton_LightSource->isChecked()) m_pToggleButton_LightSource->setChecked(false);
-		if (m_pToggleButton_LiveImaging->isChecked()) m_pToggleButton_LiveImaging->setChecked(false);
 		m_pToggleButton_LightSource->setText("On");
-		m_pToggleButton_LiveImaging->setText("On");
-
 		m_pLabel_LightSource->setDisabled(true);
-		m_pLabel_LiveImaging->setDisabled(true);
 		m_pToggleButton_LightSource->setDisabled(true);
-		m_pToggleButton_LiveImaging->setDisabled(true);
 		m_pToggleButton_LightSource->setStyleSheet("QPushButton { background-color:#353535; }");
+#ifndef NEXT_GEN_SYSTEM
+		if (m_pToggleButton_LiveImaging->isChecked()) m_pToggleButton_LiveImaging->setChecked(false);
+		m_pToggleButton_LiveImaging->setText("On");
+		m_pLabel_LiveImaging->setDisabled(true);
+		m_pToggleButton_LiveImaging->setDisabled(true);
 		m_pToggleButton_LiveImaging->setStyleSheet("QPushButton { background-color:#353535; }");
+#endif
 		
 		m_pLabel_VDLLength->setDisabled(true);
 		m_pSpinBox_VDLLength->setDisabled(true);
@@ -918,6 +975,7 @@ void DeviceOptionTab::setLightSource(bool toggled)
 
 void DeviceOptionTab::setLiveImaging(bool toggled)
 {
+#ifndef NEXT_GEN_SYSTEM
 	if (toggled)
 	{
 		// Start Axsun light source operation
@@ -936,6 +994,9 @@ void DeviceOptionTab::setLiveImaging(bool toggled)
 		// Stop Axsun light source operation
 		m_pDeviceControl->setLiveImaging(false);
 	}
+#else
+	(void)toggled;
+#endif
 }
 
 void DeviceOptionTab::setClockDelay(double)
@@ -946,11 +1007,13 @@ void DeviceOptionTab::setClockDelay(double)
 void DeviceOptionTab::setVDLLength(double length)
 {
 	m_pDeviceControl->setVDLLength(length);
+	m_pStreamTab->getCalibScrollBar()->setValue(int(length * 100.0));
 }
 
 void DeviceOptionTab::setVDLHome()
 {
 	m_pDeviceControl->setVDLHome();
+	m_pSpinBox_VDLLength->setValue(0.0);
 }
 
 void DeviceOptionTab::setVDLWidgets(bool enabled)

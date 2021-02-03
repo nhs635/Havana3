@@ -5,6 +5,7 @@
 
 #include <iostream>
 #include <thread>
+#include <mutex>
 
 #import "AxsunOCTControl.tlb" named_guids raw_interfaces_only
 using namespace AxsunOCTControl;
@@ -78,6 +79,8 @@ private:
 
 	int m_daq_device;
 	int m_laser_device;
+
+	std::mutex vdl_mutex;
 };
 
 #endif

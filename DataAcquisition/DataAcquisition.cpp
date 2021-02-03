@@ -110,10 +110,11 @@ bool DataAcquisition::InitializeAcquistion()
     }
 #else
 	// Parameter settings for DAQ
-	m_pDaqOct->SystemId = 1;  // ATS9371 (OCT)								  
+	m_pDaqOct->SystemId = 1;  // ATS9371 (OCT)		
+	//m_pDaqOct->AcqRate = SAMPLE_RATE_500MSPS;
 	m_pDaqOct->nChannels = 1;
 	m_pDaqOct->nScans = m_pConfig->octScans;
-	m_pDaqOct->nScansFFT = m_pConfig->octScans;
+	m_pDaqOct->nScansFFT = m_pConfig->octScansFFT;
 	m_pDaqOct->nAlines = m_pConfig->octAlines;
 	m_pDaqOct->TriggerDelay = 0;
 	m_pDaqOct->VoltRange1 = INPUT_RANGE_PM_400_MV;
@@ -251,7 +252,7 @@ void DataAcquisition::ConnectAcquiredFlimData(const std::function<void(int, cons
 #endif
 }
 
-void DataAcquisition::ConnectAcquiredFlimData(const std::function<void(int, const void*)> &slot)
+void DataAcquisition::ConnectAcquiredFlimData1(const std::function<void(int, const void*)> &slot)
 {
 #ifdef NEXT_GEN_SYSTEM
 	m_pDaqFlim->DidAcquireData += slot;
@@ -287,7 +288,7 @@ void DataAcquisition::ConnectAcquiredOctData(const std::function<void(uint32_t, 
 #endif
 }
 
-void DataAcquisition::ConnectAcquiredOctData(const std::function<void(int, const void*)> &slot)
+void DataAcquisition::ConnectAcquiredOctData1(const std::function<void(int, const void*)> &slot)
 {
 #ifdef NEXT_GEN_SYSTEM
 	m_pDaqOct->DidAcquireData += slot;

@@ -63,15 +63,7 @@ bool IPGPhotonicsLaser::ConnectDevice()
                     SendStatusMessage(send_msg, false);
 
                     // Interpret the received message
-                    QStringList qmsg_list = QString::fromUtf8(msg).split(":");
-                    QString input_keyword = qmsg_list[0].toUtf8().data();
-                    if (qmsg_list.length() > 1)
-                    {
-                        double status_value = qmsg_list[1].toDouble();
-
-                        if (input_keyword == QString("STA"))
-                            GetStatus((int)status_value);
-                    }
+					InterpretReceivedMessage(msg);
 
                     // Re-initialize
 					j = 0;
@@ -383,7 +375,7 @@ void IPGPhotonicsLaser::ReadDigitalInput(const char* line_name, uint32_t& value)
         m_pDigitalInput = new DigitalInput;
 		m_pDigitalInput->setLineName(line_name);
         m_pDigitalInput->SendStatusMessage += [&](const char* msg, bool is_error) {
-            // SendStatusMessage(msg, is_error);
+             SendStatusMessage(msg, is_error);
         };
     }
 
@@ -411,7 +403,7 @@ void IPGPhotonicsLaser::WriteDigitalOutput(const char* line_name, uint32_t value
 		m_pDigitalOutput = new DigitalOutput;
 		m_pDigitalOutput->setLineName(line_name);
         m_pDigitalOutput->SendStatusMessage += [&](const char* msg, bool is_error) {
-            // SendStatusMessage(msg, is_error);
+             SendStatusMessage(msg, is_error);
         };
     }
 	m_pDigitalOutput->setValue(value);

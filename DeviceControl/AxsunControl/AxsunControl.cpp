@@ -470,71 +470,77 @@ bool AxsunControl::setBypassMode(bypass_mode _bypass_mode)
 
 bool AxsunControl::setVDLHome()
 {
-    HRESULT result;
-    unsigned long retvallong;
-    const char* pPreamble = "[Axsun Control] Failed to set VDL home: ";
+	std::unique_lock<std::mutex> lock(vdl_mutex);
+	{
+		HRESULT result;
+		unsigned long retvallong;
+		const char* pPreamble = "[Axsun Control] Failed to set VDL home: ";
 
-    result = m_pAxsunOCTControl->ConnectToOCTDevice(m_daq_device, &m_bIsConnected);
-    if (result != S_OK)
-    {
-        dumpControlError(result, pPreamble);
-        return false;
-    }
+		result = m_pAxsunOCTControl->ConnectToOCTDevice(m_laser_device, &m_bIsConnected);
+		if (result != S_OK)
+		{
+			dumpControlError(result, pPreamble);
+			return false;
+		}
 
-    if (m_bIsConnected == CONNECTED)
-    {
-        result = m_pAxsunOCTControl->HomeVDL(&retvallong);
-        if (result != S_OK)
-        {
-            dumpControlError(result, pPreamble);
-            return false;
-        }
-		SendStatusMessage("[Axsun Control] VDL length is set to home.", false);
-    }
-    else
-    {
-        result = 80;
-        dumpControlError(result, pPreamble);
-		SendStatusMessage("[Axsun Control] Unable to connect to the devices.", false);
-        return false;
-    }
+		if (m_bIsConnected == CONNECTED)
+		{
+			result = m_pAxsunOCTControl->HomeVDL(&retvallong);
+			if (result != S_OK)
+			{
+				dumpControlError(result, pPreamble);
+				return false;
+			}
+			SendStatusMessage("[Axsun Control] VDL length is set to home.", false);
+		}
+		else
+		{
+			result = 80;
+			dumpControlError(result, pPreamble);
+			SendStatusMessage("[Axsun Control] Unable to connect to the devices.", false);
+			return false;
+		}
+	}
 
-    return true;
+	return true;
 }
 
 
 bool AxsunControl::setVDLLength(float position)
 {
-	HRESULT result;
-	unsigned long retvallong;
-	const char* pPreamble = "[Axsun Control] Failed to set VDL length: ";
-
-	result = m_pAxsunOCTControl->ConnectToOCTDevice(m_daq_device, &m_bIsConnected);
-	if (result != S_OK)
+	std::unique_lock<std::mutex> lock(vdl_mutex);
 	{
-		dumpControlError(result, pPreamble);
-		return false;
-	}
+		HRESULT result;
+		unsigned long retvallong;
+		const char* pPreamble = "[Axsun Control] Failed to set VDL length: ";
 
-	if (m_bIsConnected == CONNECTED)
-	{		
-        result = m_pAxsunOCTControl->MoveAbsVDL(position, 5, &retvallong);
+		result = m_pAxsunOCTControl->ConnectToOCTDevice(m_laser_device, &m_bIsConnected);
 		if (result != S_OK)
 		{
 			dumpControlError(result, pPreamble);
 			return false;
-		}		
+		}
 
-		char msg[256];
-		sprintf(msg, "[Axsun Control] VDL length is set to %.2f mm.", position);
-		SendStatusMessage(msg, false);
-	}
-	else
-	{
-		result = 80;
-		dumpControlError(result, pPreamble);
-		SendStatusMessage("[Axsun Control] Unable to connect to the devices.", false);
-		return false;
+		if (m_bIsConnected == CONNECTED)
+		{
+			result = m_pAxsunOCTControl->MoveAbsVDL(position, 5, &retvallong);
+			if (result != S_OK)
+			{
+				dumpControlError(result, pPreamble);
+				return false;
+			}
+
+			char msg[256];
+			sprintf(msg, "[Axsun Control] VDL length is set to %.2f mm.", position);
+			SendStatusMessage(msg, false);
+		}
+		else
+		{
+			result = 80;
+			dumpControlError(result, pPreamble);
+			SendStatusMessage("[Axsun Control] Unable to connect to the devices.", false);
+			return false;
+		}
 	}
 
 	return true;

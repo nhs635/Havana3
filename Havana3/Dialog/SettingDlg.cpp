@@ -12,6 +12,8 @@
 #include <Havana3/Dialog/FlimCalibTab.h>
 #include <Havana3/Dialog/PulseReviewTab.h>
 
+#include <DeviceControl/DeviceControl.h>
+
 
 SettingDlg::SettingDlg(QWidget *parent) :
     QDialog(parent), m_pPatientSummaryTab(nullptr), m_pStreamTab(nullptr), m_pResultTab(nullptr), m_pViewTab(nullptr), 
@@ -136,6 +138,12 @@ SettingDlg::~SettingDlg()
 {
 	delete m_pCusomTabstyle;
 	m_pConfig->DidLogAdded.clear();
+
+	if (m_pDeviceOptionTab && !m_pFlimCalibTab)
+	{
+		m_pDeviceOptionTab->getDeviceControl()->setAllDeviceOff();
+		delete m_pDeviceOptionTab->getDeviceControl();
+	}
 }
 
 void SettingDlg::keyPressEvent(QKeyEvent *e)

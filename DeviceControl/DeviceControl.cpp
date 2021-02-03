@@ -332,6 +332,20 @@ bool DeviceControl::connectFlimLaser(bool state)
 			m_pIPGPhotonicsLaser->SetPortName(FLIM_LASER_COM_PORT);
 
 			m_pIPGPhotonicsLaser->SendStatusMessage += SendStatusMessage;
+			m_pIPGPhotonicsLaser->InterpretReceivedMessage += [&](const char* msg) {
+				// Interpret the received message
+				QStringList qmsg_list = QString::fromUtf8(msg).split(":");
+				QString input_keyword = qmsg_list[0].toUtf8().data();
+				if (qmsg_list.length() > 1)
+				{
+					double status_value = qmsg_list[1].toDouble();
+
+					if (input_keyword == QString("STA"))
+						m_pIPGPhotonicsLaser->GetStatus((int)status_value);
+					else if (input_keyword == QString("RCS"))
+						printf("%f\n", status_value);
+				}
+			};
 		}
 		else
 			return false;
@@ -387,29 +401,6 @@ bool DeviceControl::connectFlimLaser(bool state)
 
 void DeviceControl::adjustLaserPower(int level)
 {
-	//static int i = 0;
-//	if (i == 0)
-//	{
-//		QMessageBox MsgBox;
-//		MsgBox.setWindowTitle("Warning");
-//		MsgBox.setIcon(QMessageBox::Warning);
-//		MsgBox.setText("Increasing the laser power level can be harmful to the patient.\nWould you like to adjust the laser power level?");
-//		MsgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
-//		MsgBox.setDefaultButton(QMessageBox::No);
-
-//		int resp = MsgBox.exec();
-//		switch (resp)
-//		{
-//		case QMessageBox::Yes:
-//			i++;
-//			break;
-//		case QMessageBox::No:
-//			return;
-//		default:
-//			return;
-//		}
-//	}
-
 #ifndef NEXT_GEN_SYSTEM
 	static int flim_laser_power_level = 0;
 
@@ -425,14 +416,14 @@ void DeviceControl::adjustLaserPower(int level)
 	}
 
 	char msg[256];
-	sprintf(msg, "[ELFORLIGHT] Laser power adjuset: %d", flim_laser_power_level);
+	sprintf(msg, "[ELFORLIGHT] Laser power adjusted: %d", flim_laser_power_level);
 	SendStatusMessage(msg, false);
 #else
 	if (m_pIPGPhotonicsLaser)
 		m_pIPGPhotonicsLaser->SetPowerLevel((uint8_t)level);
 
 	char msg[256];
-	sprintf(msg, "[IPGPhotonics] Laser power adjuset: %d", (uint8_t)level);
+	sprintf(msg, "[IPGPhotonics] Laser power adjusted: %d", (uint8_t)level);
 	SendStatusMessage(msg, false);
 #endif
 }
@@ -608,15 +599,16 @@ bool DeviceControl::connectAxsunControl(bool toggled)
 
 		// Default VDL Length
 		m_pAxsunControl->setVDLHome();
-		std::thread vdl_length([&]() {
-			//std::this_thread::sleep_for(std::chrono::milliseconds(1500));
-			//m_pAxsunControl->setVDLLength(m_pConfig->axsunVDLLength);
-
-			//std::this_thread::sleep_for(std::chrono::milliseconds(2000));
-//				if (m_pStreamTab->getOperationTab()->getAcquisitionButton()->isChecked())
-//					setVDLWidgets(true);
-		});
-		vdl_length.detach();
+		m_pAxsunControl->setVDLLength(m_pConfig->axsunVDLLength);
+//		std::thread vdl_length([&]() {
+//			//std::this_thread::sleep_for(std::chrono::milliseconds(1500));
+//			//m_pAxsunControl->setVDLLength(m_pConfig->axsunVDLLength);
+//
+//			//std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+////				if (m_pStreamTab->getOperationTab()->getAcquisitionButton()->isChecked())
+////					setVDLWidgets(true);
+//		});
+//		vdl_length.detach();
 
 #ifndef NEXT_GEN_SYSTEM
 		// Default Contrast Range
@@ -675,8 +667,8 @@ void DeviceControl::adjustDecibelRange(double min, double max)
 		m_pAxsunControl->setDecibelRange(m_pConfig->axsunDbRange.min, m_pConfig->axsunDbRange.max);
 	}
 #else
-
-
+	m_pConfig->axsunDbRange.min = min;
+	m_pConfig->axsunDbRange.max = max;
 #endif
 }
 

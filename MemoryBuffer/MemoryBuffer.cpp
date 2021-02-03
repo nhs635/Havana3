@@ -4,7 +4,6 @@
 #include <QSqlQuery>
 #include <QProgressDialog>
 
-#include <Havana3/Configuration.h>
 #include <Havana3/HvnSqlDataBase.h>
 #include <Havana3/MainWindow.h>
 #include <Havana3/QStreamTab.h>
@@ -60,15 +59,24 @@ void MemoryBuffer::allocateWritingBuffer()
 			memset(buffer1, 0, m_pConfig->flimFrameSize * sizeof(uint16_t));
 			m_queueWritingFlimBuffer.push(buffer1);
 
+#ifndef NEXT_GEN_SYSTEM
 			uint8_t* buffer2 = new uint8_t[m_pConfig->octFrameSize];
 			memset(buffer2, 0, m_pConfig->octFrameSize * sizeof(uint8_t));
+#else
+			float* buffer2 = new float[m_pConfig->octFrameSize];
+			memset(buffer2, 0, m_pConfig->octFrameSize * sizeof(float));
+#endif
 			m_queueWritingOctBuffer.push(buffer2);
 			
 			//printf("\rAllocating the writing buffers... [%d / %d]", i + 1, WRITING_BUFFER_SIZE);
 		}
 
 		m_syncFlimBuffering.allocate_queue_buffer(m_pConfig->flimScans, m_pConfig->flimAlines, PROCESSING_BUFFER_SIZE);
+#ifndef NEXT_GEN_SYSTEM
 		m_syncOctBuffering.allocate_queue_buffer(m_pConfig->octScans, m_pConfig->octAlines, PROCESSING_BUFFER_SIZE);
+#else
+		m_syncOctBuffering.allocate_queue_buffer(m_pConfig->octScansFFT / 2, m_pConfig->octAlines, PROCESSING_BUFFER_SIZE);
+#endif
 		
 		char msg[256];
 		sprintf(msg, "Writing buffers are successfully allocated. [Number of buffers: %d]", WRITING_BUFFER_SIZE);
@@ -99,7 +107,11 @@ void MemoryBuffer::disallocateWritingBuffer()
 
 			if (!m_queueWritingOctBuffer.empty())
 			{
+#ifndef NEXT_GEN_SYSTEM
 				uint8_t* buffer = m_queueWritingOctBuffer.front();
+#else
+				float* buffer = m_queueWritingOctBuffer.front();
+#endif
 				if (buffer)
 				{
 					m_queueWritingOctBuffer.pop();
@@ -138,7 +150,11 @@ bool MemoryBuffer::startRecording()
 		{
 			// Get the buffer from the buffering sync Queue
 			uint16_t* pulse = m_syncFlimBuffering.Queue_sync.pop();
+#ifndef NEXT_GEN_SYSTEM
 			uint8_t* oct_im = m_syncOctBuffering.Queue_sync.pop();
+#else
+			float* oct_im = m_syncOctBuffering.Queue_sync.pop();
+#endif
 			if ((pulse != nullptr) && (oct_im != nullptr))
 			{
 				// Body
@@ -149,9 +165,15 @@ bool MemoryBuffer::startRecording()
 					memcpy(buffer_flim, pulse, sizeof(uint16_t) * m_pConfig->flimFrameSize);
 					m_queueWritingFlimBuffer.push(buffer_flim);
 
+#ifndef NEXT_GEN_SYSTEM
 					uint8_t* buffer_oct = m_queueWritingOctBuffer.front();
 					m_queueWritingOctBuffer.pop();
 					memcpy(buffer_oct, oct_im, sizeof(uint8_t) * m_pConfig->octFrameSize);
+#else
+					float* buffer_oct = m_queueWritingOctBuffer.front();
+					m_queueWritingOctBuffer.pop();
+					memcpy(buffer_oct, oct_im, sizeof(float) * m_pConfig->octFrameSize);
+#endif
 					m_queueWritingOctBuffer.push(buffer_oct);
 
 					m_nRecordedFrames++;
@@ -184,7 +206,11 @@ bool MemoryBuffer::startRecording()
 				}
 				if (oct_im != nullptr)
 				{
+#ifndef NEXT_GEN_SYSTEM
 					uint8_t* oct_temp = oct_im;
+#else
+					float* oct_temp = oct_im;
+#endif
 					do
 					{
 						m_syncOctBuffering.queue_buffer.push(oct_temp);
@@ -288,7 +314,11 @@ void MemoryBuffer::write()
 
 	// Move to start point
 	uint16_t* buffer_flim = nullptr;
+#ifndef NEXT_GEN_SYSTEM
 	uint8_t* buffer_oct = nullptr;
+#else
+	float* buffer_oct = nullptr;
+#endif
 	for (int i = 0; i < WRITING_BUFFER_SIZE - m_nRecordedFrames; i++)
 	{
 		buffer_flim = m_queueWritingFlimBuffer.front();
@@ -346,8 +376,13 @@ void MemoryBuffer::write()
 			// OCT image writing
 			buffer_oct = m_queueWritingOctBuffer.front();
 			m_queueWritingOctBuffer.pop();
+#ifndef NEXT_GEN_SYSTEM
 			res = file.write(reinterpret_cast<char*>(buffer_oct), sizeof(uint8_t) * octSamplesToWrite);
 			if (!(res == sizeof(uint8_t) * octSamplesToWrite))
+#else
+			res = file.write(reinterpret_cast<char*>(buffer_oct), sizeof(float) * octSamplesToWrite);
+			if (!(res == sizeof(float) * octSamplesToWrite))
+#endif
 			{
 				SendStatusMessage("Error occurred while writing3...", true);
 				//emit finishedWritingThread();

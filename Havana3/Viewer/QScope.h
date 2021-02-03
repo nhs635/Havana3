@@ -7,6 +7,8 @@
 
 #include <stdarg.h>
 
+#include <Common/callback.h>
+
 struct QRange {
     double min;
     double max;
@@ -25,7 +27,7 @@ public:
     explicit QScope(QRange x_range, QRange y_range,
                     int num_x_ticks = 2, int num_y_ticks = 2,
                     double x_interval = 1, double y_interval = 1, double x_offset = 0, double y_offset = 0,
-                    QString x_unit = "", QString y_unit = "", bool mask_use = false, QWidget *parent = 0);
+                    QString x_unit = "", QString y_unit = "", bool mask_use = false, bool _64_use = false, QWidget *parent = 0);
 	virtual ~QScope();
 
 private:
@@ -46,11 +48,13 @@ public:
 public:
 	void setWindowLine(int len, ...);
 	void setMeanDelayLine(int len, ...);
-    void setDcLine(float dcLine);
+	void setDcLine(float dcLine);
 
 public slots:
-    void drawData(float* pData);
-	void drawData(float* pData, float* pMask);
+    void drawData(const float* pData);
+	void drawData(const float* pData, const float* pDataX, bool foo);
+	void drawData(const float* pData, const float* pMask);
+	void drawData(const double* pData64);
 
 private:
     QGridLayout *m_pGridLayout;
@@ -77,23 +81,30 @@ protected:
 	void mouseReleaseEvent(QMouseEvent *);
 
 public:
-	void setSize(QRange xRange, QRange yRange);
+	void setSize(QRange xRange, QRange yRange, int len = 0);
 	void setGrid(int nHMajorGrid, int nHMinorGrid, int nVMajorGrid, bool zeroLine = false);
+
+public: // callback
+	callback<void> DidMouseEvent;
 
 public:
     float* m_pData;
+	float* m_pDataX;
 	float* m_pMask;
+	double* m_pData64;
 	bool m_bMaskUse;
+	bool m_b64Use;
 
     QRange m_xRange;
     QRange m_yRange;
     QSizeF m_sizeGraph;
+	int m_buff_len;
 
 	int *m_pWinLineInd;
 	float *m_pMdLineInd;
 	int m_winLineLen;
 	int m_mdLineLen;
-    float m_dcLine;
+	float m_dcLine;
 
 	int m_nHMajorGrid;
 	int m_nHMinorGrid;
@@ -103,8 +114,12 @@ public:
 
 	bool m_bSelectionAvailable;
 	bool m_bMousePressed;
+	bool m_bIsLeftButton;
 	int m_selected[2];
 	int m_start, m_end;
+	uint8_t *m_pSelectedRegion;
+
+	bool m_bScattered;
 };
 
 

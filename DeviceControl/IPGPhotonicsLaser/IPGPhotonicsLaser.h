@@ -79,6 +79,7 @@ private:
 
 public:
 	callback2<const char*, bool> SendStatusMessage;
+	callback<const char*> InterpretReceivedMessage;
 };
 
 #endif

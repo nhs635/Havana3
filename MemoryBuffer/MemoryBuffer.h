@@ -4,6 +4,7 @@
 #include <QObject>
 #include <QString>
 
+#include <Havana3/Configuration.h>
 #include <Havana3/QPatientSummaryTab.h>
 
 #include <iostream>
@@ -70,11 +71,19 @@ public:
 
 public:
 	SyncObject<uint16_t> m_syncFlimBuffering;
+#ifndef NEXT_GEN_SYSTEM
 	SyncObject<uint8_t> m_syncOctBuffering;
+#else
+	SyncObject<float> m_syncOctBuffering;
+#endif
 
 private:
     std::queue<uint16_t*> m_queueWritingFlimBuffer; // writing buffer
+#ifndef NEXT_GEN_SYSTEM
 	std::queue<uint8_t*> m_queueWritingOctBuffer; // writing buffer
+#else
+	std::queue<float*> m_queueWritingOctBuffer; // writing buffer
+#endif
 	QString m_fileName;
 };
 
