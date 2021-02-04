@@ -69,9 +69,9 @@ bool AxsunControl::initialize(int n_device)
 			}
 			
 			if (deviceNum == DAQ_DEVICE)
-				m_daq_device = i;
+				m_daq_device = deviceNum;
 			else if (deviceNum == LASER_DEVICE)
-				m_laser_device = i;
+				m_laser_device = deviceNum;
 
 			char msg[256];
 			sprintf(msg, "[Axsun Control] %S (deviceNum: %d) is successfully connected.", systemTypeString, deviceNum);

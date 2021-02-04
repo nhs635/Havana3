@@ -894,10 +894,12 @@ void DeviceOptionTab::changeFlimLaserPower(const QString &str)
 
 void DeviceOptionTab::applyFlimLaserPower()
 {
+#ifdef NEXT_GEN_SYSTEM
 	m_pConfig->flimLaserPower = m_pLineEdit_FlimLaserPowerControl->text().toInt();
 	m_pDeviceControl->adjustLaserPower(m_pConfig->flimLaserPower);
 
 	m_pConfig->writeToLog(QString("FLIm laser power set: %1").arg(m_pConfig->flimLaserPower));
+#endif
 }
 
 

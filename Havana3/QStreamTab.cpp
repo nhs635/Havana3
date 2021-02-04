@@ -60,7 +60,11 @@ QStreamTab::QStreamTab(QString patient_id, QWidget *parent) :
 	
 	// Create buffers for threading operation
 	m_syncFlimProcessing.allocate_queue_buffer(m_pConfig->flimScans, m_pConfig->flimAlines, PROCESSING_BUFFER_SIZE);  // FLIm Processing
+#ifndef NEXT_GEN_SYSTEM
+	m_syncOctProcessing.allocate_queue_buffer(m_pConfig->octScans, m_pConfig->octAlines, PROCESSING_BUFFER_SIZE); // OCT Processing
+#else
 	m_syncOctProcessing.allocate_queue_buffer(m_pConfig->octScansFFT / 2, m_pConfig->octAlines, PROCESSING_BUFFER_SIZE); // OCT Processing
+#endif
 	m_syncFlimVisualization.allocate_queue_buffer(11, m_pConfig->flimAlines, PROCESSING_BUFFER_SIZE);  // FLIm Visualization
 #ifndef NEXT_GEN_SYSTEM
 	m_syncOctVisualization.allocate_queue_buffer(m_pConfig->octScans, m_pConfig->octAlines, PROCESSING_BUFFER_SIZE);  // OCT Visualization
@@ -171,7 +175,7 @@ void QStreamTab::createLiveStreamingViewWidgets()
 
 #ifdef DEVELOPER_MODE
 #ifndef NEXT_GEN_SYSTEM
-	m_pScope_Alines = new QScope({ 0, (double)m_pConfig->octScans }, { m_pConfig->axsunDbRange.min, m_pConfig->axsunDbRange.max }, 2, 2, 1, 1, 0, 0, "", "dB", false, false, this);
+	m_pScope_Alines = new QScope({ 0, (double)m_pConfig->octScans }, { 0.0, 255.0 }, 2, 2, 1, 1, 0, 0, "", "", false, false, this);
 #else
 	m_pScope_Alines = new QScope({ 0, (double)m_pConfig->octScansFFT / 2.0 }, { m_pConfig->axsunDbRange.min, m_pConfig->axsunDbRange.max }, 2, 2, 1, 1, 0, 0, "", "dB", false, false, this);
 #endif
@@ -713,7 +717,11 @@ void QStreamTab::setOctProcessingCallback()
 	m_pThreadOctProcess->DidAcquireData += [&](int frame_count) {
 
 		// Get the buffer from the previous sync Queue
+#ifndef NEXT_GEN_SYSTEM
+		uint8_t* oct_data = m_syncOctProcessing.Queue_sync.pop();
+#else
 		float* oct_data = m_syncOctProcessing.Queue_sync.pop();
+#endif
 		if (oct_data != nullptr)
 		{
 			// Get buffers from threading queues
@@ -733,14 +741,26 @@ void QStreamTab::setOctProcessingCallback()
 				//std::chrono::system_clock::time_point StartTime = std::chrono::system_clock::now();
 
 				// Body
+#ifndef NEXT_GEN_SYSTEM
+				memcpy(img_ptr, oct_data, sizeof(uint8_t) * m_pConfig->octFrameSize);
+#else
 				ippiScale_32f8u_C1R(oct_data, sizeof(float) * m_pConfig->octScansFFT / 2,
 					img_ptr, sizeof(uint8_t) * m_pConfig->octScansFFT / 2,
 					{ m_pConfig->octScansFFT / 2, m_pConfig->octAlines }, m_pConfig->axsunDbRange.min, m_pConfig->axsunDbRange.max);
+#endif
 
 #ifdef DEVELOPER_MODE
 				// Transfer to OCT A-line scope
 				if (m_pScope_Alines)
+				{
+#ifndef NEXT_GEN_SYSTEM
+					np::FloatArray aline(m_pConfig->octScans);
+					ippsConvert_8u32f(img_ptr, aline, m_pConfig->octScans);
+					emit plotAline(aline);
+#else
 					emit plotAline(oct_data);
+#endif
+				}
 #endif
 				
 				// Push the buffers to sync Queues

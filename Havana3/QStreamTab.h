@@ -122,7 +122,11 @@ public:
 private:
 	// Thread synchronization objects
 	SyncObject<uint16_t> m_syncFlimProcessing;
+#ifndef NEXT_GEN_SYSTEM
+	SyncObject<uint8_t> m_syncOctProcessing;
+#else
 	SyncObject<float> m_syncOctProcessing;
+#endif
 	SyncObject<float> m_syncFlimVisualization;
 	SyncObject<uint8_t> m_syncOctVisualization;
 

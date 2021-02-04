@@ -9,8 +9,8 @@
 
 ////////////////////// Software Setup ///////////////////////
 #define DEVELOPER_MODE
-#define NEXT_GEN_SYSTEM
-#define ENABLE_FPGA_FFT
+//#define NEXT_GEN_SYSTEM
+//#define ENABLE_FPGA_FFT
 #define ENABLE_DATABASE_ENCRYPTION
 #define NI_ENABLE
 
@@ -32,10 +32,10 @@
 
 #define FLIM_LASER_COM_PORT			"COM3"
 
-#define PMT_GAIN_AO_PORT			"Dev1/ao0"  /// "Dev1/ao1"
+#define PMT_GAIN_AO_PORT			"Dev1/ao1"  /// "Dev1/ao0"
 
-#define FLIM_LASER_SOURCE_TERMINAL	"/Dev1/PFI10"  /// "/Dev1/PFI2"
-#define FLIM_LASER_COUNTER_CHANNEL	"Dev1/ctr0"  /// "Dev1/ctr1"
+#define FLIM_LASER_SOURCE_TERMINAL	"/Dev1/PFI2"  /// "/Dev1/PFI0"
+#define FLIM_LASER_COUNTER_CHANNEL	"Dev1/ctr1"  /// "Dev1/ctr0"
 
 #ifndef NEXT_GEN_SYSTEM
 #define AXSUN_SOURCE_TERMINAL		"/Dev1/PFI3"
@@ -75,7 +75,7 @@
 #define INTER_FRAME_SYNC			0 //10 //9  // Frames
 #define INTRA_FRAME_SYNC			0 //30 // A-lines
 
-#define RENEWAL_COUNT				20
+#define RENEWAL_COUNT				10
 #define PIXEL_RESOLUTION			5.7 // micrometer
 #define OUTER_SHEATH_POSITION		120 // (int)((150 * 1.45 + 180 * 1 + 150 * 1.33) / PIXEL_RESOLUTION)
 
