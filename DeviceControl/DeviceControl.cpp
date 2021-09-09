@@ -23,7 +23,9 @@
 
 #include <DataAcquisition/DataAcquisition.h>
 #include <DataAcquisition/SignatecDAQ/SignatecDAQ.h>
+#ifdef AX_CAPT_ENABLE
 #include <DataAcquisition/AxsunCapture/AxsunCapture.h>
+#endif
 
 #include <Common/Array.h>
 
@@ -100,12 +102,15 @@ bool DeviceControl::connectRotaryMotor(bool toggled)
 
 			return false;
 		}
+
+		m_pRotaryMotor->EnableMotor();
 	}
 	else
 	{
 		if (m_pRotaryMotor)
 		{
 			// Disconnect the motor
+			m_pRotaryMotor->DisableMotor();
 			m_pRotaryMotor->DisconnectDevice();
 
 			// Delete Faulhaber motor control objects
@@ -117,24 +122,27 @@ bool DeviceControl::connectRotaryMotor(bool toggled)
 	return true;
 }
 
-void DeviceControl::rotate(bool toggled)
+void DeviceControl::changeRotaryRpm(int rpm)
 {
+	m_pConfig->rotaryRpm = rpm;
 	if (m_pRotaryMotor)
 	{
-		if (toggled)
+		if (rpm != 0)
 			m_pRotaryMotor->RotateMotor(m_pConfig->rotaryRpm);
 		else
 			m_pRotaryMotor->StopMotor();
 	}
-}
 
-void DeviceControl::changeRotaryRpm(int rpm)
-{
-	m_pConfig->rotaryRpm = rpm;
-		
 	char msg[256];
 	sprintf(msg, "[FAULHABER] Rotary RPM set: %d RPM", rpm);
 	SendStatusMessage(msg, false);
+}
+
+void DeviceControl::rotateStop()
+{
+	m_pConfig->rotaryRpm = 0;
+	if (m_pRotaryMotor)
+		m_pRotaryMotor->DisableMotor();
 }
 
 
@@ -174,8 +182,12 @@ bool DeviceControl::connectPullbackMotor(bool enabled)
 		if (m_pPullbackMotor)
 		{
 			// Disconnect the motor
-			m_pPullbackMotor->DisableMotor();
-			m_pPullbackMotor->DisconnectDevice();
+			{
+				std::unique_lock<std::mutex> lock(m_pPullbackMotor->mtx_rotating);
+
+				m_pPullbackMotor->DisableMotor();
+				m_pPullbackMotor->DisconnectDevice();
+			}
 
 			// Delete Faulhaber motor control objects
 			delete m_pPullbackMotor;
@@ -192,12 +204,17 @@ void DeviceControl::moveAbsolute()
 	{
 		// Pullback
 		m_pPullbackMotor->RotateMotor(-int(m_pConfig->pullbackSpeed * GEAR_RATIO));
+		m_pPullbackMotor->current_pos += m_pConfig->pullbackLength;
 
 		// Pullback end condition
 		float duration = m_pConfig->pullbackLength / m_pConfig->pullbackSpeed;
 		std::thread stop([&, duration]() {
 			std::this_thread::sleep_for(std::chrono::milliseconds(int(1000 * duration)));
-			this->stop();
+			if (m_pPullbackMotor->getMovingState())
+			{
+				this->stop();
+				m_pPullbackMotor->DidRotateEnd();
+			}
 		});
 		stop.detach();
 	}
@@ -224,7 +241,24 @@ void DeviceControl::changePullbackLength(float length)
 void DeviceControl::home()
 {
 	if (m_pPullbackMotor)
-	    m_pPullbackMotor->RotateMotor(int(20 * GEAR_RATIO));
+	{
+		// Pullback
+		m_pPullbackMotor->RotateMotor(int(20 * GEAR_RATIO));
+
+		// Pullback end condition
+		float duration = m_pPullbackMotor->current_pos / m_pConfig->pullbackSpeed;
+		std::thread stop([&, duration]() {
+			std::unique_lock<std::mutex> lock(m_pPullbackMotor->mtx_rotating);
+
+			std::this_thread::sleep_for(std::chrono::milliseconds(int(1000 * duration)));
+			//if (m_pPullbackMotor->getMovingState())
+			{
+				this->stop();
+				m_pPullbackMotor->current_pos = 0;
+			}
+		});
+		stop.detach();
+	}
 }
 
 void DeviceControl::stop()
@@ -415,9 +449,9 @@ void DeviceControl::adjustLaserPower(int level)
 		flim_laser_power_level--;
 	}
 
-	char msg[256];
-	sprintf(msg, "[ELFORLIGHT] Laser power adjusted: %d", flim_laser_power_level);
-	SendStatusMessage(msg, false);
+	///char msg[256];
+	///sprintf(msg, "[ELFORLIGHT] Laser power adjusted: %d", flim_laser_power_level);
+	///SendStatusMessage(msg, false);
 #else
 	if (m_pIPGPhotonicsLaser)
 		m_pIPGPhotonicsLaser->SetPowerLevel((uint8_t)level);
@@ -598,8 +632,8 @@ bool DeviceControl::connectAxsunControl(bool toggled)
 		setClockDelay(CLOCK_GAIN * CLOCK_DELAY + CLOCK_OFFSET);
 
 		// Default VDL Length
-		m_pAxsunControl->setVDLHome();
-		m_pAxsunControl->setVDLLength(m_pConfig->axsunVDLLength);
+//		m_pAxsunControl->setVDLHome();
+//		m_pAxsunControl->setVDLLength(m_pConfig->axsunVDLLength);
 //		std::thread vdl_length([&]() {
 //			//std::this_thread::sleep_for(std::chrono::milliseconds(1500));
 //			//m_pAxsunControl->setVDLLength(m_pConfig->axsunVDLLength);

@@ -26,31 +26,26 @@ DEFINES += QT_DEPRECATED_WARNINGS
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 
-
-
 INCLUDEPATH += $$PWD/include
 
-LIBS += $$PWD/lib/PX14_64.lib \
-        $$PWD/lib/ATSApi.lib
+LIBS += $$PWD/lib/PX14_64.lib# \
+#        $$PWD/lib/ATSApi.lib
 LIBS += $$PWD/lib/AxsunOCTCapture.lib
 LIBS += $$PWD/lib/NIDAQmx.lib
 LIBS += $$PWD/lib/intel64_win/ippcore.lib \
         $$PWD/lib/intel64_win/ippi.lib \
         $$PWD/lib/intel64_win/ipps.lib \
         $$PWD/lib/intel64_win/ippvm.lib
-debug {
-    LIBS += $$PWD/lib/vld.lib
-    LIBS += $$PWD/lib/intel64_win/vc14/tbb_debug.lib \
-            $$PWD/lib/opencv_world320d.lib
-}
+LIBS += $$PWD/lib/intel64_win/vc14/tbb_debug.lib
 release {
-    LIBS += $$PWD/lib/intel64_win/vc14/tbb.lib \
-            $$PWD/lib/opencv_world320.lib
+    LIBS += $$PWD/lib/intel64_win/vc14/tbb.lib
 }
 LIBS += $$PWD/lib/intel64_win/mkl_core.lib \
         $$PWD/lib/intel64_win/mkl_tbb_thread.lib \
         $$PWD/lib/intel64_win/mkl_intel_lp64.lib
-
+debug {
+    LIBS += $$PWD/lib/vld.lib
+}
 
 
 SOURCES += Havana3/Havana3.cpp \

@@ -18,7 +18,7 @@ QViewTab::QViewTab(bool is_streaming, QWidget *parent) :
     QDialog(parent), m_pStreamTab(nullptr), m_pResultTab(nullptr),
     m_pImgObjRectImage(nullptr), m_pImgObjCircImage(nullptr), m_pImgObjIntensity(nullptr), m_pImgObjLifetime(nullptr),
 	m_pImgObjOctProjection(nullptr), m_pImgObjIntensityMap(nullptr), m_pImgObjLifetimeMap(nullptr), m_pImgObjLongiImage(nullptr),
-    m_pCirc(nullptr), m_pMedfiltRect(nullptr), m_pMedfiltIntensityMap(nullptr), m_pMedfiltLifetimeMap(nullptr), m_pMedfiltLongi(nullptr), m_pAnn(nullptr)
+    m_pCirc(nullptr), m_pMedfiltRect(nullptr), m_pMedfiltIntensityMap(nullptr), m_pMedfiltLifetimeMap(nullptr), m_pMedfiltLongi(nullptr) //, m_pAnn(nullptr)
 {
     // Set configuration objects
 	if (is_streaming)
@@ -52,7 +52,7 @@ QViewTab::~QViewTab()
 	if (m_pMedfiltIntensityMap) delete m_pMedfiltIntensityMap;
 	if (m_pMedfiltLifetimeMap) delete m_pMedfiltLifetimeMap;
     if (m_pMedfiltLongi) delete m_pMedfiltLongi;
-    if (m_pAnn) delete m_pAnn;
+    //if (m_pAnn) delete m_pAnn;
 }
 
 

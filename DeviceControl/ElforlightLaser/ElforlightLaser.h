@@ -5,6 +5,9 @@
 
 #include "../QSerialComm.h"
 
+#include <iostream>
+#include <mutex>
+
 
 class ElforlightLaser
 {
@@ -30,9 +33,12 @@ private:
 	QSerialComm* m_pSerialComm;
 	const char* port_name;
 	bool is_laser_enabled;
+	int laser_power_level;
+	std::mutex mtx_power;
 
 public:	
 	callback<double*> UpdateState;
+	callback<int> UpdatePowerLevel;
 	callback2<const char*, bool> SendStatusMessage;
 };
 

@@ -22,7 +22,7 @@ FlimCalibTab::FlimCalibTab(QWidget *parent) :
     m_pStreamTab = dynamic_cast<SettingDlg*>(parent)->getStreamTab();
     m_pConfig = m_pStreamTab->getMainWnd()->m_pConfiguration;
     m_pFLIm = m_pStreamTab->getDataAcquisition()->getFLIm();
-		
+			
     // Create layout
     m_pVBoxLayout = new QVBoxLayout;
     m_pVBoxLayout->setSpacing(15);
@@ -40,6 +40,8 @@ FlimCalibTab::FlimCalibTab(QWidget *parent) :
 
     m_pGroupBox_FlimCalibTab->setLayout(m_pVBoxLayout);
 	
+	// Draw pulse data
+	m_pFLIm->loadMaskData();
 	drawRoiPulse(m_pFLIm, 0);
 }
 
@@ -261,10 +263,9 @@ void FlimCalibTab::createHistogram()
     m_pLabel_FluIntensity = new QLabel("Fluorescence Intensity (AU)", this);
 	m_pLabel_FluIntensity->setFixedWidth(180);
 
-    m_pRenderArea_FluIntensity = new QRenderArea(this);
+    m_pRenderArea_FluIntensity = new QRenderArea3(this);
     m_pRenderArea_FluIntensity->setSize({ 0, (double)N_BINS }, { 0, (double)m_pConfig->flimAlines });
     m_pRenderArea_FluIntensity->setFixedSize(210, 130);
-    m_pRenderArea_FluIntensity->setGrid(4, 16, 1);
 
     m_pHistogramIntensity = new Histogram(N_BINS, m_pConfig->flimAlines);
 	
@@ -280,15 +281,17 @@ void FlimCalibTab::createHistogram()
 	m_pLabel_FluIntensityMax->setFixedWidth(80);
     m_pLabel_FluIntensityMax->setText(QString::number(m_pConfig->flimIntensityRange[m_pConfig->flimEmissionChannel - 1].max, 'f', 1));
     m_pLabel_FluIntensityMax->setAlignment(Qt::AlignRight);
-
-    m_pLabel_FluIntensityMean = new QLabel(this);
-    m_pLabel_FluIntensityMean->setFixedWidth(80);
-    m_pLabel_FluIntensityMean->setText(QString("Mean: %1").arg(0.0, 4, 'f', 3));
-    m_pLabel_FluIntensityMean->setAlignment(Qt::AlignCenter);
-    m_pLabel_FluIntensityStd = new QLabel(this);
-    m_pLabel_FluIntensityStd->setFixedWidth(80);
-    m_pLabel_FluIntensityStd->setText(QString("Std: %1").arg(0.0, 4, 'f', 3));
-    m_pLabel_FluIntensityStd->setAlignment(Qt::AlignCenter);
+	
+	for (int i = 0; i < 3; i++)
+	{
+		m_pLabel_FluIntensityVal[i] = new QLabel(this);
+		m_pLabel_FluIntensityVal[i]->setFixedWidth(180);
+		m_pLabel_FluIntensityVal[i]->setText(QString::fromLocal8Bit("Ch%1: %2 ¡¾ %3").arg(i + 1).arg(0.0, 4, 'f', 3).arg(0.0, 4, 'f', 3));
+		m_pLabel_FluIntensityVal[i]->setAlignment(Qt::AlignCenter);		
+	}
+	m_pLabel_FluIntensityVal[0]->setStyleSheet("QLabel{color:#d900ff}");
+	m_pLabel_FluIntensityVal[1]->setStyleSheet("QLabel{color:#0088ff}");
+	m_pLabel_FluIntensityVal[2]->setStyleSheet("QLabel{color:#88ff00}");
 
     // Create widgets for histogram (lifetime)
     QGridLayout *pGridLayout_LifetimeHistogram = new QGridLayout;
@@ -297,10 +300,9 @@ void FlimCalibTab::createHistogram()
     m_pLabel_FluLifetime = new QLabel("Fluorescence Lifetime (nsec)", this);
 	m_pLabel_FluLifetime->setFixedWidth(180);
 
-    m_pRenderArea_FluLifetime = new QRenderArea(this);
+    m_pRenderArea_FluLifetime = new QRenderArea3(this);
     m_pRenderArea_FluLifetime->setSize({ 0, (double)N_BINS }, { 0, (double)m_pConfig->flimAlines });
     m_pRenderArea_FluLifetime->setFixedSize(210, 130);
-    m_pRenderArea_FluLifetime->setGrid(4, 16, 1);
 
     m_pHistogramLifetime = new Histogram(N_BINS, m_pConfig->flimAlines);
 
@@ -317,14 +319,16 @@ void FlimCalibTab::createHistogram()
     m_pLabel_FluLifetimeMax->setText(QString::number(m_pConfig->flimLifetimeRange[m_pConfig->flimEmissionChannel - 1].max, 'f', 1));
     m_pLabel_FluLifetimeMax->setAlignment(Qt::AlignRight);
 
-    m_pLabel_FluLifetimeMean = new QLabel(this);
-    m_pLabel_FluLifetimeMean->setFixedWidth(90);
-    m_pLabel_FluLifetimeMean->setText(QString("Mean: %1").arg(0.0, 4, 'f', 3));
-    m_pLabel_FluLifetimeMean->setAlignment(Qt::AlignCenter);
-    m_pLabel_FluLifetimeStd = new QLabel(this);
-    m_pLabel_FluLifetimeStd->setFixedWidth(90);
-    m_pLabel_FluLifetimeStd->setText(QString("Std: %1").arg(0.0, 4, 'f', 3));
-    m_pLabel_FluLifetimeStd->setAlignment(Qt::AlignCenter);
+	for (int i = 0; i < 3; i++)
+	{
+		m_pLabel_FluLifetimeVal[i] = new QLabel(this);
+		m_pLabel_FluLifetimeVal[i]->setFixedWidth(180);
+		m_pLabel_FluLifetimeVal[i]->setText(QString::fromLocal8Bit("Ch%1: %2 ¡¾ %3").arg(i + 1).arg(0.0, 4, 'f', 3).arg(0.0, 4, 'f', 3));
+		m_pLabel_FluLifetimeVal[i]->setAlignment(Qt::AlignCenter);
+	}
+	m_pLabel_FluLifetimeVal[0]->setStyleSheet("QLabel{color:#d900ff}");
+	m_pLabel_FluLifetimeVal[1]->setStyleSheet("QLabel{color:#0088ff}");
+	m_pLabel_FluLifetimeVal[2]->setStyleSheet("QLabel{color:#88ff00}");
 	
     // Set layout
     pGridLayout_IntensityHistogram->addWidget(m_pLabel_FluIntensity, 0, 0, 1, 4);
@@ -334,9 +338,9 @@ void FlimCalibTab::createHistogram()
     pGridLayout_IntensityHistogram->addWidget(m_pLabel_FluIntensityMin, 3, 0, 1, 2, Qt::AlignLeft);
     pGridLayout_IntensityHistogram->addWidget(m_pLabel_FluIntensityMax, 3, 2, 1, 2, Qt::AlignRight);
 
-    pGridLayout_IntensityHistogram->addWidget(m_pLabel_FluIntensityMean, 4, 0, 1, 2, Qt::AlignCenter);
-    pGridLayout_IntensityHistogram->addWidget(m_pLabel_FluIntensityStd, 4, 2, 1, 2, Qt::AlignCenter);
-
+	for (int i = 0; i < 3; i++)
+	    pGridLayout_IntensityHistogram->addWidget(m_pLabel_FluIntensityVal[i], 4 + i, 0, 1, 4, Qt::AlignCenter);
+    
 
     pGridLayout_LifetimeHistogram->addWidget(m_pLabel_FluLifetime, 0, 0, 1, 4);
     pGridLayout_LifetimeHistogram->addWidget(m_pRenderArea_FluLifetime, 1, 0, 1, 4);
@@ -344,10 +348,9 @@ void FlimCalibTab::createHistogram()
 
     pGridLayout_LifetimeHistogram->addWidget(m_pLabel_FluLifetimeMin, 3, 0, 1, 2, Qt::AlignLeft);
     pGridLayout_LifetimeHistogram->addWidget(m_pLabel_FluLifetimeMax, 3, 2, 1, 2, Qt::AlignRight);
-
-    pGridLayout_LifetimeHistogram->addWidget(m_pLabel_FluLifetimeMean, 4, 0, 1, 2, Qt::AlignCenter);
-    pGridLayout_LifetimeHistogram->addWidget(m_pLabel_FluLifetimeStd, 4, 2, 1, 2, Qt::AlignCenter);
-
+	
+	for (int i = 0; i < 3; i++)
+		pGridLayout_LifetimeHistogram->addWidget(m_pLabel_FluLifetimeVal[i], 4 + i, 0, 1, 4, Qt::AlignCenter);
 
     pHBoxLayout_Histogram->addItem(pGridLayout_IntensityHistogram);
     pHBoxLayout_Histogram->addItem(pGridLayout_LifetimeHistogram);
@@ -360,7 +363,7 @@ void FlimCalibTab::drawRoiPulse(FLImProcess* pFLIm, int aline)
 {
     // Reset pulse view (if necessary)
     static int roi_width = 0;
-    np::FloatArray2 data0((!m_pCheckBox_SplineView->isChecked()) ? pFLIm->_resize.crop_src: pFLIm->_resize.filt_src);
+    np::FloatArray2 data0((!m_pCheckBox_SplineView->isChecked()) ? ((!m_pCheckBox_ShowMask->isChecked()) ? pFLIm->_resize.crop_src : pFLIm->_resize.mask_src) : pFLIm->_resize.filt_src);
     np::FloatArray2 data(data0.size(0), data0.size(1));
     memcpy(data.raw_ptr(), data0.raw_ptr(), sizeof(float) * data0.length());
 
@@ -389,30 +392,31 @@ void FlimCalibTab::drawRoiPulse(FLImProcess* pFLIm, int aline)
     m_pScope_PulseView->drawData(&data(0, aline), pFLIm->_resize.pMask);
 
     // Histogram
-    float* scanIntensity = &pFLIm->_intensity.intensity(0, m_pConfig->flimEmissionChannel);
-    float* scanLifetime = &pFLIm->_lifetime.lifetime(0, m_pConfig->flimEmissionChannel - 1);
+	for (int i = 0; i < 3; i++)
+	{
+		float* scanIntensity = &pFLIm->_intensity.intensity(0, i + 1);
+		float* scanLifetime = &pFLIm->_lifetime.lifetime(0, i);
 
-    (*m_pHistogramIntensity)(scanIntensity, m_pRenderArea_FluIntensity->m_pData, 
-		m_pConfig->flimIntensityRange[m_pConfig->flimEmissionChannel - 1].min, m_pConfig->flimIntensityRange[m_pConfig->flimEmissionChannel - 1].max);
-    (*m_pHistogramLifetime)(scanLifetime, m_pRenderArea_FluLifetime->m_pData, 
-		m_pConfig->flimLifetimeRange[m_pConfig->flimEmissionChannel - 1].min, m_pConfig->flimLifetimeRange[m_pConfig->flimEmissionChannel - 1].max);
-    m_pRenderArea_FluIntensity->update();
-    m_pRenderArea_FluLifetime->update();
-
-    m_pLabel_FluIntensityMin->setText(QString::number(m_pConfig->flimIntensityRange[m_pConfig->flimEmissionChannel - 1].min, 'f', 1));
-    m_pLabel_FluIntensityMax->setText(QString::number(m_pConfig->flimIntensityRange[m_pConfig->flimEmissionChannel - 1].max, 'f', 1));
-    m_pLabel_FluLifetimeMin->setText(QString::number(m_pConfig->flimLifetimeRange[m_pConfig->flimEmissionChannel - 1].min, 'f', 1));
-    m_pLabel_FluLifetimeMax->setText(QString::number(m_pConfig->flimLifetimeRange[m_pConfig->flimEmissionChannel - 1].max, 'f', 1));
-
-    m_pColorbar_FluLifetime->resetColormap(ColorTable::colortable(LIFETIME_COLORTABLE));
+		(*m_pHistogramIntensity)(scanIntensity, m_pRenderArea_FluIntensity->m_pData[i],
+			m_pConfig->flimIntensityRange[i].min, m_pConfig->flimIntensityRange[i].max);
+		(*m_pHistogramLifetime)(scanLifetime, m_pRenderArea_FluLifetime->m_pData[i],
+			m_pConfig->flimLifetimeRange[i].min, m_pConfig->flimLifetimeRange[i].max);
+		
+		Ipp32f mean, stdev;
+		auto res = ippsMeanStdDev_32f(scanIntensity, m_pConfig->flimAlines, &mean, &stdev, ippAlgHintFast);
+		m_pLabel_FluIntensityVal[i]->setText(QString::fromLocal8Bit("Ch%1: %2 ¡¾ %3").arg(i + 1).arg(mean, 4, 'f', 3).arg(stdev, 4, 'f', 3));
+		res = ippsMeanStdDev_32f(scanLifetime, m_pConfig->flimAlines, &mean, &stdev, ippAlgHintFast);
+		m_pLabel_FluLifetimeVal[i]->setText(QString::fromLocal8Bit("Ch%1: %2 ¡¾ %3").arg(i + 1).arg(mean, 4, 'f', 3).arg(stdev, 4, 'f', 3));
+	}
+	m_pRenderArea_FluIntensity->update();
+	m_pRenderArea_FluLifetime->update();
 	
-    Ipp32f mean, stdev;
-    auto res = ippsMeanStdDev_32f(scanIntensity, m_pConfig->flimAlines, &mean, &stdev, ippAlgHintFast);
-    m_pLabel_FluIntensityMean->setText(QString("Mean: %1").arg(mean, 4, 'f', 3));
-    m_pLabel_FluIntensityStd->setText(QString("Std: %1").arg(stdev, 4, 'f', 3));
-    res = ippsMeanStdDev_32f(scanLifetime, m_pConfig->flimAlines, &mean, &stdev, ippAlgHintFast);
-    m_pLabel_FluLifetimeMean->setText(QString("Mean: %1").arg(mean, 4, 'f', 3));
-    m_pLabel_FluLifetimeStd->setText(QString("Std: %1").arg(stdev, 4, 'f', 3));
+	m_pLabel_FluIntensityMin->setText(QString::number(std::min(m_pConfig->flimIntensityRange[0].min, std::min(m_pConfig->flimIntensityRange[1].min, m_pConfig->flimIntensityRange[2].min)), 'f', 1));
+	m_pLabel_FluIntensityMax->setText(QString::number(std::max(m_pConfig->flimIntensityRange[0].max, std::max(m_pConfig->flimIntensityRange[1].max, m_pConfig->flimIntensityRange[2].max)), 'f', 1));
+	m_pLabel_FluLifetimeMin->setText(QString::number(std::min(m_pConfig->flimLifetimeRange[0].min, std::min(m_pConfig->flimLifetimeRange[1].min, m_pConfig->flimLifetimeRange[2].min)), 'f', 1));
+	m_pLabel_FluLifetimeMax->setText(QString::number(std::max(m_pConfig->flimLifetimeRange[0].max, std::max(m_pConfig->flimLifetimeRange[1].max, m_pConfig->flimLifetimeRange[2].max)), 'f', 1));
+
+	m_pColorbar_FluLifetime->resetColormap(ColorTable::colortable(LIFETIME_COLORTABLE));
 }
 
 void FlimCalibTab::showWindow(bool checked)
@@ -667,7 +671,7 @@ void FlimCalibTab::resetChStart1(double start)
     m_pFLIm->_params.ch_start_ind[1] = ch_ind;
     m_pConfig->flimChStartInd[1] = ch_ind;
 
-    //m_pFLIm->_resize.initiated = false;
+    m_pFLIm->_resize.initiated = false;
 
 //    printf("[Ch 1] %d %d %d %d\n",
 //        m_pFLIm->_params.ch_start_ind[0], m_pFLIm->_params.ch_start_ind[1],
@@ -692,7 +696,7 @@ void FlimCalibTab::resetChStart2(double start)
     m_pFLIm->_params.ch_start_ind[2] = ch_ind;
     m_pConfig->flimChStartInd[2] = ch_ind;
 
-    //m_pFLIm->_resize.initiated = false;
+    m_pFLIm->_resize.initiated = false;
 
 //    printf("[Ch 2] %d %d %d %d\n",
 //        m_pFLIm->_params.ch_start_ind[0], m_pFLIm->_params.ch_start_ind[1],

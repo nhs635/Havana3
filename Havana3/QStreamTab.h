@@ -43,7 +43,9 @@ public:
     inline DeviceControl* getDeviceControl() const { return m_pDeviceControl; }
     inline QViewTab* getViewTab() const { return m_pViewTab; }
 	inline QScrollBar* getCalibScrollBar() const { return m_pScrollBar_CatheterCalibration; }
+#ifdef DEVELOPER_MODE
 	inline QScope* getAlineScope() const { return m_pScope_Alines; }
+#endif
 
 	inline void setFirstImplemented(bool impl) { m_bFirstImplemented = impl; }
 	inline bool getFirstImplemented() { return m_bFirstImplemented; }
@@ -79,7 +81,11 @@ private slots:
     void createSettingDlg();
     void deleteSettingDlg();
     void scrollCatheterCalibration(int);
-    void enableRotation(bool);
+    
+public slots:
+	void enableRotation(bool);
+
+private slots:
     void startPullback(bool);
 #ifdef DEVELOPER_MODE
 	void onTimerSyncMonitor();
@@ -119,7 +125,6 @@ public:
 	ThreadManager* m_pThreadOctProcess;
 	ThreadManager* m_pThreadVisualization;
 
-private:
 	// Thread synchronization objects
 	SyncObject<uint16_t> m_syncFlimProcessing;
 #ifndef NEXT_GEN_SYSTEM

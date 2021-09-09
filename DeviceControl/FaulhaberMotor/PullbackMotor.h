@@ -3,7 +3,7 @@
 
 #include "FaulhaberMotor.h"
 
-#define GEAR_RATIO 334.224
+#define GEAR_RATIO 339.6715627996165 //334.224
 
 
 class PullbackMotor : public FaulhaberMotor

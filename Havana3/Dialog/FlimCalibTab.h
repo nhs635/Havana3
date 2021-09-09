@@ -30,6 +30,110 @@ public:
     virtual ~QMySpinBox2() {}
 };
 
+class QRenderArea3 : public QWidget
+{
+public:
+	explicit QRenderArea3(QWidget *) 
+		: m_nHMajorGrid(4), m_nHMinorGrid(16), m_nVMajorGrid(1)
+	{
+		QPalette pal = this->palette();
+		pal.setColor(QPalette::Background, QColor(0x282d30));
+		setPalette(pal);
+		setAutoFillBackground(true);
+
+		m_pData[0] = nullptr;
+		m_pData[1] = nullptr;
+		m_pData[2] = nullptr;
+
+		color[0] = 0xd900ff;
+		color[1] = 0x0088ff;
+		color[2] = 0x88ff00;
+	}
+
+	virtual ~QRenderArea3()
+	{
+	}
+
+protected:
+	void paintEvent(QPaintEvent *)
+	{
+		QPainter painter(this);
+		painter.setRenderHint(QPainter::Antialiasing, true);
+
+		// Area size
+		int w = this->width();
+		int h = this->height();
+
+		// Draw grid
+		painter.setPen(QColor(0x4f5555)); // Minor grid color (horizontal)
+		for (int i = 0; i <= m_nHMinorGrid; i++)
+			painter.drawLine(i * w / m_nHMinorGrid, 0, i * w / m_nHMinorGrid, h);
+
+		painter.setPen(QColor(0x7b8585)); // Major grid color (horizontal)
+		for (int i = 0; i <= m_nHMajorGrid; i++)
+			painter.drawLine(i * w / m_nHMajorGrid, 0, i * w / m_nHMajorGrid, h);
+		for (int i = 0; i <= m_nVMajorGrid; i++) // Major grid color (vertical)
+			painter.drawLine(0, i * h / m_nVMajorGrid, w, i * h / m_nVMajorGrid);
+
+		// Draw graph
+		if (m_pData != nullptr) // single case
+		{
+			for (int i = 0; i < 3; i++)
+			{
+				painter.setPen(QColor(color[i])); // data graph (yellow)
+				for (int j = 0; j < m_buff_len - 1; j++)
+				{
+					QPointF x0, x1;
+
+					x0.setX((float)(j) / (float)m_sizeGraph.width() * w);
+					x0.setY((float)(m_yRange.max - m_pData[i][j]) * (float)h / (float)(m_yRange.max - m_yRange.min));
+					x1.setX((float)(j + 1) / (float)m_sizeGraph.width() * w);
+					x1.setY((float)(m_yRange.max - m_pData[i][j + 1]) * (float)h / (float)(m_yRange.max - m_yRange.min));
+
+					painter.drawLine(x0, x1);
+				}
+			}
+		}
+	}
+
+public:
+	void setSize(QRange xRange, QRange yRange, int len = 0)
+	{
+		// Set range
+		m_xRange = xRange;
+		m_yRange = yRange;
+
+		// Set graph size
+		m_sizeGraph = { m_xRange.max - m_xRange.min , m_yRange.max - m_yRange.min };
+
+		// Buffer length
+		m_buff_len = (len != 0) ? len : m_sizeGraph.width();
+
+		// Allocate data buffer
+		for (int i = 0; i < 3; i++)
+		{
+			if (m_pData[i]) { delete[] m_pData[i]; m_pData[i] = nullptr; }
+			m_pData[i] = new float[m_buff_len];
+			memset(m_pData[i], 0, sizeof(float) * m_buff_len);
+		}
+
+		this->update();
+	}
+		
+public:
+	float* m_pData[3];
+	int color[3];
+
+	int m_nHMajorGrid;
+	int m_nHMinorGrid;
+	int m_nVMajorGrid;
+
+	QRange m_xRange;
+	QRange m_yRange;
+	QSizeF m_sizeGraph;
+	int m_buff_len;
+};
+
 struct Histogram
 {
 public:
@@ -193,20 +297,18 @@ private:
 
     // Histogram widgets
     QLabel *m_pLabel_FluIntensity;
-    QRenderArea *m_pRenderArea_FluIntensity;
+    QRenderArea3 *m_pRenderArea_FluIntensity;
     QImageView *m_pColorbar_FluIntensity;
     QLabel *m_pLabel_FluIntensityMin;
     QLabel *m_pLabel_FluIntensityMax;
-    QLabel *m_pLabel_FluIntensityMean;
-    QLabel *m_pLabel_FluIntensityStd;
+    QLabel *m_pLabel_FluIntensityVal[3];
 
     QLabel *m_pLabel_FluLifetime;
-    QRenderArea *m_pRenderArea_FluLifetime;
+    QRenderArea3 *m_pRenderArea_FluLifetime;
     QImageView *m_pColorbar_FluLifetime;
     QLabel *m_pLabel_FluLifetimeMin;
     QLabel *m_pLabel_FluLifetimeMax;
-    QLabel *m_pLabel_FluLifetimeMean;
-    QLabel *m_pLabel_FluLifetimeStd;
+	QLabel *m_pLabel_FluLifetimeVal[3];
 };
 
 #endif // FLIMCALIBTAB_H

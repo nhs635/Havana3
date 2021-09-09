@@ -18,7 +18,9 @@
 
 #include <DataAcquisition/DataAcquisition.h>
 #include <DataAcquisition/SignatecDAQ/SignatecDAQ.h>
+#ifdef AX_CAPT_ENABLE
 #include <DataAcquisition/AxsunCapture/AxsunCapture.h>
+#endif
 
 #include <Common/Array.h>
 
@@ -119,26 +121,27 @@ void DeviceOptionTab::createHelicalScanningControl()
 	m_pLabel_RotaryConnect = new QLabel(this);
 	m_pLabel_RotaryConnect->setText("Rotary Motor");
 
-	m_pLineEdit_RPM = new QLineEdit(this);
-	m_pLineEdit_RPM->setFixedWidth(40);
-	m_pLineEdit_RPM->setText(QString::number(m_pConfig->rotaryRpm));
-	m_pLineEdit_RPM->setAlignment(Qt::AlignCenter);
-	m_pLineEdit_RPM->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-	m_pLineEdit_RPM->setDisabled(true);
+	m_pSpinBox_RPM = new QSpinBox(this);
+	m_pSpinBox_RPM->setFixedWidth(50);
+	m_pSpinBox_RPM->setRange(0, 6000);
+	m_pSpinBox_RPM->setSingleStep(100);
+	m_pSpinBox_RPM->setValue(m_pConfig->rotaryRpm); 
+	m_pSpinBox_RPM->setAlignment(Qt::AlignCenter);
+	m_pSpinBox_RPM->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+	m_pSpinBox_RPM->setDisabled(true);
 
 	m_pLabel_RotationSpeed = new QLabel(this);
 	m_pLabel_RotationSpeed->setText("Rotation Speed");
 	m_pLabel_RotationSpeed->setDisabled(true);
 
-	m_pLabel_RPM = new QLabel("RPM", this);
-	m_pLabel_RPM->setBuddy(m_pLineEdit_RPM);
+	m_pLabel_RPM = new QLabel("RPM ", this);
+	m_pLabel_RPM->setBuddy(m_pSpinBox_RPM);
 	m_pLabel_RPM->setDisabled(true);
 
-	m_pToggleButton_Rotate = new QPushButton(this);
-	m_pToggleButton_Rotate->setText("Rotate");
-	m_pToggleButton_Rotate->setFixedWidth(100);
-	m_pToggleButton_Rotate->setCheckable(true);
-	m_pToggleButton_Rotate->setDisabled(true);
+	m_pPushButton_RotateStop = new QPushButton(this);
+	m_pPushButton_RotateStop->setText("Stop");
+	m_pPushButton_RotateStop->setFixedWidth(100);
+	m_pPushButton_RotateStop->setDisabled(true);
 
 	// Create widgets for pullback stage control
 	m_pToggleButton_PullbackConnect = new QPushButton(this);
@@ -195,9 +198,9 @@ void DeviceOptionTab::createHelicalScanningControl()
 
 	pGridLayout_RotaryMotor->addWidget(m_pLabel_RotationSpeed, 1, 0);
 	pGridLayout_RotaryMotor->addItem(new QSpacerItem(0, 0, QSizePolicy::MinimumExpanding, QSizePolicy::Fixed), 1, 0);
-	pGridLayout_RotaryMotor->addWidget(m_pLineEdit_RPM, 1, 2);
+	pGridLayout_RotaryMotor->addWidget(m_pSpinBox_RPM, 1, 2);
 	pGridLayout_RotaryMotor->addWidget(m_pLabel_RPM, 1, 3);
-	pGridLayout_RotaryMotor->addWidget(m_pToggleButton_Rotate, 1, 4);
+	pGridLayout_RotaryMotor->addWidget(m_pPushButton_RotateStop, 1, 4);
 
 	QGridLayout *pGridLayout_PullbackMotor = new QGridLayout;
 	pGridLayout_PullbackMotor->setSpacing(3);
@@ -232,8 +235,8 @@ void DeviceOptionTab::createHelicalScanningControl()
 	
 	// Connect signal and slot
 	connect(m_pToggleButton_RotaryConnect, SIGNAL(toggled(bool)), this, SLOT(connectRotaryMotor(bool)));
-	connect(m_pLineEdit_RPM, SIGNAL(textChanged(const QString &)), this, SLOT(changeRotaryRpm(const QString &)));
-	connect(m_pToggleButton_Rotate, SIGNAL(toggled(bool)), this, SLOT(rotate(bool)));
+	connect(m_pSpinBox_RPM, SIGNAL(valueChanged(int)), this, SLOT(changeRotaryRpm(int)));
+	connect(m_pPushButton_RotateStop, SIGNAL(clicked(bool)), this, SLOT(rotateStop()));
 
 	connect(m_pToggleButton_PullbackConnect, SIGNAL(toggled(bool)), this, SLOT(connectPullbackMotor(bool)));
 	connect(m_pLineEdit_PullbackSpeed, SIGNAL(textChanged(const QString &)), this, SLOT(setTargetSpeed(const QString &)));
@@ -313,6 +316,10 @@ void DeviceOptionTab::createFlimSystemControl()
 	m_pSpinBox_FlimLaserPowerControl->setFixedWidth(15);
 	m_pSpinBox_FlimLaserPowerControl->setDisabled(true);
 	static int flim_laser_power_level = 0;
+
+	m_pLabel_FlimLaserPowerLevel = new QLabel(this);
+	m_pLabel_FlimLaserPowerLevel->setAlignment(Qt::AlignCenter);
+	m_pLabel_FlimLaserPowerLevel->setDisabled(true);
 #else
 	m_pLineEdit_FlimLaserPowerControl = new QLineEdit(this);
 	m_pLineEdit_FlimLaserPowerControl->setValidator(new QIntValidator(0, 255, this));
@@ -362,7 +369,8 @@ void DeviceOptionTab::createFlimSystemControl()
 	pGridLayout_FlimLaser->addWidget(m_pLabel_FlimLaserPowerControl, 1, 0);
 	pGridLayout_FlimLaser->addItem(new QSpacerItem(0, 0, QSizePolicy::MinimumExpanding, QSizePolicy::Fixed), 1, 1, 1, 2);
 #ifndef NEXT_GEN_SYSTEM
-	pGridLayout_FlimLaser->addWidget(m_pSpinBox_FlimLaserPowerControl, 1, 3, 1, 2, Qt::AlignRight);
+	pGridLayout_FlimLaser->addWidget(m_pLabel_FlimLaserPowerLevel, 1, 3);
+	pGridLayout_FlimLaser->addWidget(m_pSpinBox_FlimLaserPowerControl, 1, 4, Qt::AlignRight);
 #else
 	pGridLayout_FlimLaser->addWidget(m_pLineEdit_FlimLaserPowerControl, 1, 3, Qt::AlignRight);
 	pGridLayout_FlimLaser->addWidget(m_pPushButton_FlimLaserPowerControl, 1, 4, Qt::AlignRight);
@@ -511,16 +519,18 @@ bool DeviceOptionTab::connectRotaryMotor(bool toggled)
 			m_pLabel_RotaryConnect->setDisabled(true);
 
 			m_pLabel_RotationSpeed->setEnabled(true);
-			m_pLineEdit_RPM->setEnabled(true);
+			m_pSpinBox_RPM->setEnabled(true);
 			m_pLabel_RPM->setEnabled(true);
-			m_pToggleButton_Rotate->setEnabled(true);
-			m_pToggleButton_Rotate->setStyleSheet("QPushButton { background-color:#ff0000; }");
+			m_pPushButton_RotateStop->setEnabled(true);
 		}
 		else
 			m_pToggleButton_RotaryConnect->setChecked(false);
 	}
 	else
 	{
+		// Stop first
+		rotateStop();
+
 		// Set widgets
 		m_pToggleButton_RotaryConnect->setText("Connect");
 		m_pToggleButton_RotaryConnect->setStyleSheet("QPushButton { background-color:#ff0000; }");
@@ -528,10 +538,9 @@ bool DeviceOptionTab::connectRotaryMotor(bool toggled)
 		m_pLabel_RotaryConnect->setEnabled(true);
 
 		m_pLabel_RotationSpeed->setDisabled(true);
-		m_pLineEdit_RPM->setDisabled(true);
+		m_pSpinBox_RPM->setDisabled(true);
 		m_pLabel_RPM->setDisabled(true);
-		m_pToggleButton_Rotate->setDisabled(true);
-		m_pToggleButton_Rotate->setStyleSheet("QPushButton { background-color:#353535; }");
+		m_pPushButton_RotateStop->setDisabled(true);
 
 		// Disconnect from rotary motor
 		m_pDeviceControl->connectRotaryMotor(false);
@@ -540,23 +549,23 @@ bool DeviceOptionTab::connectRotaryMotor(bool toggled)
 	return true;
 }
 
-void DeviceOptionTab::rotate(bool toggled)
+void DeviceOptionTab::changeRotaryRpm(int rpm)
 {
-	m_pDeviceControl->rotate(toggled);
+	m_pConfig->rotaryRpm = rpm;	
+	m_pDeviceControl->changeRotaryRpm(rpm);
 	
-	// Set widgets
-	m_pLineEdit_RPM->setDisabled(toggled);
-	m_pLabel_RPM->setDisabled(toggled);
-
-	m_pToggleButton_Rotate->setStyleSheet(toggled ? "QPushButton { background-color:#00ff00; }" : "QPushButton { background-color:#ff0000; }");
-	m_pToggleButton_Rotate->setText(toggled ? "Stop" : "Rotate");
+	m_pConfig->writeToLog(QString("Rotation RPM set: %1 rpm").arg(m_pConfig->rotaryRpm));
 }
 
-void DeviceOptionTab::changeRotaryRpm(const QString &str)
+void DeviceOptionTab::rotateStop()
 {
-	m_pConfig->rotaryRpm = str.toInt();
+	m_pDeviceControl->rotateStop();
+	m_pSpinBox_RPM->setValue(0);
 
-	m_pConfig->writeToLog(QString("Rotation RPM set: %1 rpm").arg(m_pConfig->rotaryRpm));
+	if (m_pStreamTab)
+		m_pStreamTab->enableRotation(false);
+
+	m_pConfig->writeToLog("Rotation stop");
 }
 
 
@@ -585,6 +594,8 @@ bool DeviceOptionTab::connectPullbackMotor(bool toggled)
 			m_pPushButton_Home->setEnabled(true);
 			m_pPushButton_PullbackStop->setEnabled(true);
 			m_pPushButton_Pullback->setStyleSheet("QPushButton { background-color:#ff0000; }");
+
+			connect(this, SIGNAL(stopPullback()), this, SLOT(stop()));
 		}
 		else
 			m_pToggleButton_PullbackConnect->setChecked(false);
@@ -620,6 +631,16 @@ bool DeviceOptionTab::connectPullbackMotor(bool toggled)
 void DeviceOptionTab::moveAbsolute()
 {
 	m_pDeviceControl->pullback();
+
+	// Timer for pullback end condition
+	float duration = m_pConfig->pullbackLength / m_pConfig->pullbackSpeed;
+	std::thread stop([&, duration]() {
+		std::this_thread::sleep_for(std::chrono::milliseconds(int(1000 * duration)));
+		if (m_pDeviceControl->getPullbackMotor()->getMovingState())
+			emit stopPullback();
+	});
+	stop.detach();
+
 
 	// Set widgets
 	m_pLabel_PullbackSpeed->setDisabled(true);
@@ -658,27 +679,18 @@ void DeviceOptionTab::stop()
 {
 	m_pDeviceControl->stop();
 
-//	// Stop rotary motor
-//	if (m_pToggleButton_Rotate->isChecked())
-//	{
-//		m_pToggleButton_Rotate->setChecked(false);
+	// Set widgets
+	m_pLabel_PullbackSpeed->setEnabled(true);
+	m_pLabel_PullbackSpeedUnit->setEnabled(true);
+	m_pLineEdit_PullbackSpeed->setEnabled(true);
 
-//		this->setChecked(false);
-//		this->setChecked(true);
-//	}
+	m_pLabel_PullbackLength->setEnabled(true);
+	m_pLabel_PullbackLengthUnit->setEnabled(true);
+	m_pLineEdit_PullbackLength->setEnabled(true);
 
-//	// Set widgets
-//	m_pLabel_PullbackSpeed->setEnabled(true);
-//	m_pLabel_PullbackSpeedUnit->setEnabled(true);
-//	m_pLineEdit_PullbackSpeed->setEnabled(true);
+	m_pPushButton_Home->setEnabled(true);
 
-//	m_pLabel_PullbackLength->setEnabled(true);
-//	m_pLabel_PullbackLengthUnit->setEnabled(true);
-//	m_pLineEdit_PullbackLength->setEnabled(true);
-
-//	m_pPushButton_Home->setEnabled(true);
-
-//	m_pPushButton_Pullback->setStyleSheet("QPushButton { background-color:#ff0000; }");
+	m_pPushButton_Pullback->setStyleSheet("QPushButton { background-color:#ff0000; }");
 }
 
 
@@ -807,6 +819,11 @@ bool DeviceOptionTab::connectFlimLaser(bool toggled)
 		// Connect to FLIm laser
 		if (m_pStreamTab || m_pDeviceControl->connectFlimLaser(true))
 		{
+			// Set callback
+			m_pDeviceControl->getElforlightLaser()->UpdatePowerLevel += [&](int laser_power_level) {
+				m_pLabel_FlimLaserPowerLevel->setText(QString::number(laser_power_level));
+			};
+
 			// Set widgets
 			m_pToggleButton_FlimLaserConnect->setText("Disconnect");
 			m_pToggleButton_FlimLaserConnect->setStyleSheet("QPushButton { background-color:#00ff00; }");
@@ -815,6 +832,7 @@ bool DeviceOptionTab::connectFlimLaser(bool toggled)
 
 			m_pLabel_FlimLaserPowerControl->setEnabled(true);
 #ifndef NEXT_GEN_SYSTEM
+			m_pLabel_FlimLaserPowerLevel->setEnabled(true);
 			m_pSpinBox_FlimLaserPowerControl->setEnabled(true);
 #else
 			m_pLineEdit_FlimLaserPowerControl->setEnabled(true);
@@ -834,6 +852,7 @@ bool DeviceOptionTab::connectFlimLaser(bool toggled)
 
 		m_pLabel_FlimLaserPowerControl->setDisabled(true);
 #ifndef NEXT_GEN_SYSTEM
+		m_pLabel_FlimLaserPowerLevel->setDisabled(true);
 		m_pSpinBox_FlimLaserPowerControl->setDisabled(true);
 #else
 		m_pLineEdit_FlimLaserPowerControl->setDisabled(true);
@@ -1009,7 +1028,8 @@ void DeviceOptionTab::setClockDelay(double)
 void DeviceOptionTab::setVDLLength(double length)
 {
 	m_pDeviceControl->setVDLLength(length);
-	m_pStreamTab->getCalibScrollBar()->setValue(int(length * 100.0));
+	if (m_pStreamTab)
+		m_pStreamTab->getCalibScrollBar()->setValue(int(length * 100.0));
 }
 
 void DeviceOptionTab::setVDLHome()

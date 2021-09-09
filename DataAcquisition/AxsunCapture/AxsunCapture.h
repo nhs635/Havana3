@@ -11,12 +11,7 @@
 
 // Capture
 #define ENABLE_OPENGL_WINDOW false
-#define CAPTURE_OK           1
-#define PACKET_CAPACITY      100000
-#define METADATA_BYTES       34
-#define FIXED_WIDTH			 256
-#define SYNC_WIDTH			 1024
-#define BUFFER_NUMBER
+#define PACKET_CAPACITY      2000
 
 
 class AxsunCapture
@@ -32,43 +27,38 @@ private: // Not to call copy constrcutor and copy assignment operator
 
 public:
 	inline bool isInitialized() const { return !_dirty; }
+    inline AOChandle getSession() const { return session; }
 
 public:
 	// For Capture
 	bool initializeCapture();
 	bool startCapture();
-	void stopCapture();
-	bool requestBufferedImage(np::Uint8Array2& image_data_out);
-	//bool saveImages(const char* filepath);
+	void stopCapture();	
 
 private:
 	void captureRun();
-	void dumpCaptureError(int32_t res, const char* pPreamble);
+	void dumpCaptureError(AxErr _retval, const char* pPreamble);
+	void dumpCaptureErrorSystem(int32_t result, const char* pPreamble);
 
 // Variables
 private:
 	// For Capture
 	char capture_message[256];
-	np::Uint8Array meta_data;
+    AOChandle session;
 	std::thread _thread;
 
 public:
 	bool _dirty;
 	bool capture_running;
-	data_type dataType;
-	uint32_t dropped_packets;
-	int image_width;
-	int image_height;
+    int image_width, image_height;
 	uint32_t returned_image;
 	np::Uint8Array2 image_data_out;
+    uint32_t dropped_packets;
 	double frameRate;
 
 	// callbacks
 	callback2<uint32_t, const np::Uint8Array2&> DidAcquireData;
-	callback<void> DidWriteImage;
     callback<void> DidStopData;
 	callback2<const char*, bool> SendStatusMessage;
 };
-
-
 #endif

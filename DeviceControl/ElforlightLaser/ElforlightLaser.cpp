@@ -7,7 +7,7 @@
 
 
 ElforlightLaser::ElforlightLaser() :
-	port_name(""), is_laser_enabled(false)
+	port_name(""), is_laser_enabled(false), laser_power_level(0)
 {
 	m_pSerialComm = new QSerialComm;
 }
@@ -46,18 +46,27 @@ bool ElforlightLaser::ConnectDevice()
 				{
 					msg[j] = '\0';
 
-					// j: length of msg, (60~80: '?' / 5~20: '+' or '-' or 'E' or 'R')
-					if ((j > 60) && (j <= 80))
-						MonitoringState(msg);
-					else if (j <= 60)
+					int len = strnlen_s(msg, 256);					
+					if (len > 2)
+					{
+						laser_power_level = atoi(&msg[1]);
+						sprintf(msg, "[ELFORLIGHT] Laser power level: %d", laser_power_level);
+
+						/// j: length of msg, (60~80: '?' / 5~20: '+' or '-' or c'E' or 'R')
+						///if ((j > 60) && (j <= 80))
+						///	MonitoringState(msg);
+						///else if (j <= 60)
+
 						SendStatusMessage(msg, false);
+						UpdatePowerLevel(laser_power_level);
+					}
 
 					j = 0;
 				}
 			};
 
-			SendCommand((char*)"E");
-			SendCommand((char*)"2");
+			///SendCommand((char*)"E");
+			///SendCommand((char*)"2");
 		}
 		else
 		{
@@ -78,9 +87,9 @@ void ElforlightLaser::DisconnectDevice()
 {
 	if (m_pSerialComm->m_bIsConnected)
 	{
-		SendCommand((char*)"R");
-		std::this_thread::sleep_for(std::chrono::milliseconds(500));
-		m_pSerialComm->closeSerialPort();
+		///SendCommand((char*)"R");
+		///std::this_thread::sleep_for(std::chrono::milliseconds(500));
+		///m_pSerialComm->closeSerialPort();
 
 		char msg[256];
 		sprintf(msg, "[ELFORLIGHT] Success to disconnect to %s.", port_name);
@@ -91,6 +100,8 @@ void ElforlightLaser::DisconnectDevice()
 
 void ElforlightLaser::IncreasePower()
 {
+	std::unique_lock<std::mutex> lock(mtx_power);
+
 	char buff[2] = "+";
 
 	char msg[256];
@@ -105,6 +116,8 @@ void ElforlightLaser::IncreasePower()
 
 void ElforlightLaser::DecreasePower()
 {
+	std::unique_lock<std::mutex> lock(mtx_power);
+
 	char buff[2] = "-";
 
 	char msg[256];

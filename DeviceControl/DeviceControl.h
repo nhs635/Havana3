@@ -50,8 +50,8 @@ public:
 public: 
     // Helical Scanning Control
 	bool connectRotaryMotor(bool);
-	void rotate(bool);
 	void changeRotaryRpm(int);
+	void rotateStop();
 
 	bool connectPullbackMotor(bool);
 	void moveAbsolute();
@@ -83,9 +83,6 @@ public:
 	void setVDLHome();
     void adjustDecibelRange(double, double);
     void requestOctStatus();
-	
-//signals:
-//	void transferAxsunArray(int);
 
 // Variables ////////////////////////////////////////////
 private:

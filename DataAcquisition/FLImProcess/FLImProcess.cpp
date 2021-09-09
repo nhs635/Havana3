@@ -122,7 +122,7 @@ void FLImProcess::loadMaskData(QString maskpath)
     QFile maskFile(maskpath);
     if (false != maskFile.open(QIODevice::ReadOnly))
     {
-        sizeRead = sizeRead = maskFile.read(reinterpret_cast<char*>(_resize.pMask), sizeof(float) * _resize.nx);
+        sizeRead = maskFile.read(reinterpret_cast<char*>(_resize.pMask), sizeof(float) * _resize.nx);
         maskFile.close();
 
         int start_count = 0, end_count = 0;

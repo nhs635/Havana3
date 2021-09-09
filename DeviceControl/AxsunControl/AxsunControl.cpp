@@ -69,9 +69,9 @@ bool AxsunControl::initialize(int n_device)
 			}
 			
 			if (deviceNum == DAQ_DEVICE)
-				m_daq_device = deviceNum;
+				m_daq_device = i;
 			else if (deviceNum == LASER_DEVICE)
-				m_laser_device = deviceNum;
+				m_laser_device = i;
 
 			char msg[256];
 			sprintf(msg, "[Axsun Control] %S (deviceNum: %d) is successfully connected.", systemTypeString, deviceNum);
@@ -86,8 +86,8 @@ bool AxsunControl::initialize(int n_device)
 		}
 	}
 	SysFreeString(systemTypeString);
-
-	if (m_daq_device > 0)
+	
+	if (n_device == 2)
 	{
 		// Image_Sync Setting (LVCMOS)
 		if (writeFPGARegSingleBit(2, 11, false) != true) return false; // external image sync
@@ -714,13 +714,13 @@ bool AxsunControl::writeFPGARegSingleBit(unsigned long regNum, int bitNum, bool 
 			return false;
 		}
 	}
-	else
-	{
-		result = 80;
-		dumpControlError(result, pPreamble);
-		SendStatusMessage("[Axsun Control] Unable to connect to the devices.", false);
-		return false;
-	}
+	//else
+	//{
+	//	result = 80;
+	//	dumpControlError(result, pPreamble);
+	//	SendStatusMessage("[Axsun Control] Unable to connect to the devices.", false);
+	//	return false;
+	//}
 
 	return true;
 }

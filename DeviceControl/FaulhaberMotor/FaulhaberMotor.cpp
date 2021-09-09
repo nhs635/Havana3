@@ -3,13 +3,13 @@
 
 
 FaulhaberMotor::FaulhaberMotor() :
-	port_name(""), dev_num(1)
+	port_name(""), dev_num(1), enable_state(false), current_rpm(0), is_moving(false), current_pos(0.0f)
 {
 	m_pSerialComm = new QSerialComm;
 }
 
 FaulhaberMotor::~FaulhaberMotor()
-{
+{	
 	DisconnectDevice();
 	if (m_pSerialComm) delete m_pSerialComm;
 }
@@ -62,7 +62,7 @@ bool FaulhaberMotor::ConnectDevice()
 				//	printf("%02X ", (unsigned char)buffer[i]);
 				//printf("\n");
 
-				DidRotateEnd();
+				//DidRotateEnd();
 			};
 		}
 		else
@@ -126,6 +126,8 @@ void FaulhaberMotor::EnableMotor()
 	char msg[256];
 	sprintf(msg, "[FAULHABER] Motor enabled. [%s]", port_name);
 	SendStatusMessage(msg, false);
+
+	enable_state = true;
 }
 
 void FaulhaberMotor::DisableMotor()
@@ -135,11 +137,15 @@ void FaulhaberMotor::DisableMotor()
 	char msg[256];
 	sprintf(msg, "[FAULHABER] Motor disabled. [%s]", port_name);
 	SendStatusMessage(msg, false);
+
+	enable_state = false;
+	current_rpm = 0;
+	is_moving = false;
 }
 
 void FaulhaberMotor::RotateMotor(int RPM)
 {
-	EnableMotor();
+	if (!enable_state) EnableMotor();
 
 	target_velocity[2] = dev_num;
 
@@ -164,9 +170,14 @@ void FaulhaberMotor::RotateMotor(int RPM)
 		(unsigned char)target_velocity[12]);
 	SendStatusMessage(msg, false);
 
-	m_pSerialComm->writeSerialPort(target_velocity, 13);
-	m_pSerialComm->waitUntilResponse();
+	if (m_pSerialComm)
+	{
+		m_pSerialComm->writeSerialPort(target_velocity, 13);
+		m_pSerialComm->waitUntilResponse();
+	}
 
+	is_moving = true;
+	current_rpm = RPM;
 	sprintf(msg, "[FAULHABER] Motor rotated. (%d rpm) [%s]", RPM, port_name);
 	SendStatusMessage(msg, false);
 }
@@ -195,13 +206,16 @@ void FaulhaberMotor::StopMotor()
 		(unsigned char)target_velocity[12]);
 	SendStatusMessage(msg, false);
 
-	m_pSerialComm->writeSerialPort(target_velocity, 13);
-	m_pSerialComm->waitUntilResponse();
+	if (m_pSerialComm)
+	{
+		m_pSerialComm->writeSerialPort(target_velocity, 13);
+		m_pSerialComm->waitUntilResponse();
+	}
 
+	is_moving = false;
+	current_rpm = 0;
 	sprintf(msg, "[FAULHABER] Motor stopped. [%s]", port_name);
 	SendStatusMessage(msg, false);
-
-	DisableMotor();
 }
 
 void FaulhaberMotor::MoveAbsolute(int pos)
@@ -228,8 +242,11 @@ void FaulhaberMotor::MoveAbsolute(int pos)
 		(unsigned char)target_position[12]);
 	SendStatusMessage(msg, false);
 
-	m_pSerialComm->writeSerialPort(target_position, 13);
-	m_pSerialComm->waitUntilResponse();
+	if (m_pSerialComm)
+	{
+		m_pSerialComm->writeSerialPort(target_position, 13);
+		m_pSerialComm->waitUntilResponse();
+	}
 
 	Controlword(0x0F);
 	Controlword(0x7F);
@@ -262,8 +279,11 @@ void FaulhaberMotor::Home()
 		(unsigned char)target_position[12]);
 	SendStatusMessage(msg, false);
 
-	m_pSerialComm->writeSerialPort(target_position, 13);
-	m_pSerialComm->waitUntilResponse();
+	if (m_pSerialComm)
+	{
+		m_pSerialComm->writeSerialPort(target_position, 13);
+		m_pSerialComm->waitUntilResponse();
+	}
 
 	DisableMotor();
 

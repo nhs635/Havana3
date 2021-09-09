@@ -15,7 +15,9 @@
 #include <DataAcquisition/DataAcquisition.h>
 #include <DataAcquisition/ThreadManager.h>
 #ifndef NEXT_GEN_SYSTEM
+#ifdef AX_CAPT_ENABLE
 #include <DataAcquisition/AxsunCapture/AxsunCapture.h>
+#endif
 #include <DataAcquisition/SignatecDAQ/SignatecDAQ.h>
 #else
 #include <DataAcquisition/AlazarDAQ/AlazarDAQ.h>
@@ -39,7 +41,10 @@
 
 
 QStreamTab::QStreamTab(QString patient_id, QWidget *parent) :
-    QDialog(parent), m_bFirstImplemented(true), m_pSettingDlg(nullptr), m_pScope_Alines(nullptr)
+    QDialog(parent), m_bFirstImplemented(true), m_pSettingDlg(nullptr)
+#ifdef DEVELOPER_MODE
+	, m_pScope_Alines(nullptr)
+#endif
 {
 	// Set main window objects
     m_pMainWnd = dynamic_cast<MainWindow*>(parent);
@@ -98,6 +103,10 @@ QStreamTab::QStreamTab(QString patient_id, QWidget *parent) :
 
 QStreamTab::~QStreamTab()
 {
+#ifdef DEVELOPER_MODE
+	m_pSyncMonitorTimer->stop();
+#endif
+
 	if (m_pDeviceControl) delete m_pDeviceControl;
 	if (m_pDataAcquisition) delete m_pDataAcquisition;
 
@@ -105,18 +114,17 @@ QStreamTab::~QStreamTab()
 	if (m_pThreadOctProcess) delete m_pThreadOctProcess;
 	if (m_pThreadFlimProcess) delete m_pThreadFlimProcess;
 	
-	m_syncFlimProcessing.deallocate_queue_buffer();
-	m_syncOctProcessing.deallocate_queue_buffer();
-	m_syncFlimVisualization.deallocate_queue_buffer();
-	m_syncOctVisualization.deallocate_queue_buffer();
+	///m_syncFlimProcessing.deallocate_queue_buffer();
+	///m_syncOctProcessing.deallocate_queue_buffer();
+	///m_syncFlimVisualization.deallocate_queue_buffer();
+	///m_syncOctVisualization.deallocate_queue_buffer();
 
 #ifdef DEVELOPER_MODE
 	if (m_pScope_Alines)
 	{
-		m_pScope_Alines->close();
-		m_pScope_Alines->deleteLater();
+		///m_pScope_Alines->close();
+		///m_pScope_Alines->deleteLater();
 	}
-	m_pSyncMonitorTimer->stop();
 #endif
 }
 
@@ -166,7 +174,7 @@ void QStreamTab::createLiveStreamingViewWidgets()
     m_pToggleButton_StartPullback->setIcon(style()->standardIcon(QStyle::SP_ArrowRight));
     m_pToggleButton_StartPullback->setStyleSheet("QPushButton{font-size:12pt; font-weight:bold; color:black; background-color:#00ff00}");
     m_pToggleButton_StartPullback->setFixedSize(180, 35);
-	//m_pToggleButton_StartPullback->setDisabled(true);
+	m_pToggleButton_StartPullback->setDisabled(true);
 
     m_pPushButton_Setting = new QPushButton(this);
     m_pPushButton_Setting->setText("  Setting");
@@ -175,14 +183,14 @@ void QStreamTab::createLiveStreamingViewWidgets()
 
 #ifdef DEVELOPER_MODE
 #ifndef NEXT_GEN_SYSTEM
-	m_pScope_Alines = new QScope({ 0, (double)m_pConfig->octScans }, { 0.0, 255.0 }, 2, 2, 1, 1, 0, 0, "", "", false, false, this);
+	///m_pScope_Alines = new QScope({ 0, (double)m_pConfig->octScans }, { 0.0, 255.0 }, 2, 2, 1, 1, 0, 0, "", "", false, false, this);
 #else
-	m_pScope_Alines = new QScope({ 0, (double)m_pConfig->octScansFFT / 2.0 }, { m_pConfig->axsunDbRange.min, m_pConfig->axsunDbRange.max }, 2, 2, 1, 1, 0, 0, "", "dB", false, false, this);
+	///m_pScope_Alines = new QScope({ 0, (double)m_pConfig->octScansFFT / 2.0 }, { m_pConfig->axsunDbRange.min, m_pConfig->axsunDbRange.max }, 2, 2, 1, 1, 0, 0, "", "dB", false, false, this);
 #endif
-	m_pScope_Alines->setWindowTitle("OCT A-lines");
-	m_pScope_Alines->setFixedSize(640, 240);
-	connect(this, SIGNAL(plotAline(const float*)), m_pScope_Alines, SLOT(drawData(const float*)));
-	m_pScope_Alines->show();
+	///m_pScope_Alines->setWindowTitle("OCT A-lines");
+	///m_pScope_Alines->setFixedSize(640, 240);
+	///connect(this, SIGNAL(plotAline(const float*)), m_pScope_Alines, SLOT(drawData(const float*)));
+	///m_pScope_Alines->show();
 
 	m_pLabel_StreamingSyncStatus = new QLabel(this);
 	m_pLabel_StreamingSyncStatus->setFixedSize(150, 200);
@@ -357,8 +365,8 @@ bool QStreamTab::enableDeviceControl(bool enabled)
 	if (enabled)
 	{		
 		// Set rotary & pullback motor control
-//		if (!m_pDeviceControl->connectRotaryMotor(true)) return false;
-//		if (!m_pDeviceControl->connectPullbackMotor(true)) return false;
+		if (!m_pDeviceControl->connectRotaryMotor(true)) return false;		
+		if (!m_pDeviceControl->connectPullbackMotor(true)) return false;
 
 		// Set FLIm system control
 		if (!m_pDeviceControl->connectFlimLaser(true)) return false;
@@ -368,8 +376,7 @@ bool QStreamTab::enableDeviceControl(bool enabled)
 			m_pDeviceControl->adjustLaserPower(m_pConfig->flimLaserPower);
 			m_pDeviceControl->monitorLaserStatus();
 		}
-#endif
-		
+#endif		
 		if (!m_pDeviceControl->applyPmtGainVoltage(true)) return false;
 		
 		// Set master synchronization control
@@ -389,8 +396,8 @@ bool QStreamTab::enableDeviceControl(bool enabled)
 		}
 	
 #ifdef DEVELOPER_MODE
-	m_pScope_Alines->raise();
-	m_pScope_Alines->activateWindow();
+	///m_pScope_Alines->raise();
+	///m_pScope_Alines->activateWindow();
 #endif
 	}
 	else
@@ -418,7 +425,8 @@ void QStreamTab::setFlimAcquisitionCallback()
 #endif
 
         // Data transfer
-        if (!(frame_count % RENEWAL_COUNT))
+		int renewal_count = RENEWAL_COUNT / (m_pToggleButton_EnableRotation->isChecked() && !m_pToggleButton_StartPullback->isChecked() ? REDUCED_COUNT : 1);
+        if (!(frame_count % renewal_count))
         {
             // Data transfer for FLIm processing
 #ifndef NEXT_GEN_SYSTEM
@@ -526,7 +534,8 @@ void QStreamTab::setOctAcquisitionCallback()
 		}
 
 		// Data transfer
-		if (!(frame_count % RENEWAL_COUNT))
+		int renewal_count = RENEWAL_COUNT / (m_pToggleButton_EnableRotation->isChecked() && !m_pToggleButton_StartPullback->isChecked() ? REDUCED_COUNT : 1);
+		if (!(frame_count % renewal_count))
 		{
 #ifndef NEXT_GEN_SYSTEM
 			// Data transfer for OCT processing
@@ -663,8 +672,10 @@ void QStreamTab::setFlimProcessingCallback()
                 // Transfer to FLIm calibration dlg
 				if (m_pSettingDlg)
 				{
+					int renewal_count = m_pToggleButton_EnableRotation->isChecked() && !m_pToggleButton_StartPullback->isChecked() ? 8 : 1;
 					if (m_pSettingDlg->getTabWidget()->currentIndex() == 2) // FLIm calibration view
-						emit m_pSettingDlg->getFlimCalibTab()->plotRoiPulse(pFLIm, 0);
+						if (!(frame_count & renewal_count))
+							emit m_pSettingDlg->getFlimCalibTab()->plotRoiPulse(pFLIm, 0);
 				}
 				
                 // Push the buffers to sync Queues
@@ -680,8 +691,6 @@ void QStreamTab::setFlimProcessingCallback()
         }
         else
             m_pThreadFlimProcess->_running = false;
-
-        (void)frame_count;
     };
 
     m_pThreadFlimProcess->DidStopData += [&]() {
@@ -754,9 +763,9 @@ void QStreamTab::setOctProcessingCallback()
 				if (m_pScope_Alines)
 				{
 #ifndef NEXT_GEN_SYSTEM
-					np::FloatArray aline(m_pConfig->octScans);
-					ippsConvert_8u32f(img_ptr, aline, m_pConfig->octScans);
-					emit plotAline(aline);
+					///np::FloatArray aline(m_pConfig->octScans);
+					///ippsConvert_8u32f(img_ptr, aline, m_pConfig->octScans);
+					///emit plotAline(aline);
 #else
 					emit plotAline(oct_data);
 #endif
@@ -810,28 +819,60 @@ void QStreamTab::setOctProcessingCallback()
 void QStreamTab::setVisualizationCallback()
 {
     // Visualization Signal Objects ///////////////////////////////////////////////////////////////////////////////////////////
+#ifndef NEXT_GEN_SYSTEM
+	m_pViewTab->m_visImage = np::Uint8Array2(m_pConfig->octScans, m_pConfig->octAlines);
+#else
+	m_pViewTab->m_visImage = np::Uint8Array2(m_pConfig->octScansFFT / 2, m_pConfig->octAlines);
+#endif
+	m_pViewTab->m_visIntensity = np::FloatArray2(m_pConfig->flimAlines, 4);
+	m_pViewTab->m_visLifetime = np::FloatArray2(m_pConfig->flimAlines, 3);
+	
     m_pThreadVisualization->DidAcquireData += [&](int frame_count) {
 		
         // Get the buffers from the previous sync Queues
         float* flim_data = m_syncFlimVisualization.Queue_sync.pop();
         uint8_t* oct_data = m_syncOctVisualization.Queue_sync.pop();
         if ((flim_data != nullptr) && (oct_data != nullptr)) 
+		//if (flim_data != nullptr)
         {
             // Body
             if (m_pDataAcquisition->getAcquisitionState()) // Only valid if acquisition is running
             {
+				// Renewal count
+				int renewal_count = m_pToggleButton_EnableRotation->isChecked() && !m_pToggleButton_StartPullback->isChecked() ? 8 : 1;
+
                 // Draw A-lines
+				if (renewal_count == 1)
+				{
 #ifndef NEXT_GEN_SYSTEM
-				m_pViewTab->m_visImage = np::Uint8Array2(oct_data, m_pConfig->octScans, m_pConfig->octAlines);
+					m_pViewTab->m_visImage = np::Uint8Array2(oct_data, m_pConfig->octScans, m_pConfig->octAlines);
 #else
-                m_pViewTab->m_visImage = np::Uint8Array2(oct_data, m_pConfig->octScansFFT / 2, m_pConfig->octAlines);
+					m_pViewTab->m_visImage = np::Uint8Array2(oct_data, m_pConfig->octScansFFT / 2, m_pConfig->octAlines);
 #endif
-                m_pViewTab->m_visIntensity = np::FloatArray2(flim_data + 0 * m_pConfig->flimAlines, m_pConfig->flimAlines, 4);
-                m_pViewTab->m_visLifetime = np::FloatArray2(flim_data + 8 * m_pConfig->flimAlines, m_pConfig->flimAlines, 3);
+					m_pViewTab->m_visIntensity = np::FloatArray2(flim_data + 0 * m_pConfig->flimAlines, m_pConfig->flimAlines, 4);
+					m_pViewTab->m_visLifetime = np::FloatArray2(flim_data + 8 * m_pConfig->flimAlines, m_pConfig->flimAlines, 3);
+				}
+				else
+				{	
+#ifndef NEXT_GEN_SYSTEM
+					ippiCopy_8u_C1R(oct_data, m_pConfig->octScans * REDUCED_COUNT,
+						&m_pViewTab->m_visImage(0, (frame_count % REDUCED_COUNT) * m_pConfig->octScans / REDUCED_COUNT), m_pConfig->octScans,
+						{ m_pConfig->octScans, m_pConfig->octAlines / REDUCED_COUNT });
+#else
+
+#endif
+					ippiCopy_32f_C1R(flim_data + 0 * m_pConfig->flimAlines, sizeof(float) * m_pConfig->flimAlines,
+						&m_pViewTab->m_visIntensity((frame_count % REDUCED_COUNT) * m_pConfig->flimAlines / REDUCED_COUNT, 0), sizeof(float) * m_pConfig->flimAlines,
+						{ m_pConfig->flimAlines, 4 });
+					ippiCopy_32f_C1R(flim_data + 8 * m_pConfig->flimAlines, sizeof(float) * m_pConfig->flimAlines,
+						&m_pViewTab->m_visLifetime((frame_count % REDUCED_COUNT) * m_pConfig->flimAlines / REDUCED_COUNT, 0), sizeof(float) * m_pConfig->flimAlines,
+						{ m_pConfig->flimAlines, 3 });
+				}
 				
-                // Draw Images
-                emit m_pViewTab->drawImage(m_pViewTab->m_visImage.raw_ptr(),
-                    m_pViewTab->m_visIntensity.raw_ptr(), m_pViewTab->m_visLifetime.raw_ptr());
+                // Draw Images	
+				if (!(frame_count % renewal_count))
+					emit m_pViewTab->drawImage(m_pViewTab->m_visImage.raw_ptr(),
+						m_pViewTab->m_visIntensity.raw_ptr(), m_pViewTab->m_visLifetime.raw_ptr());
             }
 
 			// Return (push) the buffer to the previous threading queue
@@ -938,8 +979,14 @@ void QStreamTab::enableRotation(bool enabled)
         m_pToggleButton_EnableRotation->setIcon(style()->standardIcon(QStyle::SP_BrowserStop));
         m_pToggleButton_EnableRotation->setText(" Disable Rotation");
         m_pToggleButton_EnableRotation->setStyleSheet("QPushButton{font-size:12pt; font-weight:bold; color:black; background-color:#ff0000}");
+		m_pToggleButton_StartPullback->setEnabled(true);
 
-		if (!m_pDeviceControl->connectRotaryMotor(true))
+		if (m_pDeviceControl->getRotatyMotor())
+		{
+			m_pConfig->rotaryRpm = int(ROTATION_100FPS / REDUCED_COUNT);
+			m_pDeviceControl->changeRotaryRpm(m_pConfig->rotaryRpm);
+		}
+		else
 		{
 			enableRotation(false);
 			return;
@@ -949,12 +996,14 @@ void QStreamTab::enableRotation(bool enabled)
     }
     else
     {
-		m_pDeviceControl->rotate(enabled);
-		m_pDeviceControl->connectRotaryMotor(false);
+		if (m_pDeviceControl->getRotatyMotor())
+			m_pDeviceControl->rotateStop();
 
         m_pToggleButton_EnableRotation->setIcon(style()->standardIcon(QStyle::SP_BrowserReload));
         m_pToggleButton_EnableRotation->setText(" Enable Rotation");
+		m_pToggleButton_EnableRotation->setChecked(false);
         m_pToggleButton_EnableRotation->setStyleSheet("QPushButton{font-size:12pt; font-weight:bold; color:black; background-color:#00ff00}");
+		m_pToggleButton_StartPullback->setDisabled(true);
 
 		m_pConfig->writeToLog(QString("Rotation stopped: %1 (ID: %2)").arg(m_recordInfo.patientName).arg(m_recordInfo.patientId));
     }	
@@ -969,21 +1018,43 @@ void QStreamTab::startPullback(bool enabled)
         m_pToggleButton_StartPullback->setText(" Stop Pullback");
         m_pToggleButton_StartPullback->setStyleSheet("QPushButton{font-size:12pt; font-weight:bold; color:black; background-color:#ff0000}");
 		
-		//// Start recording (+ automatical pullback)
-		//if (!m_pDeviceControl->connectPullbackMotor(true))
-		//{
-		//	startPullback(false);
-		//	return;
-		//}
+		// Allow faster rotation
+		if (m_pDeviceControl->getRotatyMotor())
+		{
+			m_pConfig->rotaryRpm = int(ROTATION_100FPS);
+			m_pDeviceControl->changeRotaryRpm(m_pConfig->rotaryRpm);
+		}
+		else
+		{
+			enableRotation(false);
+			return;
+		}
 
-		//// Set recording - pullback synchronization			
-		//m_pMemoryBuffer->DidPullback += [&]() {
-		//	if (m_pDeviceControl->getPullbackMotor())
-		//	{
-		//		m_pDeviceControl->getPullbackMotor()->DidRotateEnd += [&]() { startPullback(false);	};
-		//		m_pDeviceControl->pullback();
-		//	}
-		//};
+		// Check pullback proceeding
+		QMessageBox MsgBox(QMessageBox::Information, "OCT-FLIm", "Please push 'pullback' button to proceed...");
+		MsgBox.setButtonText(QMessageBox::Ok, "Pullback");
+		MsgBox.exec();
+
+		// Start recording (+ automatical pullback)
+		if (!m_pDeviceControl->getPullbackMotor())
+		{
+			startPullback(false);
+			return;
+		}
+
+		// Set recording - pullback synchronization			
+		m_pMemoryBuffer->DidPullback.clear();
+		m_pMemoryBuffer->DidPullback += [&]() {
+			if (m_pDeviceControl->getPullbackMotor())
+			{
+				m_pDeviceControl->getPullbackMotor()->DidRotateEnd += [&]() 
+				{ 
+					m_pToggleButton_StartPullback->setChecked(false);	
+				};
+				m_pDeviceControl->moveAbsolute();
+			}
+		};
+
 		m_pMemoryBuffer->startRecording();
 		
 		m_pConfig->writeToLog(QString("Pullback recording started: %1 (ID: %2)").arg(m_recordInfo.patientName).arg(m_recordInfo.patientId));
@@ -992,8 +1063,9 @@ void QStreamTab::startPullback(bool enabled)
     {		
 		// Stop motor operation
 		m_pMemoryBuffer->stopRecording();
-		m_pDeviceControl->rotate(false);
-		//startLiveImaging(false);
+		m_pDeviceControl->rotateStop();
+		m_pDeviceControl->home();
+		///startLiveImaging(false);
 
 		m_pConfig->writeToLog(QString("Pullback recording stopped: %1 (ID: %2)").arg(m_recordInfo.patientName).arg(m_recordInfo.patientId));
 
@@ -1005,6 +1077,7 @@ void QStreamTab::startPullback(bool enabled)
 		emit requestReview(m_recordInfo.recordId);
 		
 		// Set widgets
+		m_pToggleButton_EnableRotation->setChecked(false);
 		m_pToggleButton_StartPullback->setIcon(style()->standardIcon(QStyle::SP_ArrowRight));
 		m_pToggleButton_StartPullback->setText(" Start Pullback");
 		m_pToggleButton_StartPullback->setStyleSheet("QPushButton{font-size:12pt; font-weight:bold; color:black; background-color:#00ff00}");
@@ -1022,9 +1095,15 @@ void QStreamTab::onTimerSyncMonitor()
 	size_t fv_bfn = getFlimVisualizationBufferQueueSize();
 	size_t ov_bfn = getOctVisualizationBufferQueueSize();
 #ifndef NEXT_GEN_SYSTEM
+#ifdef AX_CAPT_ENABLE
 	double oct_fps = m_pDataAcquisition->getAxsunCapture()->frameRate;
 	double flim_fps = m_pDataAcquisition->getDigitizer()->frameRate;
 	uint32_t dropped_packets = m_pDataAcquisition->getAxsunCapture()->dropped_packets;
+#else
+	double oct_fps = 0;
+	double flim_fps = 0;
+	uint32_t dropped_packets = 0;
+#endif
 
 	m_pLabel_StreamingSyncStatus->setText(QString("[Sync]\nFP#: %1\nOP#: %2\nFV#: %3\nOV#: %4\nOCT: %5 fps\nFLIM: %6 fps\ndrop ptks: %7")
 		.arg(fp_bfn, 3).arg(op_bfn, 3).arg(fv_bfn, 3).arg(ov_bfn, 3).arg(oct_fps, 3, 'f', 2).arg(flim_fps, 3, 'f', 2).arg(dropped_packets));

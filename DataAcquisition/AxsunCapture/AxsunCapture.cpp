@@ -7,11 +7,11 @@ using namespace std;
 
 
 AxsunCapture::AxsunCapture() :
+	session(nullptr),
 	_dirty(true),
-    capture_running(false),
-    dataType(u8),
-	image_width(1024),
-	image_height(1024),
+    capture_running(false),    
+    image_width(1024),
+    image_height(1024),
     returned_image(0),
 	frameRate(0.0)
 {
@@ -25,46 +25,61 @@ AxsunCapture::~AxsunCapture()
         capture_running = false;
 		_thread.join();
 	}
-	axStopSession();
+	if (session)
+		axStopSession(session);
 }
 
 
 bool AxsunCapture::initializeCapture()
 {
-	int32_t result;
+	AxErr retval;
 	const char* pPreamble = "[Axsun Catpure] Failed to initialize Axsun OCT capture session: ";
 
 	//if (_dirty)
 	//{
 		// Start Axsun Session
-		result = axStartSession(PACKET_CAPACITY);
-		if (result != CAPTURE_OK)
+        retval = axStartSession(&session, PACKET_CAPACITY);
+		if (retval != AxErr::NO_AxERROR)
 		{
-			dumpCaptureError(result, pPreamble);
+			dumpCaptureError(retval, pPreamble);
 			return false;
-		}
-		meta_data = np::Uint8Array(METADATA_BYTES);
-		
-		char msg[256]; 
-		axGetMessage(capture_message);
-		sprintf(msg, "[Axsun Catpure] %s", capture_message);
-		SendStatusMessage("[Axsun Catpure] Session successfully started on network adapter", false);
-		SendStatusMessage(msg, false);
+        }
 
-		// Prevent the transition to Forced Trigger mode
-		result = axSetTrigTimeout(100);
-		if (result != CAPTURE_OK)
+		// Select capture interface for this session
+		retval = axSelectInterface(session, AxInterface::GIGABIT_ETHERNET);
+		if (retval != AxErr::NO_AxERROR)
 		{
-			dumpCaptureError(result, pPreamble);
+			dumpCaptureError(retval, pPreamble);
 			return false;
 		}
+
+        // Get status message
+        char msg[256];
+        axGetMessage(session, capture_message);
+        sprintf(msg, "[Axsun Catpure] %s", capture_message);
+        SendStatusMessage("[Axsun Catpure] Session successfully started on network adapter", false);
+        SendStatusMessage(msg, false);
+
+        // Prevent the transition to Forced Trigger mode
+        retval = axSetTrigTimeout(session, 100);
+        if (retval != AxErr::NO_AxERROR)
+        {
+            dumpCaptureError(retval, pPreamble);
+            return false;
+        }
 
 #if ENABLE_OPENGL_WINDOW
 		// Setup OpenGL Window
-		result = axSetupDisplay(0, 0, 0, 500, 500, NULL);
-		if (result != CAPTURE_OK)
+		retval = axSetupDisplay(session, 0, 0, 0, 500, 500, NULL);
+		if (retval != AxErr::NO_AxERROR)
 		{
-			dumpCaptureError(result, pPreamble);
+			dumpCaptureError(retval, pPreamble);
+			return false;
+		}
+		retval = axAdjustBrightnessContrast(session, 1, 0, 1);
+		if (retval != AxErr::NO_AxERROR)
+		{
+			dumpCaptureError(retval, pPreamble);
 			return false;
 		}
 		SendStatusMessage("[Axsun Catpure] OpenGL display setup was successful.", false);
@@ -86,7 +101,7 @@ bool AxsunCapture::startCapture()
 	if (_thread.joinable())
 	{
 		result = ::GetLastError();
-		dumpCaptureError(result, pPreamble);
+		dumpCaptureErrorSystem(result, pPreamble);
 		return false;
 	}
 
@@ -94,7 +109,7 @@ bool AxsunCapture::startCapture()
 	if (::SetThreadPriority(_thread.native_handle(), THREAD_PRIORITY_TIME_CRITICAL) == 0)
 	{
 		result = ::GetLastError();
-		dumpCaptureError(result, pPreamble);
+		dumpCaptureErrorSystem(result, pPreamble);
 		return false;
 	}
 	
@@ -116,105 +131,19 @@ void AxsunCapture::stopCapture()
 }
 
 
-bool AxsunCapture::requestBufferedImage(np::Uint8Array2& image_data_out)
-{
-	int32_t result;
-	const char* pPreamble = "[Axsun Capture] ";
-
-	// define & initialize variables
-	uint32_t ret_img_num = 0;
-	uint32_t required_buffer_size = 0;
-	int32_t height, width = 0;
-	uint8_t force_trig_status, trig_too_fast_status = 0;
-#if ENABLE_OPENGL_WINDOW
-	request_mode req_mode = retrieve_and_display;
-#else
-	request_mode req_mode = retrieve_to_caller;
-#endif
-
-	// Start Axsun Session
-	result = axStartSession(PACKET_CAPACITY);
-	if (result != CAPTURE_OK)
-	{
-		dumpCaptureError(result, pPreamble);
-		return false;
-	}
-	meta_data = np::Uint8Array(METADATA_BYTES);
-
-	char msg[256];
-	axGetMessage(capture_message);
-	sprintf(msg, "[Axsun Catpure] %s", capture_message);
-	SendStatusMessage("[Axsun Catpure] Session successfully started on network adapter", false);
-	SendStatusMessage(msg, false);
-
-	// Request an image
-	int iter = 0;
-	do
-	{
-		Sleep(0);
-
-		result = axGetImageInfoAdv(-1, &ret_img_num, &height, &width, &dataType, &required_buffer_size,
-			&force_trig_status, &trig_too_fast_status);			
-
-	} while ((result != CAPTURE_OK) && (++iter < 100));
-
-	if (iter == 100)
-	{
-		dumpCaptureError(result, pPreamble);
-		return false;
-	}
-
-	if (result == CAPTURE_OK)
-	{
-		image_data_out = np::Uint8Array2(required_buffer_size / width, width);
-		result = axRequestImageAdv(ret_img_num, image_data_out, meta_data, &height, &width, &dataType,
-			required_buffer_size, 1, req_mode, &force_trig_status, &trig_too_fast_status);
-
-		if (result == CAPTURE_OK)
-		{
-			char msg[256];
-			sprintf(msg, "[Axsun Capture] Captured a single frame! (req_size: %d / height: %d / width: %d", required_buffer_size, height, width);
-			SendStatusMessage(msg, false);
-		}
-		else
-		{
-			dumpCaptureError(result, pPreamble);
-			return false;
-		}
-	}
-	else
-	{
-		dumpCaptureError(result, pPreamble);
-		return false;
-	}
-
-	result = axStopSession();
-	if (result != CAPTURE_OK)
-		dumpCaptureError(result, "[axStopSession] ");
-	
-	return true;
-}
-
-
-
 void AxsunCapture::captureRun()
 {
-	int32_t result;
+	AxErr retval;
+	const char* pPreamble = "[Axsun Catpure] Failed to continue Axsun OCT capture session: ";
 
 	// define & initialize variables
 	uint32_t imaging;
-	uint32_t last_packet, last_frame, last_image = 0, last_image0 = 0;
+    uint32_t last_packet, last_frame, last_image = 0, last_image0 = -1;
 	uint32_t frames_since_sync;
 
-    returned_image = 0;
-    uint32_t required_buffer_size = 0;
-    int32_t height, width = 0;
-	uint8_t force_trig_status, trig_too_fast_status = 0;
-#if ENABLE_OPENGL_WINDOW
-    request_mode req_mode = retrieve_and_display;
-#else
-    request_mode req_mode = retrieve_to_caller;
-#endif
+	image_info_t info{};
+	request_prefs_t prefs{};
+    prefs.request_mode = AxRequestMode::RETRIEVE_TO_CALLER;
 
 	// Request & display images
 	uint32_t loop_counter = 0; 
@@ -230,99 +159,129 @@ void AxsunCapture::captureRun()
 	capture_running = true;
     while (capture_running)
 	{
-		Sleep(0);
-
 		// get status information
-		result = axGetStatus(&imaging, &last_packet, &last_frame, &last_image, &dropped_packets, &frames_since_sync);
+        retval = axGetStatus(session, &imaging, &last_packet, &last_frame, &last_image, &dropped_packets, &frames_since_sync);
+        if (retval != AxErr::NO_AxERROR)
+        {
+            dumpCaptureError(retval, pPreamble);
+            return;
+        }
 		
 		// only new image allowed
-		if (last_image == last_image0)
-			continue;
+        if (last_image == last_image0)
+            continue;
 		last_image0 = last_image;
 
 		// get information about an image to be retreived from the main image buffer.
-        result = axGetImageInfoAdv(-1, &returned_image, &height, &width, &dataType, &required_buffer_size,
-            &force_trig_status, &trig_too_fast_status);
-        if (result == CAPTURE_OK)
+        if (imaging)
         {
-			// Determine where new data transfer data will go.
-			cur_section = &image_data_out(0, image_width * (loop_counter % 4));
+            retval = axGetImageInfo(getSession(), MOST_RECENT_IMAGE, &info);
+            if (retval == AxErr::NO_AxERROR)
+            {
+                // Determine where new data transfer data will go.
+                cur_section = &image_data_out(0, image_width * (loop_counter % 4));
 
-			// if the image exists in the main image buffer, request for it to be rendered directly to the OpenGL window			
-            result = axRequestImageAdv(returned_image, cur_section, meta_data, &height, &width, &dataType,
-				required_buffer_size, 1, req_mode, &force_trig_status, &trig_too_fast_status);
-			if (result == CAPTURE_OK)
-			{		
-				np::Uint8Array2 frame(cur_section, image_height, image_width);
-				DidAcquireData(frameIndex++, frame);
-				frameIndexUpdate++;
+                // if no errors, configure the request preferences and then request the image for display
+                retval = axRequestImage(session, info.image_number, prefs, 2 * image_width * image_height, cur_section, &info);
+//                if (retval == AxErr::NO_AxERROR)
+                {
+                    np::Uint8Array2 frame(cur_section, info.height, image_width);
+                    DidAcquireData(frameIndex++, frame);
+                    frameIndexUpdate++;
 
-				// Acquisition Status
-				if (!dwTickStart)
-					dwTickStart = dwTickLastUpdate = GetTickCount();
+                    // Acquisition Status
+                    if (!dwTickStart)
+                        dwTickStart = dwTickLastUpdate = GetTickCount();
 
-				// Update counters
-				bytesAcquired += height * width;
-				bytesAcquiredUpdate += height * width;
-				loop_counter++;
+                    // Update counters
+                    bytesAcquired += info.height * info.width;
+                    bytesAcquiredUpdate += info.height * info.width;
+                    loop_counter++;
 
-				// Periodically update progress
-				ULONG dwTickNow = GetTickCount();
-				if (dwTickNow - dwTickLastUpdate > 2500)
-				{
-					double dRate, dRateUpdate;
+                    // Periodically update progress
+                    ULONG dwTickNow = GetTickCount();
+                    if (dwTickNow - dwTickLastUpdate > 2500)
+                    {
+                        double dRate, dRateUpdate;
 
-					ULONG dwElapsed = dwTickNow - dwTickStart;
-					ULONG dwElapsedUpdate = dwTickNow - dwTickLastUpdate;
-					dwTickLastUpdate = dwTickNow;
+                        ULONG dwElapsed = dwTickNow - dwTickStart;
+                        ULONG dwElapsedUpdate = dwTickNow - dwTickLastUpdate;
+                        dwTickLastUpdate = dwTickNow;
 
-					if (dwElapsed)
-					{
-						dRate = double(bytesAcquired / 1024.0 / 1024.0) / double(dwElapsed / 1000.0);
-						dRateUpdate = double(bytesAcquiredUpdate / 1024.0 / 1024.0) / double(dwElapsedUpdate / 1000.0);
-						frameRate = (double)frameIndexUpdate / (double)(dwElapsedUpdate) * 1000.0;
+                        if (dwElapsed)
+                        {
+                            dRate = double(bytesAcquired / 1024.0 / 1024.0) / double(dwElapsed / 1000.0);
+                            dRateUpdate = double(bytesAcquiredUpdate / 1024.0 / 1024.0) / double(dwElapsedUpdate / 1000.0);
+                            frameRate = (double)frameIndexUpdate / (double)(dwElapsedUpdate) * 1000.0;
 
-						char msg[256];
-						sprintf(msg, "[Axsun Catpure] [Image#] %5d [Data Rate] %3.2f MiB/s [Frame Rate] %.2f fps [%d %d]",
-							frameIndex, dRateUpdate, frameRate, force_trig_status, trig_too_fast_status);
-						sprintf(msg, "imaging: %d, last_packet: %d, last_frame: %d, last_image: %d, dropped_packets: %d, frame_since_sync: %d",
-							imaging, last_packet, last_frame, last_image, dropped_packets, frames_since_sync);
-						SendStatusMessage(msg, false);
-					}
+                            char msg[256];
+                            sprintf(msg, "[Axsun Catpure] [Image#] %5d [Data Rate] %3.2f MiB/s [Frame Rate] %.2f fps [%d %d]",
+                                frameIndex, dRateUpdate, frameRate, info.force_trig, info.trig_too_fast);
+                            SendStatusMessage(msg, false);
+                            sprintf(msg, "imaging: %d, width: %d, last_packet: %d, last_frame: %d, last_image: %d, dropped_packets: %d, frame_since_sync: %d",
+                                imaging, info.width, last_packet, last_frame, last_image, dropped_packets, frames_since_sync);
+                            SendStatusMessage(msg, false);
+                        }
 
-					// Reset
-					frameIndexUpdate = 0;
-					bytesAcquiredUpdate = 0;
-				}
-			}
+                        // Reset
+                        frameIndexUpdate = 0;
+                        bytesAcquiredUpdate = 0;
+                    }
+                }
+            }
         }
+
+		// loop timer for approximately 50 fps update rate
+		std::this_thread::sleep_for(0ms);
 	}
 
-	result = axStopSession();
-	if (result != CAPTURE_OK)
-		dumpCaptureError(result, "[axStopSession] ");
+	retval = axStopSession(session);
+	if (retval != AxErr::NO_AxERROR)
+		dumpCaptureError(retval, "[axStopSession] ");
+	else
+		session = nullptr;
 }
 
 
-void AxsunCapture::dumpCaptureError(int32_t res, const char* pPreamble)
+void AxsunCapture::dumpCaptureError(AxErr _retval, const char* pPreamble)
 {
     char msg[256] = { 0, };
     memcpy(msg, pPreamble, strlen(pPreamble));
 
     char err[256] = { 0, };
-    sprintf_s(err, 256, "Capture error code (%d)", res);
+    sprintf_s(err, 256, "Capture error code (%d)", _retval);
     strcat(msg, err);
 
-    axGetMessage(capture_message);
+    axGetMessage(session, capture_message);
 	sprintf_s(err, 256, "%s (%s)", msg, capture_message);
 	SendStatusMessage(err, true);
 
-	axStopSession();
-	//int32_t result = axStopSession();
-	//if (result != CAPTURE_OK)
-		//dumpCaptureError(result, "[axStopSession] ");
+	AxErr retval = axStopSession(session);
+	if (retval != AxErr::NO_AxERROR)
+		dumpCaptureError(retval, "[axStopSession] ");
+	else
+		session = nullptr;
 }
 
+
+void AxsunCapture::dumpCaptureErrorSystem(int32_t res, const char* pPreamble)
+{
+	char msg[256] = { 0, };
+	memcpy(msg, pPreamble, strlen(pPreamble));
+
+	char err[256] = { 0, };
+	sprintf_s(err, 256, "Capture error code (%d)", res);
+	strcat(msg, err);
+
+	sprintf_s(err, 256, "%s (%s)", msg, "system error");
+	SendStatusMessage(err, true);
+
+	AxErr retval = axStopSession(session);
+	if (retval != AxErr::NO_AxERROR)
+		dumpCaptureError(retval, "[axStopSession] ");
+	else
+		session = nullptr;
+}
 
 
 

@@ -8,7 +8,9 @@
 
 #ifndef NEXT_GEN_SYSTEM
 #include <DataAcquisition/SignatecDAQ/SignatecDAQ.h>
+#ifdef AX_CAPT_ENABLE
 #include <DataAcquisition/AxsunCapture/AxsunCapture.h>
+#endif
 #else
 #include <DataAcquisition/AlazarDAQ/AlazarDAQ.h>
 #endif
@@ -40,10 +42,12 @@ DataAcquisition::DataAcquisition(Configuration* pConfig)
 	};
 	
 #ifndef NEXT_GEN_SYSTEM
+#ifdef AX_CAPT_ENABLE
 	// Create Axsun OCT capture object
 	m_pAxsunCapture = new AxsunCapture;
 	m_pAxsunCapture->SendStatusMessage += messgae_handling;
 	m_pAxsunCapture->DidStopData += [&]() { m_pAxsunCapture->capture_running = false; };
+#endif
 
     // Create SignatecDAQ object
     m_pDaq = new SignatecDAQ;
@@ -92,22 +96,26 @@ bool DataAcquisition::InitializeAcquistion()
     /// Set boot-time buffer
     ///SetBootTimeBufCfg(PX14_BOOTBUF_IDX, sizeof(uint16_t) * m_pConfig->flimScans * m_pConfig->flimAlines);
 	 
+#ifdef AX_CAPT_ENABLE
     // Parameter settings for DAQ & Axsun Capture
 	m_pAxsunCapture->image_height = m_pConfig->octScans;
 	m_pAxsunCapture->image_width = m_pConfig->octAlines;
+#endif
 
     m_pDaq->nScans = m_pConfig->flimScans;
     m_pDaq->nAlines = m_pConfig->flimAlines;
     m_pDaq->BootTimeBufIdx = PX14_BOOTBUF_IDX;
 	
     // Initialization for DAQ & Axsun Capture
-    if (!m_pAxsunCapture->initializeCapture() || !m_pDaq->set_init())
+#ifdef AX_CAPT_ENABLE
+    if (!m_pDaq->set_init() || !m_pAxsunCapture->initializeCapture())	
     {
 		StopAcquisition();
 
 		m_pConfig->writeToLog("Data acq initialization failed.");
         return false;
     }
+#endif
 #else
 	// Parameter settings for DAQ
 	m_pDaqOct->SystemId = 1;  // ATS9371 (OCT)		
@@ -165,6 +173,7 @@ bool DataAcquisition::StartAcquisition()
     // Parameter settings for DAQ
     m_pDaq->DcOffset = m_pConfig->px14DcOffset;
 
+#ifdef AX_CAPT_ENABLE
     // Start acquisition
 	if (!m_pDaq->startAcquisition() || !m_pAxsunCapture->startCapture())
 	{
@@ -173,6 +182,7 @@ bool DataAcquisition::StartAcquisition()
 		m_pConfig->writeToLog("Data acq failed.");
 		return false;
 	}
+#endif
 #else
 	// Start acquisition
 	if (!m_pDaqOct->startAcquisition() || !m_pDaqFlim->startAcquisition())
@@ -199,7 +209,9 @@ void DataAcquisition::StopAcquisition()
 	{
 #ifndef NEXT_GEN_SYSTEM
 		m_pDaq->stopAcquisition();
+#ifdef AX_CAPT_ENABLE
 		m_pAxsunCapture->stopCapture();
+#endif
 #else
 		m_pDaqOct->stopAcquisition();
 		m_pDaqFlim->stopAcquisition();
@@ -282,7 +294,9 @@ void DataAcquisition::ConnectFlimSendStatusMessage(const std::function<void(cons
 void DataAcquisition::ConnectAcquiredOctData(const std::function<void(uint32_t, const np::Uint8Array2&)> &slot)
 {
 #ifndef NEXT_GEN_SYSTEM
+#ifdef AX_CAPT_ENABLE
 	m_pAxsunCapture->DidAcquireData += slot;
+#endif
 #else
 	(void)slot;
 #endif
@@ -300,7 +314,9 @@ void DataAcquisition::ConnectAcquiredOctData1(const std::function<void(int, cons
 void DataAcquisition::ConnectStopOctData(const std::function<void(void)> &slot)
 {
 #ifndef NEXT_GEN_SYSTEM
+#ifdef AX_CAPT_ENABLE
 	m_pAxsunCapture->DidStopData += slot;
+#endif
 #else
 	m_pDaqOct->DidStopData += slot;
 #endif
@@ -309,7 +325,9 @@ void DataAcquisition::ConnectStopOctData(const std::function<void(void)> &slot)
 void DataAcquisition::ConnectOctSendStatusMessage(const std::function<void(const char*, bool)> &slot)
 {
 #ifndef NEXT_GEN_SYSTEM
+#ifdef AX_CAPT_ENABLE
 	m_pAxsunCapture->SendStatusMessage += slot;
+#endif
 #else
 	m_pDaqOct->SendStatusMessage += slot;
 #endif

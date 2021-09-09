@@ -13,7 +13,7 @@
 #include <Common/medfilt.h>
 #include <Common/ImageObject.h>
 #include <Common/basic_functions.h>
-#include <Common/ann.h>
+//#include <Common/ann.h>
 
 #include <iostream>
 #include <vector>
@@ -138,7 +138,7 @@ private:
 	medfilt* m_pMedfiltIntensityMap;
 	medfilt* m_pMedfiltLifetimeMap;
     medfilt* m_pMedfiltLongi;
-	ann* m_pAnn;
+	//ann* m_pAnn;
 	
 private:
     // Layout

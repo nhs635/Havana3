@@ -5,6 +5,7 @@
 #include <queue>
 #include <mutex>
 
+//#include <Common/Array.h>
 #include <Common/Queue.h>
 
 template <typename T>
@@ -12,7 +13,7 @@ class SyncObject
 {
 public:
     SyncObject() : n_exec(0) {}
-    ~SyncObject() {	deallocate_queue_buffer(); }
+	~SyncObject() { deallocate_queue_buffer(); }
 
 public:
     void allocate_queue_buffer(int width, int height, int n)
@@ -21,6 +22,7 @@ public:
         for (int i = 0; i < n_buffer; i++)
         {
             T* buffer = new T[width * height];
+			//np::Array<T> arr(buffer, width * height);
             memset(buffer, 0, width * height * sizeof(T));
             queue_buffer.push(buffer);
         }
@@ -28,13 +30,15 @@ public:
 
 	void deallocate_queue_buffer()
 	{
-		for (int i = 0; i < n_buffer; i++)
+		//for (int i = 0; i < n_buffer; i++)
+		while (!queue_buffer.empty())
 		{
-			if (!queue_buffer.empty())
+			//if ()
 			{
-				T* buffer = queue_buffer.front();
-				queue_buffer.pop();
-				delete[] buffer;
+				/* 확인 필요 !!!  */
+				//T* buffer = queue_buffer.front();
+				//queue_buffer.pop();
+				//if (buffer) delete[] buffer;
 			}
 		}
 	}

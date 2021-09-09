@@ -158,18 +158,19 @@ void QResultTab::readRecordData()
 	m_pConfig->writeToLog(QString("Record reviewing: %1 (ID: %2): %3: record id: %4")
 		.arg(m_recordInfo.patientName).arg(m_recordInfo.patientId).arg(m_recordInfo.date).arg(m_recordInfo.recordId));
 
-	// Make progress dialog
-	QProgressDialog progress("Processing...", "Cancel", 0, 100, this);
-	connect(m_pDataProcessing, SIGNAL(processedSingleFrame(int)), &progress, SLOT(setValue(int)));
-	connect(m_pDataProcessing, &DataProcessing::abortedProcessing, [&]() { progress.setValue(100); /* tab 종료 조건 */ });
-	///connect(&progress, &QProgressDialog::canceled, [&]() { m_pDataProcessing->m_bAbort = true; });
-	progress.setWindowTitle("Review");
-	progress.setCancelButton(0);
-	progress.setWindowModality(Qt::WindowModal);
-	progress.setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::CustomizeWindowHint);
-	progress.move((m_pMainWnd->width() - progress.width()) / 2, (m_pMainWnd->height() - progress.height()) / 2);
-	progress.setFixedSize(progress.width(), progress.height());
-	progress.exec();
+	/* 확인 필요 !!!!!!!!!!! */
+	// Make progress dialog 
+	//m_pProgressDlg = new QProgressDialog("Processing...", "Cancel", 0, 100, this);
+	//connect(m_pDataProcessing, SIGNAL(processedSingleFrame(int)), m_pProgressDlg, SLOT(setValue(int)));
+	//connect(m_pDataProcessing, &DataProcessing::abortedProcessing, [&]() { m_pProgressDlg->setValue(100); /* tab 종료 조건 */ });
+	/////connect(&progress, &QProgressDialog::canceled, [&]() { m_pDataProcessing->m_bAbort = true; });
+	//m_pProgressDlg->setWindowTitle("Review");
+	//m_pProgressDlg->setCancelButton(0);
+	//m_pProgressDlg->setWindowModality(Qt::WindowModal);
+	//m_pProgressDlg->setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::CustomizeWindowHint);
+	//m_pProgressDlg->move((m_pMainWnd->width() - m_pProgressDlg->width()) / 2, (m_pMainWnd->height() - m_pProgressDlg->height()) / 2);
+	//m_pProgressDlg->setFixedSize(m_pProgressDlg->width(), m_pProgressDlg->height());
+	//m_pProgressDlg->exec();
 	
 	/// // Abort
 	///if (m_pDataProcessing->m_bAbort)
@@ -188,6 +189,7 @@ void QResultTab::readRecordData()
 	///	});
 	///	tab_close.detach();
 	///}
+	//delete m_pProgressDlg;
 }
 
 void QResultTab::loadRecordInfo()

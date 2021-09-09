@@ -100,9 +100,10 @@ SettingDlg::SettingDlg(QWidget *parent) :
 	for (int i = 0; i < m_pConfig->log.size(); i++)
 		m_pListWidget_Log->addItem(m_pConfig->log.at(i));
 	m_pListWidget_Log->setCurrentRow(m_pListWidget_Log->count() - 1);
+	connect(this, &SettingDlg::addLog, [&](const QString& msg) { m_pListWidget_Log->addItem(msg); });
 
 	m_pConfig->DidLogAdded += [&](const QString& msg) {
-		m_pListWidget_Log->addItem(msg);
+		emit addLog(msg);
 		m_pListWidget_Log->setCurrentRow(m_pListWidget_Log->count() - 1);
 	};
 

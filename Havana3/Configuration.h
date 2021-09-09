@@ -8,11 +8,12 @@
 #define ROUND_UP_4S(x)				((x + 3) >> 2) << 2
 
 ////////////////////// Software Setup ///////////////////////
-#define DEVELOPER_MODE
+//#define DEVELOPER_MODE
 //#define NEXT_GEN_SYSTEM
 //#define ENABLE_FPGA_FFT
-#define ENABLE_DATABASE_ENCRYPTION
-#define NI_ENABLE
+//#define ENABLE_DATABASE_ENCRYPTION
+//#define NI_ENABLE
+//#define AX_CAPT_ENABLE
 
 //////////////////////// Size Setup /////////////////////////
 #define FLIM_SCANS                  512
@@ -27,10 +28,10 @@
 #define OCT_ALINES                  FLIM_ALINES * 4
 
 //////////////////////// System Setup ///////////////////////
-#define ROTARY_MOTOR_COM_PORT		"COM4"
-#define PULLBACK_MOTOR_COM_PORT		"COM5"
+#define ROTARY_MOTOR_COM_PORT		"COM4" // 7 this com
+#define PULLBACK_MOTOR_COM_PORT		"COM7"
 
-#define FLIM_LASER_COM_PORT			"COM3"
+#define FLIM_LASER_COM_PORT			"COM5"
 
 #define PMT_GAIN_AO_PORT			"Dev1/ao1"  /// "Dev1/ao0"
 
@@ -45,15 +46,15 @@
 #define FLIM_DAQ_COUNTER_CHANNEL	"Dev1/ctr1"
 #endif
 
+#define ROTATION_100FPS				5872
 #define CLOCK_DELAY					10
 //#define PULLBACK_HOME_OFFSET		0 // mm
-//#define ROTARY_POSITIVE_ROTATION	false
 
 //////////////// Thread & Buffer Processing /////////////////
 #define PROCESSING_BUFFER_SIZE		80
 
 #ifdef _DEBUG
-#define WRITING_BUFFER_SIZE			1000
+#define WRITING_BUFFER_SIZE			500
 #else
 #define WRITING_BUFFER_SIZE	        2000
 #endif
@@ -75,7 +76,8 @@
 #define INTER_FRAME_SYNC			0 //10 //9  // Frames
 #define INTRA_FRAME_SYNC			0 //30 // A-lines
 
-#define RENEWAL_COUNT				10
+#define RENEWAL_COUNT				8
+#define REDUCED_COUNT				8
 #define PIXEL_RESOLUTION			5.7 // micrometer
 #define OUTER_SHEATH_POSITION		120 // (int)((150 * 1.45 + 180 * 1 + 150 * 1.33) / PIXEL_RESOLUTION)
 

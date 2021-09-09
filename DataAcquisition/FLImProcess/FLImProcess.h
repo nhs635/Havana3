@@ -126,45 +126,58 @@ public:
         int _nx = pParams.ch_start_ind[4] - pParams.ch_start_ind[0];
         if ((nx != _nx) || !initiated)
             initialize(pParams, _nx, FLIM_SPLINE_FACTOR, src.size(1));
-		int roi_len = (int)round(pulse_roi_length / ActualFactor);
 
         // 1. Crop ROI
         int offset = pParams.ch_start_ind[0]; // + pParams.pre_trig;
         ippiConvert_16u32f_C1R(&src(offset, 0), sizeof(uint16_t) * src.size(0),
                                crop_src.raw_ptr(), sizeof(float) * crop_src.size(0), srcSize);
-
-        // 2. BG subtraction
-		ippsSubC_32f_I(pParams.bg, crop_src.raw_ptr(), crop_src.length());
-
-        ///int ch_ind4[5]; memcpy(ch_ind4, pParams.ch_start_ind, sizeof(int) * 5);
-        ///int dc_determine_len = 5;
+		
+		//ippsSubC_32f_I(pParams.bg, crop_src.raw_ptr(), crop_src.length());
 
 		// Parallel-for loop
-        memcpy(mask_src.raw_ptr(), crop_src.raw_ptr(), sizeof(float) * mask_src.length());
+        //memcpy(mask_src.raw_ptr(), crop_src.raw_ptr(), sizeof(float) * mask_src.length());
         tbb::parallel_for(tbb::blocked_range<size_t>(0, (size_t)ny),
             [&](const tbb::blocked_range<size_t>& r) {
             for (size_t i = r.begin(); i != r.end(); ++i)
             {
-				float max_val; int max_ind;
+				float bg1 = 0, bg2 = 0;
+				float max_val; int max_ind; 
+
+				// 2. BG subtraction
+				//printf("%f %f\n", bg1, bg2);
+				//if (start_ind[0])
+				{
+					ippsMean_32f(&crop_src(start_ind[0], (int)i), end_ind[0] - start_ind[0] + 1, &bg1, ippAlgHintFast); // IRF bg
+					ippsMean_32f(&crop_src(crop_src.size(0) - 8, (int)i), 9, &bg2, ippAlgHintFast); // emission bg
+				}
+				ippsSubC_32f_I(bg1, &crop_src(0, (int)i), end_ind[0]);
+				ippsSubC_32f_I(bg2, &crop_src(end_ind[0], (int)i), crop_src.size(0) - end_ind[0]);
+
+				///int ch_ind4[5]; memcpy(ch_ind4, pParams.ch_start_ind, sizeof(int) * 5);
+				///int dc_determine_len = 5;
 
 				// 3. Jitter compensation - is it valid?
-				//int cpos = 4, rpos = 4;
-				//ippsMaxIndx_32f(&mask_src(0, (int)i), start_ind[0], &max_val, &cpos);
+				int cpos = 6, rpos = 6;
+				int irf_wlen = pParams.ch_start_ind[1] - pParams.ch_start_ind[0];
+				ippsMaxIndx_32f(&crop_src(0, (int)i), irf_wlen, &max_val, &cpos);
 
-				//int offset = cpos - rpos;
-				//if (offset < 0) offset += mask_src.size(0);
-				//std::rotate(&mask_src(0, (int)i), &mask_src(offset, (int)i), &mask_src(mask_src.size(0) - 1, (int)i));
+				int offset = cpos - rpos;
+				if (offset < 0) offset += crop_src.size(0);
+				std::rotate(&crop_src(0, (int)i), &crop_src(offset, (int)i), &crop_src(crop_src.size(0) - 1, (int)i)); //////////////////////////////////////////////////
 
                 ///int end_ind4[4]; memcpy(end_ind4, ch_ind4 + 1, sizeof(int) * 4);
                 ///ippsSubC_32s_ISfs(ch_ind4[0], end_ind4, 4, 0);
 				
 				// 4. Remove artifact manually (smart artifact removal method)
+				memcpy(&mask_src(0, (int)i), &crop_src(0, (int)i), sizeof(float) * crop_src.size(0));
                 for (int ch = 0; ch < 4; ch++)
                 {
                     if (start_ind[ch])
                     {
-                        if (ch == 0)
-							ippsSet_32f(0.0f, &mask_src(start_ind[ch], (int)i), end_ind[ch] - start_ind[ch] + 1);
+						if (ch == 0)
+						{
+							//ippsSet_32f(0.0f, &mask_src(start_ind[ch], (int)i), end_ind[ch] - start_ind[ch] + 1);
+						}
                         else
                         {
 							ippsMaxIndx_32f(&mask_src(start_ind[ch], (int)i), end_ind[ch] - start_ind[ch] + 1, &max_val, &max_ind);
@@ -233,9 +246,10 @@ public:
 		diff_ind[3] = round((FLIM_CH_START_5 - 1) * ActualFactor);
 
         ippsMin_32s(diff_ind, 4, &pulse_roi_length);
-		//char msg[256];
-		//sprintf(msg, "FLIm Initializing... %d", pulse_roi_length);
-		//SendStatusMessage(msg);
+		roi_len = (int)round(pulse_roi_length / ActualFactor);
+		///char msg[256];
+		///sprintf(msg, "FLIm Initializing... %d", pulse_roi_length);
+		///SendStatusMessage(msg);
 
         /* sequence for mean delay caculation */
         if (pSeq) { ippsFree(pSeq); pSeq = nullptr; }
@@ -285,6 +299,7 @@ public:
     int upSampleFactor;
     Ipp32f ActualFactor;
     int pulse_roi_length;
+	int roi_len;
 
     FILTER _filter;
 

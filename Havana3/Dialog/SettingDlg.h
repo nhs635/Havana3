@@ -67,6 +67,9 @@ public:
     inline FlimCalibTab* getFlimCalibTab() const { return m_pFlimCalibTab; }
     inline PulseReviewTab* getPulseReviewTab() const { return m_pPulseReviewTab; }
 
+signals:
+	void addLog(const QString& msg);
+
 // Variables ////////////////////////////////////////////
 private:	
 	Configuration* m_pConfig;

@@ -45,9 +45,9 @@ private:
 
 private slots:
     // Helical Scanning Control
-	bool connectRotaryMotor(bool);
-	void rotate(bool);
-	void changeRotaryRpm(const QString &);
+	bool connectRotaryMotor(bool);	
+	void changeRotaryRpm(int);
+	void rotateStop();
 	
 	bool connectPullbackMotor(bool);
 	void moveAbsolute();
@@ -80,7 +80,7 @@ private slots:
 	void setVDLWidgets(bool);
 	
 signals:
-	void transferAxsunArray(int);
+	void stopPullback();
 
 // Variables ////////////////////////////////////////////
 private:
@@ -100,9 +100,9 @@ private:
 	QPushButton *m_pToggleButton_RotaryConnect;
 
 	QLabel *m_pLabel_RotationSpeed;
-	QLineEdit *m_pLineEdit_RPM;
+	QSpinBox *m_pSpinBox_RPM;
 	QLabel *m_pLabel_RPM;
-	QPushButton *m_pToggleButton_Rotate;
+	QPushButton *m_pPushButton_RotateStop;
 
     // Faulhaber pullback stage control widgets
 	QLabel *m_pLabel_PullbackConnect;
@@ -137,6 +137,7 @@ private:
 	QPushButton *m_pToggleButton_FlimLaserConnect;
 
 	QLabel *m_pLabel_FlimLaserPowerControl;
+	QLabel *m_pLabel_FlimLaserPowerLevel;
 	QSpinBox *m_pSpinBox_FlimLaserPowerControl;
 	QLineEdit *m_pLineEdit_FlimLaserPowerControl;
 	QPushButton *m_pPushButton_FlimLaserPowerControl;

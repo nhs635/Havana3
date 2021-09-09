@@ -85,10 +85,12 @@ private:
     QPushButton *m_pPushButton_Export;
 
     QViewTab* m_pViewTab;
-
+	
     // Dialogs
     SettingDlg *m_pSettingDlg;
     ExportDlg *m_pExportDlg;
+
+	QProgressDialog* m_pProgressDlg;
 };
 
 #endif // QRESULTTAB_H

@@ -244,7 +244,7 @@ void MemoryBuffer::stopRecording()
 		uint64_t total_size = (uint64_t)m_nRecordedFrames * (uint64_t)(m_pConfig->flimFrameSize * sizeof(uint16_t) + m_pConfig->octFrameSize * sizeof(uint8_t)) / (uint64_t)1024;
 
 		char msg[256];
-		sprintf(msg, "Data recording is finished normally. \n(Recorded frames: %d frames (%.2f MB)", m_nRecordedFrames, (double)total_size / 1024.0);
+		sprintf(msg, "Data recording is finished normally. (Recorded frames: %d frames (%.2f MB)", m_nRecordedFrames, (double)total_size / 1024.0);
 		SendStatusMessage(msg, false);
 	}
 }

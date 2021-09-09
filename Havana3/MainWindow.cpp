@@ -204,6 +204,8 @@ void MainWindow::tabCloseRequested(int index)
 		}
 		else if (pTabView->windowTitle().contains("Streaming"))
 		{
+			m_pStreamTab->startLiveImaging(false);
+			
 			int _index = 0;
 			foreach(QDialog* _pTabView, m_vectorTabViews)
 			{
