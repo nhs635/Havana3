@@ -144,11 +144,10 @@ public:
 				float max_val; int max_ind; 
 
 				// 2. BG subtraction
-				//printf("%f %f\n", bg1, bg2);
-				//if (start_ind[0])
+				if (start_ind[0])
 				{
 					ippsMean_32f(&crop_src(start_ind[0], (int)i), end_ind[0] - start_ind[0] + 1, &bg1, ippAlgHintFast); // IRF bg
-					ippsMean_32f(&crop_src(crop_src.size(0) - 8, (int)i), 9, &bg2, ippAlgHintFast); // emission bg
+					ippsMean_32f(&crop_src(crop_src.size(0) - 8, (int)i), 8, &bg2, ippAlgHintFast); // emission bg
 				}
 				ippsSubC_32f_I(bg1, &crop_src(0, (int)i), end_ind[0]);
 				ippsSubC_32f_I(bg2, &crop_src(end_ind[0], (int)i), crop_src.size(0) - end_ind[0]);
@@ -436,36 +435,39 @@ public:
 
         for (int i = 0; i < 10; i++)
         {
-            start = (int)round(mean_delay) - left;
+			if (!isnan(mean_delay))
+			{
+				start = (int)round(mean_delay) - left;
 
-            if ((start < 0) || (start + width > resize.pulse_roi_length))
-            {
-                mean_delay = 0;
-                break;
-            }
+				if ((start < 0) || (start + width > resize.pulse_roi_length))
+				{
+					mean_delay = 0;
+					break;
+				}
 
-            const float* pulse = &resize.filt_src(offset + start, aline);
-            sum = 0; weight_sum = 0;
+				const float* pulse = &resize.filt_src(offset + start, aline);
+				sum = 0; weight_sum = 0;
 
-            if (resize.pSeq)
-            {
-                ippsDotProd_32f(pulse, &resize.pSeq[start], width, &weight_sum);
-                ippsSum_32f(pulse, width, &sum, ippAlgHintFast);
-            }
+				if (resize.pSeq)
+				{
+					ippsDotProd_32f(pulse, &resize.pSeq[start], width, &weight_sum);
+					ippsSum_32f(pulse, width, &sum, ippAlgHintFast);
+				}
 
-            if (sum)
-                mean_delay = weight_sum / sum;
-            else
-            {
-                mean_delay = 0;
-                break;
-            }
+				if (sum)
+					mean_delay = weight_sum / sum;
+				else
+				{
+					mean_delay = 0;
+					break;
+				}
 
-            if ((mean_delay > resize.pulse_roi_length) || (mean_delay < 0))
-            {
-                mean_delay = 0;
-                break;
-            }
+				if ((mean_delay > resize.pulse_roi_length) || (mean_delay < 0))
+				{
+					mean_delay = 0;
+					break;
+				}
+			}
         }
     }
 

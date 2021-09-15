@@ -46,6 +46,9 @@ public: // Constructor & Destructor
     virtual ~AxsunControl();
 	
 public:
+	inline bool isInitialized() { return m_bInitialized; }
+
+public:
     // For Control
     bool initialize(int n_device);
     bool setLaserEmission(bool status);
@@ -79,6 +82,8 @@ private:
 
 	int m_daq_device;
 	int m_laser_device;
+
+	bool m_bInitialized;
 
 	std::mutex vdl_mutex;
 };

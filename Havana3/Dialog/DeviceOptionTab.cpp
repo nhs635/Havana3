@@ -11,16 +11,18 @@
 #include <DeviceControl/DeviceControl.h>
 #include <DeviceControl/FaulhaberMotor/RotaryMotor.h>
 #include <DeviceControl/FaulhaberMotor/PullbackMotor.h>
+#ifdef NI_ENABLE
 #include <DeviceControl/PmtGainControl/PmtGainControl.h>
+#endif
 #include <DeviceControl/ElforlightLaser/ElforlightLaser.h>
+#ifdef NI_ENABLE
 #include <DeviceControl/FreqDivider/FreqDivider.h>
+#endif
 #include <DeviceControl/AxsunControl/AxsunControl.h>
 
 #include <DataAcquisition/DataAcquisition.h>
 #include <DataAcquisition/SignatecDAQ/SignatecDAQ.h>
-#ifdef AX_CAPT_ENABLE
 #include <DataAcquisition/AxsunCapture/AxsunCapture.h>
-#endif
 
 #include <Common/Array.h>
 
@@ -696,9 +698,9 @@ void DeviceOptionTab::stop()
 
 void DeviceOptionTab::startFlimAsynchronization(bool toggled)
 {
-#ifdef NI_ENABLE
 	if (toggled)
 	{
+#ifdef NI_ENABLE
 		// Start asynchronous pulsed generation
 		if (m_pDeviceControl->startSynchronization(true, true))
 		{
@@ -712,6 +714,9 @@ void DeviceOptionTab::startFlimAsynchronization(bool toggled)
 		}
 		else
 			m_pToggleButton_AsynchronizedPulsedLaser->setChecked(false);
+#else
+		m_pToggleButton_AsynchronizedPulsedLaser->setChecked(false);
+#endif
 	}
 	else
 	{
@@ -726,16 +731,13 @@ void DeviceOptionTab::startFlimAsynchronization(bool toggled)
 		// Stop asynchronous pulsed generation
 		m_pDeviceControl->startSynchronization(false);
 	}
-#else
-	(void)toggled;
-#endif
 }
 
 void DeviceOptionTab::startFlimSynchronization(bool toggled)
 {
-#ifdef NI_ENABLE
 	if (toggled)
 	{
+#ifdef NI_ENABLE
 		// Start synchronous FLIm-OCT operation
 		if (m_pStreamTab || m_pDeviceControl->startSynchronization(true))
 		{
@@ -749,6 +751,9 @@ void DeviceOptionTab::startFlimSynchronization(bool toggled)
 		}
 		else
 			m_pToggleButton_SynchronizedPulsedLaser->setChecked(false);
+#else
+		m_pToggleButton_SynchronizedPulsedLaser->setChecked(false);
+#endif
 	}
 	else
 	{
@@ -763,17 +768,14 @@ void DeviceOptionTab::startFlimSynchronization(bool toggled)
 		// Stop synchronous FLIm-OCT operation
 		m_pDeviceControl->startSynchronization(false);
 	}
-#else
-	(void)toggled;
-#endif
 }
 
 
 void DeviceOptionTab::applyPmtGainVoltage(bool toggled)
 {
-#ifdef NI_ENABLE	
 	if (toggled)
 	{
+#ifdef NI_ENABLE	
 		// Apply PMT gain voltage
 		if (m_pDeviceControl->applyPmtGainVoltage(true)) // m_pStreamTab || 
 		{
@@ -786,6 +788,9 @@ void DeviceOptionTab::applyPmtGainVoltage(bool toggled)
 		}
 		else
 			m_pToggleButton_PmtGainVoltage->setChecked(false);
+#else
+		m_pToggleButton_PmtGainVoltage->setChecked(false);
+#endif
 	}
 	else
 	{
@@ -799,9 +804,6 @@ void DeviceOptionTab::applyPmtGainVoltage(bool toggled)
 		// Stop applying PMT gain voltage
 		m_pDeviceControl->applyPmtGainVoltage(false);
 	}	
-#else
-	(void)toggled;
-#endif
 }
 
 void DeviceOptionTab::changePmtGainVoltage(const QString & str)
@@ -946,6 +948,8 @@ void DeviceOptionTab::connectAxsunControl(bool toggled)
 			m_pSpinBox_VDLLength->setEnabled(true);
 			m_pPushButton_VDLHome->setEnabled(true);
 		}
+		else
+			m_pToggleButton_AxsunOctConnect->setChecked(false);
 	}
 	else
 	{

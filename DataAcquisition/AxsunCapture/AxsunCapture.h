@@ -1,13 +1,14 @@
 #ifndef AXSUN_CAPTURE_H
 #define AXSUN_CAPTURE_H
 
+#include <Common\Array.h>
+#include <Common\Callback.h>
+
 #include <iostream>
 #include <thread>
 
-#include "AxsunOCTCapture.h"
+#include <AxsunOCTCapture.h>
 
-#include "Common\Array.h"
-#include "Common\Callback.h"
 
 // Capture
 #define ENABLE_OPENGL_WINDOW false

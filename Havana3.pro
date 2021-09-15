@@ -28,7 +28,7 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 INCLUDEPATH += $$PWD/include
 
-LIBS += $$PWD/lib/PX14_64.lib# \
+LIBS += $$PWD/lib/PX14_64.lib # \
 #        $$PWD/lib/ATSApi.lib
 LIBS += $$PWD/lib/AxsunOCTCapture.lib
 LIBS += $$PWD/lib/NIDAQmx.lib
@@ -68,7 +68,7 @@ SOURCES += Havana3/Havana3.cpp \
     Havana3/Dialog/ExportDlg.cpp
 
 SOURCES += DataAcquisition/SignatecDAQ/SignatecDAQ.cpp \
-    DataAcquisition/AlazarDAQ/AlazarDAQ.cpp \
+#    DataAcquisition/AlazarDAQ/AlazarDAQ.cpp \
     DataAcquisition/FLImProcess/FLImProcess.cpp \
     DataAcquisition/AxsunCapture/AxsunCapture.cpp \
     DataAcquisition/ThreadManager.cpp \
@@ -80,9 +80,9 @@ SOURCES += MemoryBuffer/MemoryBuffer.cpp
 SOURCES += DeviceControl/FreqDivider/FreqDivider.cpp \
     DeviceControl/PmtGainControl/PmtGainControl.cpp \
     DeviceControl/ElforlightLaser/ElforlightLaser.cpp \
-    DeviceControl/IPGPhotonicsLaser/DigitalInput/DigitalInput.cpp \
-    DeviceControl/IPGPhotonicsLaser/DigitalOutput/DigitalOutput.cpp \
-    DeviceControl/IPGPhotonicsLaser/IPGPhotonicsLaser.cpp \
+#    DeviceControl/IPGPhotonicsLaser/DigitalInput/DigitalInput.cpp \
+#    DeviceControl/IPGPhotonicsLaser/DigitalOutput/DigitalOutput.cpp \
+#    DeviceControl/IPGPhotonicsLaser/IPGPhotonicsLaser.cpp \
     DeviceControl/AxsunControl/AxsunControl.cpp \
     DeviceControl/FaulhaberMotor/FaulhaberMotor.cpp \
     DeviceControl/FaulhaberMotor/PullbackMotor.cpp \
@@ -110,7 +110,7 @@ HEADERS += Havana3/Configuration.h \
     Havana3/Dialog/ExportDlg.h
 
 HEADERS += DataAcquisition/SignatecDAQ/SignatecDAQ.h \
-    DataAcquisition/AlazarDAQ/AlazarDAQ.h \
+#    DataAcquisition/AlazarDAQ/AlazarDAQ.h \
     DataAcquisition/FLImProcess/FLImProcess.h \
     DataAcquisition/AxsunCapture/AxsunCapture.h \
     DataAcquisition/ThreadManager.h \
@@ -122,6 +122,9 @@ HEADERS += MemoryBuffer/MemoryBuffer.h
 HEADERS += DeviceControl/FreqDivider/FreqDivider.h \
     DeviceControl/PmtGainControl/PmtGainControl.h \
     DeviceControl/ElforlightLaser/ElforlightLaser.h \
+#    DeviceControl/IPGPhotonicsLaser/DigitalInput/DigitalInput.h \
+#    DeviceControl/IPGPhotonicsLaser/DigitalOutput/DigitalOutput.h \
+#    DeviceControl/IPGPhotonicsLaser/IPGPhotonicsLaser.h \
     DeviceControl/AxsunControl/AxsunControl.h \
     DeviceControl/FaulhaberMotor/FaulhaberMotor.h \
     DeviceControl/FaulhaberMotor/PullbackMotor.h \

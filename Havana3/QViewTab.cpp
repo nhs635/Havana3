@@ -52,7 +52,7 @@ QViewTab::~QViewTab()
 	if (m_pMedfiltIntensityMap) delete m_pMedfiltIntensityMap;
 	if (m_pMedfiltLifetimeMap) delete m_pMedfiltLifetimeMap;
     if (m_pMedfiltLongi) delete m_pMedfiltLongi;
-    //if (m_pAnn) delete m_pAnn;
+    ///if (m_pAnn) delete m_pAnn;
 }
 
 
@@ -692,7 +692,7 @@ void QViewTab::scaleFLImEnFaceMap(ImageObject* pImgObjIntensityMap, ImageObject*
 		m_pConfig->flimIntensityRange[ch].min, m_pConfig->flimIntensityRange[ch].max);
 	ippiTranspose_8u_C1R(scale_temp.raw_ptr(), sizeof(uint8_t) * roi_flimproj4.width,
 		pImgObjIntensityMap->arr.raw_ptr(), sizeof(uint8_t) * roi_flimproj4.height, roi_flimproj4);
-	circShift(pImgObjIntensityMap->arr, int(m_pConfig->rotatedAlines / 4));
+	//circShift(pImgObjIntensityMap->arr, int(m_pConfig->rotatedAlines / 4));
 	(*m_pMedfiltIntensityMap)(pImgObjIntensityMap->arr.raw_ptr());
 
 	// Lifetime map
@@ -701,7 +701,7 @@ void QViewTab::scaleFLImEnFaceMap(ImageObject* pImgObjIntensityMap, ImageObject*
 		m_pConfig->flimLifetimeRange[ch].min, m_pConfig->flimLifetimeRange[ch].max);
 	ippiTranspose_8u_C1R(scale_temp.raw_ptr(), sizeof(uint8_t) * roi_flimproj4.width,
 		pImgObjLifetimeMap->arr.raw_ptr(), sizeof(uint8_t) * roi_flimproj4.height, roi_flimproj);
-	circShift(pImgObjLifetimeMap->arr, int(m_pConfig->rotatedAlines / 4));
+	//circShift(pImgObjLifetimeMap->arr, int(m_pConfig->rotatedAlines / 4));
 	(*m_pMedfiltLifetimeMap)(pImgObjLifetimeMap->arr.raw_ptr());
 
 	// RGB conversion
@@ -715,7 +715,7 @@ void QViewTab::scaleFLImEnFaceMap(ImageObject* pImgObjIntensityMap, ImageObject*
 
 void QViewTab::circShift(np::Uint8Array2& image, int shift)
 {
-	if (shift > 0)
+	if (shift >= 0)
 	{
 		np::Uint8Array2 temp(image.size(0), shift);
 

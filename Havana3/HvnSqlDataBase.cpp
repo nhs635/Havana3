@@ -37,9 +37,9 @@ bool HvnSqlDataBase::openDatabase(const QString& username, const QString& passwo
 			QString db_fullpath = m_pConfig->dbPath + "/db.sqlite";
 			bool init_req = !QDir().exists(db_fullpath);
 
-#ifdef ENABLE_DATABASE_ENCRYPTION
 			qDebug() << QSqlDatabase::drivers();
 
+#ifdef ENABLE_DATABASE_ENCRYPTION
 			m_sqlDataBase = QSqlDatabase::addDatabase("SQLITECIPHER", "DBConnection");
 			m_sqlDataBase.setDatabaseName(m_pConfig->dbPath + "/db.sqlite");
 			m_sqlDataBase.setUserName(username);

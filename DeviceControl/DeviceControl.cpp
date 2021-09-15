@@ -23,9 +23,7 @@
 
 #include <DataAcquisition/DataAcquisition.h>
 #include <DataAcquisition/SignatecDAQ/SignatecDAQ.h>
-#ifdef AX_CAPT_ENABLE
 #include <DataAcquisition/AxsunCapture/AxsunCapture.h>
-#endif
 
 #include <Common/Array.h>
 
@@ -651,15 +649,18 @@ bool DeviceControl::connectAxsunControl(bool toggled)
 #endif
 	}
 	else
-	{
-		// Set status
-#ifndef NEXT_GEN_SYSTEM
-		setLiveImaging(false);
-#endif
-		setLightSource(false);
-				
+	{				
 		if (m_pAxsunControl)
 		{
+			// Set status
+			if (m_pAxsunControl->isInitialized())
+			{
+#ifndef NEXT_GEN_SYSTEM
+				setLiveImaging(false);
+#endif
+				setLightSource(false);
+			}
+
 			// Delete Axsun OCT control objects
 			delete m_pAxsunControl;
 			m_pAxsunControl = nullptr;

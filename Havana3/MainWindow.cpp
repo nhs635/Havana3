@@ -117,12 +117,11 @@ void MainWindow::removeTabView(QDialog *pTabView)
 {
 	m_pConfiguration->writeToLog(QString("Tab removed: %1").arg(pTabView->windowTitle()));
 
-	if (pTabView != m_pStreamTab)
-		pTabView->deleteLater();
-
     m_pTabWidget->removeTab(m_pTabWidget->indexOf(pTabView));
 	m_vectorTabViews.erase(std::find(m_vectorTabViews.begin(), m_vectorTabViews.end(), pTabView));
 
+	if (pTabView != m_pStreamTab)
+		pTabView->deleteLater();
 }
 
 
@@ -158,11 +157,11 @@ void MainWindow::tabCurrentChanged(int index)
 		if (!m_pStreamTab->getDataAcquisition()->getAcquisitionState())
 			emit m_pTabWidget->tabCloseRequested(index);
 	}
-	//else if (currentTab->windowTitle().contains("Review"))
-	//{
-	//	if (!dynamic_cast<QResultTab*>(currentTab)->getDataProcessing()->getIsDataLoaded())
-	//		emit m_pTabWidget->tabCloseRequested(index);
-	//}
+	///else if (currentTab->windowTitle().contains("Review"))
+	///{
+	///	if (!dynamic_cast<QResultTab*>(currentTab)->getDataProcessing()->getIsDataLoaded())
+	///		emit m_pTabWidget->tabCloseRequested(index);
+	///}
 	
 	prev_index = index;
 

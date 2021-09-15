@@ -5,6 +5,7 @@
 AxsunControl::AxsunControl() :
 	m_pAxsunOCTControl(nullptr),
 	m_bIsConnected(DISCONNECTED),
+	m_bInitialized(false),
 	m_daq_device(-1),
 	m_laser_device(-1)
 {
@@ -34,6 +35,11 @@ bool AxsunControl::initialize(int n_device)
 
 	// Co-Initialization
     result = CoInitialize(NULL);
+	if (result == S_FALSE)
+	{
+		dumpControlError(result, pPreamble);
+		return false;
+	}
 	
 	// Dynamic Object for Axsun OCT Control
 	m_pAxsunOCTControl = IAxsunOCTControlPtr(__uuidof(struct AxsunOCTControl));

@@ -160,17 +160,17 @@ void QResultTab::readRecordData()
 
 	/* 확인 필요 !!!!!!!!!!! */
 	// Make progress dialog 
-	//m_pProgressDlg = new QProgressDialog("Processing...", "Cancel", 0, 100, this);
-	//connect(m_pDataProcessing, SIGNAL(processedSingleFrame(int)), m_pProgressDlg, SLOT(setValue(int)));
-	//connect(m_pDataProcessing, &DataProcessing::abortedProcessing, [&]() { m_pProgressDlg->setValue(100); /* tab 종료 조건 */ });
-	/////connect(&progress, &QProgressDialog::canceled, [&]() { m_pDataProcessing->m_bAbort = true; });
-	//m_pProgressDlg->setWindowTitle("Review");
-	//m_pProgressDlg->setCancelButton(0);
-	//m_pProgressDlg->setWindowModality(Qt::WindowModal);
-	//m_pProgressDlg->setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::CustomizeWindowHint);
-	//m_pProgressDlg->move((m_pMainWnd->width() - m_pProgressDlg->width()) / 2, (m_pMainWnd->height() - m_pProgressDlg->height()) / 2);
-	//m_pProgressDlg->setFixedSize(m_pProgressDlg->width(), m_pProgressDlg->height());
-	//m_pProgressDlg->exec();
+	m_pProgressDlg = new QProgressDialog("Processing...", "Cancel", 0, 100, this);
+	connect(m_pDataProcessing, SIGNAL(processedSingleFrame(int)), m_pProgressDlg, SLOT(setValue(int)));
+	connect(m_pDataProcessing, &DataProcessing::abortedProcessing, [&]() { m_pProgressDlg->setValue(100); m_pViewTab->invalidate(); /* tab 종료 조건 */ });
+	///connect(&progress, &QProgressDialog::canceled, [&]() { m_pDataProcessing->m_bAbort = true; });
+	m_pProgressDlg->setWindowTitle("Review");
+	m_pProgressDlg->setCancelButton(0);
+	m_pProgressDlg->setWindowModality(Qt::WindowModal);
+	m_pProgressDlg->setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::CustomizeWindowHint);
+	m_pProgressDlg->move((m_pMainWnd->width() - m_pProgressDlg->width()) / 2, (m_pMainWnd->height() - m_pProgressDlg->height()) / 2);
+	m_pProgressDlg->setFixedSize(m_pProgressDlg->width(), m_pProgressDlg->height());
+	m_pProgressDlg->exec();
 	
 	/// // Abort
 	///if (m_pDataProcessing->m_bAbort)

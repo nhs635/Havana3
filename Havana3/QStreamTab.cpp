@@ -15,9 +15,7 @@
 #include <DataAcquisition/DataAcquisition.h>
 #include <DataAcquisition/ThreadManager.h>
 #ifndef NEXT_GEN_SYSTEM
-#ifdef AX_CAPT_ENABLE
 #include <DataAcquisition/AxsunCapture/AxsunCapture.h>
-#endif
 #include <DataAcquisition/SignatecDAQ/SignatecDAQ.h>
 #else
 #include <DataAcquisition/AlazarDAQ/AlazarDAQ.h>
@@ -62,20 +60,6 @@ QStreamTab::QStreamTab(QString patient_id, QWidget *parent) :
 	m_pThreadFlimProcess = new ThreadManager("FLIm image process");
 	m_pThreadOctProcess = new ThreadManager("OCT image process");
 	m_pThreadVisualization = new ThreadManager("Visualization process");
-	
-	// Create buffers for threading operation
-	m_syncFlimProcessing.allocate_queue_buffer(m_pConfig->flimScans, m_pConfig->flimAlines, PROCESSING_BUFFER_SIZE);  // FLIm Processing
-#ifndef NEXT_GEN_SYSTEM
-	m_syncOctProcessing.allocate_queue_buffer(m_pConfig->octScans, m_pConfig->octAlines, PROCESSING_BUFFER_SIZE); // OCT Processing
-#else
-	m_syncOctProcessing.allocate_queue_buffer(m_pConfig->octScansFFT / 2, m_pConfig->octAlines, PROCESSING_BUFFER_SIZE); // OCT Processing
-#endif
-	m_syncFlimVisualization.allocate_queue_buffer(11, m_pConfig->flimAlines, PROCESSING_BUFFER_SIZE);  // FLIm Visualization
-#ifndef NEXT_GEN_SYSTEM
-	m_syncOctVisualization.allocate_queue_buffer(m_pConfig->octScans, m_pConfig->octAlines, PROCESSING_BUFFER_SIZE);  // OCT Visualization
-#else
-	m_syncOctVisualization.allocate_queue_buffer(m_pConfig->octScansFFT / 2, m_pConfig->octAlines, PROCESSING_BUFFER_SIZE);  // OCT Visualization
-#endif
 
     // Set signal object
     setFlimAcquisitionCallback();
@@ -106,7 +90,6 @@ QStreamTab::~QStreamTab()
 #ifdef DEVELOPER_MODE
 	m_pSyncMonitorTimer->stop();
 #endif
-
 	if (m_pDeviceControl) delete m_pDeviceControl;
 	if (m_pDataAcquisition) delete m_pDataAcquisition;
 
@@ -114,11 +97,6 @@ QStreamTab::~QStreamTab()
 	if (m_pThreadOctProcess) delete m_pThreadOctProcess;
 	if (m_pThreadFlimProcess) delete m_pThreadFlimProcess;
 	
-	///m_syncFlimProcessing.deallocate_queue_buffer();
-	///m_syncOctProcessing.deallocate_queue_buffer();
-	///m_syncFlimVisualization.deallocate_queue_buffer();
-	///m_syncOctVisualization.deallocate_queue_buffer();
-
 #ifdef DEVELOPER_MODE
 	if (m_pScope_Alines)
 	{
@@ -314,14 +292,35 @@ bool QStreamTab::enableMemoryBuffer(bool enabled)
 {
 	if (enabled)
 	{
-        std::thread allocate_buffers([&]() {
-            // Create buffers for data recording
+		// Create buffers for data recording
+        std::thread allocate_buffers([&]() {        
             m_pMemoryBuffer->allocateWritingBuffer();
 		});
         allocate_buffers.detach();
+
+		// Create buffers for threading operation
+		m_syncFlimProcessing.allocate_queue_buffer(m_pConfig->flimScans, m_pConfig->flimAlines, PROCESSING_BUFFER_SIZE);  // FLIm Processing
+#ifndef NEXT_GEN_SYSTEM
+		m_syncOctProcessing.allocate_queue_buffer(m_pConfig->octScans, m_pConfig->octAlines, PROCESSING_BUFFER_SIZE); // OCT Processing
+#else
+		m_syncOctProcessing.allocate_queue_buffer(m_pConfig->octScansFFT / 2, m_pConfig->octAlines, PROCESSING_BUFFER_SIZE); // OCT Processing
+#endif
+		m_syncFlimVisualization.allocate_queue_buffer(11, m_pConfig->flimAlines, PROCESSING_BUFFER_SIZE);  // FLIm Visualization
+#ifndef NEXT_GEN_SYSTEM
+		m_syncOctVisualization.allocate_queue_buffer(m_pConfig->octScans, m_pConfig->octAlines, PROCESSING_BUFFER_SIZE);  // OCT Visualization
+#else
+		m_syncOctVisualization.allocate_queue_buffer(m_pConfig->octScansFFT / 2, m_pConfig->octAlines, PROCESSING_BUFFER_SIZE);  // OCT Visualization
+#endif
 	}
 	else
     {
+		// Disallocate buffers for threading operation
+		m_syncFlimProcessing.deallocate_queue_buffer();
+		m_syncOctProcessing.deallocate_queue_buffer();
+		m_syncFlimVisualization.deallocate_queue_buffer();
+		m_syncOctVisualization.deallocate_queue_buffer();
+
+		// Disallocate buffers for data recording
 		m_pMemoryBuffer->disallocateWritingBuffer();
     }
 
@@ -520,19 +519,6 @@ void QStreamTab::setOctAcquisitionCallback()
 #else
 	m_pDataAcquisition->ConnectAcquiredOctData1([&](int frame_count, const void* _frame_ptr) {
 #endif
-
-        // Mirroring
-		if (m_pConfig->verticalMirroring)
-		{
-#ifndef NEXT_GEN_SYSTEM
-			IppiSize roi_oct = { frame.size(0), frame.size(1) };
-			ippiMirror_8u_C1IR((Ipp8u*)frame.raw_ptr(), roi_oct.width, roi_oct, ippAxsVertical);
-#else
-			IppiSize roi_oct = { m_pConfig->octScansFFT / 2, m_pConfig->octAlines };
-			ippiMirror_32f_C1IR((Ipp32f*)_frame_ptr, roi_oct.width, roi_oct, ippAxsVertical);
-#endif
-		}
-
 		// Data transfer
 		int renewal_count = RENEWAL_COUNT / (m_pToggleButton_EnableRotation->isChecked() && !m_pToggleButton_StartPullback->isChecked() ? REDUCED_COUNT : 1);
 		if (!(frame_count % renewal_count))
@@ -841,6 +827,17 @@ void QStreamTab::setVisualizationCallback()
 				// Renewal count
 				int renewal_count = m_pToggleButton_EnableRotation->isChecked() && !m_pToggleButton_StartPullback->isChecked() ? 8 : 1;
 
+				// Mirroring
+				if (m_pConfig->verticalMirroring)
+				{
+#ifndef NEXT_GEN_SYSTEM
+					IppiSize roi_oct = { m_pViewTab->m_visImage.size(0), m_pViewTab->m_visImage.size(1) };
+#else
+					IppiSize roi_oct = { m_pConfig->octScansFFT / 2, m_pConfig->octAlines };
+#endif
+					ippiMirror_8u_C1IR(oct_data, roi_oct.width, roi_oct, ippAxsVertical);
+				}
+
                 // Draw A-lines
 				if (renewal_count == 1)
 				{
@@ -1032,32 +1029,47 @@ void QStreamTab::startPullback(bool enabled)
 
 		// Check pullback proceeding
 		QMessageBox MsgBox(QMessageBox::Information, "OCT-FLIm", "Please push 'pullback' button to proceed...");
+		MsgBox.setStandardButtons(QMessageBox::Ok | QMessageBox::Cancel);
+		MsgBox.setDefaultButton(QMessageBox::Ok);
 		MsgBox.setButtonText(QMessageBox::Ok, "Pullback");
-		MsgBox.exec();
+		int ret = MsgBox.exec();
 
-		// Start recording (+ automatical pullback)
-		if (!m_pDeviceControl->getPullbackMotor())
+		switch (ret)
 		{
-			startPullback(false);
-			return;
-		}
+		case QMessageBox::Ok:
 
-		// Set recording - pullback synchronization			
-		m_pMemoryBuffer->DidPullback.clear();
-		m_pMemoryBuffer->DidPullback += [&]() {
-			if (m_pDeviceControl->getPullbackMotor())
+			// Start recording (+ automatical pullback)
+			if (!m_pDeviceControl->getPullbackMotor())
 			{
-				m_pDeviceControl->getPullbackMotor()->DidRotateEnd += [&]() 
-				{ 
-					m_pToggleButton_StartPullback->setChecked(false);	
-				};
-				m_pDeviceControl->moveAbsolute();
+				startPullback(false);
+				return;
 			}
-		};
 
-		m_pMemoryBuffer->startRecording();
-		
-		m_pConfig->writeToLog(QString("Pullback recording started: %1 (ID: %2)").arg(m_recordInfo.patientName).arg(m_recordInfo.patientId));
+			// Set recording - pullback synchronization			
+			m_pMemoryBuffer->DidPullback.clear();
+			m_pMemoryBuffer->DidPullback += [&]() {
+				if (m_pDeviceControl->getPullbackMotor())
+				{
+					m_pDeviceControl->getPullbackMotor()->DidRotateEnd += [&]()
+					{
+						m_pToggleButton_StartPullback->setChecked(false);
+					};
+					m_pDeviceControl->moveAbsolute();
+				}
+			};
+
+			m_pMemoryBuffer->startRecording();
+
+			m_pConfig->writeToLog(QString("Pullback recording started: %1 (ID: %2)").arg(m_recordInfo.patientName).arg(m_recordInfo.patientId));
+
+		case QMessageBox::Cancel:			
+			disconnect(m_pToggleButton_StartPullback, SIGNAL(toggled(bool)), 0, 0);
+			m_pToggleButton_EnableRotation->setChecked(false);
+			m_pToggleButton_StartPullback->setIcon(style()->standardIcon(QStyle::SP_ArrowRight));
+			m_pToggleButton_StartPullback->setText(" Start Pullback");
+			m_pToggleButton_StartPullback->setStyleSheet("QPushButton{font-size:12pt; font-weight:bold; color:black; background-color:#00ff00}");
+			connect(m_pToggleButton_StartPullback, SIGNAL(toggled(bool)), this, SLOT(startPullback(bool)));
+		}
     }
     else 
     {		
@@ -1095,15 +1107,9 @@ void QStreamTab::onTimerSyncMonitor()
 	size_t fv_bfn = getFlimVisualizationBufferQueueSize();
 	size_t ov_bfn = getOctVisualizationBufferQueueSize();
 #ifndef NEXT_GEN_SYSTEM
-#ifdef AX_CAPT_ENABLE
 	double oct_fps = m_pDataAcquisition->getAxsunCapture()->frameRate;
 	double flim_fps = m_pDataAcquisition->getDigitizer()->frameRate;
 	uint32_t dropped_packets = m_pDataAcquisition->getAxsunCapture()->dropped_packets;
-#else
-	double oct_fps = 0;
-	double flim_fps = 0;
-	uint32_t dropped_packets = 0;
-#endif
 
 	m_pLabel_StreamingSyncStatus->setText(QString("[Sync]\nFP#: %1\nOP#: %2\nFV#: %3\nOV#: %4\nOCT: %5 fps\nFLIM: %6 fps\ndrop ptks: %7")
 		.arg(fp_bfn, 3).arg(op_bfn, 3).arg(fv_bfn, 3).arg(ov_bfn, 3).arg(oct_fps, 3, 'f', 2).arg(flim_fps, 3, 'f', 2).arg(dropped_packets));

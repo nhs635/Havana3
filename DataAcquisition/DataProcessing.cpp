@@ -212,6 +212,7 @@ void DataProcessing::deinterleaving(Configuration* pConfig)
 					// Data deinterleaving
 					memcpy(pulse_ptr, frame_ptr, sizeof(uint16_t) * pConfig->flimFrameSize);
 					if (frameCount >= pConfig->interFrameSync)
+					{
 #ifndef NEXT_GEN_SYSTEM
 						memcpy(pVisTab->m_vectorOctImage.at(frameCount - pConfig->interFrameSync).raw_ptr(),
 							frame_ptr + sizeof(uint16_t) * pConfig->flimFrameSize, sizeof(uint8_t) * pConfig->octFrameSize);
@@ -219,6 +220,18 @@ void DataProcessing::deinterleaving(Configuration* pConfig)
 						memcpy(pVisTab->m_vectorOctImage.at(frameCount - pConfig->interFrameSync).raw_ptr(),
 							frame_ptr + sizeof(uint16_t) * pConfig->flimFrameSize, sizeof(float) * pConfig->octFrameSize);
 #endif
+						if (pConfig->verticalMirroring)
+						{
+#ifndef NEXT_GEN_SYSTEM
+							IppiSize roi_oct = { pConfig->octScans, pConfig->octAlines };
+#else
+							IppiSize roi_oct = { m_pConfig->octScansFFT / 2, m_pConfig->octAlines };
+#endif
+							ippiMirror_8u_C1IR(pVisTab->m_vectorOctImage.at(frameCount - pConfig->interFrameSync).raw_ptr(), roi_oct.width, roi_oct, ippAxsVertical);
+						}
+
+
+					}
 					//else
 					//	memset(pVisTab->m_vectorOctImage.at(frameCount - pConfig->interFrameSync).raw_ptr(), 0, sizeof(uint8_t) * pConfig->octFrameSize);
 

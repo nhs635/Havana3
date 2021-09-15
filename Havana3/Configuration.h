@@ -1,7 +1,7 @@
 #ifndef CONFIGURATION_H
 #define CONFIGURATION_H
 
-#define VERSION						"0.0.0" ///"1.4.1"
+#define VERSION						"0.0.0" ///"1.4.2"
 
 #define POWER_2(x)					(1 << x)
 #define NEAR_2_POWER(x)				(int)(1 << (int)ceil(log2(x)))
@@ -11,9 +11,8 @@
 //#define DEVELOPER_MODE
 //#define NEXT_GEN_SYSTEM
 //#define ENABLE_FPGA_FFT
-//#define ENABLE_DATABASE_ENCRYPTION
+#define ENABLE_DATABASE_ENCRYPTION
 //#define NI_ENABLE
-//#define AX_CAPT_ENABLE
 
 //////////////////////// Size Setup /////////////////////////
 #define FLIM_SCANS                  512

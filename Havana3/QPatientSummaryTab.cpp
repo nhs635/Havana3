@@ -160,8 +160,7 @@ void QPatientSummaryTab::createPatientSummaryTable()
     m_pTableWidget_RecordInformation->setColumnWidth(4, 120);
     m_pTableWidget_RecordInformation->setColumnWidth(6, 60);
     m_pTableWidget_RecordInformation->setColumnWidth(7, 60);
-
-
+	
     // Connect signal and slot
 	connect(this, SIGNAL(requestDelete(QString)), this, SLOT(deleteRecordData(QString)));
 }

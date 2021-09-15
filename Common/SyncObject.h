@@ -5,7 +5,6 @@
 #include <queue>
 #include <mutex>
 
-//#include <Common/Array.h>
 #include <Common/Queue.h>
 
 template <typename T>
@@ -22,7 +21,6 @@ public:
         for (int i = 0; i < n_buffer; i++)
         {
             T* buffer = new T[width * height];
-			//np::Array<T> arr(buffer, width * height);
             memset(buffer, 0, width * height * sizeof(T));
             queue_buffer.push(buffer);
         }
@@ -30,15 +28,14 @@ public:
 
 	void deallocate_queue_buffer()
 	{
-		//for (int i = 0; i < n_buffer; i++)
-		while (!queue_buffer.empty())
+		for (int i = 0; i < n_buffer; i++)		
 		{
-			//if ()
+			if (!queue_buffer.empty())
 			{
-				/* 확인 필요 !!!  */
-				//T* buffer = queue_buffer.front();
-				//queue_buffer.pop();
-				//if (buffer) delete[] buffer;
+				/* 확인 필요 !!! */
+				T* buffer = queue_buffer.front();
+				queue_buffer.pop();
+				if (buffer) delete[] buffer;
 			}
 		}
 	}
