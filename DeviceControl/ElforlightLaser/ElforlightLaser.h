@@ -28,6 +28,7 @@ public:
 public:
 	inline void setPortName(const char* _port_name) { port_name = _port_name; }
 	inline bool isLaserEnabled() { return is_laser_enabled; }
+	inline int getLaserPowerLevel() { return laser_power_level; }
 
 private:
 	QSerialComm* m_pSerialComm;

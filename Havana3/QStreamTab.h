@@ -80,7 +80,9 @@ private:
 private slots:
     void createSettingDlg();
     void deleteSettingDlg();
+	void resetCatheterCalibration();
     void scrollCatheterCalibration(int);
+	void catheterConnection(bool);
     
 public slots:
 	void enableRotation(bool);
@@ -89,6 +91,7 @@ private slots:
     void startPullback(bool);
 #ifdef DEVELOPER_MODE
 	void onTimerSyncMonitor();
+	void onTimerLaserMonitor();
 #endif
 
 signals:
@@ -117,6 +120,7 @@ private:
 	QTimer *m_pCaptureTimer;
 #ifdef DEVELOPER_MODE
 	QTimer *m_pSyncMonitorTimer;
+	QTimer *m_pLaserMonitorTimer;
 #endif
 
 public:
@@ -145,7 +149,10 @@ private:
     QViewTab* m_pViewTab;
 
     QLabel *m_pLabel_CatheterCalibration;
+	QPushButton *m_pPushButton_CatheterCalibrationReset;
     QScrollBar *m_pScrollBar_CatheterCalibration;
+
+	QPushButton *m_pToggleButton_CatheterConnection;
 
     QPushButton *m_pToggleButton_EnableRotation;
     QPushButton *m_pToggleButton_StartPullback;
@@ -153,6 +160,7 @@ private:
 #ifdef DEVELOPER_MODE
 	QScope *m_pScope_Alines;
 	QLabel *m_pLabel_StreamingSyncStatus;
+	QLabel *m_pLabel_LaserStatus;
 #endif
 
     // Setting dialog

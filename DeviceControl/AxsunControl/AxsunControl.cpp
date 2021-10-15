@@ -35,11 +35,11 @@ bool AxsunControl::initialize(int n_device)
 
 	// Co-Initialization
     result = CoInitialize(NULL);
-	if (result == S_FALSE)
-	{
-		dumpControlError(result, pPreamble);
-		return false;
-	}
+	//if (result == S_FALSE)
+	//{
+	//	dumpControlError(result, pPreamble);
+	//	return false;
+	//}
 	
 	// Dynamic Object for Axsun OCT Control
 	m_pAxsunOCTControl = IAxsunOCTControlPtr(__uuidof(struct AxsunOCTControl));
@@ -471,6 +471,44 @@ bool AxsunControl::setBypassMode(bypass_mode _bypass_mode)
     }
 
     return true;
+}
+
+
+bool AxsunControl::setSubSampling(int M)
+{
+	HRESULT result;
+	unsigned long retvallong;
+	const char* pPreamble = "[Axsun Control] Failed to set bypass mode: ";
+
+	result = m_pAxsunOCTControl->ConnectToOCTDevice(m_daq_device, &m_bIsConnected);
+	if (result != S_OK)
+	{
+		dumpControlError(result, pPreamble);
+		return false;
+	}
+
+	if (m_bIsConnected == CONNECTED)
+	{
+		result = m_pAxsunOCTControl->SetFPGARegister(60, M - 1, &retvallong);
+		if (result != S_OK)
+		{
+			dumpControlError(result, pPreamble);
+			return false;
+		}
+
+		char msg[256];
+		sprintf(msg, "[Axsun Control] Sub-sampling mode is set (subsampling factor: %d).", M);
+		SendStatusMessage(msg, false);
+	}
+	else
+	{
+		result = 80;
+		dumpControlError(result, pPreamble);
+		SendStatusMessage("[Axsun Control] Unable to connect to the devices.", false);
+		return false;
+	}
+
+	return true;
 }
 
 

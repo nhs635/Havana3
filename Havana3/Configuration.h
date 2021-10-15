@@ -8,11 +8,11 @@
 #define ROUND_UP_4S(x)				((x + 3) >> 2) << 2
 
 ////////////////////// Software Setup ///////////////////////
-//#define DEVELOPER_MODE
+#define DEVELOPER_MODE
 //#define NEXT_GEN_SYSTEM
 //#define ENABLE_FPGA_FFT
 #define ENABLE_DATABASE_ENCRYPTION
-//#define NI_ENABLE
+#define NI_ENABLE
 
 //////////////////////// Size Setup /////////////////////////
 #define FLIM_SCANS                  512
@@ -75,8 +75,8 @@
 #define INTER_FRAME_SYNC			0 //10 //9  // Frames
 #define INTRA_FRAME_SYNC			0 //30 // A-lines
 
-#define RENEWAL_COUNT				8
-#define REDUCED_COUNT				8
+#define RENEWAL_COUNT				10
+#define REDUCED_COUNT				4
 #define PIXEL_RESOLUTION			5.7 // micrometer
 #define OUTER_SHEATH_POSITION		120 // (int)((150 * 1.45 + 180 * 1 + 150 * 1.33) / PIXEL_RESOLUTION)
 

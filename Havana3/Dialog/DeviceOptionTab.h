@@ -50,9 +50,8 @@ private slots:
 	void rotateStop();
 	
 	bool connectPullbackMotor(bool);
+	void setPullbackMode(int);
 	void moveAbsolute();
-	void setTargetSpeed(const QString &);
-	void changePullbackLength(const QString &);
 	void home();
 	void stop();
 	
@@ -108,14 +107,12 @@ private:
 	QLabel *m_pLabel_PullbackConnect;
 	QPushButton *m_pToggleButton_PullbackConnect;
 
-	QLabel *m_pLabel_PullbackSpeed;
-	QLineEdit *m_pLineEdit_PullbackSpeed;
-	QLabel *m_pLabel_PullbackSpeedUnit;
+	QLabel *m_pLabel_PullbackMode;
+	QRadioButton *m_pRadioButton_20mms50mm;
+	QRadioButton *m_pRadioButton_10mms30mm;
+	QButtonGroup *m_pButtonGroup_PullbackMode;
 
-	QLabel *m_pLabel_PullbackLength;
-	QLineEdit *m_pLineEdit_PullbackLength;
-	QLabel *m_pLabel_PullbackLengthUnit;
-
+	QLabel *m_pLabel_PullbackOperation;
 	QPushButton *m_pPushButton_Pullback;
 	QPushButton *m_pPushButton_Home;
 	QPushButton *m_pPushButton_PullbackStop;

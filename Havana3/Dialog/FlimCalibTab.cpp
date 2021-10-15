@@ -41,7 +41,6 @@ FlimCalibTab::FlimCalibTab(QWidget *parent) :
     m_pGroupBox_FlimCalibTab->setLayout(m_pVBoxLayout);
 	
 	// Draw pulse data
-	m_pFLIm->loadMaskData();
 	drawRoiPulse(m_pFLIm, 0);
 }
 
@@ -193,10 +192,10 @@ void FlimCalibTab::createCalibWidgets()
             m_pLineEdit_DelayTimeOffset[i - 1]->setAlignment(Qt::AlignCenter);
         }
     }
-    resetChStart0((double)m_pFLIm->_params.ch_start_ind[0] * (double)m_pFLIm->_params.samp_intv);
-    resetChStart1((double)m_pFLIm->_params.ch_start_ind[1] * (double)m_pFLIm->_params.samp_intv);
-    resetChStart2((double)m_pFLIm->_params.ch_start_ind[2] * (double)m_pFLIm->_params.samp_intv);
-    resetChStart3((double)m_pFLIm->_params.ch_start_ind[3] * (double)m_pFLIm->_params.samp_intv);
+    //resetChStart0((double)m_pFLIm->_params.ch_start_ind[0] * (double)m_pFLIm->_params.samp_intv);
+    //resetChStart1((double)m_pFLIm->_params.ch_start_ind[1] * (double)m_pFLIm->_params.samp_intv);
+    //resetChStart2((double)m_pFLIm->_params.ch_start_ind[2] * (double)m_pFLIm->_params.samp_intv);
+    //resetChStart3((double)m_pFLIm->_params.ch_start_ind[3] * (double)m_pFLIm->_params.samp_intv);
 	
     m_pLabel_NanoSec[0] = new QLabel("nsec", this);
     m_pLabel_NanoSec[0]->setFixedWidth(30);

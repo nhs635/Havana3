@@ -17,22 +17,6 @@ FaulhaberMotor::~FaulhaberMotor()
 
 bool FaulhaberMotor::ConnectDevice()
 {
-	//m_pSerialComm->DidReadBuffer += [&](char* buffer, qint64 len)
-	//{
-	//	static char msg[256];
-	//	static int j = 0;
-
-	//	for (int i = 0; i < (int)len; i++)
-	//		msg[j++] = buffer[i];
-
-	//	if (buffer[len - 1] == '\n')
-	//	{
-	//		msg[j] = '\0';
-	//		SendStatusMessage(msg, false);
-	//		j = 0;
-	//	}
-	//};
-
 	// Open a port
 	if (!m_pSerialComm->m_bIsConnected)
 	{
@@ -42,28 +26,28 @@ bool FaulhaberMotor::ConnectDevice()
 			sprintf(msg, "[FAULHABER] Success to connect to %s.", port_name);
 			SendStatusMessage(msg, false);
 
-			m_pSerialComm->DidReadBuffer += [&](char* buffer, qint64 len)
-			{
-				//static char msg[256];
-				//static int j = 0;
+			//m_pSerialComm->DidReadBuffer += [&](char* buffer, qint64 len)
+			//{
+			//	///static char msg[256];
+			//	///static int j = 0;
 
-				//for (int i = 0; i < (int)len; i++)
-				//	msg[j++] = buffer[i];
+			//	///for (int i = 0; i < (int)len; i++)
+			//	///	msg[j++] = buffer[i];
 
-				//if (buffer[len - 1] == '\n')
-				//{
-				//	msg[j] = '\0';
-				//	//SendStatusMessage(msg, false);
-				//	j = 0;
-				//}
+			//	///if (buffer[len - 1] == '\n')
+			//	///{
+			//	///	msg[j] = '\0';
+			//	///	//SendStatusMessage(msg, false);
+			//	///	j = 0;
+			//	///}
 
-				//printf("FAULHABER: Receive: ");
-				//for (int i = 0; i < (int)len; i++)
-				//	printf("%02X ", (unsigned char)buffer[i]);
-				//printf("\n");
+			//	///printf("FAULHABER: Receive: ");
+			//	///for (int i = 0; i < (int)len; i++)
+			//	///	printf("%02X ", (unsigned char)buffer[i]);
+			//	///printf("\n");
 
-				//DidRotateEnd();
-			};
+			//	///DidRotateEnd();
+			//};
 		}
 		else
 		{

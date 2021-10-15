@@ -27,9 +27,9 @@ bool ElforlightLaser::ConnectDevice()
 	{
 		if (m_pSerialComm->openSerialPort(port_name))
 		{
-			char msg[256];
-			sprintf(msg, "[ELFORLIGHT] Success to connect to %s.", port_name);
-			SendStatusMessage(msg, false);
+			char msg0[256];
+			sprintf(msg0, "[ELFORLIGHT] Success to connect to %s.", port_name);
+			SendStatusMessage(msg0, false);
 
 			m_pSerialComm->DidReadBuffer += [&](char* buffer, qint64 len)
 			{
@@ -49,16 +49,20 @@ bool ElforlightLaser::ConnectDevice()
 					int len = strnlen_s(msg, 256);					
 					if (len > 2)
 					{
-						laser_power_level = atoi(&msg[1]);
-						sprintf(msg, "[ELFORLIGHT] Laser power level: %d", laser_power_level);
+						// j: length of msg, (60~80: '?' / 5~20: '+' or '-' or c'E' or 'R')
+						if ((j > 60) && (j <= 80))
+						{
+							sprintf(msg0, "[ELFORLIGHT] Laser status:\n%s", msg);
+							MonitoringState(msg);
+						}
+						else if (j <= 60)
+						{
+							laser_power_level = atoi(&msg[1]);
+							sprintf(msg0, "[ELFORLIGHT] Laser power level: %d", laser_power_level);
+							UpdatePowerLevel(laser_power_level);
+						}
 
-						/// j: length of msg, (60~80: '?' / 5~20: '+' or '-' or c'E' or 'R')
-						///if ((j > 60) && (j <= 80))
-						///	MonitoringState(msg);
-						///else if (j <= 60)
-
-						SendStatusMessage(msg, false);
-						UpdatePowerLevel(laser_power_level);
+						SendStatusMessage(msg0, false);
 					}
 
 					j = 0;

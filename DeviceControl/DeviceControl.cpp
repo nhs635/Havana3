@@ -172,7 +172,7 @@ bool DeviceControl::connectPullbackMotor(bool enabled)
 		else
 		{
 			m_pPullbackMotor->EnableMotor();
-			this->home();
+			//this->home();
 		}
 	}
 	else
@@ -202,13 +202,14 @@ void DeviceControl::moveAbsolute()
 	{
 		// Pullback
 		m_pPullbackMotor->RotateMotor(-int(m_pConfig->pullbackSpeed * GEAR_RATIO));
-		m_pPullbackMotor->current_pos += m_pConfig->pullbackLength;
 
 		// Pullback end condition
 		float duration = m_pConfig->pullbackLength / m_pConfig->pullbackSpeed;
 		std::thread stop([&, duration]() {
+			std::unique_lock<std::mutex> lock(m_pPullbackMotor->mtx_rotating);
+
 			std::this_thread::sleep_for(std::chrono::milliseconds(int(1000 * duration)));
-			if (m_pPullbackMotor->getMovingState())
+			if (m_pPullbackMotor && (m_pPullbackMotor->getMovingState()))
 			{
 				this->stop();
 				m_pPullbackMotor->DidRotateEnd();
@@ -241,18 +242,17 @@ void DeviceControl::home()
 	if (m_pPullbackMotor)
 	{
 		// Pullback
-		m_pPullbackMotor->RotateMotor(int(20 * GEAR_RATIO));
+		m_pPullbackMotor->RotateMotor(int(m_pConfig->pullbackSpeed * GEAR_RATIO));
 
 		// Pullback end condition
-		float duration = m_pPullbackMotor->current_pos / m_pConfig->pullbackSpeed;
+		float duration = m_pConfig->pullbackLength / m_pConfig->pullbackSpeed;
 		std::thread stop([&, duration]() {
 			std::unique_lock<std::mutex> lock(m_pPullbackMotor->mtx_rotating);
 
-			std::this_thread::sleep_for(std::chrono::milliseconds(int(1000 * duration)));
-			//if (m_pPullbackMotor->getMovingState())
+			std::this_thread::sleep_for(std::chrono::milliseconds(int(1050 * duration)));
+			if (m_pPullbackMotor && (m_pPullbackMotor->getMovingState()))
 			{
 				this->stop();
-				m_pPullbackMotor->current_pos = 0;
 			}
 		});
 		stop.detach();
@@ -447,9 +447,9 @@ void DeviceControl::adjustLaserPower(int level)
 		flim_laser_power_level--;
 	}
 
-	///char msg[256];
-	///sprintf(msg, "[ELFORLIGHT] Laser power adjusted: %d", flim_laser_power_level);
-	///SendStatusMessage(msg, false);
+	char msg[256];
+	sprintf(msg, "[ELFORLIGHT] Laser power adjusted: %d", m_pElforlightLaser->getLaserPowerLevel());
+	SendStatusMessage(msg, false);
 #else
 	if (m_pIPGPhotonicsLaser)
 		m_pIPGPhotonicsLaser->SetPowerLevel((uint8_t)level);
@@ -464,8 +464,8 @@ void DeviceControl::sendLaserCommand(char* command)
 {
 #ifndef NEXT_GEN_SYSTEM
 	if (m_pElforlightLaser) 
-		if (m_pElforlightLaser->isLaserEnabled())
-			m_pElforlightLaser->SendCommand(command);
+		//if (m_pElforlightLaser->isLaserEnabled())
+		m_pElforlightLaser->SendCommand(command);
 #else
 	(void)command;
 #endif
@@ -625,13 +625,14 @@ bool DeviceControl::connectAxsunControl(bool toggled)
 			return false;
 		}
 #endif
-		
 		// Default Clock Delay
 		setClockDelay(CLOCK_GAIN * CLOCK_DELAY + CLOCK_OFFSET);
 
 		// Default VDL Length
-//		m_pAxsunControl->setVDLHome();
-//		m_pAxsunControl->setVDLLength(m_pConfig->axsunVDLLength);
+		//setVDLHome();
+		//setVDLLength(m_pConfig->axsunVDLLength);
+		m_pAxsunControl->setVDLHome();
+		//m_pAxsunControl->setVDLLength(m_pConfig->axsunVDLLength);
 //		std::thread vdl_length([&]() {
 //			//std::this_thread::sleep_for(std::chrono::milliseconds(1500));
 //			//m_pAxsunControl->setVDLLength(m_pConfig->axsunVDLLength);
@@ -711,6 +712,12 @@ void DeviceControl::setClockDelay(double)
 {
 	if (m_pAxsunControl)
 		m_pAxsunControl->setClockDelay(CLOCK_DELAY);
+}
+
+void DeviceControl::setSubSampling(int M)
+{
+	if (m_pAxsunControl)
+		m_pAxsunControl->setSubSampling(M);
 }
 
 void DeviceControl::setVDLLength(double length)

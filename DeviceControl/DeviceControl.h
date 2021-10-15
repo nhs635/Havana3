@@ -79,6 +79,7 @@ public:
 	void setLightSource(bool);
 	void setLiveImaging(bool);
 	void setClockDelay(double);
+	void setSubSampling(int);
 	void setVDLLength(double);
 	void setVDLHome();
     void adjustDecibelRange(double, double);

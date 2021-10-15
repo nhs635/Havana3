@@ -57,6 +57,7 @@ public:
     bool setBackground(const unsigned short* pBackground);
     bool setDispersionCompensation(double a2 = 0, double a3 = 0, int length = SAMPLE_LENGTH);
 	bool setBypassMode(bypass_mode _bypass_mode);
+	bool setSubSampling(int M);
     bool setVDLHome();
     bool setVDLLength(float position);
     bool setClockDelay(unsigned long delay);

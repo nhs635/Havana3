@@ -243,15 +243,20 @@ void QPatientSummaryTab::deleteSettingDlg()
 
 void QPatientSummaryTab::deleteRecordData(const QString& record_id)
 {
-	QMessageBox MsgBox(QMessageBox::Question, "Confirm delete", "Do you want to remove the recorded data?");
-	MsgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
-	MsgBox.setDefaultButton(QMessageBox::No);
+	QMessageBox MsgBox(QMessageBox::Question, "Confirm delete", "Choose Remove to remove this data from Havana3.\nChoose Delete to permanently delete this data.");
+	MsgBox.setStandardButtons(QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel);
+	MsgBox.setButtonText(QMessageBox::Save, "&Remove");
+	MsgBox.setButtonText(QMessageBox::Discard, "&Delete");
+	MsgBox.setDefaultButton(QMessageBox::Cancel);
+	int ret = MsgBox.exec();
 
-	switch (MsgBox.exec())
+	switch (ret)
 	{
-	case QMessageBox::Yes:
+	case QMessageBox::Save:
 		break;
-	case QMessageBox::No:
+	case QMessageBox::Discard:
+		break;
+	case QMessageBox::Cancel:
 		return;
 	default:
 		return;
@@ -260,11 +265,19 @@ void QPatientSummaryTab::deleteRecordData(const QString& record_id)
 	QString command = QString("SELECT * FROM records WHERE id=%1").arg(record_id);
 
 	int current_row = -1;
-	m_pHvnSqlDataBase->queryDatabase(command, [&](QSqlQuery& _sqlQuery) {
+	m_pHvnSqlDataBase->queryDatabase(command, [&, ret](QSqlQuery& _sqlQuery) {
 
 		while (_sqlQuery.next())
 		{
 			QString datetime = _sqlQuery.value(3).toString();
+			QString filename = _sqlQuery.value(9).toString();
+
+			if (ret == QMessageBox::Discard)
+			{
+				QString filename0 = filename.replace("/pullback.data", "");
+				QDir dir(filename0);
+				dir.removeRecursively();
+			}
 
 			for (int i = 0; i < m_pTableWidget_RecordInformation->rowCount(); i++)
 			{

@@ -31,6 +31,13 @@
 #include <chrono>
 
 
+enum PullbackMode
+{
+	_20MM_S_50MM_ = 0,
+	_10MM_S_30MM_ = 1
+};
+
+
 DeviceOptionTab::DeviceOptionTab(QWidget *parent) :
     QDialog(parent), m_pPatientSummaryTab(nullptr), m_pStreamTab(nullptr), m_pResultTab(nullptr), m_pDeviceControl(nullptr)
 {
@@ -155,27 +162,22 @@ void DeviceOptionTab::createHelicalScanningControl()
 	m_pLabel_PullbackConnect = new QLabel(this);
 	m_pLabel_PullbackConnect->setText("Pullback Motor");
 
-	m_pLineEdit_PullbackSpeed = new QLineEdit(this);
-	m_pLineEdit_PullbackSpeed->setFixedWidth(35);
-	m_pLineEdit_PullbackSpeed->setText(QString::number(m_pConfig->pullbackSpeed));
-	m_pLineEdit_PullbackSpeed->setAlignment(Qt::AlignCenter);
-	m_pLineEdit_PullbackSpeed->setDisabled(true);
-	m_pLabel_PullbackSpeed = new QLabel("Pullback Speed", this);
-	m_pLabel_PullbackSpeed->setBuddy(m_pLineEdit_PullbackSpeed);
-	m_pLabel_PullbackSpeed->setDisabled(true);
-	m_pLabel_PullbackSpeedUnit = new QLabel("mm/s  ", this);
-	m_pLabel_PullbackSpeedUnit->setDisabled(true);
+	m_pRadioButton_20mms50mm = new QRadioButton(this);
+	m_pRadioButton_20mms50mm->setText("20 mm/s, 50 mm");
+	m_pRadioButton_20mms50mm->setDisabled(true);
+	m_pRadioButton_10mms30mm = new QRadioButton(this);
+	m_pRadioButton_10mms30mm->setText("10 mm/s, 30 mm");
+	m_pRadioButton_10mms30mm->setDisabled(true);
+	m_pButtonGroup_PullbackMode = new QButtonGroup(this);
+	m_pButtonGroup_PullbackMode->addButton(m_pRadioButton_20mms50mm, 0);
+	m_pButtonGroup_PullbackMode->addButton(m_pRadioButton_10mms30mm, 1);
+	m_pLabel_PullbackMode = new QLabel("Pullback Mode", this);
+	m_pLabel_PullbackMode->setDisabled(true);
 
-	m_pLineEdit_PullbackLength = new QLineEdit(this);
-	m_pLineEdit_PullbackLength->setFixedWidth(35);
-	m_pLineEdit_PullbackLength->setText(QString::number(m_pConfig->pullbackLength));
-	m_pLineEdit_PullbackLength->setAlignment(Qt::AlignCenter);
-	m_pLineEdit_PullbackLength->setDisabled(true);
-	m_pLabel_PullbackLength = new QLabel("Pullback Length", this);
-	m_pLabel_PullbackLength->setBuddy(m_pLineEdit_PullbackLength);
-	m_pLabel_PullbackLength->setDisabled(true);
-	m_pLabel_PullbackLengthUnit = new QLabel("mm", this);
-	m_pLabel_PullbackLengthUnit->setDisabled(true);
+	if (m_pConfig->pullbackSpeed == 20.0)
+		m_pRadioButton_20mms50mm->setChecked(true);
+	else if (m_pConfig->pullbackSpeed == 10.0)
+		m_pRadioButton_10mms30mm->setChecked(true);
 
 	m_pPushButton_Pullback = new QPushButton(this);
 	m_pPushButton_Pullback->setText("Pullback");
@@ -189,6 +191,8 @@ void DeviceOptionTab::createHelicalScanningControl()
 	m_pPushButton_PullbackStop->setText("Stop");
 	m_pPushButton_PullbackStop->setFixedWidth(48);
 	m_pPushButton_PullbackStop->setDisabled(true);
+	m_pLabel_PullbackOperation = new QLabel("Pullback Operation", this);
+	m_pLabel_PullbackOperation->setDisabled(true);
 	
 	// Set Layout
 	QGridLayout *pGridLayout_RotaryMotor = new QGridLayout;
@@ -209,20 +213,23 @@ void DeviceOptionTab::createHelicalScanningControl()
 
 	pGridLayout_PullbackMotor->addWidget(m_pLabel_PullbackConnect, 0, 0);
 	pGridLayout_PullbackMotor->addItem(new QSpacerItem(0, 0, QSizePolicy::MinimumExpanding, QSizePolicy::Fixed), 0, 1, 1, 3);
-	pGridLayout_PullbackMotor->addWidget(m_pToggleButton_PullbackConnect, 0, 4, 1, 2);
+	pGridLayout_PullbackMotor->addWidget(m_pToggleButton_PullbackConnect, 0, 4, 1, 2, Qt::AlignRight);
 
-	pGridLayout_PullbackMotor->addWidget(m_pLabel_PullbackSpeed, 1, 0);
+	pGridLayout_PullbackMotor->addWidget(m_pLabel_PullbackMode, 1, 0);
 	pGridLayout_PullbackMotor->addItem(new QSpacerItem(0, 0, QSizePolicy::MinimumExpanding, QSizePolicy::Fixed), 1, 1);
-	pGridLayout_PullbackMotor->addWidget(m_pLineEdit_PullbackSpeed, 1, 2, Qt::AlignRight);
-	pGridLayout_PullbackMotor->addWidget(m_pLabel_PullbackSpeedUnit, 1, 3);
-	pGridLayout_PullbackMotor->addWidget(m_pPushButton_Pullback, 1, 4, 1, 2);
+	QHBoxLayout *pHBoxLayout_PullbackMode = new QHBoxLayout;
+	pHBoxLayout_PullbackMode->setSpacing(3);
+	pHBoxLayout_PullbackMode->addWidget(m_pRadioButton_20mms50mm);
+	pHBoxLayout_PullbackMode->addWidget(m_pRadioButton_10mms30mm);
+	pGridLayout_PullbackMotor->addItem(pHBoxLayout_PullbackMode, 1, 2, 1, 4, Qt::AlignRight);
 
-	pGridLayout_PullbackMotor->addWidget(m_pLabel_PullbackLength, 2, 0);
-	pGridLayout_PullbackMotor->addItem(new QSpacerItem(0, 0, QSizePolicy::MinimumExpanding, QSizePolicy::Fixed), 2, 1);
-	pGridLayout_PullbackMotor->addWidget(m_pLineEdit_PullbackLength, 2, 2, Qt::AlignRight);
-	pGridLayout_PullbackMotor->addWidget(m_pLabel_PullbackLengthUnit, 2, 3);
-	pGridLayout_PullbackMotor->addWidget(m_pPushButton_Home, 2, 4);
-	pGridLayout_PullbackMotor->addWidget(m_pPushButton_PullbackStop, 2, 5, Qt::AlignRight);
+	pGridLayout_PullbackMotor->addWidget(m_pLabel_PullbackOperation, 2, 0);
+	pGridLayout_PullbackMotor->addItem(new QSpacerItem(0, 0, QSizePolicy::MinimumExpanding, QSizePolicy::Fixed), 2, 1, 1, 3);
+	pGridLayout_PullbackMotor->addWidget(m_pPushButton_Pullback, 2, 4, 1, 2, Qt::AlignRight);
+
+	pGridLayout_PullbackMotor->addItem(new QSpacerItem(0, 0, QSizePolicy::MinimumExpanding, QSizePolicy::Fixed), 3, 0, 1, 4);
+	pGridLayout_PullbackMotor->addWidget(m_pPushButton_Home, 3, 4, Qt::AlignRight);
+	pGridLayout_PullbackMotor->addWidget(m_pPushButton_PullbackStop, 3, 5);
 
 
 	QVBoxLayout *pVBoxLayout_HelicalScanning = new QVBoxLayout;
@@ -241,8 +248,7 @@ void DeviceOptionTab::createHelicalScanningControl()
 	connect(m_pPushButton_RotateStop, SIGNAL(clicked(bool)), this, SLOT(rotateStop()));
 
 	connect(m_pToggleButton_PullbackConnect, SIGNAL(toggled(bool)), this, SLOT(connectPullbackMotor(bool)));
-	connect(m_pLineEdit_PullbackSpeed, SIGNAL(textChanged(const QString &)), this, SLOT(setTargetSpeed(const QString &)));
-	connect(m_pLineEdit_PullbackLength, SIGNAL(textChanged(const QString &)), this, SLOT(changePullbackLength(const QString &)));
+	connect(m_pButtonGroup_PullbackMode, SIGNAL(buttonClicked(int)), this, SLOT(setPullbackMode(int)));
 	connect(m_pPushButton_Pullback, SIGNAL(clicked(bool)), this, SLOT(moveAbsolute()));
 	connect(m_pPushButton_Home, SIGNAL(clicked(bool)), this, SLOT(home()));
 	connect(m_pPushButton_PullbackStop, SIGNAL(clicked(bool)), this, SLOT(stop()));
@@ -584,14 +590,11 @@ bool DeviceOptionTab::connectPullbackMotor(bool toggled)
 
 			m_pLabel_PullbackConnect->setDisabled(true);
 
-			m_pLabel_PullbackSpeed->setEnabled(true);
-			m_pLineEdit_PullbackSpeed->setEnabled(true);
-			m_pLabel_PullbackSpeedUnit->setEnabled(true);
+			m_pLabel_PullbackMode->setEnabled(true);
+			m_pRadioButton_20mms50mm->setEnabled(true);
+			m_pRadioButton_10mms30mm->setEnabled(true);
 
-			m_pLabel_PullbackLength->setEnabled(true);
-			m_pLineEdit_PullbackLength->setEnabled(true);
-			m_pLabel_PullbackLengthUnit->setEnabled(true);
-
+			m_pLabel_PullbackOperation->setEnabled(true);
 			m_pPushButton_Pullback->setEnabled(true);
 			m_pPushButton_Home->setEnabled(true);
 			m_pPushButton_PullbackStop->setEnabled(true);
@@ -610,14 +613,11 @@ bool DeviceOptionTab::connectPullbackMotor(bool toggled)
 
 		m_pLabel_PullbackConnect->setEnabled(true);
 
-		m_pLabel_PullbackSpeed->setDisabled(true);
-		m_pLineEdit_PullbackSpeed->setDisabled(true);
-		m_pLabel_PullbackSpeedUnit->setDisabled(true);
+		m_pLabel_PullbackMode->setDisabled(true);
+		m_pRadioButton_20mms50mm->setDisabled(true);
+		m_pRadioButton_10mms30mm->setDisabled(true);
 
-		m_pLabel_PullbackLength->setDisabled(true);
-		m_pLineEdit_PullbackLength->setDisabled(true);
-		m_pLabel_PullbackLengthUnit->setDisabled(true);
-
+		m_pLabel_PullbackOperation->setDisabled(true);
 		m_pPushButton_Pullback->setDisabled(true);
 		m_pPushButton_Home->setDisabled(true);
 		m_pPushButton_PullbackStop->setDisabled(true);
@@ -630,6 +630,20 @@ bool DeviceOptionTab::connectPullbackMotor(bool toggled)
 	return true;
 }
 
+void DeviceOptionTab::setPullbackMode(int id)
+{
+	if (id == _20MM_S_50MM_)
+	{
+		m_pDeviceControl->setTargetSpeed(20.0);
+		m_pDeviceControl->changePullbackLength(50.0);
+	}
+	else if (id == _10MM_S_30MM_)
+	{
+		m_pDeviceControl->setTargetSpeed(10.0);
+		m_pDeviceControl->changePullbackLength(30.0);
+	}
+}
+
 void DeviceOptionTab::moveAbsolute()
 {
 	m_pDeviceControl->pullback();
@@ -638,38 +652,17 @@ void DeviceOptionTab::moveAbsolute()
 	float duration = m_pConfig->pullbackLength / m_pConfig->pullbackSpeed;
 	std::thread stop([&, duration]() {
 		std::this_thread::sleep_for(std::chrono::milliseconds(int(1000 * duration)));
-		if (m_pDeviceControl->getPullbackMotor()->getMovingState())
-			emit stopPullback();
+		if (m_pDeviceControl->getPullbackMotor())
+			if (m_pDeviceControl->getPullbackMotor()->getMovingState())
+				emit stopPullback();
 	});
 	stop.detach();
 
 
 	// Set widgets
-	m_pLabel_PullbackSpeed->setDisabled(true);
-	m_pLabel_PullbackSpeedUnit->setDisabled(true);
-	m_pLineEdit_PullbackSpeed->setDisabled(true);
-
-	m_pLabel_PullbackLength->setDisabled(true);
-	m_pLabel_PullbackLengthUnit->setDisabled(true);
-	m_pLineEdit_PullbackLength->setDisabled(true);
-
 	m_pPushButton_Home->setDisabled(true);
 	
 	m_pPushButton_Pullback->setStyleSheet("QPushButton { background-color:#00ff00; }");
-}
-
-void DeviceOptionTab::setTargetSpeed(const QString & str)
-{
-	m_pConfig->pullbackSpeed = str.toFloat();
-
-	m_pConfig->writeToLog(QString("Pullback speed set: %1 mm/s").arg(m_pConfig->pullbackSpeed, 3, 'f', 2));
-}
-
-void DeviceOptionTab::changePullbackLength(const QString &str)
-{
-	m_pConfig->pullbackLength = str.toInt();
-
-	m_pConfig->writeToLog(QString("Pullback length set: %1 mm").arg(m_pConfig->pullbackLength, 3, 'f', 2));
 }
 
 void DeviceOptionTab::home()
@@ -682,14 +675,6 @@ void DeviceOptionTab::stop()
 	m_pDeviceControl->stop();
 
 	// Set widgets
-	m_pLabel_PullbackSpeed->setEnabled(true);
-	m_pLabel_PullbackSpeedUnit->setEnabled(true);
-	m_pLineEdit_PullbackSpeed->setEnabled(true);
-
-	m_pLabel_PullbackLength->setEnabled(true);
-	m_pLabel_PullbackLengthUnit->setEnabled(true);
-	m_pLineEdit_PullbackLength->setEnabled(true);
-
 	m_pPushButton_Home->setEnabled(true);
 
 	m_pPushButton_Pullback->setStyleSheet("QPushButton { background-color:#ff0000; }");
@@ -870,6 +855,7 @@ bool DeviceOptionTab::connectFlimLaser(bool toggled)
 
 void DeviceOptionTab::adjustLaserPower(int level)
 {
+#ifndef NEXT_GEN_SYSTEM
 	static int i = 0;
 
 	if (i == 0)
@@ -895,7 +881,7 @@ void DeviceOptionTab::adjustLaserPower(int level)
 	}
 
 	static int flim_laser_power_level = 0;
-
+	
 	if (level > flim_laser_power_level)
 	{
 		m_pDeviceControl->adjustLaserPower(level);
@@ -906,11 +892,18 @@ void DeviceOptionTab::adjustLaserPower(int level)
 		m_pDeviceControl->adjustLaserPower(level);
 		flim_laser_power_level--;
 	}
+#else
+	(void)level;
+#endif
 }
 
 void DeviceOptionTab::changeFlimLaserPower(const QString &str)
 {
+#ifndef NEXT_GEN_SYSTEM
 	(void)str;
+#else
+
+#endif
 }
 
 void DeviceOptionTab::applyFlimLaserPower()
