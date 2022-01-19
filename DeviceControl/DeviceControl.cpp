@@ -58,11 +58,28 @@ DeviceControl::DeviceControl(Configuration *pConfig) :
 
 DeviceControl::~DeviceControl()
 {
-	//setAllDeviceOff();
 }
 
 
-void DeviceControl::setAllDeviceOff()
+void DeviceControl::turnOffAllDevices()
+{
+	// Axsun OCT operation turn off
+	setLightSource(false);
+#ifndef NEXT_GEN_SYSTEM
+	setLiveImaging(false);
+#endif
+
+	// Stop synchronization
+	startSynchronization(false);
+
+	// PMT gain voltage turn off
+	applyPmtGainVoltage(false);
+
+	// Stop rotating
+	rotateStop();
+}
+
+void DeviceControl::disconnectAllDevices()
 {
 	connectAxsunControl(false);
 	startSynchronization(false);
@@ -172,7 +189,6 @@ bool DeviceControl::connectPullbackMotor(bool enabled)
 		else
 		{
 			m_pPullbackMotor->EnableMotor();
-			//this->home();
 		}
 	}
 	else
@@ -180,12 +196,9 @@ bool DeviceControl::connectPullbackMotor(bool enabled)
 		if (m_pPullbackMotor)
 		{
 			// Disconnect the motor
-			{
-				std::unique_lock<std::mutex> lock(m_pPullbackMotor->mtx_rotating);
-
-				m_pPullbackMotor->DisableMotor();
-				m_pPullbackMotor->DisconnectDevice();
-			}
+			m_pPullbackMotor->cv_motor.notify_one();
+			m_pPullbackMotor->DisableMotor();
+			m_pPullbackMotor->DisconnectDevice();
 
 			// Delete Faulhaber motor control objects
 			delete m_pPullbackMotor;
@@ -201,21 +214,10 @@ void DeviceControl::moveAbsolute()
 	if (m_pPullbackMotor)
 	{
 		// Pullback
-		m_pPullbackMotor->RotateMotor(-int(m_pConfig->pullbackSpeed * GEAR_RATIO));
-
-		// Pullback end condition
+		int rpm = -int(m_pConfig->pullbackSpeed * GEAR_RATIO);
 		float duration = m_pConfig->pullbackLength / m_pConfig->pullbackSpeed;
-		std::thread stop([&, duration]() {
-			std::unique_lock<std::mutex> lock(m_pPullbackMotor->mtx_rotating);
-
-			std::this_thread::sleep_for(std::chrono::milliseconds(int(1000 * duration)));
-			if (m_pPullbackMotor && (m_pPullbackMotor->getMovingState()))
-			{
-				this->stop();
-				m_pPullbackMotor->DidRotateEnd();
-			}
-		});
-		stop.detach();
+		m_pPullbackMotor->setDuration(duration);
+		m_pPullbackMotor->RotateMotor(rpm);
 	}
 }
 
@@ -242,27 +244,22 @@ void DeviceControl::home()
 	if (m_pPullbackMotor)
 	{
 		// Pullback
-		m_pPullbackMotor->RotateMotor(int(m_pConfig->pullbackSpeed * GEAR_RATIO));
-
-		// Pullback end condition
-		float duration = m_pConfig->pullbackLength / m_pConfig->pullbackSpeed;
-		std::thread stop([&, duration]() {
-			std::unique_lock<std::mutex> lock(m_pPullbackMotor->mtx_rotating);
-
-			std::this_thread::sleep_for(std::chrono::milliseconds(int(1050 * duration)));
-			if (m_pPullbackMotor && (m_pPullbackMotor->getMovingState()))
-			{
-				this->stop();
-			}
-		});
-		stop.detach();
+		int rpm = int(m_pConfig->pullbackSpeed * GEAR_RATIO);
+		float duration = 1.2 * m_pConfig->pullbackLength / m_pConfig->pullbackSpeed;
+		m_pPullbackMotor->setDuration(duration);
+		m_pPullbackMotor->RotateMotor(rpm);
 	}
 }
 
 void DeviceControl::stop()
 {
 	if (m_pPullbackMotor)
-		m_pPullbackMotor->StopMotor();
+	{		
+		if (m_pPullbackMotor->getMovingState())
+			m_pPullbackMotor->cv_motor.notify_one();
+		else
+			m_pPullbackMotor->StopMotor();
+	}
 }
 
 
@@ -339,12 +336,12 @@ bool DeviceControl::connectFlimLaser(bool state)
 			m_pElforlightLaser->setPortName(FLIM_LASER_COM_PORT);
 
 			m_pElforlightLaser->SendStatusMessage += SendStatusMessage;
-///			m_pElforlightLaser->UpdateState += [&](double* state) {
-///				m_pStreamTab->getMainWnd()->updateFlimLaserState(state);
-///			};
+			///m_pElforlightLaser->UpdateState += [&](double* state) {
+			///	//m_pStreamTab->getMainWnd()->updateFlimLaserState(state);
+			///};
 		}
 		else
-			return false;
+			return true;
 
 		// Connect the laser
 		if (!(m_pElforlightLaser->ConnectDevice()))
@@ -464,7 +461,7 @@ void DeviceControl::sendLaserCommand(char* command)
 {
 #ifndef NEXT_GEN_SYSTEM
 	if (m_pElforlightLaser) 
-		//if (m_pElforlightLaser->isLaserEnabled())
+		///if (m_pElforlightLaser->isLaserEnabled())
 		m_pElforlightLaser->SendCommand(command);
 #else
 	(void)command;
@@ -502,7 +499,7 @@ bool DeviceControl::startSynchronization(bool enabled, bool async)
 			m_pFlimLaserFreqDivider->SendStatusMessage += SendStatusMessage;
 		}
 		else
-			return false;
+			return true;
 
 #ifndef NEXT_GEN_SYSTEM
 		// Create Axsun OCT sync control objects
@@ -511,12 +508,12 @@ bool DeviceControl::startSynchronization(bool enabled, bool async)
 			m_pAxsunFreqDivider = new FreqDivider;
 			m_pAxsunFreqDivider->setSourceTerminal(AXSUN_SOURCE_TERMINAL);
 			m_pAxsunFreqDivider->setCounterChannel(AXSUN_COUNTER_CHANNEL);
-			m_pAxsunFreqDivider->setSlow(1024);
+			m_pAxsunFreqDivider->setSlow(OCT_ALINES);
 
 			m_pAxsunFreqDivider->SendStatusMessage += SendStatusMessage;
 		}
 		else
-			return false;
+			return true;
 #else
 		// Create FLIm DAQ sync control objects
 		if (!m_pFlimDaqFreqDivider)
@@ -607,46 +604,44 @@ bool DeviceControl::connectAxsunControl(bool toggled)
 		else
 			return true;
 		
-#ifndef NEXT_GEN_SYSTEM
 		// Initialize the Axsun OCT control
-		if (!(m_pAxsunControl->initialize(2)))
+		if (!(m_pAxsunControl->initialize()))
 		{
 			connectAxsunControl(false);
             return false;
 		}
-			
+		
+#ifndef NEXT_GEN_SYSTEM
 		// Default Bypass Mode
-		m_pAxsunControl->setBypassMode(bypass_mode::jpeg_compressed);
-#else
-		// Initialize the Axsun OCT control
-		if (!(m_pAxsunControl->initialize(1)))
-		{
-			connectAxsunControl(false);
-			return false;
-		}
+		m_pAxsunControl->setPipelineMode(AxPipelineMode::JPEG_COMP);
 #endif
+
 		// Default Clock Delay
 		setClockDelay(CLOCK_GAIN * CLOCK_DELAY + CLOCK_OFFSET);
 
-		// Default VDL Length
-		//setVDLHome();
-		//setVDLLength(m_pConfig->axsunVDLLength);
-		m_pAxsunControl->setVDLHome();
-		//m_pAxsunControl->setVDLLength(m_pConfig->axsunVDLLength);
-//		std::thread vdl_length([&]() {
-//			//std::this_thread::sleep_for(std::chrono::milliseconds(1500));
-//			//m_pAxsunControl->setVDLLength(m_pConfig->axsunVDLLength);
-//
-//			//std::this_thread::sleep_for(std::chrono::milliseconds(2000));
-////				if (m_pStreamTab->getOperationTab()->getAcquisitionButton()->isChecked())
-////					setVDLWidgets(true);
-//		});
-//		vdl_length.detach();
+		// Default VDL Length		
+		m_pAxsunControl->getVDLStatus();
+		
+		///setVDLHome();
+		///setVDLLength(m_pConfig->axsunVDLLength);
+		///m_pAxsunControl->setVDLHome();
+		///m_pAxsunControl->setVDLLength(m_pConfig->axsunVDLLength);
+///		std::thread vdl_length([&]() {
+///			//std::this_thread::sleep_for(std::chrono::milliseconds(1500));
+///			//m_pAxsunControl->setVDLLength(m_pConfig->axsunVDLLength);
+///
+///		//std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+///				if (m_pStreamTab->getOperationTab()->getAcquisitionButton()->isChecked())
+///					setVDLWidgets(true);
+///		});
+///		vdl_length.detach();
+
+		// Dispersion Compensation(+ set windowing function)
+		m_pAxsunControl->setDispersionCompensation(m_pConfig->axsunDispComp_a2, m_pConfig->axsunDispComp_a3);
 
 #ifndef NEXT_GEN_SYSTEM
 		// Default Contrast Range
 		adjustDecibelRange(m_pConfig->axsunDbRange.min, m_pConfig->axsunDbRange.max);
-		// m_pStreamTab->getVisTab()->setOctDecibelContrastWidgets(true);					
 #endif
 	}
 	else
@@ -676,7 +671,8 @@ void DeviceControl::setLightSource(bool toggled)
 	if (m_pAxsunControl)
 	{
 		// Start or stop Axsun light source operation
-		m_pAxsunControl->setLaserEmission(toggled);		
+		if (m_pAxsunControl->isInitialized())
+			m_pAxsunControl->setLaserEmission(toggled);		
 	}
 }
 
@@ -686,7 +682,8 @@ void DeviceControl::setLiveImaging(bool toggled)
 	if (m_pAxsunControl)
 	{
 		// Start or stop Axsun live imaging operation
-		m_pAxsunControl->setLiveImagingMode(toggled);	
+		if (m_pAxsunControl->isInitialized())
+			m_pAxsunControl->setLiveImagingMode(toggled);	
 	}
 #else
 	(void)toggled;
@@ -706,6 +703,24 @@ void DeviceControl::adjustDecibelRange(double min, double max)
 	m_pConfig->axsunDbRange.min = min;
 	m_pConfig->axsunDbRange.max = max;
 #endif
+}
+
+void DeviceControl::setBackground()
+{
+	if (m_pAxsunControl)
+	{
+		m_pAxsunControl->setBackground();
+	}
+}
+
+void DeviceControl::setDispersionCompensation(float a2, float a3)
+{
+	if (m_pAxsunControl)
+	{
+		m_pConfig->axsunDispComp_a2 = a2;
+		m_pConfig->axsunDispComp_a3 = a3;
+		m_pAxsunControl->setDispersionCompensation(a2, a3);
+	}
 }
 
 void DeviceControl::setClockDelay(double)
@@ -740,6 +755,7 @@ void DeviceControl::setVDLHome()
 
 void DeviceControl::requestOctStatus()
 {
-	if (m_pAxsunControl) 
-		m_pAxsunControl->getDeviceState();
+	//if (m_pAxsunControl) 
+	//	if (m_pAxsunControl->isInitialized())
+	//		m_pAxsunControl->getDeviceState();
 }

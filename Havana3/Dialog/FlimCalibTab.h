@@ -223,7 +223,7 @@ private:
     void createHistogram();
 	
 public slots : // widgets
-    void drawRoiPulse(FLImProcess*, int);
+    void drawRoiPulse(int);
 
     void showWindow(bool);
     void showMeanDelay(bool);
@@ -245,7 +245,7 @@ public slots : // widgets
     void resetDelayTimeOffset();
 
 signals:
-    void plotRoiPulse(FLImProcess*, int);
+    void plotRoiPulse(int);
 
 public:
 	// Callbacks

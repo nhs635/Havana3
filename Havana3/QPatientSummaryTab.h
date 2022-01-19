@@ -10,6 +10,7 @@ class Configuration;
 class HvnSqlDataBase;
 class AddPatientDlg;
 class SettingDlg;
+class DeviceControl;
 
 struct RecordInfo
 {
@@ -41,6 +42,7 @@ protected:
 public:
     inline MainWindow* getMainWnd() const { return m_pMainWnd; }
     inline RecordInfo getPatientInfo() { return m_patientInfo; }
+	inline bool getCatheterConnectionMode() { return m_pToggleButton_CatheterConnect->isChecked(); }
     inline QTableWidget* getTableWidgetRecordInformation() const { return m_pTableWidget_RecordInformation; }
 
 private:
@@ -48,6 +50,7 @@ private:
     void createPatientSummaryTable();
 
 private slots:
+	void catheterConnect(bool);
     void newRecord();
 	void import();
     void editPatient();
@@ -71,6 +74,7 @@ private:
     MainWindow* m_pMainWnd;
     Configuration* m_pConfig;
     HvnSqlDataBase* m_pHvnSqlDataBase;
+	DeviceControl* m_pDeviceControl;
 	
 private:
     RecordInfo m_patientInfo;
@@ -82,6 +86,7 @@ private:
     QLabel *m_pLabel_PatientSummary;
     QLabel *m_pLabel_PatientInformation;
 
+	QPushButton *m_pToggleButton_CatheterConnect;
     QPushButton *m_pPushButton_NewRecord;
 	QPushButton *m_pPushButton_Import;
     QPushButton *m_pPushButton_EditPatient;

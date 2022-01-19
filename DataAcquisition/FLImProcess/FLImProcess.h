@@ -43,7 +43,7 @@ using namespace np;
 
 struct FLIM_PARAMS
 {
-    float bg;
+    float bg = 0.0f;
 
     float samp_intv = 1.0f;
     float width_factor = 2.0f;
@@ -128,14 +128,28 @@ public:
             initialize(pParams, _nx, FLIM_SPLINE_FACTOR, src.size(1));
 
         // 1. Crop ROI
-        int offset = pParams.ch_start_ind[0]; // + pParams.pre_trig;
+        int offset = pParams.ch_start_ind[0];
         ippiConvert_16u32f_C1R(&src(offset, 0), sizeof(uint16_t) * src.size(0),
                                crop_src.raw_ptr(), sizeof(float) * crop_src.size(0), srcSize);
 		
-		//ippsSubC_32f_I(pParams.bg, crop_src.raw_ptr(), crop_src.length());
+		// 2. Determine whether saturated
+		ippsThreshold_32f(crop_src.raw_ptr(), sat_src.raw_ptr(), sat_src.length(), 65531, ippCmpLess);
+		ippsSubC_32f_I(65531, sat_src.raw_ptr(), sat_src.length());
+		int roi_len = (int)round(pulse_roi_length / ActualFactor);
+		for (int i = 0; i < 4; i++)
+		{
+			for (int j = 0; j < ny; j++)
+			{
+				saturated(j, i) = 0;
+				offset = pParams.ch_start_ind[i] - pParams.ch_start_ind[0];
+				ippsSum_32f(&sat_src(offset, j), roi_len, &saturated(j, i), ippAlgHintFast);
+			}
+		}
+
+		// 3. BG first removed
+		ippsSubC_32f_I(pParams.bg, crop_src.raw_ptr(), crop_src.length());
 
 		// Parallel-for loop
-        //memcpy(mask_src.raw_ptr(), crop_src.raw_ptr(), sizeof(float) * mask_src.length());
         tbb::parallel_for(tbb::blocked_range<size_t>(0, (size_t)ny),
             [&](const tbb::blocked_range<size_t>& r) {
             for (size_t i = r.begin(); i != r.end(); ++i)
@@ -143,71 +157,44 @@ public:
 				float bg1 = 0, bg2 = 0;
 				float max_val; int max_ind; 
 
-				// 2. BG subtraction
-				if (start_ind[0])
-				{
-					ippsMean_32f(&crop_src(start_ind[0], (int)i), end_ind[0] - start_ind[0] + 1, &bg1, ippAlgHintFast); // IRF bg
-					ippsMean_32f(&crop_src(crop_src.size(0) - 8, (int)i), 8, &bg2, ippAlgHintFast); // emission bg
-				}
-				ippsSubC_32f_I(bg1, &crop_src(0, (int)i), end_ind[0]);
-				ippsSubC_32f_I(bg2, &crop_src(end_ind[0], (int)i), crop_src.size(0) - end_ind[0]);
-
-				///int ch_ind4[5]; memcpy(ch_ind4, pParams.ch_start_ind, sizeof(int) * 5);
-				///int dc_determine_len = 5;
-
-				// 3. Jitter compensation - is it valid?
-				int cpos = 6, rpos = 6;
+				// 3. Jitter compensation
+				int cpos = 10, rpos = 10;
 				int irf_wlen = pParams.ch_start_ind[1] - pParams.ch_start_ind[0];
 				ippsMaxIndx_32f(&crop_src(0, (int)i), irf_wlen, &max_val, &cpos);
 
 				int offset = cpos - rpos;
 				if (offset < 0) offset += crop_src.size(0);
-				std::rotate(&crop_src(0, (int)i), &crop_src(offset, (int)i), &crop_src(crop_src.size(0) - 1, (int)i)); //////////////////////////////////////////////////
+				std::rotate(&crop_src(0, (int)i), &crop_src(offset, (int)i), &crop_src(crop_src.size(0) - 1, (int)i));
 
-                ///int end_ind4[4]; memcpy(end_ind4, ch_ind4 + 1, sizeof(int) * 4);
-                ///ippsSubC_32s_ISfs(ch_ind4[0], end_ind4, 4, 0);
-				
+				// 4. BG subtraction (region-wise fine-tuning)
+				if (start_ind[0])
+				{
+					ippsMean_32f(&crop_src(start_ind[0], (int)i), end_ind[0] - start_ind[0] + 1, &bg1, ippAlgHintFast); // IRF bg
+					ippsMean_32f(&crop_src(crop_src.size(0) - 10, (int)i), 6, &bg2, ippAlgHintFast); // emission bg
+				}
+				ippsSubC_32f(&crop_src(0, (int)i), bg1, &bgsb_src(0, (int)i), end_ind[0]);
+				ippsSubC_32f(&crop_src(end_ind[0], (int)i), bg2, &bgsb_src(end_ind[0], (int)i), bgsb_src.size(0) - end_ind[0]);
+
 				// 4. Remove artifact manually (smart artifact removal method)
-				memcpy(&mask_src(0, (int)i), &crop_src(0, (int)i), sizeof(float) * crop_src.size(0));
+				memcpy(&mask_src(0, (int)i), &bgsb_src(0, (int)i), sizeof(float) * bgsb_src.size(0));
                 for (int ch = 0; ch < 4; ch++)
                 {
                     if (start_ind[ch])
                     {
 						if (ch == 0)
 						{
-							//ippsSet_32f(0.0f, &mask_src(start_ind[ch], (int)i), end_ind[ch] - start_ind[ch] + 1);
+							ippsSet_32f(0.0f, &mask_src(start_ind[ch], (int)i), end_ind[ch] - start_ind[ch] + 1);
 						}
                         else
                         {
 							ippsMaxIndx_32f(&mask_src(start_ind[ch], (int)i), end_ind[ch] - start_ind[ch] + 1, &max_val, &max_ind);
 							max_ind += start_ind[ch] - 1;
-							///end_ind4[ch - 1] = max_ind - 4;
 							ippsSet_32f(0.0f, &mask_src(max_ind - 2, (int)i), 7);
                         }
                     }
                 }
-				
-				// 5. Determine whether saturated
-				Ipp32f thres = 61000.0 - pParams.bg;
-				ippsThreshold_32f(&mask_src(0, (int)i), &sat_src(0, (int)i), sat_src.size(0), thres, ippCmpLess);
-				ippsSubC_32f_I(thres, &sat_src(0, (int)i), sat_src.size(0));
-				for (int j = 1; j < 4; j++)
-				{
-					saturated((int)i, j) = 0;
-					offset = pParams.ch_start_ind[j] - pParams.ch_start_ind[0];
-					ippsSum_32f(&sat_src(offset, (int)i), roi_len, &saturated((int)i, j), ippAlgHintFast);
-				}
-				
-				/// 5. DC level auto-adjustment
-				///				for (int ch = 1; ch < 4; ch++)
-				///				{
-				///					float dc_level;
-				///					ippsMean_32f(&mask_src(end_ind4[ch] - dc_determine_len, (int)i), dc_determine_len, &dc_level, ippAlgHintFast);
-				///					if (mask_src.size(0) == (ch_ind4[4] - ch_ind4[0]))
-				///						ippsSubC_32f_I(dc_level, &mask_src(ch_ind4[ch] - ch_ind4[0], (int)i), ch_ind4[ch + 1] - ch_ind4[ch]);
-				///				}
-
-                // 6. Up-sampling by cubic natural spline interpolation
+					
+                // 5. Up-sampling by cubic natural spline interpolation
                 DFTaskPtr task1;
                 dfsNewTask1D(&task1, nx, x, DF_UNIFORM_PARTITION, 1, &mask_src(0, (int)i), DF_MATRIX_STORAGE_ROWS);
                 dfsEditPPSpline1D(task1, DF_PP_CUBIC, DF_PP_NATURAL, DF_BC_NOT_A_KNOT, 0, DF_NO_IC, 0, scoeff + (int)i * (nx - 1) * DF_PP_CUBIC, DF_NO_HINT);
@@ -216,7 +203,7 @@ public:
                                  DF_NO_APRIORI_INFO, &ext_src(0, (int)i), DF_MATRIX_STORAGE_ROWS, NULL);
                 dfDeleteTask(&task1);
 
-                // 7. Software broadening by FIR Gaussian filtering
+                // 6. Software broadening by FIR Gaussian filtering
                 _filter(&filt_src(0, (int)i), &ext_src(0, (int)i), (int)i);
             }
         });
@@ -267,9 +254,10 @@ public:
         scoeff = new float[ny * (nx - 1) * DF_PP_CUBIC];
 
         /* data buffer allocation */
+		sat_src = std::move(FloatArray2((int)nx, (int)ny));
         crop_src = std::move(FloatArray2((int)nx, (int)ny));
-        mask_src = std::move(FloatArray2((int)nx, (int)ny));
-        sat_src  = std::move(FloatArray2((int)nx, (int)ny));
+		bgsb_src = std::move(FloatArray2((int)nx, (int)ny));
+        mask_src = std::move(FloatArray2((int)nx, (int)ny));        
         ext_src  = std::move(FloatArray2((int)nsite, (int)ny));
         filt_src = std::move(FloatArray2((int)nsite, (int)ny));
 
@@ -309,13 +297,14 @@ public:
     int start_ind[4];
     int end_ind[4];
 
+	FloatArray2 sat_src;
     FloatArray2 crop_src;
-    FloatArray2 mask_src;
-    FloatArray2 sat_src;
+	FloatArray2 bgsb_src;
+    FloatArray2 mask_src;   
     FloatArray2 ext_src;
     FloatArray2 filt_src;
 
-	//callback<const char*> SendStatusMessage;
+	///callback<const char*> SendStatusMessage;
 };
 
 struct INTENSITY
@@ -339,7 +328,7 @@ public:
             for (int j = 0; j < intensity.size(0); j++)
             {
                 intensity(j, i) = 0;
-                if (resize.saturated(j, i) < 4)
+                if (resize.saturated(j, i) <= 2)
                     ippsSum_32f(&resize.ext_src(offset, j), resize.pulse_roi_length, &intensity(j, i), ippAlgHintFast);
             }
         }
@@ -375,6 +364,7 @@ public:
                 for (int j = 0; j < 4; j++)
                 {
                     int offset, width, left, maxIdx;
+					float md_temp;
                     offset = resize.ch_start_ind1[j] - resize.ch_start_ind1[0];
 
                     // 1. Get IRF width
@@ -384,8 +374,8 @@ public:
                     left = (int)floor(roiWidth[j] / 2);
 
                     // 2. Get mean delay of each channel (iterative process)
-                    MeanDelay_32f(resize, offset, (int)i, maxIdx, roiWidth[j], left, mean_delay((int)i, j));
-                    mean_delay((int)i, j) = (mean_delay((int)i, j) + (float)resize.ch_start_ind1[j]) / resize.ActualFactor;
+                    MeanDelay_32f(pulse, resize.pSeq, offset, resize.pulse_roi_length, maxIdx, roiWidth[j], left, md_temp);
+                    mean_delay((int)i, j) = (md_temp + (float)resize.ch_start_ind1[j]) / resize.ActualFactor;
                 }
 
                 // 3. Subtract mean delay of IRF to mean delay of each channel
@@ -426,7 +416,7 @@ public:
         width = right0 - left0 + 1;
     }
 
-    void MeanDelay_32f(const RESIZE& resize, int offset, int aline, Ipp32s maxIdx, Ipp32s width, Ipp32s left, Ipp32f &mean_delay)
+    void MeanDelay_32f(const Ipp32f* src, const Ipp32f* seq, Ipp32s offset, Ipp32s length, Ipp32s maxIdx, Ipp32s width, Ipp32s left, Ipp32f &mean_delay)
     {
         Ipp32f sum, weight_sum;
         int start;
@@ -439,19 +429,26 @@ public:
 			{
 				start = (int)round(mean_delay) - left;
 
-				if ((start < 0) || (start + width > resize.pulse_roi_length))
+				if ((start < 0) || (start + width > length))
 				{
 					mean_delay = 0;
 					break;
 				}
 
-				const float* pulse = &resize.filt_src(offset + start, aline);
 				sum = 0; weight_sum = 0;
 
-				if (resize.pSeq)
+				if (seq)
 				{
-					ippsDotProd_32f(pulse, &resize.pSeq[start], width, &weight_sum);
-					ippsSum_32f(pulse, width, &sum, ippAlgHintFast);
+					if (offset + start > 0) 
+					{
+						ippsDotProd_32f(src + start, &seq[start], width, &weight_sum);
+						ippsSum_32f(src + start, width, &sum, ippAlgHintFast);
+					}
+					else
+					{
+						mean_delay = 0;
+						break;
+					}
 				}
 
 				if (sum)
@@ -462,7 +459,7 @@ public:
 					break;
 				}
 
-				if ((mean_delay > resize.pulse_roi_length) || (mean_delay < 0))
+				if ((mean_delay > length) || (mean_delay < 0))
 				{
 					mean_delay = 0;
 					break;
@@ -493,9 +490,6 @@ private: // Not to call copy constrcutor and copy assignment operator
 public:
     // Generate fluorescence intensity & lifetime
     void operator()(FloatArray2& intensity, FloatArray2& mean_delay, FloatArray2& lifetime, Uint16Array2& pulse);
-	///void getResize(Uint16Array2& pulse);
-	///void getIntensity(FloatArray2& intensity);
-	///void getLifetime(FloatArray2& mean_delay, FloatArray2& lifetime);
 
     // For FLIM parameters setting
     void setParameters(Configuration* pConfig);

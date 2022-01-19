@@ -10,7 +10,7 @@
 
 #define PX14_ADC_RATE		400 // MHz
 #define PX14_VOLT_RANGE     1.2 // Vpp
-#define PX14_BOOTBUF_IDX    0
+#define PX14_BOOTBUF_IDX    1
 
 #define MAX_MSG_LENGTH		2000
 

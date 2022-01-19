@@ -30,7 +30,8 @@ INCLUDEPATH += $$PWD/include
 
 LIBS += $$PWD/lib/PX14_64.lib # \
 #        $$PWD/lib/ATSApi.lib
-LIBS += $$PWD/lib/AxsunOCTCapture.lib
+LIBS += $$PWD/lib/AxsunOCTControl_LW.lib \
+        $$PWD/lib/AxsunOCTCapture.lib
 LIBS += $$PWD/lib/NIDAQmx.lib
 LIBS += $$PWD/lib/intel64_win/ippcore.lib \
         $$PWD/lib/intel64_win/ippi.lib \
@@ -84,7 +85,6 @@ SOURCES += DeviceControl/FreqDivider/FreqDivider.cpp \
 #    DeviceControl/IPGPhotonicsLaser/DigitalOutput/DigitalOutput.cpp \
 #    DeviceControl/IPGPhotonicsLaser/IPGPhotonicsLaser.cpp \
     DeviceControl/AxsunControl/AxsunControl.cpp \
-    DeviceControl/FaulhaberMotor/FaulhaberMotor.cpp \
     DeviceControl/FaulhaberMotor/PullbackMotor.cpp \
     DeviceControl/FaulhaberMotor/RotaryMotor.cpp \
     DeviceControl/DeviceControl.cpp
@@ -126,7 +126,6 @@ HEADERS += DeviceControl/FreqDivider/FreqDivider.h \
 #    DeviceControl/IPGPhotonicsLaser/DigitalOutput/DigitalOutput.h \
 #    DeviceControl/IPGPhotonicsLaser/IPGPhotonicsLaser.h \
     DeviceControl/AxsunControl/AxsunControl.h \
-    DeviceControl/FaulhaberMotor/FaulhaberMotor.h \
     DeviceControl/FaulhaberMotor/PullbackMotor.h \
     DeviceControl/FaulhaberMotor/RotaryMotor.h \
     DeviceControl/QSerialComm.h \

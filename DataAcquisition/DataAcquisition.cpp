@@ -288,6 +288,15 @@ void DataAcquisition::ConnectAcquiredOctData(const std::function<void(uint32_t, 
 #endif
 }
 
+void DataAcquisition::ConnectAcquiredOctBG(const std::function<void(uint32_t, const np::Uint8Array2&)> &slot)
+{
+#ifndef NEXT_GEN_SYSTEM
+	m_pAxsunCapture->DidAcquireBG += slot;
+#else
+	(void)slot;
+#endif
+}
+
 void DataAcquisition::ConnectAcquiredOctData1(const std::function<void(int, const void*)> &slot)
 {
 #ifdef NEXT_GEN_SYSTEM

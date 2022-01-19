@@ -13,7 +13,7 @@
 #include <Common/medfilt.h>
 #include <Common/ImageObject.h>
 #include <Common/basic_functions.h>
-//#include <Common/ann.h>
+///#include <Common/ann.h>
 
 #include <iostream>
 #include <vector>
@@ -64,6 +64,9 @@ public:
 	void setBuffers(Configuration* pConfig);
 	void setObjects(Configuration* pConfig);
     void setWidgets(Configuration* pConfig);
+	void setCircImageViewClickedMouseCallback(const std::function<void(void)> &slot);
+	void setEnFaceImageViewClickedMouseCallback(const std::function<void(void)> &slot);
+	void setLongiImageViewClickedMouseCallback(const std::function<void(void)> &slot);
 
 public slots:
 	void visualizeEnFaceMap(bool scaling = true);
@@ -113,9 +116,14 @@ public: // for post processing
 	np::FloatArray2 m_octProjection;
 #endif
 	std::vector<np::FloatArray2> m_intensityMap; // (256 x N) x 3
+	std::vector<np::FloatArray2> m_meandelayMap; // (256 X N) x 4
 	std::vector<np::FloatArray2> m_lifetimeMap; // (256 x N) x 3
+
 	std::vector<np::FloatArray2> m_vectorPulseCrop;
+	std::vector<np::FloatArray2> m_vectorPulseBgSub;
 	std::vector<np::FloatArray2> m_vectorPulseMask;
+	std::vector<np::FloatArray2> m_vectorPulseSpline;
+	std::vector<np::FloatArray2> m_vectorPulseFilter;
 
 private:
     // Image visualization buffers - cross-section

@@ -116,7 +116,7 @@ void QViewTab::createViewTabWidgets(bool is_streaming)
         m_pSlider_SelectFrame->setOrientation(Qt::Horizontal);
         QPalette pal = m_pSlider_SelectFrame->palette();
         pal.setColor(QPalette::Highlight, QColor(42, 42, 42));
-		//pal.setColor(QPalette::Window, QColor(255, 255, 255));
+		///pal.setColor(QPalette::Window, QColor(255, 255, 255));
         m_pSlider_SelectFrame->setPalette(pal);
         m_pSlider_SelectFrame->setValue(0);		
 		
@@ -205,7 +205,7 @@ void QViewTab::invalidate()
 	visualizeEnFaceMap(true);
 	visualizeImage(getCurrentFrame());
 	visualizeLongiImage(getCurrentAline());
-
+	
 	m_pImageView_ColorBar->setText(QPoint(0, 0), QString("%1               Lifetime (nsec)               %2")
 		.arg(m_pConfig->flimLifetimeRange[m_pConfig->flimEmissionChannel - 1].max, 2, 'f', 1)
 		.arg(m_pConfig->flimLifetimeRange[m_pConfig->flimEmissionChannel - 1].min, 2, 'f', 1), true);
@@ -256,20 +256,29 @@ void QViewTab::setBuffers(Configuration* pConfig)
 
 	// Clear existed buffers
 #ifndef NEXT_GEN_SYSTEM
-	std::vector<np::Uint8Array2> clear_vector;
-	clear_vector.swap(m_vectorOctImage);
+	{std::vector<np::Uint8Array2> clear_vector;
+	clear_vector.swap(m_vectorOctImage); }
 #else
-	std::vector<np::FloatArray2> clear_vector;
-	clear_vector.swap(m_vectorOctImage);
+	{std::vector<np::FloatArray2> clear_vector;
+	clear_vector.swap(m_vectorOctImage)};
 #endif
-	std::vector<np::FloatArray2> clear_vector1;
-	clear_vector1.swap(m_intensityMap);
-	std::vector<np::FloatArray2> clear_vector2;
-	clear_vector2.swap(m_lifetimeMap);
-	std::vector<np::FloatArray2> clear_vector3;
-	clear_vector3.swap(m_vectorPulseCrop);
-	std::vector<np::FloatArray2> clear_vector4;
-	clear_vector4.swap(m_vectorPulseMask);
+	{std::vector<np::FloatArray2> clear_vector;
+	clear_vector.swap(m_intensityMap); }
+	{std::vector<np::FloatArray2> clear_vector;
+	clear_vector.swap(m_meandelayMap); }
+	{std::vector<np::FloatArray2> clear_vector;
+	clear_vector.swap(m_lifetimeMap); }
+
+	{std::vector<np::FloatArray2> clear_vector;
+	clear_vector.swap(m_vectorPulseCrop); }
+	{std::vector<np::FloatArray2> clear_vector;
+	clear_vector.swap(m_vectorPulseBgSub); }
+	{std::vector<np::FloatArray2> clear_vector;
+	clear_vector.swap(m_vectorPulseMask); }
+	{std::vector<np::FloatArray2> clear_vector;
+	clear_vector.swap(m_vectorPulseSpline); }
+	{std::vector<np::FloatArray2> clear_vector;
+	clear_vector.swap(m_vectorPulseFilter); }
 
 	// Data buffers
 	for (int i = 0; i < pConfig->frames; i++)
@@ -295,6 +304,11 @@ void QViewTab::setBuffers(Configuration* pConfig)
 		np::FloatArray2 lifetime = np::FloatArray2(pConfig->flimAlines, pConfig->frames);
 		m_intensityMap.push_back(intensity);
 		m_lifetimeMap.push_back(lifetime);
+	}
+	for (int i = 0; i < 4; i++)
+	{
+		np::FloatArray2 meandelay = np::FloatArray2(pConfig->flimAlines, pConfig->frames);
+		m_meandelayMap.push_back(meandelay);
 	}
 
 	m_pConfig->writeToLog("Reviewing buffers are initialized.");
@@ -400,6 +414,21 @@ void QViewTab::setWidgets(Configuration* pConfig)
 	m_pConfig->writeToLog("Reviewing widgets are initialized.");
 }
 
+void QViewTab::setCircImageViewClickedMouseCallback(const std::function<void(void)> &slot)
+{
+	m_pImageView_CircImage->setClickedMouseCallback(slot);
+}
+
+void QViewTab::setEnFaceImageViewClickedMouseCallback(const std::function<void(void)> &slot)
+{
+	m_pImageView_EnFace->setClickedMouseCallback(slot);
+}
+
+void QViewTab::setLongiImageViewClickedMouseCallback(const std::function<void(void)> &slot)
+{
+	m_pImageView_Longi->setClickedMouseCallback(slot);
+}
+
 
 void QViewTab::visualizeEnFaceMap(bool scaling)
 {
@@ -408,19 +437,19 @@ void QViewTab::visualizeEnFaceMap(bool scaling)
 		if (scaling)
 		{
 			// Scaling OCT projection
-			//IppiSize roi_proj = { m_octProjection.size(0), m_octProjection.size(1) };
-			//IppiSize roi_proj4 = { roi_proj.width, ROUND_UP_4S(roi_proj.height) };
+			///IppiSize roi_proj = { m_octProjection.size(0), m_octProjection.size(1) };
+			///IppiSize roi_proj4 = { roi_proj.width, ROUND_UP_4S(roi_proj.height) };
 
-			//np::FloatArray2 scale_temp32(roi_proj.width, roi_proj.height);
-			//np::Uint8Array2 scale_temp8(roi_proj4.width, roi_proj4.height);
+			///np::FloatArray2 scale_temp32(roi_proj.width, roi_proj.height);
+			///np::Uint8Array2 scale_temp8(roi_proj4.width, roi_proj4.height);
 
-			//ippsConvert_8u32f(m_octProjection.raw_ptr(), scale_temp32.raw_ptr(), scale_temp32.length());
-			//ippiScale_32f8u_C1R(scale_temp32.raw_ptr(), sizeof(float) * roi_proj.width,
-			//	scale_temp8.raw_ptr(), sizeof(uint8_t) * roi_proj4.width, roi_proj,
-			//	m_pConfig->octGrayRange.min, m_pConfig->octGrayRange.max);
-			//ippiTranspose_8u_C1R(scale_temp8.raw_ptr(), sizeof(uint8_t) * roi_proj4.width,
-			//	m_pImgObjOctProjection->arr.raw_ptr(), sizeof(uint8_t) * roi_proj4.height, roi_proj4);
-			//circShift(m_pImgObjOctProjection->arr, m_pConfig->rotatedAlines);
+			///ippsConvert_8u32f(m_octProjection.raw_ptr(), scale_temp32.raw_ptr(), scale_temp32.length());
+			///ippiScale_32f8u_C1R(scale_temp32.raw_ptr(), sizeof(float) * roi_proj.width,
+			///	scale_temp8.raw_ptr(), sizeof(uint8_t) * roi_proj4.width, roi_proj,
+			///	m_pConfig->octGrayRange.min, m_pConfig->octGrayRange.max);
+			///ippiTranspose_8u_C1R(scale_temp8.raw_ptr(), sizeof(uint8_t) * roi_proj4.width,
+			///	m_pImgObjOctProjection->arr.raw_ptr(), sizeof(uint8_t) * roi_proj4.height, roi_proj4);
+			///circShift(m_pImgObjOctProjection->arr, m_pConfig->rotatedAlines);
 
 			// Scaling FLIM map
 			scaleFLImEnFaceMap(m_pImgObjIntensityMap, m_pImgObjLifetimeMap, m_pComboBox_ViewMode->currentIndex());
@@ -439,7 +468,8 @@ void QViewTab::visualizeImage(uint8_t* oct_im, float* intensity, float* lifetime
 	IppiSize roi_oct = { m_pConfig->octScansFFT / 2, m_pConfig->octAlines };
 #endif	
 
-	memcpy(m_pImgObjRectImage->arr.raw_ptr(), oct_im, sizeof(uint8_t) * roi_oct.width * roi_oct.height);		
+	ippiCopy_8u_C1R(oct_im + m_pConfig->innerOffsetLength, roi_oct.width, m_pImgObjRectImage->arr.raw_ptr(), roi_oct.width,
+		{ roi_oct.width - m_pConfig->innerOffsetLength, roi_oct.height });
 	(*m_pMedfiltRect)(m_pImgObjRectImage->arr.raw_ptr());
 		
 	// FLIm Visualization
@@ -486,7 +516,8 @@ void QViewTab::visualizeImage(int frame)
         np::FloatArray2 scale_temp(roi_oct.width, roi_oct.height);
         ippsConvert_8u32f(m_vectorOctImage.at(frame).raw_ptr(), scale_temp.raw_ptr(), scale_temp.length());
         ippiScale_32f8u_C1R(scale_temp.raw_ptr(), roi_oct.width * sizeof(float),
-            m_pImgObjRectImage->arr.raw_ptr(), roi_oct.width * sizeof(uint8_t), roi_oct, (float)m_pConfig->octGrayRange.min, (float)m_pConfig->octGrayRange.max);
+            m_pImgObjRectImage->arr.raw_ptr(), roi_oct.width * sizeof(uint8_t), roi_oct, 
+			(float)m_pConfig->octGrayRange.min, (float)m_pConfig->octGrayRange.max);
 #else
 		ippiScale_32f8u_C1R(m_vectorOctImage.at(frame).raw_ptr(), roi_oct.width * sizeof(float),
 			m_pImgObjRectImage->arr.raw_ptr(), roi_oct.width * sizeof(uint8_t), roi_oct, (float)m_pConfig->axsunDbRange.min, (float)m_pConfig->axsunDbRange.max);
@@ -520,6 +551,7 @@ void QViewTab::visualizeImage(int frame)
 
         // En Face Lines
         m_pImageView_EnFace->setVerticalLine(1, frame);
+		m_pImageView_EnFace->getRender()->DidClickedMouse();
         m_pImageView_EnFace->getRender()->update();
 				
         // Longitudinval Lines

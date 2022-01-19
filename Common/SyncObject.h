@@ -33,9 +33,10 @@ public:
 			if (!queue_buffer.empty())
 			{
 				/* 확인 필요 !!! */
-				//T* buffer = queue_buffer.front();
-				//queue_buffer.pop();
-				//if (buffer) delete[] buffer;
+				T* buffer = queue_buffer.front();
+				queue_buffer.pop();
+				if (buffer) delete[] buffer;
+				/************************************************/
 			}
 		}
 	}

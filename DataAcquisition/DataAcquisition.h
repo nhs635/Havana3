@@ -51,6 +51,7 @@ public:
     void ConnectFlimSendStatusMessage(const std::function<void(const char*, bool)> &slot);
 
 	void ConnectAcquiredOctData(const std::function<void(uint32_t, const np::Uint8Array2&)> &slot);
+	void ConnectAcquiredOctBG(const std::function<void(uint32_t, const np::Uint8Array2&)> &slot);
 	void ConnectAcquiredOctData1(const std::function<void(int, const void*)> &slot);
 	void ConnectStopOctData(const std::function<void(void)> &slot);
 	void ConnectOctSendStatusMessage(const std::function<void(const char*, bool)> &slot);

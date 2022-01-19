@@ -12,12 +12,16 @@
 #include <Havana3/QStreamTab.h>
 #include <Havana3/QResultTab.h>
 
+#include <Havana3/Dialog/SettingDlg.h>
+
 #include <DataAcquisition/DataAcquisition.h>
 #include <DataAcquisition/DataProcessing.h>
 
+#include <DeviceControl/DeviceControl.h>
+
 
 MainWindow::MainWindow(QWidget *parent) :
-    QMainWindow(parent), m_pStreamTab(nullptr),
+    QMainWindow(parent), m_pStreamTab(nullptr), m_nCurTabIndex(0),
     ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
@@ -32,11 +36,13 @@ MainWindow::MainWindow(QWidget *parent) :
 
     m_pConfiguration->flimScans = FLIM_SCANS;
     m_pConfiguration->flimAlines = FLIM_ALINES;
+	m_pConfiguration->flimFrameSize = m_pConfiguration->flimScans * m_pConfiguration->flimAlines;
     m_pConfiguration->octScans = OCT_SCANS;
 #ifdef NEXT_GEN_SYSTEM
 	m_pConfiguration->octScansFFT = OCT_SCANS_FFT;
 #endif
     m_pConfiguration->octAlines = OCT_ALINES;
+	m_pConfiguration->octFrameSize = m_pConfiguration->octScans * m_pConfiguration->octAlines;
 
     // Create sql database object
     m_pHvnSqlDataBase = new HvnSqlDataBase(this);
@@ -64,26 +70,10 @@ MainWindow::MainWindow(QWidget *parent) :
     // Connect signal and slot
     connect(m_pTabWidget, SIGNAL(currentChanged(int)), this, SLOT(tabCurrentChanged(int)));
     connect(m_pTabWidget, SIGNAL(tabCloseRequested(int)), this, SLOT(tabCloseRequested(int)));
-	
-	// Set timer for renew configuration		(여러 가지 타이머 관련 셋팅이 필요하지 않을까요.)
-//	m_pTimer = new QTimer(this);
-//	m_pTimer->start(5 * 60 * 1000); // renew per 5 min
-//	m_pTimerDiagnostic = new QTimer(this);
-//	m_pTimerDiagnostic->start(2000);
-//	m_pTimerSync = new QTimer(this);
-//	m_pTimerSync->start(1000); // renew per 1 sec
-
-//    connect(m_pTimer, SIGNAL(timeout()), this, SLOT(onTimer()));
-//	connect(m_pTimerDiagnostic, SIGNAL(timeout()), this, SLOT(onTimerDiagnostic()));
-//	connect(m_pTimerSync, SIGNAL(timeout()), this, SLOT(onTimerSync()));
 }
 
 MainWindow::~MainWindow()
 {
-//	m_pTimer->stop();
-//	m_pTimerDiagnostic->stop();
-//	m_pTimerSync->stop();
-
     if (m_pConfiguration)
     {
         m_pConfiguration->setConfigFile("Havana3.ini");
@@ -109,8 +99,8 @@ void MainWindow::addTabView(QDialog *pTabView)
 
     int tabIndex = m_pTabWidget->addTab(pTabView, pTabView->windowTitle());
     m_pTabWidget->setCurrentIndex(tabIndex);
-
-	m_pConfiguration->writeToLog(QString("Tab added: %1").arg(pTabView->windowTitle()));
+	
+	///qDebug() << "add " << m_vectorTabViews;
 }
 
 void MainWindow::removeTabView(QDialog *pTabView)
@@ -119,9 +109,16 @@ void MainWindow::removeTabView(QDialog *pTabView)
 
     m_pTabWidget->removeTab(m_pTabWidget->indexOf(pTabView));
 	m_vectorTabViews.erase(std::find(m_vectorTabViews.begin(), m_vectorTabViews.end(), pTabView));
-
-	if (pTabView != m_pStreamTab)
+			
+	if (pTabView->windowTitle().contains("Streaming"))
+	{
+		delete m_pStreamTab;
+		m_pStreamTab = nullptr;
+	}
+	else
 		pTabView->deleteLater();
+
+	///qDebug() << "remove " << m_vectorTabViews;
 }
 
 
@@ -129,17 +126,31 @@ void MainWindow::tabCurrentChanged(int index)
 {
 	static int prev_index = 0;
 
+	///printf("[prev %d cur %d]\n", prev_index, index);
+
 	auto previousTab = m_vectorTabViews.at(prev_index);
     auto currentTab = m_vectorTabViews.at(index);
 
 	if (previousTab == m_pStreamTab)
 	{
-		if (m_pStreamTab->getDataAcquisition()->getAcquisitionState())
-			m_pStreamTab->startLiveImaging(false);
+		if (m_pStreamTab->getSettingDlg())
+			m_pStreamTab->getSettingDlg()->close();
+		///if (m_pStreamTab->getDataAcquisition()->getAcquisitionState())
+		m_pStreamTab->startLiveImaging(false);
 	}
 	else if (previousTab->windowTitle().contains("Review"))
 	{
+		if (dynamic_cast<QResultTab*>(previousTab)->getSettingDlg())
+			dynamic_cast<QResultTab*>(previousTab)->getSettingDlg()->close();
 		dynamic_cast<QResultTab*>(previousTab)->updatePreviewImage();
+	}
+	else if (previousTab->windowTitle().contains("Summary"))
+	{
+		if (dynamic_cast<QPatientSummaryTab*>(previousTab)->getCatheterConnectionMode())
+		{
+			m_pTabWidget->setCurrentIndex(prev_index);
+			return;
+		}
 	}
 
 	if (currentTab == m_pPatientSelectionTab)
@@ -155,21 +166,28 @@ void MainWindow::tabCurrentChanged(int index)
 		m_pStreamTab->startLiveImaging(true);
 	
 		if (!m_pStreamTab->getDataAcquisition()->getAcquisitionState())
+		{
 			emit m_pTabWidget->tabCloseRequested(index);
+			return;
+		}
 	}
-	///else if (currentTab->windowTitle().contains("Review"))
-	///{
-	///	if (!dynamic_cast<QResultTab*>(currentTab)->getDataProcessing()->getIsDataLoaded())
-	///		emit m_pTabWidget->tabCloseRequested(index);
-	///}
+	else if (currentTab->windowTitle().contains("Review"))
+	{
+		dynamic_cast<QResultTab*>(currentTab)->readRecordData();		
+	}
 	
 	prev_index = index;
+	m_nCurTabIndex = index;
 
 	m_pConfiguration->writeToLog(QString("Tab changed: %1 ==> %2").arg(previousTab->windowTitle()).arg(currentTab->windowTitle()));
+
+	///qDebug() << "change (" << previousTab << " -> " << currentTab << ") " << m_vectorTabViews;
 }
 
 void MainWindow::tabCloseRequested(int index)
 {
+	///printf("[closed %d]\n", index);
+
     auto *pTabView = m_vectorTabViews.at(index);
 
     if (index != 0) // HomeTab & SelectionTab cannot be closed.
@@ -203,7 +221,9 @@ void MainWindow::tabCloseRequested(int index)
 		}
 		else if (pTabView->windowTitle().contains("Streaming"))
 		{
-			m_pStreamTab->startLiveImaging(false);
+			if (m_pStreamTab->getDataAcquisition()->getAcquisitionState())
+				m_pStreamTab->startLiveImaging(false);
+			m_pStreamTab->getDeviceControl()->disconnectAllDevices();
 			
 			int _index = 0;
 			foreach(QDialog* _pTabView, m_vectorTabViews)
@@ -238,6 +258,8 @@ void MainWindow::tabCloseRequested(int index)
 
 		removeTabView(pTabView);
     }
+
+	///qDebug() << "close req " << m_vectorTabViews;
 }
 
 
@@ -268,6 +290,8 @@ void MainWindow::makePatientSummaryTab(int row)
 
     QPatientSummaryTab *pPatientSummaryTab = new QPatientSummaryTab(patient_id, this);
     addTabView(pPatientSummaryTab);
+	
+	m_pConfiguration->writeToLog(QString("Tab added: %1").arg(pPatientSummaryTab->windowTitle()));
 
     connect(pPatientSummaryTab, SIGNAL(requestNewRecord(const QString &)), this, SLOT(makeStreamTab(const QString &)));
     connect(pPatientSummaryTab, SIGNAL(requestReview(const QString &)), this, SLOT(makeResultTab(const QString &)));
@@ -275,17 +299,26 @@ void MainWindow::makePatientSummaryTab(int row)
 
 void MainWindow::makeStreamTab(const QString& patient_id)
 {
-	if (!m_pStreamTab)
+	if (m_pStreamTab)
 	{
-		m_pStreamTab = new QStreamTab(patient_id, this);
-		addTabView(m_pStreamTab);
+		int index = 0;
+		foreach(QDialog* pTabView, m_vectorTabViews)
+		{			
+			if (pTabView->windowTitle().contains("Streaming"))
+				break;
+			index++;
+		}
+		emit m_pTabWidget->tabCloseRequested(index);
+	}	
+	
+	m_pStreamTab = new QStreamTab(patient_id, this);
+	addTabView(m_pStreamTab);
+
+	if (m_pStreamTab)
+	{
+		m_pConfiguration->writeToLog(QString("Tab added: %1").arg(m_pStreamTab->windowTitle()));
 
 		connect(m_pStreamTab, SIGNAL(requestReview(const QString &)), this, SLOT(makeResultTab(const QString &)));
-	}
-	else
-	{
-		m_pStreamTab->changePatient(patient_id);
-		addTabView(m_pStreamTab);
 	}
 }
 
@@ -305,4 +338,6 @@ void MainWindow::makeResultTab(const QString& record_id)
 
     QResultTab *pResultTab = new QResultTab(record_id, this);
     addTabView(pResultTab);
+
+	m_pConfiguration->writeToLog(QString("Tab added: %1").arg(pResultTab->windowTitle()));
 }

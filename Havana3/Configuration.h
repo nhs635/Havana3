@@ -1,7 +1,7 @@
 #ifndef CONFIGURATION_H
 #define CONFIGURATION_H
 
-#define VERSION						"0.0.0" ///"1.4.2"
+#define VERSION						"0.0.0" ///"2.0.0"
 
 #define POWER_2(x)					(1 << x)
 #define NEAR_2_POWER(x)				(int)(1 << (int)ceil(log2(x)))
@@ -9,8 +9,8 @@
 
 ////////////////////// Software Setup ///////////////////////
 #define DEVELOPER_MODE
-//#define NEXT_GEN_SYSTEM
-//#define ENABLE_FPGA_FFT
+///#define NEXT_GEN_SYSTEM
+///#define ENABLE_FPGA_FFT
 #define ENABLE_DATABASE_ENCRYPTION
 #define NI_ENABLE
 
@@ -27,15 +27,15 @@
 #define OCT_ALINES                  FLIM_ALINES * 4
 
 //////////////////////// System Setup ///////////////////////
-#define ROTARY_MOTOR_COM_PORT		"COM4" // 7 this com
+#define ROTARY_MOTOR_COM_PORT		"COM4"
 #define PULLBACK_MOTOR_COM_PORT		"COM7"
 
 #define FLIM_LASER_COM_PORT			"COM5"
 
-#define PMT_GAIN_AO_PORT			"Dev1/ao1"  /// "Dev1/ao0"
+#define PMT_GAIN_AO_PORT			"Dev1/ao1"  
 
-#define FLIM_LASER_SOURCE_TERMINAL	"/Dev1/PFI2"  /// "/Dev1/PFI0"
-#define FLIM_LASER_COUNTER_CHANNEL	"Dev1/ctr1"  /// "Dev1/ctr0"
+#define FLIM_LASER_SOURCE_TERMINAL	"/Dev1/PFI2"
+#define FLIM_LASER_COUNTER_CHANNEL	"Dev1/ctr1"
 
 #ifndef NEXT_GEN_SYSTEM
 #define AXSUN_SOURCE_TERMINAL		"/Dev1/PFI3"
@@ -47,7 +47,6 @@
 
 #define ROTATION_100FPS				5872
 #define CLOCK_DELAY					10
-//#define PULLBACK_HOME_OFFSET		0 // mm
 
 //////////////// Thread & Buffer Processing /////////////////
 #define PROCESSING_BUFFER_SIZE		80
@@ -60,8 +59,8 @@
 
 ///////////////////// FLIm Processing ///////////////////////
 #define FLIM_CH_START_5				45
-#define GAUSSIAN_FILTER_WIDTH		250 // 200 // 200 vs 230
-#define GAUSSIAN_FILTER_STD			60 // 48 // 48 vs 55 // 48 => 80MHz
+#define GAUSSIAN_FILTER_WIDTH		235 /// 200 // 200 vs 230
+#define GAUSSIAN_FILTER_STD			56.5 ///60 // 48 // 48 vs 55 // 48 => 80MHz
 #define FLIM_SPLINE_FACTOR			20
 #define INTENSITY_THRES				0.001f
 
@@ -72,12 +71,12 @@
 #define INTENSITY_COLORTABLE		6 // fire
 #define LIFETIME_COLORTABLE         14 // hsv1 ==> Viewer/QImageView.cpp
 
-#define INTER_FRAME_SYNC			0 //10 //9  // Frames
-#define INTRA_FRAME_SYNC			0 //30 // A-lines
+#define INTER_FRAME_SYNC			0 // Frames adjustment
+#define INTRA_FRAME_SYNC			0 // A-lines adjustment
 
-#define RENEWAL_COUNT				10
-#define REDUCED_COUNT				4
-#define PIXEL_RESOLUTION			5.7 // micrometer
+#define RENEWAL_COUNT				8 
+#define REDUCED_COUNT				8
+#define PIXEL_RESOLUTION			5.7 // micrometers
 #define OUTER_SHEATH_POSITION		120 // (int)((150 * 1.45 + 180 * 1 + 150 * 1.33) / PIXEL_RESOLUTION)
 
 
@@ -140,9 +139,9 @@ public:
 		}
 
 		// FLIM classification
-		clfAnnXNode = settings.value("clfAnnXNode").toInt();
-		clfAnnHNode = settings.value("clfAnnHNode").toInt();
-		clfAnnYNode = settings.value("clfAnnYNode").toInt();
+		///clfAnnXNode = settings.value("clfAnnXNode").toInt();
+		///clfAnnHNode = settings.value("clfAnnHNode").toInt();
+		///clfAnnYNode = settings.value("clfAnnYNode").toInt();
 		
         // Visualization
         flimEmissionChannel = settings.value("flimEmissionChannel").toInt();
@@ -169,6 +168,7 @@ public:
 		octGrayRange.min = settings.value("octGrayRangeMin").toInt();
 #endif
 		rotatedAlines = settings.value("rotatedAlines").toInt();
+		innerOffsetLength = settings.value("innerOffsetLength").toInt();
 		verticalMirroring = settings.value("verticalMirroring").toBool();
 		
 		// Additional synchronization parameters
@@ -178,7 +178,8 @@ public:
 		// Device control
 		rotaryRpm = settings.value("rotaryRpm").toInt();
 		pullbackSpeed = settings.value("pullbackSpeed").toFloat();
-		pullbackLength = settings.value("pullbackLength").toFloat();		
+		pullbackLength = settings.value("pullbackLength").toFloat();	
+		pullbackFlag = settings.value("pullbackFlag").toBool();
 		pmtGainVoltage = settings.value("pmtGainVoltage").toFloat(); 
 #ifndef NEXT_GEN_SYSTEM
         px14DcOffset = settings.value("px14DcOffset").toInt();
@@ -186,6 +187,8 @@ public:
 		flimLaserPower = settings.value("flimLaserPower").toInt();
 #endif
 		axsunVDLLength = settings.value("axsunVDLLength").toFloat();
+		axsunDispComp_a2 = settings.value("axsunDispComp_a2").toFloat();
+		axsunDispComp_a3 = settings.value("axsunDispComp_a3").toFloat();
 		axsunDbRange.max = settings.value("axsunDbRangeMax").toFloat();
 		axsunDbRange.min = settings.value("axsunDbRangeMin").toFloat();
 
@@ -243,12 +246,14 @@ public:
 		settings.setValue("octGrayRangeMin", octGrayRange.min);
 #endif
 		settings.setValue("rotatedAlines", rotatedAlines);
+		settings.setValue("innerOffsetLength", innerOffsetLength);
 		settings.setValue("verticalMirroring", verticalMirroring);
 
 		// Device control
 		settings.setValue("rotaryRpm", rotaryRpm);
 		settings.setValue("pullbackSpeed", QString::number(pullbackSpeed, 'f', 2));
 		settings.setValue("pullbackLength", QString::number(pullbackLength, 'f', 2));
+		settings.setValue("pullbackFlag", pullbackFlag);
 		settings.setValue("pmtGainVoltage", QString::number(pmtGainVoltage, 'f', 3));
 #ifndef NEXT_GEN_SYSTEM
         settings.setValue("px14DcOffset", px14DcOffset);
@@ -256,6 +261,8 @@ public:
 		settings.setValue("flimLaserPower", flimLaserPower);
 #endif
 		settings.setValue("axsunVDLLength", QString::number(axsunVDLLength, 'f', 2));
+		settings.setValue("axsunDispComp_a2", QString::number(axsunDispComp_a2, 'f', 1));
+		settings.setValue("axsunDispComp_a3", QString::number(axsunDispComp_a3, 'f', 1));
 		settings.setValue("axsunDbRangeMax", QString::number(axsunDbRange.max, 'f', 1));
 		settings.setValue("axsunDbRangeMin", QString::number(axsunDbRange.min, 'f', 1));
 
@@ -294,9 +301,9 @@ public:
     float flimDelayOffset[3];
 
 	// FLIm classification
-	int clfAnnXNode;
-	int clfAnnHNode;
-	int clfAnnYNode;
+	///int clfAnnXNode;
+	///int clfAnnHNode;
+	///int clfAnnYNode;
 	
 	// Visualization    
     int flimEmissionChannel;
@@ -309,6 +316,7 @@ public:
     ContrastRange<int> octGrayRange;
 #endif
 	int rotatedAlines;
+	int innerOffsetLength;
 	bool verticalMirroring;
 
 	// Additional synchronization parameters
@@ -319,6 +327,7 @@ public:
 	int rotaryRpm;
 	float pullbackSpeed;
 	float pullbackLength;
+	bool pullbackFlag;
 	float pmtGainVoltage;
 #ifndef NEXT_GEN_SYSTEM
     int px14DcOffset;
@@ -326,6 +335,7 @@ public:
 	int flimLaserPower;
 #endif
 	float axsunVDLLength;
+	float axsunDispComp_a2, axsunDispComp_a3;
     ContrastRange<float> axsunDbRange;	
 
     // Database

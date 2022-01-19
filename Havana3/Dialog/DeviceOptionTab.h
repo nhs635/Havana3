@@ -54,6 +54,7 @@ private slots:
 	void moveAbsolute();
 	void home();
 	void stop();
+	void setPullbackWidgets(bool);
 	
     // FLIm Laser Synchronization Control
 	void startFlimAsynchronization(bool);
@@ -73,13 +74,16 @@ private slots:
 	void connectAxsunControl(bool);
 	void setLightSource(bool);
 	void setLiveImaging(bool);
+	void setBackground();
+	void resetBackground();
+	void setDispersionCompensation();
 	void setClockDelay(double);
 	void setVDLLength(double);
 	void setVDLHome();
 	void setVDLWidgets(bool);
 	
 signals:
-	void stopPullback();
+	void stopPullback(bool);
 
 // Variables ////////////////////////////////////////////
 private:
@@ -148,6 +152,15 @@ private:
 
 	QLabel *m_pLabel_LiveImaging;
 	QPushButton *m_pToggleButton_LiveImaging;
+
+	QLabel *m_pLabel_BackgroundSubtraction;
+	QPushButton *m_pPushButton_BgSet;
+	QPushButton *m_pPushButton_BgReset;
+
+	QLabel *m_pLabel_DispersionCompensation;
+	QLineEdit *m_pLineEdit_DispComp_a2;
+	QLineEdit *m_pLineEdit_DispComp_a3;
+	QPushButton *m_pPushButton_Compensate;
 	
     QLabel *m_pLabel_VDLLength;
     QMySpinBox *m_pSpinBox_VDLLength;

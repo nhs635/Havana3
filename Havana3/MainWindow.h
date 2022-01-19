@@ -39,6 +39,7 @@ public:
     inline QPatientSelectionTab* getPatientSelectionTab() const { return m_pPatientSelectionTab; }
     inline QStreamTab* getStreamTab() const { return m_pStreamTab; }
     inline auto getVectorTabViews() { return m_vectorTabViews; }
+	inline int getCurrentTabIndex() { return m_nCurTabIndex; }
 
 public:
     void addTabView(QDialog *);
@@ -72,6 +73,8 @@ private:
 	QHomeTab *m_pHomeTab;
     QPatientSelectionTab *m_pPatientSelectionTab;
     QStreamTab *m_pStreamTab;
+
+	int m_nCurTabIndex;
 };
 
 #endif // MAINWINDOW_H

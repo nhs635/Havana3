@@ -28,6 +28,7 @@
 
 #include <iostream>
 #include <thread>
+#include <vector>
 #include <chrono>
 
 
@@ -47,8 +48,12 @@ DeviceOptionTab::DeviceOptionTab(QWidget *parent) :
 	{
 		parent_name = "Summary";
 		m_pPatientSummaryTab = dynamic_cast<QPatientSummaryTab*>(parent);
-		m_pConfig = m_pPatientSummaryTab->getMainWnd()->m_pConfiguration;
-		m_pDeviceControl = new DeviceControl(m_pConfig);
+		m_pStreamTab = m_pPatientSummaryTab->getMainWnd()->getStreamTab();
+		m_pConfig = m_pPatientSummaryTab->getMainWnd()->m_pConfiguration;		
+		if (!m_pStreamTab)
+			m_pDeviceControl = new DeviceControl(m_pConfig);
+		else
+			m_pDeviceControl = m_pStreamTab->getDeviceControl();
 	}
 	else if (parent_title.contains("Streaming"))
 	{
@@ -61,9 +66,13 @@ DeviceOptionTab::DeviceOptionTab(QWidget *parent) :
 	{
 		parent_name = "Review";
 		m_pResultTab = dynamic_cast<QResultTab*>(parent);
+		m_pStreamTab = m_pResultTab->getMainWnd()->getStreamTab();
 		m_pConfig = m_pResultTab->getMainWnd()->m_pConfiguration;
-		m_pDeviceControl = new DeviceControl(m_pConfig);
-	}
+		if (!m_pStreamTab)
+			m_pDeviceControl = new DeviceControl(m_pConfig);
+		else
+			m_pDeviceControl = m_pStreamTab->getDeviceControl();
+	}	
 
 	// Create layout
 	m_pGroupBox_DeviceOption = new QGroupBox;
@@ -185,7 +194,7 @@ void DeviceOptionTab::createHelicalScanningControl()
 	m_pPushButton_Pullback->setDisabled(true);
 	m_pPushButton_Home = new QPushButton(this);
 	m_pPushButton_Home->setText("Home");
-	m_pPushButton_Home->setFixedWidth(48);
+	m_pPushButton_Home->setFixedWidth(49);
 	m_pPushButton_Home->setDisabled(true);
 	m_pPushButton_PullbackStop = new QPushButton(this);
 	m_pPushButton_PullbackStop->setText("Stop");
@@ -267,22 +276,22 @@ void DeviceOptionTab::createFlimSystemControl()
 	m_pToggleButton_AsynchronizedPulsedLaser->setFixedWidth(40);
 	m_pToggleButton_AsynchronizedPulsedLaser->setCheckable(true);
 	m_pToggleButton_AsynchronizedPulsedLaser->setStyleSheet("QPushButton { background-color:#ff0000; }");
-	//m_pToggleButton_AsynchronizedPulsedLaser->setDisabled(true);
+	///m_pToggleButton_AsynchronizedPulsedLaser->setDisabled(true);
 
 	m_pLabel_AsynchronizedPulsedLaser = new QLabel("Asynchronized UV Pulsed Laser", this);
 	m_pLabel_AsynchronizedPulsedLaser->setBuddy(m_pToggleButton_AsynchronizedPulsedLaser);
-	//m_pLabel_AsynchronizedPulsedLaser->setDisabled(true);
+	///m_pLabel_AsynchronizedPulsedLaser->setDisabled(true);
 
 	m_pToggleButton_SynchronizedPulsedLaser = new QPushButton(this);
 	m_pToggleButton_SynchronizedPulsedLaser->setText("On");
 	m_pToggleButton_SynchronizedPulsedLaser->setFixedWidth(40);
 	m_pToggleButton_SynchronizedPulsedLaser->setCheckable(true);
 	m_pToggleButton_SynchronizedPulsedLaser->setStyleSheet("QPushButton { background-color:#ff0000; }");
-	//m_pToggleButton_SynchronizedPulsedLaser->setDisabled(true);
+	///m_pToggleButton_SynchronizedPulsedLaser->setDisabled(true);
 
 	m_pLabel_SynchronizedPulsedLaser = new QLabel("Synchronized UV Pulsed Laser", this);
 	m_pLabel_SynchronizedPulsedLaser->setBuddy(m_pToggleButton_SynchronizedPulsedLaser);
-	//m_pLabel_SynchronizedPulsedLaser->setDisabled(true);
+	///m_pLabel_SynchronizedPulsedLaser->setDisabled(true);
 	
 	// Create widgets for PMT gain control
 	m_pLineEdit_PmtGainVoltage = new QLineEdit(this);
@@ -290,22 +299,22 @@ void DeviceOptionTab::createFlimSystemControl()
 	m_pLineEdit_PmtGainVoltage->setText(QString::number(m_pConfig->pmtGainVoltage, 'f', 3));
 	m_pLineEdit_PmtGainVoltage->setAlignment(Qt::AlignCenter);
 	m_pLineEdit_PmtGainVoltage->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-	//m_pLineEdit_PmtGainVoltage->setDisabled(true);
+	///m_pLineEdit_PmtGainVoltage->setDisabled(true);
 
 	m_pLabel_PmtGainControl = new QLabel("PMT Gain Voltage", this);
 	m_pLabel_PmtGainControl->setBuddy(m_pLineEdit_PmtGainVoltage);
-	//m_pLabel_PmtGainControl->setDisabled(true);
+	///m_pLabel_PmtGainControl->setDisabled(true);
 
 	m_pLabel_PmtGainVoltage = new QLabel("V  ", this);
 	m_pLabel_PmtGainVoltage->setBuddy(m_pLineEdit_PmtGainVoltage);
-	//m_pLabel_PmtGainVoltage->setDisabled(true);
+	///m_pLabel_PmtGainVoltage->setDisabled(true);
 
 	m_pToggleButton_PmtGainVoltage = new QPushButton(this);
 	m_pToggleButton_PmtGainVoltage->setText("On");	
 	m_pToggleButton_PmtGainVoltage->setFixedWidth(40);
 	m_pToggleButton_PmtGainVoltage->setCheckable(true);
 	m_pToggleButton_PmtGainVoltage->setStyleSheet("QPushButton { background-color:#ff0000; }");
-	//m_pToggleButton_PmtGainVoltage->setDisabled(true);
+	///m_pToggleButton_PmtGainVoltage->setDisabled(true);
 	
 	// Create widgets for FLIM laser power control
 	m_pToggleButton_FlimLaserConnect = new QPushButton(this);
@@ -449,7 +458,42 @@ void DeviceOptionTab::createAxsunOctSystemControl()
 	m_pLabel_LiveImaging->setBuddy(m_pToggleButton_LiveImaging);
 	m_pLabel_LiveImaging->setDisabled(true);
 #endif
+
+	m_pLabel_BackgroundSubtraction = new QLabel("Background Subtraction", this);
+	m_pLabel_BackgroundSubtraction->setDisabled(true);
+
+	m_pLabel_DispersionCompensation = new QLabel("Dispersion Compensation (a2, a3)", this);
+	m_pLabel_DispersionCompensation->setDisabled(true);
+
+	m_pPushButton_BgSet = new QPushButton(this);
+	m_pPushButton_BgSet->setText("Set");
+	m_pPushButton_BgSet->setFixedWidth(50);
+	m_pPushButton_BgSet->setDisabled(true);
+
+	m_pPushButton_BgReset = new QPushButton(this);
+	m_pPushButton_BgReset->setText("Reset");
+	m_pPushButton_BgReset->setFixedWidth(50);
+	m_pPushButton_BgReset->setDisabled(true);
 	
+	m_pLineEdit_DispComp_a2 = new QLineEdit(this);
+	m_pLineEdit_DispComp_a2->setFixedWidth(30);
+	m_pLineEdit_DispComp_a2->setText(QString::number(m_pConfig->axsunDispComp_a2, 'f', 1));
+	m_pLineEdit_DispComp_a2->setAlignment(Qt::AlignCenter);
+	m_pLineEdit_DispComp_a2->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+	m_pLineEdit_DispComp_a2->setDisabled(true);
+
+	m_pLineEdit_DispComp_a3 = new QLineEdit(this);
+	m_pLineEdit_DispComp_a3->setFixedWidth(30);
+	m_pLineEdit_DispComp_a3->setText(QString::number(m_pConfig->axsunDispComp_a3, 'f', 1));
+	m_pLineEdit_DispComp_a3->setAlignment(Qt::AlignCenter);
+	m_pLineEdit_DispComp_a3->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+	m_pLineEdit_DispComp_a3->setDisabled(true);
+
+	m_pPushButton_Compensate = new QPushButton(this);
+	m_pPushButton_Compensate->setText("Apply");
+	m_pPushButton_Compensate->setFixedWidth(50);
+	m_pPushButton_Compensate->setDisabled(true);
+		
     m_pSpinBox_VDLLength = new QMySpinBox(this);
     m_pSpinBox_VDLLength->setFixedWidth(55);
     m_pSpinBox_VDLLength->setRange(0.00, 15.00);
@@ -485,11 +529,31 @@ void DeviceOptionTab::createAxsunOctSystemControl()
 	pGridLayout_AxsunControl->addItem(new QSpacerItem(0, 0, QSizePolicy::MinimumExpanding, QSizePolicy::Fixed), 2, 1, 1, 2);
 	pGridLayout_AxsunControl->addWidget(m_pToggleButton_LiveImaging, 2, 3);
 #endif
+
+	QHBoxLayout *pHBoxLayout_BgSub = new QHBoxLayout;
+	pHBoxLayout_BgSub->setSpacing(3);
+
+	pHBoxLayout_BgSub->addWidget(m_pLabel_BackgroundSubtraction);
+	pHBoxLayout_BgSub->addItem(new QSpacerItem(0, 0, QSizePolicy::MinimumExpanding, QSizePolicy::Fixed));
+	pHBoxLayout_BgSub->addWidget(m_pPushButton_BgSet);
+	pHBoxLayout_BgSub->addWidget(m_pPushButton_BgReset);
+
+	QHBoxLayout *pHBoxLayout_DispComp = new QHBoxLayout;
+	pHBoxLayout_DispComp->setSpacing(3);
+
+	pHBoxLayout_DispComp->addWidget(m_pLabel_DispersionCompensation);
+	pHBoxLayout_DispComp->addItem(new QSpacerItem(0, 0, QSizePolicy::MinimumExpanding, QSizePolicy::Fixed));
+	pHBoxLayout_DispComp->addWidget(m_pLineEdit_DispComp_a2);
+	pHBoxLayout_DispComp->addWidget(m_pLineEdit_DispComp_a3);
+	pHBoxLayout_DispComp->addWidget(m_pPushButton_Compensate);
 	
-	pGridLayout_AxsunControl->addWidget(m_pLabel_VDLLength, 3, 0);
-	pGridLayout_AxsunControl->addItem(new QSpacerItem(0, 0, QSizePolicy::MinimumExpanding, QSizePolicy::Fixed), 3, 1);
-	pGridLayout_AxsunControl->addWidget(m_pSpinBox_VDLLength, 3, 2);
-	pGridLayout_AxsunControl->addWidget(m_pPushButton_VDLHome, 3, 3);
+	pGridLayout_AxsunControl->addItem(pHBoxLayout_BgSub, 3, 0, 1, 4);
+	pGridLayout_AxsunControl->addItem(pHBoxLayout_DispComp, 4, 0, 1, 4);
+
+	pGridLayout_AxsunControl->addWidget(m_pLabel_VDLLength, 5, 0);
+	pGridLayout_AxsunControl->addItem(new QSpacerItem(0, 0, QSizePolicy::MinimumExpanding, QSizePolicy::Fixed), 5, 1);
+	pGridLayout_AxsunControl->addWidget(m_pSpinBox_VDLLength, 5, 2);
+	pGridLayout_AxsunControl->addWidget(m_pPushButton_VDLHome, 5, 3);
 
 
 	QVBoxLayout *pVBoxLayout_OctControl = new QVBoxLayout;
@@ -507,9 +571,11 @@ void DeviceOptionTab::createAxsunOctSystemControl()
 #ifndef NEXT_GEN_SYSTEM
 	connect(m_pToggleButton_LiveImaging, SIGNAL(toggled(bool)), this, SLOT(setLiveImaging(bool)));
 #endif
+	connect(m_pPushButton_BgSet, SIGNAL(clicked(bool)), this, SLOT(setBackground()));
+	connect(m_pPushButton_BgReset, SIGNAL(clicked(bool)), this, SLOT(resetBackground()));
+	connect(m_pPushButton_Compensate, SIGNAL(clicked(bool)), this, SLOT(setDispersionCompensation()));
 	connect(m_pSpinBox_VDLLength, SIGNAL(valueChanged(double)), this, SLOT(setVDLLength(double)));
 	connect(m_pPushButton_VDLHome, SIGNAL(clicked(bool)), this, SLOT(setVDLHome()));
-//	connect(this, SIGNAL(transferAxsunArray(int)), m_pStreamTab->getOperationTab()->getProgressBar(), SLOT(setValue(int)));
 }
 
 
@@ -518,7 +584,7 @@ bool DeviceOptionTab::connectRotaryMotor(bool toggled)
 	if (toggled)
 	{
 		// Connect to rotary motor
-		if (m_pStreamTab || m_pDeviceControl->connectRotaryMotor(true))
+		if (m_pDeviceControl->connectRotaryMotor(true))
 		{
 			// Set widgets
 			m_pToggleButton_RotaryConnect->setText("Disconnect");
@@ -582,7 +648,7 @@ bool DeviceOptionTab::connectPullbackMotor(bool toggled)
 	if (toggled)
 	{
 		// Connect to pullback motor
-		if (m_pStreamTab || m_pDeviceControl->connectPullbackMotor(true))
+		if (m_pDeviceControl->connectPullbackMotor(true))
 		{
 			// Set widgets
 			m_pToggleButton_PullbackConnect->setText("Disconnect");
@@ -600,7 +666,7 @@ bool DeviceOptionTab::connectPullbackMotor(bool toggled)
 			m_pPushButton_PullbackStop->setEnabled(true);
 			m_pPushButton_Pullback->setStyleSheet("QPushButton { background-color:#ff0000; }");
 
-			connect(this, SIGNAL(stopPullback()), this, SLOT(stop()));
+			connect(this, SIGNAL(stopPullback(bool)), this, SLOT(setPullbackWidgets(bool)));
 		}
 		else
 			m_pToggleButton_PullbackConnect->setChecked(false);
@@ -646,38 +712,55 @@ void DeviceOptionTab::setPullbackMode(int id)
 
 void DeviceOptionTab::moveAbsolute()
 {
-	m_pDeviceControl->pullback();
+	m_pDeviceControl->getPullbackMotor()->DidRotateEnd.clear();
+	m_pDeviceControl->getPullbackMotor()->DidRotateEnd += [&](int) 
+	{
+		// Set widgets after pullback finished
+		emit stopPullback(true);
+	};
 
-	// Timer for pullback end condition
-	float duration = m_pConfig->pullbackLength / m_pConfig->pullbackSpeed;
-	std::thread stop([&, duration]() {
-		std::this_thread::sleep_for(std::chrono::milliseconds(int(1000 * duration)));
-		if (m_pDeviceControl->getPullbackMotor())
-			if (m_pDeviceControl->getPullbackMotor()->getMovingState())
-				emit stopPullback();
-	});
-	stop.detach();
-
-
-	// Set widgets
-	m_pPushButton_Home->setDisabled(true);
-	
-	m_pPushButton_Pullback->setStyleSheet("QPushButton { background-color:#00ff00; }");
+	// Pullback
+	if (!m_pConfig->pullbackFlag)
+	{
+		m_pConfig->pullbackFlag = true;
+		m_pConfig->setConfigFile("Havana3.ini");
+		m_pDeviceControl->moveAbsolute();
+		
+		// Set widgets
+		setPullbackWidgets(false);
+	}
+	else
+		stopPullback(true);
 }
 
 void DeviceOptionTab::home()
 {
+	m_pDeviceControl->getPullbackMotor()->DidRotateEnd.clear();
+	m_pDeviceControl->getPullbackMotor()->DidRotateEnd += [&](int timeout)
+	{
+		if (timeout)
+		{
+			m_pConfig->pullbackFlag = false;
+			m_pConfig->setConfigFile("Havana3.ini");
+		}
+	};
 	m_pDeviceControl->home();
 }
 
 void DeviceOptionTab::stop()
 {
 	m_pDeviceControl->stop();
+	setPullbackWidgets(true);
+}
 
+void DeviceOptionTab::setPullbackWidgets(bool enabled)
+{
 	// Set widgets
-	m_pPushButton_Home->setEnabled(true);
-
-	m_pPushButton_Pullback->setStyleSheet("QPushButton { background-color:#ff0000; }");
+	m_pPushButton_Home->setEnabled(enabled);
+	if (enabled)
+		m_pPushButton_Pullback->setStyleSheet("QPushButton { background-color:#ff0000; }");
+	else
+		m_pPushButton_Pullback->setStyleSheet("QPushButton { background-color:#00ff00; }");
 }
 
 
@@ -724,7 +807,7 @@ void DeviceOptionTab::startFlimSynchronization(bool toggled)
 	{
 #ifdef NI_ENABLE
 		// Start synchronous FLIm-OCT operation
-		if (m_pStreamTab || m_pDeviceControl->startSynchronization(true))
+		if (m_pDeviceControl->startSynchronization(true))
 		{
 			// Set widgets		
 			m_pToggleButton_SynchronizedPulsedLaser->setText("Off");
@@ -762,7 +845,7 @@ void DeviceOptionTab::applyPmtGainVoltage(bool toggled)
 	{
 #ifdef NI_ENABLE	
 		// Apply PMT gain voltage
-		if (m_pDeviceControl->applyPmtGainVoltage(true)) // m_pStreamTab || 
+		if (m_pDeviceControl->applyPmtGainVoltage(true)) 
 		{
 			// Set widgets
 			m_pToggleButton_PmtGainVoltage->setText("Off");
@@ -804,7 +887,7 @@ bool DeviceOptionTab::connectFlimLaser(bool toggled)
 	if (toggled)
 	{
 		// Connect to FLIm laser
-		if (m_pStreamTab || m_pDeviceControl->connectFlimLaser(true))
+		if (m_pDeviceControl->connectFlimLaser(true))
 		{
 			// Set callback
 			m_pDeviceControl->getElforlightLaser()->UpdatePowerLevel += [&](int laser_power_level) {
@@ -922,7 +1005,7 @@ void DeviceOptionTab::connectAxsunControl(bool toggled)
 	if (toggled)
 	{
 		// Connect to Axsun OCT engine
-		if (m_pStreamTab || m_pDeviceControl->connectAxsunControl(toggled))
+		if (m_pDeviceControl->connectAxsunControl(toggled))
 		{
 			// Set widgets		
 			m_pToggleButton_AxsunOctConnect->setText("Disconnect");
@@ -936,6 +1019,13 @@ void DeviceOptionTab::connectAxsunControl(bool toggled)
 			m_pToggleButton_LiveImaging->setEnabled(true);
 			m_pToggleButton_LiveImaging->setStyleSheet("QPushButton { background-color:#ff0000; }");
 #endif
+			m_pLabel_BackgroundSubtraction->setEnabled(true);
+			m_pPushButton_BgSet->setEnabled(true);
+			m_pPushButton_BgReset->setEnabled(true);
+			m_pLabel_DispersionCompensation->setEnabled(true);
+			m_pLineEdit_DispComp_a2->setEnabled(true);
+			m_pLineEdit_DispComp_a3->setEnabled(true);
+			m_pPushButton_Compensate->setEnabled(true);
 
 			m_pLabel_VDLLength->setEnabled(true);
 			m_pSpinBox_VDLLength->setEnabled(true);
@@ -962,10 +1052,20 @@ void DeviceOptionTab::connectAxsunControl(bool toggled)
 		m_pToggleButton_LiveImaging->setDisabled(true);
 		m_pToggleButton_LiveImaging->setStyleSheet("QPushButton { background-color:#353535; }");
 #endif
+		m_pLabel_BackgroundSubtraction->setDisabled(true);
+		m_pPushButton_BgSet->setDisabled(true);
+		m_pPushButton_BgReset->setDisabled(true);
+		m_pLabel_DispersionCompensation->setDisabled(true);
+		m_pLineEdit_DispComp_a2->setDisabled(true);
+		m_pLineEdit_DispComp_a3->setDisabled(true);
+		m_pPushButton_Compensate->setDisabled(true);
 		
 		m_pLabel_VDLLength->setDisabled(true);
 		m_pSpinBox_VDLLength->setDisabled(true);
 		m_pPushButton_VDLHome->setDisabled(true);
+		
+		// Disconnect from Axsun OCT engine
+		m_pDeviceControl->connectAxsunControl(toggled);
 	}
 }
 
@@ -1017,6 +1117,33 @@ void DeviceOptionTab::setLiveImaging(bool toggled)
 #endif
 }
 
+void DeviceOptionTab::setBackground()
+{
+	m_pDeviceControl->getAxsunControl()->setPipelineMode(AxPipelineMode::SQRT);
+	m_pDeviceControl->setBackground();
+	m_pDeviceControl->getAxsunControl()->setPipelineMode(AxPipelineMode::JPEG_COMP);
+			
+	//QFile file("bg.data");
+	//if (file.open(QIODevice::WriteOnly))
+	//	file.write(reinterpret_cast<const char*>(getDeviceControl()->getAxsunControl()->background_vector.data()),
+	//		sizeof(uint16_t) * getDeviceControl()->getAxsunControl()->background_vector.size());
+	//file.close();
+}
+
+void DeviceOptionTab::resetBackground()
+{
+	memset(m_pDeviceControl->getAxsunControl()->background_frame, 0, sizeof(uint16_t) * m_pDeviceControl->getAxsunControl()->background_frame.length());
+	m_pDeviceControl->setBackground();
+}
+
+void DeviceOptionTab::setDispersionCompensation()
+{
+	m_pConfig->axsunDispComp_a2 = m_pLineEdit_DispComp_a2->text().toFloat();
+	m_pConfig->axsunDispComp_a3 = m_pLineEdit_DispComp_a3->text().toFloat();
+
+	m_pDeviceControl->setDispersionCompensation(m_pConfig->axsunDispComp_a2, m_pConfig->axsunDispComp_a3);
+}
+
 void DeviceOptionTab::setClockDelay(double)
 {
 	m_pDeviceControl->setClockDelay(CLOCK_DELAY);
@@ -1038,6 +1165,6 @@ void DeviceOptionTab::setVDLHome()
 void DeviceOptionTab::setVDLWidgets(bool enabled)
 {
 	m_pLabel_VDLLength->setEnabled(enabled);
-//	m_pSpinBox_VDLLength->setEnabled(enabled);
+	m_pSpinBox_VDLLength->setEnabled(enabled);
 	m_pPushButton_VDLHome->setEnabled(enabled);
 }

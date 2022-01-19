@@ -40,7 +40,7 @@
 
 
 QStreamTab::QStreamTab(QString patient_id, QWidget *parent) :
-    QDialog(parent), m_bFirstImplemented(true), m_pSettingDlg(nullptr)
+    QDialog(parent), m_pSettingDlg(nullptr)
 #ifdef DEVELOPER_MODE
 	, m_pScope_Alines(nullptr)
 #endif
@@ -85,8 +85,6 @@ QStreamTab::QStreamTab(QString patient_id, QWidget *parent) :
 
     // Create memory buffer object
     m_pMemoryBuffer = new MemoryBuffer(this);
-	///connect(m_pMemoryBuffer, &MemoryBuffer::finishedBufferAllocation, [&]() { m_pToggleButton_StartPullback->setEnabled(true); });
-	///(m_pMemoryBuffer, &MemoryBuffer::finishedWritingThread, [&]() { emit requestReview(m_recordInfo.recordId); });
 
     // Create device control object
     m_pDeviceControl = new DeviceControl(m_pConfig);
@@ -103,13 +101,16 @@ QStreamTab::QStreamTab(QString patient_id, QWidget *parent) :
 QStreamTab::~QStreamTab()
 {
 #ifdef DEVELOPER_MODE
+	// Stop timers
 	m_pSyncMonitorTimer->stop();
 	m_pLaserMonitorTimer->stop();
 #endif
 
+	// Delete relevant objects
 	if (m_pDeviceControl) delete m_pDeviceControl;
 	if (m_pDataAcquisition) delete m_pDataAcquisition;
 
+	// Delete threading objects
 	if (m_pThreadVisualization) delete m_pThreadVisualization;
 	if (m_pThreadOctProcess) delete m_pThreadOctProcess;
 	if (m_pThreadFlimProcess) delete m_pThreadFlimProcess;
@@ -130,6 +131,14 @@ QStreamTab::~QStreamTab()
 }
 
 
+void QStreamTab::closeEvent(QCloseEvent *e)
+{
+	if (m_pSettingDlg)
+		m_pSettingDlg->close();
+
+	e->accept();
+}
+
 void QStreamTab::keyPressEvent(QKeyEvent *e)
 {
 	if (e->key() != Qt::Key_Escape)
@@ -149,28 +158,13 @@ void QStreamTab::createLiveStreamingViewWidgets()
     m_pLabel_PatientInformation->setStyleSheet("QLabel{font-size:12pt}");
 
     m_pViewTab = new QViewTab(true, this);
+	 
+	//m_pToggleButton_CatheterConnection = new QPushButton(this);
+	//m_pToggleButton_CatheterConnection->setText("Connection");
+	//m_pToggleButton_CatheterConnection->setCheckable(true);
+	//m_pToggleButton_CatheterConnection->setFixedSize(70, 32);
 
-    m_pLabel_CatheterCalibration = new QLabel(this);
-    m_pLabel_CatheterCalibration->setText("Catheter\nCalibration");
-    m_pLabel_CatheterCalibration->setAlignment(Qt::AlignCenter);
-
-	m_pPushButton_CatheterCalibrationReset = new QPushButton(this);
-	m_pPushButton_CatheterCalibrationReset->setText("Reset");
-	m_pPushButton_CatheterCalibrationReset->setFixedSize(40, 32);
-
-    m_pScrollBar_CatheterCalibration = new QScrollBar(this);
-    m_pScrollBar_CatheterCalibration->setFixedSize(180, 32);
-    m_pScrollBar_CatheterCalibration->setOrientation(Qt::Horizontal);
-    m_pScrollBar_CatheterCalibration->setRange(0, 1500);
-    m_pScrollBar_CatheterCalibration->setSingleStep(5);
-    m_pScrollBar_CatheterCalibration->setPageStep(50);
-    m_pScrollBar_CatheterCalibration->setValue((int)(m_pConfig->axsunVDLLength * 100.0f));
-
-	m_pToggleButton_CatheterConnection = new QPushButton(this);
-	m_pToggleButton_CatheterConnection->setText("Connection");
-	m_pToggleButton_CatheterConnection->setCheckable(true);
-	m_pToggleButton_CatheterConnection->setFixedSize(70, 32);
-
+	// Hellical scanning
     m_pToggleButton_EnableRotation = new QPushButton(this);
     m_pToggleButton_EnableRotation->setText(" Enable Rotation");
     m_pToggleButton_EnableRotation->setCheckable(true);
@@ -185,7 +179,33 @@ void QStreamTab::createLiveStreamingViewWidgets()
     m_pToggleButton_StartPullback->setStyleSheet("QPushButton{font-size:12pt; font-weight:bold; color:black; background-color:#00ff00}");
     m_pToggleButton_StartPullback->setFixedSize(180, 35);
 	m_pToggleButton_StartPullback->setDisabled(true);
+	
+	// Catheter calibration
+	m_pLabel_CatheterCalibration = new QLabel(this);
+	m_pLabel_CatheterCalibration->setText("Catheter\nCalibration");
+	m_pLabel_CatheterCalibration->setAlignment(Qt::AlignCenter);
 
+	m_pPushButton_CatheterCalibrationReset = new QPushButton(this);
+	m_pPushButton_CatheterCalibrationReset->setText("Reset");
+	m_pPushButton_CatheterCalibrationReset->setFixedSize(40, 32);
+
+	m_pScrollBar_CatheterCalibration = new QScrollBar(this);
+	m_pScrollBar_CatheterCalibration->setFixedSize(180, 16);
+	m_pScrollBar_CatheterCalibration->setOrientation(Qt::Horizontal);
+	m_pScrollBar_CatheterCalibration->setRange(0, 1500);
+	m_pScrollBar_CatheterCalibration->setSingleStep(5);
+	m_pScrollBar_CatheterCalibration->setPageStep(50);
+	m_pScrollBar_CatheterCalibration->setValue((int)(m_pConfig->axsunVDLLength * 100.0f));
+
+	m_pScrollBar_InnerOffset = new QScrollBar(this);
+	m_pScrollBar_InnerOffset->setFixedSize(180, 16);
+	m_pScrollBar_InnerOffset->setOrientation(Qt::Horizontal);
+	m_pScrollBar_InnerOffset->setRange(0, 512);
+	m_pScrollBar_InnerOffset->setSingleStep(1);
+	m_pScrollBar_InnerOffset->setPageStep(10);
+	m_pScrollBar_InnerOffset->setValue(m_pConfig->innerOffsetLength);
+
+	// Setting window
     m_pPushButton_Setting = new QPushButton(this);
     m_pPushButton_Setting->setText("  Setting");
     m_pPushButton_Setting->setIcon(style()->standardIcon(QStyle::SP_FileDialogInfoView));
@@ -218,7 +238,7 @@ void QStreamTab::createLiveStreamingViewWidgets()
 	connect(m_pSyncMonitorTimer, SIGNAL(timeout()), this, SLOT(onTimerSyncMonitor()));
 
 	m_pLaserMonitorTimer = new QTimer(this);
-	m_pLaserMonitorTimer->start(10000);
+	m_pLaserMonitorTimer->start(5000);
 	connect(m_pLaserMonitorTimer, SIGNAL(timeout()), this, SLOT(onTimerLaserMonitor()));
 #endif
 
@@ -234,21 +254,21 @@ void QStreamTab::createLiveStreamingViewWidgets()
     pHBoxLayout_Title->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed));
     pHBoxLayout_Title->addWidget(m_pPushButton_Setting);
 
-    QHBoxLayout *pHBoxLayout_Operation = new QHBoxLayout;
-    pHBoxLayout_Operation->setSpacing(5);
-    pHBoxLayout_Operation->setAlignment(Qt::AlignVCenter);
-    pHBoxLayout_Operation->addWidget(m_pLabel_CatheterCalibration);
-	pHBoxLayout_Operation->addWidget(m_pPushButton_CatheterCalibrationReset);
-    pHBoxLayout_Operation->addWidget(m_pScrollBar_CatheterCalibration);
-	pHBoxLayout_Operation->addWidget(m_pToggleButton_CatheterConnection);
-    pHBoxLayout_Operation->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed));
-    pHBoxLayout_Operation->addWidget(m_pToggleButton_EnableRotation);
-    pHBoxLayout_Operation->addWidget(m_pToggleButton_StartPullback);
+    QGridLayout *pGridLayout_Operation = new QGridLayout;
+	pGridLayout_Operation->setSpacing(5);
+	pGridLayout_Operation->setAlignment(Qt::AlignVCenter);
+	pGridLayout_Operation->addWidget(m_pLabel_CatheterCalibration, 0, 0, 2, 1);
+	pGridLayout_Operation->addWidget(m_pPushButton_CatheterCalibrationReset, 0, 1, 2, 1);
+	pGridLayout_Operation->addWidget(m_pScrollBar_CatheterCalibration, 0, 2, Qt::AlignTop);
+	pGridLayout_Operation->addWidget(m_pScrollBar_InnerOffset, 1, 2, Qt::AlignBottom);
+	pGridLayout_Operation->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed), 0, 3, 2, 1);
+	pGridLayout_Operation->addWidget(m_pToggleButton_EnableRotation, 0, 4, 2, 1);
+	pGridLayout_Operation->addWidget(m_pToggleButton_StartPullback, 0, 5, 2, 1);
 
     pVBoxLayout_LiveStreaming->addItem(pHBoxLayout_Title);
     pVBoxLayout_LiveStreaming->addWidget(m_pViewTab->getViewWidget());
     pVBoxLayout_LiveStreaming->addItem(new QSpacerItem(0, 0, QSizePolicy::Fixed, QSizePolicy::Expanding));
-    pVBoxLayout_LiveStreaming->addItem(pHBoxLayout_Operation);
+    pVBoxLayout_LiveStreaming->addItem(pGridLayout_Operation);
 
     m_pGroupBox_LiveStreaming->setLayout(pVBoxLayout_LiveStreaming);
 
@@ -256,10 +276,16 @@ void QStreamTab::createLiveStreamingViewWidgets()
 	connect(this, SIGNAL(getCapture(QByteArray &)), m_pViewTab, SLOT(getCapture(QByteArray &)));
 	connect(m_pPushButton_CatheterCalibrationReset, SIGNAL(clicked(bool)), this, SLOT(resetCatheterCalibration()));
     connect(m_pScrollBar_CatheterCalibration, SIGNAL(valueChanged(int)), this, SLOT(scrollCatheterCalibration(int)));
-	connect(m_pToggleButton_CatheterConnection, SIGNAL(toggled(bool)), this, SLOT(catheterConnection(bool)));
+	connect(m_pScrollBar_InnerOffset, SIGNAL(valueChanged(int)), this, SLOT(scrollInnerOffsetLength(int)));
+	///connect(m_pToggleButton_CatheterConnection, SIGNAL(toggled(bool)), this, SLOT(catheterConnection(bool)));
     connect(m_pToggleButton_EnableRotation, SIGNAL(toggled(bool)), this, SLOT(enableRotation(bool)));
     connect(m_pToggleButton_StartPullback, SIGNAL(toggled(bool)), this, SLOT(startPullback(bool)));
     connect(m_pPushButton_Setting, SIGNAL(clicked(bool)), this, SLOT(createSettingDlg()));
+	connect(this, SIGNAL(pullbackFinished(bool)), m_pToggleButton_StartPullback, SLOT(setChecked(bool)));
+#ifdef DEVELOPER_MODE
+	connect(this, SIGNAL(setStreamingSyncStatusLabel(const QString &)), m_pLabel_StreamingSyncStatus, SLOT(setText(const QString &)));
+	connect(this, SIGNAL(setLaserStatusLabel(const QString &)), m_pLabel_LaserStatus, SLOT(setText(const QString &)));
+#endif
 }
 
 
@@ -288,7 +314,6 @@ void QStreamTab::changePatient(QString patient_id)
 					m_pMainWnd->getTabWidget()->setTabText(index, this->windowTitle());
 				index++;
 			}
-
 		}
 
 		m_pConfig->writeToLog(QString("Live streaming patient changed: %1 (ID: %2)").arg(m_recordInfo.patientName).arg(m_recordInfo.patientId));
@@ -396,7 +421,21 @@ bool QStreamTab::enableDeviceControl(bool enabled)
 	{		
 		// Set rotary & pullback motor control
 		if (!m_pDeviceControl->connectRotaryMotor(true)) return false;		
-		if (!m_pDeviceControl->connectPullbackMotor(true)) return false;
+		if (!m_pDeviceControl->connectPullbackMotor(true))
+			return false;
+		else
+		{
+			m_pDeviceControl->getPullbackMotor()->DidRotateEnd.clear();
+			m_pDeviceControl->getPullbackMotor()->DidRotateEnd += [&](int timeout)
+			{
+				if (timeout)
+				{
+					m_pConfig->pullbackFlag = false;
+					m_pConfig->setConfigFile("Havana3.ini");
+				}
+			};
+			m_pDeviceControl->home(); // 괜찮은가..
+		}
 
 		// Set FLIm system control
 		if (!m_pDeviceControl->connectFlimLaser(true)) 
@@ -404,7 +443,7 @@ bool QStreamTab::enableDeviceControl(bool enabled)
 		else
 		{
 			m_pDeviceControl->getElforlightLaser()->UpdateState += [&](double* value) {
-				m_pLabel_LaserStatus->setText(QString::fromLocal8Bit("[FLIm Laser Set/Monitor]\nDiode Current: %1 / %2 A\nDiode Temp: %3 / %4 °C\nChipset Temp: %5 / %6 °C")
+				emit setLaserStatusLabel(QString::fromLocal8Bit("[FLIm Laser Set/Monitor]\nDiode Current: %1 / %2 A\nDiode Temp: %3 / %4 °C\nChipset Temp: %5 / %6 °C")
 						.arg(value[0], 3, 'f', 2).arg(value[1], 3, 'f', 2).arg(value[2], 3, 'f', 2)
 						.arg(value[3], 3, 'f', 2).arg(value[4], 3, 'f', 2).arg(value[5], 3, 'f', 2));
 			};
@@ -434,7 +473,7 @@ bool QStreamTab::enableDeviceControl(bool enabled)
 #endif
 			m_pDeviceControl->setLightSource(true);
 #ifndef NEXT_GEN_SYSTEM
-			m_pDeviceControl->setVDLLength(m_pConfig->axsunVDLLength);
+			//m_pDeviceControl->setVDLLength(m_pConfig->axsunVDLLength);
 #endif
 		}
 	
@@ -445,14 +484,8 @@ bool QStreamTab::enableDeviceControl(bool enabled)
 	}
 	else
 	{
-		// Turn off the master trigger generation
-		m_pDeviceControl->setLightSource(false);
-#ifndef NEXT_GEN_SYSTEM
-		m_pDeviceControl->setLiveImaging(false);
-#endif
-
-		// Turn off all the devices
-		m_pDeviceControl->setAllDeviceOff();
+		// Turn off all devices
+		m_pDeviceControl->turnOffAllDevices();
 	}
 
     return true;
@@ -642,6 +675,19 @@ void QStreamTab::setOctAcquisitionCallback()
 		}
 	});
 
+	m_pDataAcquisition->ConnectAcquiredOctBG([&](uint32_t frame_count, const np::Uint8Array2& frame) {
+
+		np::Uint16Array2 bg((uint16_t*)frame.raw_ptr(), frame.size(0) / 2, frame.size(1));
+		ippiTranspose_16u_C1R(bg, sizeof(uint16_t) * bg.size(0),
+			getDeviceControl()->getAxsunControl()->background_frame, sizeof(uint16_t) * bg.size(1), { bg.size(0), bg.size(1) });
+
+		QFile file("oct.data");
+		if (file.open(QIODevice::WriteOnly))
+			file.write(reinterpret_cast<const char*>(getDeviceControl()->getAxsunControl()->background_frame.raw_ptr()), 
+				sizeof(uint16_t) * getDeviceControl()->getAxsunControl()->background_frame.length());
+		file.close();
+	});
+
 	m_pDataAcquisition->ConnectStopOctData([&]() {
 		m_syncOctProcessing.Queue_sync.push(nullptr);
 	});
@@ -693,19 +739,20 @@ void QStreamTab::setFlimProcessingCallback()
 
                 (*pFLIm)(intensity, mean_delay, lifetime, pulse);
 
-                for (int i = 0; i < 11; i++)
-                {
-                    float* pValue = flim_ptr + i * m_pConfig->flimAlines;
-                    std::rotate(pValue, pValue + INTRA_FRAME_SYNC, pValue + m_pConfig->flimAlines);
-                }
+				if (INTRA_FRAME_SYNC > 0)
+				{
+					for (int i = 0; i < 11; i++)
+					{
+						float* pValue = flim_ptr + i * m_pConfig->flimAlines;
+						std::rotate(pValue, pValue + INTRA_FRAME_SYNC, pValue + m_pConfig->flimAlines);
+					}
+				}
 
                 // Transfer to FLIm calibration dlg
 				if (m_pSettingDlg)
 				{
-					//int renewal_count = m_pToggleButton_EnableRotation->isChecked() && !m_pToggleButton_StartPullback->isChecked() ? 8 : 1;
 					if (m_pSettingDlg->getTabWidget()->currentIndex() == 2) // FLIm calibration view
-						//if (!(frame_count % renewal_count))
-							emit m_pSettingDlg->getFlimCalibTab()->plotRoiPulse(pFLIm, 0);
+						emit m_pSettingDlg->getFlimCalibTab()->plotRoiPulse(0);
 				}
 				
                 // Push the buffers to sync Queues
@@ -865,7 +912,6 @@ void QStreamTab::setVisualizationCallback()
         float* flim_data = m_syncFlimVisualization.Queue_sync.pop();
         uint8_t* oct_data = m_syncOctVisualization.Queue_sync.pop();
         if ((flim_data != nullptr) && (oct_data != nullptr)) 
-		//if (flim_data != nullptr)
         {
             // Body
             if (m_pDataAcquisition->getAcquisitionState()) // Only valid if acquisition is running
@@ -883,7 +929,7 @@ void QStreamTab::setVisualizationCallback()
 
                 // Draw A-lines
 #ifndef NEXT_GEN_SYSTEM
-				m_pViewTab->m_visImage = np::Uint8Array2(oct_data, m_pConfig->octScans, m_pConfig->octAlines);
+				m_pViewTab->m_visImage = np::Uint8Array2(oct_data, m_pConfig->octScans, m_pConfig->octAlines);	
 #else
 				m_pViewTab->m_visImage = np::Uint8Array2(oct_data, m_pConfig->octScansFFT / 2, m_pConfig->octAlines);
 #endif
@@ -966,9 +1012,10 @@ void QStreamTab::createSettingDlg()
     {
         m_pSettingDlg = new SettingDlg(this);
         connect(m_pSettingDlg, SIGNAL(finished(int)), this, SLOT(deleteSettingDlg()));
-		m_pSettingDlg->setModal(true);
-		m_pSettingDlg->exec();
+		m_pSettingDlg->show(); // modal-less
     }
+	m_pSettingDlg->raise();
+	m_pSettingDlg->activateWindow();
 }
 
 void QStreamTab::deleteSettingDlg()
@@ -989,11 +1036,13 @@ void QStreamTab::resetCatheterCalibration()
 		}
 	});
 	calib.detach();	
+
+	m_pScrollBar_InnerOffset->setValue(0);
 }
 
 void QStreamTab::scrollCatheterCalibration(int value)
 {
-	/* 추후 VDL 작동 확인 하기.  더 알맞은 functionality implementation이 있는지 찾아 보기 */
+	/* 장치를 껐다 키면 VDL이 영 이상해요. */
 	std::thread calib([&]() {
 		if (m_pDeviceControl->getAxsunControl())
 		{
@@ -1004,20 +1053,25 @@ void QStreamTab::scrollCatheterCalibration(int value)
 	calib.detach();
 }
 
+void QStreamTab::scrollInnerOffsetLength(int offset)
+{
+	m_pConfig->innerOffsetLength = offset;
+}
+
 void QStreamTab::catheterConnection(bool enabled)
 {
-	if (enabled)
-	{
-		if (m_pToggleButton_EnableRotation->isChecked())
-			m_pToggleButton_EnableRotation->setChecked(false);
-		m_pToggleButton_EnableRotation->setDisabled(true);
-		m_pDeviceControl->moveAbsolute();
-	}
-	else
-	{
-		m_pToggleButton_EnableRotation->setEnabled(true);
-		m_pDeviceControl->home();
-	}
+	//if (enabled)
+	//{
+	//	if (m_pToggleButton_EnableRotation->isChecked())
+	//		m_pToggleButton_EnableRotation->setChecked(false);
+	//	m_pToggleButton_EnableRotation->setDisabled(true);
+	//	m_pDeviceControl->moveAbsolute();
+	//}
+	//else
+	//{
+	//	m_pToggleButton_EnableRotation->setEnabled(true);
+	//	m_pDeviceControl->home();
+	//}
 }
 
 void QStreamTab::enableRotation(bool enabled)
@@ -1102,16 +1156,22 @@ void QStreamTab::startPullback(bool enabled)
 				return;
 			}
 
-			// Set recording - pullback synchronization			
+			// Set recording - pullback synchronization	
 			m_pMemoryBuffer->DidPullback.clear();
 			m_pMemoryBuffer->DidPullback += [&]() {
 				if (m_pDeviceControl->getPullbackMotor())
 				{
-					m_pDeviceControl->getPullbackMotor()->DidRotateEnd += [&]()
+					m_pDeviceControl->getPullbackMotor()->DidRotateEnd.clear();
+					m_pDeviceControl->getPullbackMotor()->DidRotateEnd += [&](int)
 					{
-						m_pToggleButton_StartPullback->setChecked(false);
+						emit pullbackFinished(false);
 					};
-					m_pDeviceControl->moveAbsolute();
+					if (!m_pConfig->pullbackFlag)
+					{
+						m_pConfig->pullbackFlag = true;
+						m_pConfig->setConfigFile("Havana3.ini");
+						m_pDeviceControl->moveAbsolute();
+					}
 				}
 			};
 
@@ -1138,8 +1198,17 @@ void QStreamTab::startPullback(bool enabled)
 		// Stop motor operation
 		m_pMemoryBuffer->stopRecording();
 		m_pDeviceControl->rotateStop();
+
+		// Pullback stage homing
+		m_pDeviceControl->getPullbackMotor()->DidRotateEnd.clear();
+		m_pDeviceControl->getPullbackMotor()->DidRotateEnd += [&](int timeout) {
+			if (timeout)
+			{
+				m_pConfig->pullbackFlag = false;
+				m_pConfig->setConfigFile("Havana3.ini");
+			}
+		};
 		m_pDeviceControl->home();
-		///startLiveImaging(false);
 
 		m_pConfig->writeToLog(QString("Pullback recording stopped: %1 (ID: %2)").arg(m_recordInfo.patientName).arg(m_recordInfo.patientId));
 
@@ -1187,5 +1256,6 @@ void QStreamTab::onTimerSyncMonitor()
 void QStreamTab::onTimerLaserMonitor()
 {
 	m_pDeviceControl->sendLaserCommand((char*)"?");
+	m_pDeviceControl->requestOctStatus();
 }
 #endif

@@ -30,7 +30,6 @@ public:
 	inline Configuration* getConfigTemp() const { return m_pConfigTemp; }
     inline QResultTab* getResultTab() const { return m_pResultTab; }
     inline FLImProcess* getFLImProcess() const { return m_pFLIm; }
-	inline bool getIsDataLoaded() const { return m_bIsDataLoaded; }
 
 public:
     void startProcessing(QString);
@@ -50,6 +49,7 @@ private:
 signals:
 	void processedSingleFrame(int);
 	void abortedProcessing();
+	void finishedProcessing(bool);
 
 // Variables ////////////////////////////////////////////
 private:
@@ -58,9 +58,6 @@ private:
     QResultTab* m_pResultTab;
 	FLImProcess* m_pFLIm;
 	
-private:
-	bool m_bIsDataLoaded;
-
 private:
     // for threading operation
 	SyncObject<uint8_t> m_syncDeinterleaving;

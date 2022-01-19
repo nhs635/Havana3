@@ -69,6 +69,7 @@ public:
 	void setVLineChangeCallback(const std::function<void(int)> &slot);
 	void setRLineChangeCallback(const std::function<void(int)> &slot);
 	void setMovedMouseCallback(const std::function<void(QPoint&)> &slot);
+	void setClickedMouseCallback(const std::function<void(void)> &slot);
 	void setDoubleClickedMouseCallback(const std::function<void(void)> &slot);
 	void setWheelMouseCallback(const std::function<void(void)> &slot);
 
@@ -139,6 +140,7 @@ public:
 	callback<int> DidChangedHLine;
 	callback<int> DidChangedVLine;
 	callback<int> DidChangedRLine;
+	callback<void> DidClickedMouse;
 	callback<void> DidDoubleClickedMouse;
 	callback<QPoint&> DidMovedMouse;
 	callback<void> DidWheelMouse;

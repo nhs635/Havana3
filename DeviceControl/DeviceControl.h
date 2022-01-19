@@ -29,8 +29,9 @@ public:
     virtual ~DeviceControl();
 
 // Methods //////////////////////////////////////////////
-public:
-	void setAllDeviceOff();
+public slots:
+	void turnOffAllDevices();
+	void disconnectAllDevices();
 
 public:
 	inline RotaryMotor* getRotatyMotor() const { return m_pRotaryMotor; }
@@ -82,6 +83,8 @@ public:
 	void setSubSampling(int);
 	void setVDLLength(double);
 	void setVDLHome();
+	void setBackground();
+	void setDispersionCompensation(float, float);
     void adjustDecibelRange(double, double);
     void requestOctStatus();
 

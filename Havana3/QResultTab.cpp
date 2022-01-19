@@ -9,37 +9,37 @@
 #include <Havana3/QViewTab.h>
 
 #include <Havana3/Dialog/SettingDlg.h>
+#include <Havana3/Dialog/PulseReviewTab.h>
 #include <Havana3/Dialog/ExportDlg.h>
 
 #include <DataAcquisition/DataProcessing.h>
 
 
 QResultTab::QResultTab(QString record_id, QWidget *parent) :
-    QDialog(parent), m_pSettingDlg(nullptr), m_pExportDlg(nullptr)
+    QDialog(parent), m_bIsDataLoaded(false), m_pSettingDlg(nullptr), m_pExportDlg(nullptr)
 {
 	// Set main window objects
 	m_pMainWnd = dynamic_cast<MainWindow*>(parent);
 	m_pConfig = m_pMainWnd->m_pConfiguration;    
     m_pHvnSqlDataBase = m_pMainWnd->m_pHvnSqlDataBase;
     m_recordInfo.recordId = record_id;
+	
+	// Create post-processing objects
+	m_pDataProcessing = new DataProcessing(this);
 
     // Create widgets for result review
     createResultReviewWidgets();
-
-    // Create post-processing objects
-    m_pDataProcessing = new DataProcessing(this);
-
-    // Create window layout
-    QHBoxLayout* pHBoxLayout = new QHBoxLayout;
-    pHBoxLayout->setSpacing(2);
-
-    pHBoxLayout->addWidget(m_pGroupBox_ResultReview);
 	
-    // Initialize & start result review
-    readRecordData();  // 이거 fail 나는 경우는 어떡해?
+    // Create window layout
+    QVBoxLayout* pVBoxLayout = new QVBoxLayout;
+	pVBoxLayout->setSpacing(2);
+	pVBoxLayout->setAlignment(Qt::AlignCenter);
+
+	pVBoxLayout->addWidget(m_pGroupBox_ResultReview);
+	pVBoxLayout->addWidget(m_pProgressBar, Qt::AlignCenter);
 
 	// Set window layout
-	this->setLayout(pHBoxLayout);
+	this->setLayout(pVBoxLayout);
 }
 
 QResultTab::~QResultTab()
@@ -47,6 +47,14 @@ QResultTab::~QResultTab()
 	delete m_pDataProcessing;
 }
 
+
+void QResultTab::closeEvent(QCloseEvent *e)
+{
+	if (m_pSettingDlg)
+		m_pSettingDlg->close();
+
+	e->accept();
+}
 
 void QResultTab::keyPressEvent(QKeyEvent *e)
 {
@@ -124,7 +132,7 @@ void QResultTab::createResultReviewWidgets()
 
     QHBoxLayout *pHBoxLayout_Title = new QHBoxLayout;
     pHBoxLayout_Title->setSpacing(5);
-    pHBoxLayout_Title->setAlignment(m_pPushButton_Export, Qt::AlignBottom);// (Qt::AlignBottom);
+    pHBoxLayout_Title->setAlignment(m_pPushButton_Export, Qt::AlignBottom);
     pHBoxLayout_Title->addWidget(m_pLabel_PatientInformation);
     pHBoxLayout_Title->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed));
     pHBoxLayout_Title->addItem(pGridLayout_RecordInformation);
@@ -136,9 +144,19 @@ void QResultTab::createResultReviewWidgets()
     pVBoxLayout_ResultReview->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Minimum));
 
     m_pGroupBox_ResultReview->setLayout(pVBoxLayout_ResultReview);
-
+	m_pGroupBox_ResultReview->setVisible(false);
+	
+	// Progress bar
+	m_pProgressBar = new QProgressBar(this);
+	m_pProgressBar->setFormat("Processing... %p%");
+	m_pProgressBar->setFixedWidth(450);
+	m_pProgressBar->setValue(0);
 
     // Connect signal and slot
+	connect(m_pDataProcessing, SIGNAL(processedSingleFrame(int)), m_pProgressBar, SLOT(setValue(int)));
+	connect(m_pDataProcessing, &DataProcessing::abortedProcessing, [&]() { m_pMainWnd->getTabWidget()->tabCloseRequested(m_pMainWnd->getCurrentTabIndex()); });
+	connect(m_pDataProcessing, SIGNAL(finishedProcessing(bool)), this, SLOT(setVisibleState(bool)));
+
 	connect(this, SIGNAL(getCapture(QByteArray &)), m_pViewTab, SLOT(getCapture(QByteArray &)));
     connect(m_pComboBox_Vessel, SIGNAL(currentIndexChanged(int)), this, SLOT(changeVesselInfo(int)));
     connect(m_pComboBox_Procedure, SIGNAL(currentIndexChanged(int)), this, SLOT(changeProcedureInfo(int)));
@@ -151,48 +169,47 @@ void QResultTab::createResultReviewWidgets()
 
 void QResultTab::readRecordData()
 {
-	/// Make progress dialog 
-	///m_pProgressDlg = new QProgressDialog("Processing...", "Cancel", 0, 100, this);
-	///m_pProgressDlg->setWindowTitle("Review");
-	///m_pProgressDlg->setCancelButton(0);
-	///m_pProgressDlg->setWindowModality(Qt::WindowModal);
-	///m_pProgressDlg->setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::CustomizeWindowHint);
-	///m_pProgressDlg->move((m_pMainWnd->width() - m_pProgressDlg->width()) / 2, (m_pMainWnd->height() - m_pProgressDlg->height()) / 2);
-	///m_pProgressDlg->setFixedSize(m_pProgressDlg->width(), m_pProgressDlg->height());
-	///connect(m_pDataProcessing, SIGNAL(processedSingleFrame(int)), m_pProgressDlg, SLOT(setValue(int)));
-	///connect(m_pDataProcessing, &DataProcessing::abortedProcessing, [&]() { m_pProgressDlg->setValue(100); /* tab 종료 조건 */ });
-	///connect(&progress, &QProgressDialog::canceled, [&]() { m_pDataProcessing->m_bAbort = true; });
-	///m_pProgressDlg->show();
+	if (!m_bIsDataLoaded)
+	{
+		/// Make progress dialog 
+		///m_pProgressDlg = new QProgressDialog("Processing...", "Cancel", 0, 100, this);
+		///m_pProgressDlg->setWindowTitle("Review");
+		///m_pProgressDlg->setCancelButton(0);
+		///m_pProgressDlg->setWindowModality(Qt::WindowModal);
+		///m_pProgressDlg->setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::CustomizeWindowHint);
+		///m_pProgressDlg->move((m_pMainWnd->width() - m_pProgressDlg->width()) / 2, (m_pMainWnd->height() - m_pProgressDlg->height()) / 2);
+		///m_pProgressDlg->setFixedSize(m_pProgressDlg->width(), m_pProgressDlg->height());
+		///connect(&progress, &QProgressDialog::canceled, [&]() { m_pDataProcessing->m_bAbort = true; });
+		///m_pProgressDlg->show();
 
-	// Start read and process the reviewing file
-	m_pDataProcessing->startProcessing(m_recordInfo.filename);
+		// Start read and process the reviewing file
+		m_pDataProcessing->startProcessing(m_recordInfo.filename);
 
-	// Write to log...
-	m_pConfig->writeToLog(QString("Record reviewing: %1 (ID: %2): %3: record id: %4")
-		.arg(m_recordInfo.patientName).arg(m_recordInfo.patientId).arg(m_recordInfo.date).arg(m_recordInfo.recordId));
-	
-	/// // Abort
-	///if (m_pDataProcessing->m_bAbort)
-	///{
-	///	std::thread tab_close([&]() {
-	///		//while (1)
-	///		//{
-	///		//	int total = (int)m_pMainWnd->getVectorTabViews().size();
-	///		//	int current = m_pMainWnd->getTabWidget()->currentIndex() + 1;
-	///		//	if (total > current)
-	///		//	{
-	///		//		emit m_pMainWnd->getTabWidget()->tabCloseRequested(current);
-	///		//		break;
-	///		//	}
-	///		//}
-	///	});
-	///	tab_close.detach();
-	///}
-	///if (m_pProgressDlg)
-	///{
-	///	delete m_pProgressDlg;
-	///	m_pProgressDlg = nullptr;
-	///}
+		// Write to log...
+		m_pConfig->writeToLog(QString("Record reviewing: %1 (ID: %2): %3: record id: %4")
+			.arg(m_recordInfo.patientName).arg(m_recordInfo.patientId).arg(m_recordInfo.date).arg(m_recordInfo.recordId));
+
+		/// // Abort
+		///if (m_pDataProcessing->m_bAbort)
+		///{
+		///	std::thread tab_close([&]() {
+		///		//while (1)
+		///		//{
+		///		//	int total = (int)m_pMainWnd->getVectorTabViews().size();
+		///		//	int current = m_pMainWnd->getTabWidget()->currentIndex() + 1;
+		///		//	if (total > current)
+		///		//	{
+		///		//		emit m_pMainWnd->getTabWidget()->tabCloseRequested(current);
+		///		//		break;
+		///		//	}
+		///		//}
+		///	});
+		///	tab_close.detach();
+
+		m_bIsDataLoaded = true;
+	}
+	else
+		m_pViewTab->invalidate();
 }
 
 void QResultTab::loadRecordInfo()
@@ -251,6 +268,12 @@ void QResultTab::updatePreviewImage()
 		.arg(m_recordInfo.patientName).arg(m_recordInfo.patientId).arg(m_recordInfo.date).arg(m_recordInfo.recordId));
 }
 
+
+void QResultTab::setVisibleState(bool enabled)
+{
+	m_pGroupBox_ResultReview->setVisible(enabled);
+	m_pProgressBar->setVisible(!enabled);
+}
 
 void QResultTab::changeVesselInfo(int info)
 {
@@ -319,17 +342,29 @@ void QResultTab::updateComment()
 
 void QResultTab::createSettingDlg()
 {
-    if (m_pSettingDlg == nullptr)
-    {
-        m_pSettingDlg = new SettingDlg(this);
-        connect(m_pSettingDlg, SIGNAL(finished(int)), this, SLOT(deleteSettingDlg()));
-		m_pSettingDlg->setModal(true);
-		m_pSettingDlg->exec();
-    }
+	if (m_pSettingDlg == nullptr)
+	{
+		m_pSettingDlg = new SettingDlg(this);
+		connect(m_pSettingDlg, SIGNAL(finished(int)), this, SLOT(deleteSettingDlg()));
+		m_pSettingDlg->show(); // modal-less		
+		
+		m_pViewTab->setCircImageViewClickedMouseCallback([&]() { m_pSettingDlg->getPulseReviewTab()->setCurrentAline(int(m_pViewTab->getCurrentAline() / 4)); });
+		m_pViewTab->setEnFaceImageViewClickedMouseCallback([&]() { m_pSettingDlg->getPulseReviewTab()->setCurrentAline(int(m_pViewTab->getCurrentAline() / 4)); });
+		m_pViewTab->setLongiImageViewClickedMouseCallback([&]() { m_pSettingDlg->getPulseReviewTab()->setCurrentAline(int(m_pViewTab->getCurrentAline() / 4)); });
+
+		///m_pSettingDlg->setModal(true);
+		///m_pSettingDlg->exec();
+	}
+	m_pSettingDlg->raise();
+	m_pSettingDlg->activateWindow();
 }
 
 void QResultTab::deleteSettingDlg()
 {
+	m_pViewTab->setCircImageViewClickedMouseCallback([&]() { });
+	m_pViewTab->setEnFaceImageViewClickedMouseCallback([&]() { });
+	m_pViewTab->setLongiImageViewClickedMouseCallback([&]() { });
+
 	m_pSettingDlg->deleteLater();
     m_pSettingDlg = nullptr;
 }

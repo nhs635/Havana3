@@ -41,7 +41,7 @@ FlimCalibTab::FlimCalibTab(QWidget *parent) :
     m_pGroupBox_FlimCalibTab->setLayout(m_pVBoxLayout);
 	
 	// Draw pulse data
-	drawRoiPulse(m_pFLIm, 0);
+	drawRoiPulse(0);
 }
 
 FlimCalibTab::~FlimCalibTab()
@@ -58,13 +58,14 @@ void FlimCalibTab::createPulseView()
 	pVBoxLayout_PulseView->setSpacing(2);
 
     // Create widgets for FLIM pulse view
-    m_pScope_PulseView = new QScope({ 0, (double)m_pFLIm->_resize.crop_src.size(0) }, { 0, POWER_2(16) },
-                                    2, 2, m_pFLIm->_params.samp_intv, PX14_VOLT_RANGE / (double)POWER_2(16), 0, 0, " nsec", " V", true);
+    m_pScope_PulseView = new QScope({ 0, (double)m_pFLIm->_resize.crop_src.size(0) }, { -POWER_2(12), POWER_2(16) },
+                                    2, 2, m_pFLIm->_params.samp_intv, PX14_VOLT_RANGE / (double)(POWER_2(16)), 0, 0, " nsec", " V", true);
     m_pScope_PulseView->getRender()->m_bMaskUse = false;
 	m_pScope_PulseView->setFixedWidth(420);
     m_pScope_PulseView->setMinimumHeight(200);
     m_pScope_PulseView->getRender()->setGrid(8, 32, 1, true);
-    m_pScope_PulseView->setDcLine(m_pFLIm->_params.bg);
+	m_pScope_PulseView->setDcLine((float)POWER_2(12));
+    //m_pScope_PulseView->setDcLine(m_pFLIm->_params.bg);
 
     m_pStart = &m_pScope_PulseView->getRender()->m_start;
     m_pEnd = &m_pScope_PulseView->getRender()->m_end;
@@ -74,6 +75,7 @@ void FlimCalibTab::createPulseView()
     m_pCheckBox_ShowWindow->setText("Show Window  ");
     m_pCheckBox_ShowMeanDelay = new QCheckBox(this);
     m_pCheckBox_ShowMeanDelay->setText("Show Mean Delay  ");
+	m_pCheckBox_ShowMeanDelay->setDisabled(true);
     m_pCheckBox_SplineView = new QCheckBox(this);
     m_pCheckBox_SplineView->setText("Spline View");
 
@@ -119,7 +121,7 @@ void FlimCalibTab::createPulseView()
 	m_pVBoxLayout->addItem(pVBoxLayout_PulseView);
 
     // Connect
-    connect(this, SIGNAL(plotRoiPulse(FLImProcess*, int)), this, SLOT(drawRoiPulse(FLImProcess*, int)));
+    connect(this, SIGNAL(plotRoiPulse(int)), this, SLOT(drawRoiPulse(int)));
 
     connect(m_pCheckBox_ShowWindow, SIGNAL(toggled(bool)), this, SLOT(showWindow(bool)));
     connect(m_pCheckBox_ShowMeanDelay, SIGNAL(toggled(bool)), this, SLOT(showMeanDelay(bool)));
@@ -192,10 +194,10 @@ void FlimCalibTab::createCalibWidgets()
             m_pLineEdit_DelayTimeOffset[i - 1]->setAlignment(Qt::AlignCenter);
         }
     }
-    //resetChStart0((double)m_pFLIm->_params.ch_start_ind[0] * (double)m_pFLIm->_params.samp_intv);
-    //resetChStart1((double)m_pFLIm->_params.ch_start_ind[1] * (double)m_pFLIm->_params.samp_intv);
-    //resetChStart2((double)m_pFLIm->_params.ch_start_ind[2] * (double)m_pFLIm->_params.samp_intv);
-    //resetChStart3((double)m_pFLIm->_params.ch_start_ind[3] * (double)m_pFLIm->_params.samp_intv);
+    ///resetChStart0((double)m_pFLIm->_params.ch_start_ind[0] * (double)m_pFLIm->_params.samp_intv);
+    ///resetChStart1((double)m_pFLIm->_params.ch_start_ind[1] * (double)m_pFLIm->_params.samp_intv);
+    ///resetChStart2((double)m_pFLIm->_params.ch_start_ind[2] * (double)m_pFLIm->_params.samp_intv);
+    ///resetChStart3((double)m_pFLIm->_params.ch_start_ind[3] * (double)m_pFLIm->_params.samp_intv);
 	
     m_pLabel_NanoSec[0] = new QLabel("nsec", this);
     m_pLabel_NanoSec[0]->setFixedWidth(30);
@@ -358,21 +360,21 @@ void FlimCalibTab::createHistogram()
 }
 
 
-void FlimCalibTab::drawRoiPulse(FLImProcess* pFLIm, int aline)
+void FlimCalibTab::drawRoiPulse(int aline)
 {
     // Reset pulse view (if necessary)
     static int roi_width = 0;
-    np::FloatArray2 data0((!m_pCheckBox_SplineView->isChecked()) ? ((!m_pCheckBox_ShowMask->isChecked()) ? pFLIm->_resize.crop_src : pFLIm->_resize.mask_src) : pFLIm->_resize.filt_src);
+    np::FloatArray2 data0((!m_pCheckBox_SplineView->isChecked()) ? ((!m_pCheckBox_ShowMask->isChecked()) ? m_pFLIm->_resize.crop_src : m_pFLIm->_resize.mask_src) : m_pFLIm->_resize.filt_src);
     np::FloatArray2 data(data0.size(0), data0.size(1));
     memcpy(data.raw_ptr(), data0.raw_ptr(), sizeof(float) * data0.length());
 
     if (roi_width != data.size(0))
     {
-        float factor = (!m_pCheckBox_SplineView->isChecked()) ? 1 : pFLIm->_resize.upSampleFactor;
+        float factor = (!m_pCheckBox_SplineView->isChecked()) ? 1 : m_pFLIm->_resize.upSampleFactor;
 
         m_pScope_PulseView->getRender()->m_bMaskUse = true;
-        m_pScope_PulseView->resetAxis({ 0, (double)data.size(0) }, { 0, POWER_2(16) },
-                                      pFLIm->_params.samp_intv / factor, PX14_VOLT_RANGE / (double)POWER_2(16), 0, 0, " nsec", " V");
+        m_pScope_PulseView->resetAxis({ 0, (double)data.size(0) }, { -POWER_2(12), POWER_2(16) },
+			m_pFLIm->_params.samp_intv / factor, PX14_VOLT_RANGE / (double)(POWER_2(16)), 0, 0, " nsec", " V");
         m_pScope_PulseView->getRender()->m_bMaskUse = m_pCheckBox_ShowMask->isChecked();
         roi_width = data.size(0);
     }
@@ -380,21 +382,21 @@ void FlimCalibTab::drawRoiPulse(FLImProcess* pFLIm, int aline)
     // Mean delay
     if (m_pCheckBox_ShowMeanDelay->isChecked())
     {
-        float factor = (!m_pCheckBox_SplineView->isChecked()) ? 1 : pFLIm->_resize.ActualFactor;
+        float factor = (!m_pCheckBox_SplineView->isChecked()) ? 1 : m_pFLIm->_resize.ActualFactor;
         for (int i = 0; i < 4; i++)
             m_pScope_PulseView->getRender()->m_pMdLineInd[i] =
-                    (pFLIm->_lifetime.mean_delay(aline, i) - pFLIm->_params.ch_start_ind[0]) * factor;
+                    (m_pFLIm->_lifetime.mean_delay(aline, i) - m_pFLIm->_params.ch_start_ind[0]) * factor;
     }
 
     // ROI pulse
-    ippsAddC_32f_I(pFLIm->_params.bg, data.raw_ptr(), data.length());
-    m_pScope_PulseView->drawData(&data(0, aline), pFLIm->_resize.pMask);
+    //ippsAddC_32f_I(pFLIm->_params.bg, data.raw_ptr(), data.length());
+    m_pScope_PulseView->drawData(&data(0, aline), m_pFLIm->_resize.pMask);
 
     // Histogram
 	for (int i = 0; i < 3; i++)
 	{
-		float* scanIntensity = &pFLIm->_intensity.intensity(0, i + 1);
-		float* scanLifetime = &pFLIm->_lifetime.lifetime(0, i);
+		float* scanIntensity = &m_pFLIm->_intensity.intensity(0, i + 1);
+		float* scanLifetime = &m_pFLIm->_lifetime.lifetime(0, i);
 
 		(*m_pHistogramIntensity)(scanIntensity, m_pRenderArea_FluIntensity->m_pData[i],
 			m_pConfig->flimIntensityRange[i].min, m_pConfig->flimIntensityRange[i].max);
@@ -466,10 +468,13 @@ void FlimCalibTab::splineView(bool checked)
     }
     else
     {
-        m_pScope_PulseView->setWindowLine(0);
+        m_pScope_PulseView->setWindowLine(0);		
     }
-    drawRoiPulse(m_pFLIm, 0);
+    drawRoiPulse(0);
 	
+	if (!checked)
+		m_pCheckBox_ShowMeanDelay->setChecked(false);
+	m_pCheckBox_ShowMeanDelay->setEnabled(checked);
     m_pCheckBox_ShowMask->setDisabled(checked);
 }
 
@@ -479,7 +484,7 @@ void FlimCalibTab::showMask(bool clicked)
     m_pCheckBox_SplineView->setDisabled(clicked);
 
     m_pScope_PulseView->getRender()->m_bMaskUse = clicked;
-	drawRoiPulse(m_pFLIm, 0);
+	drawRoiPulse(0);
 }
 
 void FlimCalibTab::modifyMask(bool toggled)
@@ -491,7 +496,7 @@ void FlimCalibTab::modifyMask(bool toggled)
     if (!toggled) { *m_pStart = -1; *m_pEnd = -1; }
 
     m_pScope_PulseView->getRender()->m_bSelectionAvailable = toggled;
-	drawRoiPulse(m_pFLIm, 0);
+	drawRoiPulse(0);
 }
 
 void FlimCalibTab::addMask()
@@ -545,7 +550,7 @@ void FlimCalibTab::addMask()
 		SendStatusMessage("Improper mask: please modify the mask!");
 
 	*m_pStart = -1; *m_pEnd = -1;
-	drawRoiPulse(m_pFLIm, 0);
+	drawRoiPulse(0);
 }
 
 void FlimCalibTab::removeMask()
@@ -599,7 +604,7 @@ void FlimCalibTab::removeMask()
 		SendStatusMessage("Improper mask: please modify the mask!");
 
 	*m_pStart = -1; *m_pEnd = -1;
-	drawRoiPulse(m_pFLIm, 0);
+	drawRoiPulse(0);
 }
 
 
@@ -619,7 +624,8 @@ void FlimCalibTab::setPX14DcOffset(int offset)
 void FlimCalibTab::captureBackground()
 {
     Ipp32f bg;
-    ippsMean_32f(m_pScope_PulseView->getRender()->m_pData, m_pScope_PulseView->getRender()->m_sizeGraph.width(), &bg, ippAlgHintFast);
+    ippsMean_32f(m_pFLIm->_resize.crop_src.raw_ptr(), m_pFLIm->_resize.crop_src.size(0), &bg, ippAlgHintFast);
+	bg += m_pFLIm->_params.bg;
 
     m_pLineEdit_Background->setText(QString::number(bg, 'f', 2));
 
@@ -633,7 +639,7 @@ void FlimCalibTab::captureBackground(const QString &str)
     m_pFLIm->_params.bg = bg;
     m_pConfig->flimBg = bg;
 
-    m_pScope_PulseView->setDcLine(bg);
+    ///m_pScope_PulseView->setDcLine(bg);
 
 	m_pScope_PulseView->getRender()->update();
 }

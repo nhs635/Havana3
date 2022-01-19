@@ -429,8 +429,8 @@ void MemoryBuffer::write()
 	if (false == QFile::copy("Havana3.m", fileTitle + ".m"))
 		SendStatusMessage("Error occurred while copying MATLAB processing data.\n", false);
 	
-	// Send a signal to notify this thread is finished
-	//emit finishedWritingThread();
+	/// Send a signal to notify this thread is finished
+	///emit finishedWritingThread();
 
 	// Status update
 	char msg[256];

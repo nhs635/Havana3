@@ -1,42 +1,24 @@
 #ifndef AXSUN_CONTROL_H
 #define AXSUN_CONTROL_H
 
+#include <AxsunOCTControl_LW_C.h>
+
+#include <Common/array.h>
 #include <Common/callback.h>
 
 #include <iostream>
 #include <thread>
 #include <mutex>
+#include <vector>
 
-#import "AxsunOCTControl.tlb" named_guids raw_interfaces_only
-using namespace AxsunOCTControl;
-
-// Devices
-#define DAQ_DEVICE           42
-#define LASER_DEVICE         40
-
-// Connection
-#define DISCONNECTED         0
-#define CONNECTED           -1
 
 // Operation
 #define ALINE_LENGTH		 1024
+#define NUM_ALINES		     1024
 #define MAX_SAMPLE_LENGTH    2048
-#define SAMPLE_LENGTH        1700
+#define SAMPLE_LENGTH        1600
 #define CLOCK_OFFSET         28.285
 #define CLOCK_GAIN           0.576112
-
-// Bypass Mode Enumerate
-typedef enum bypass_mode {
-	raw_adc_data = 0,
-	windowed_data,
-	post_fft,
-	abs2,
-	abs2_with_bg_subtracted,
-	log_compressed,
-	dynamic_range_reduced,
-	jpeg_compressed
-} bypass_mode;
-
 
 class AxsunControl
 {
@@ -50,39 +32,36 @@ public:
 
 public:
     // For Control
-    bool initialize(int n_device);
+    bool initialize();
     bool setLaserEmission(bool status);
     bool setLiveImagingMode(bool status);
-    ///bool setBurstRecording(unsigned short n_images, bool recording = true);
-    bool setBackground(const unsigned short* pBackground);
+
+    bool setBackground();
     bool setDispersionCompensation(double a2 = 0, double a3 = 0, int length = SAMPLE_LENGTH);
-	bool setBypassMode(bypass_mode _bypass_mode);
-	bool setSubSampling(int M);
+	bool setPipelineMode(AxPipelineMode pipeline_mode);
+	bool setSubSampling(uint8_t subsampling_factor);
     bool setVDLHome();
     bool setVDLLength(float position);
-    bool setClockDelay(unsigned long delay);
+	void getVDLStatus();
+    bool setClockDelay(uint32_t delay);
     bool setDecibelRange(double min_dB, double max_dB);
 	bool getDeviceState();
 
 private:
     bool writeFPGARegSingleBit(unsigned long regNum, int bitNum, bool set);
-    bool setOffset(double offset);
-    bool setGain(double gain);
 
-    void dumpControlError(long res, const char* pPreamble);
+private:
+    void dumpControlError(AxErr res, const char* pPreamble);
 
 // Variables
 public:
 	callback2<const char*, bool> SendStatusMessage;
-	callback<int> DidTransferArray;
+	np::Uint16Array2 background_frame;
+	std::vector<uint16_t> background_vector;
 
 private:
-    // For Control
-    IAxsunOCTControlPtr m_pAxsunOCTControl;
-    VARIANT_BOOL m_bIsConnected;
-
-	int m_daq_device;
-	int m_laser_device;
+	AxDevType m_daq_device;
+	AxDevType m_laser_device;
 
 	bool m_bInitialized;
 

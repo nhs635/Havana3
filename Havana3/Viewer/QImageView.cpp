@@ -260,6 +260,12 @@ void QImageView::setMovedMouseCallback(const std::function<void(QPoint&)> &slot)
 	m_pRenderImage->setMouseTracking(true);
 }
 
+void QImageView::setClickedMouseCallback(const std::function<void(void)> &slot)
+{
+	m_pRenderImage->DidClickedMouse.clear();
+	m_pRenderImage->DidClickedMouse += slot;
+}
+
 void QImageView::setDoubleClickedMouseCallback(const std::function<void(void)> &slot)
 {
 	m_pRenderImage->DidDoubleClickedMouse.clear();
@@ -531,6 +537,8 @@ void QRenderImage::mousePressEvent(QMouseEvent *e)
 				DidChangedRLine(m_pVLineInd[0]);
 			}
 		}
+
+		DidClickedMouse();
 	}
 }
 

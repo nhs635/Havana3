@@ -178,6 +178,17 @@ void AxsunCapture::captureRun()
             retval = axGetImageInfo(getSession(), MOST_RECENT_IMAGE, &info);
             if (retval == AxErr::NO_AxERROR)
             {
+				// Background capture
+				if (info.data_type != AxDataType::U8)
+				{
+					np::Uint8Array2 frame(2 * info.height, info.width);
+					axRequestImage(session, info.image_number, prefs, 2 * info.height * info.width, frame.raw_ptr(), &info);
+
+					DidAcquireBG(frameIndex++, frame);
+					DidAcquireData(frameIndex, frame);
+					continue;
+				}
+
                 // Determine where new data transfer data will go.
                 cur_section = &image_data_out(0, image_width * (loop_counter % 4));
 

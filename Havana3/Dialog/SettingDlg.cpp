@@ -21,7 +21,7 @@ SettingDlg::SettingDlg(QWidget *parent) :
 {
     // Set default size & frame
     setFixedWidth(600);
-	setMinimumHeight(350);
+	setMinimumHeight(500);
     setWindowFlags(Qt::Tool);
     setWindowTitle("Setting");
 
@@ -137,14 +137,21 @@ SettingDlg::SettingDlg(QWidget *parent) :
 
 SettingDlg::~SettingDlg()
 {
+	if (m_pDeviceOptionTab) /// && !m_pFlimCalibTab)
+	{
+		if (!m_pFlimCalibTab)
+		{
+			m_pDeviceOptionTab->getDeviceControl()->turnOffAllDevices();
+			if (!m_pDeviceOptionTab->getStreamTab())
+			{
+				m_pDeviceOptionTab->getDeviceControl()->disconnectAllDevices();
+				delete m_pDeviceOptionTab->getDeviceControl();
+			}
+		}
+	}
+
 	delete m_pCusomTabstyle;
 	m_pConfig->DidLogAdded.clear();
-
-	if (m_pDeviceOptionTab && !m_pFlimCalibTab)
-	{
-		m_pDeviceOptionTab->getDeviceControl()->setAllDeviceOff();
-		delete m_pDeviceOptionTab->getDeviceControl();
-	}
 }
 
 void SettingDlg::keyPressEvent(QKeyEvent *e)

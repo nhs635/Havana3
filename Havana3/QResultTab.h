@@ -28,6 +28,7 @@ public:
 
 // Methods //////////////////////////////////////////////
 protected:
+	void closeEvent(QCloseEvent *);
 	void keyPressEvent(QKeyEvent *);
 
 public:
@@ -35,6 +36,7 @@ public:
     inline RecordInfo getRecordInfo() { return m_recordInfo; }
     inline DataProcessing* getDataProcessing() { return m_pDataProcessing; }
     inline QViewTab* getViewTab() const { return m_pViewTab; }
+	inline SettingDlg* getSettingDlg() const { return m_pSettingDlg; }
 
 private:
     void createResultReviewWidgets();
@@ -46,6 +48,7 @@ public:
 	void updatePreviewImage();
 
 private slots:
+	void setVisibleState(bool);
     void changeVesselInfo(int);
     void changeProcedureInfo(int);
 	void openContainingFolder();
@@ -68,6 +71,7 @@ private:
     DataProcessing* m_pDataProcessing;
 		
 private:
+	bool m_bIsDataLoaded;
     RecordInfo m_recordInfo;
 
 private:
@@ -85,12 +89,12 @@ private:
     QPushButton *m_pPushButton_Export;
 
     QViewTab* m_pViewTab;
+
+	QProgressBar* m_pProgressBar;
 	
     // Dialogs
     SettingDlg *m_pSettingDlg;
-    ExportDlg *m_pExportDlg;
-
-	QProgressDialog* m_pProgressDlg;
+    ExportDlg *m_pExportDlg;	
 };
 
 #endif // QRESULTTAB_H

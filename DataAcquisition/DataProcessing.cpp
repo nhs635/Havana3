@@ -12,7 +12,7 @@
 
 
 DataProcessing::DataProcessing(QWidget *parent)
-    : m_pConfigTemp(nullptr), m_pFLIm(nullptr), m_bIsDataLoaded(false)
+    : m_pConfigTemp(nullptr), m_pFLIm(nullptr)
 {
 	// Set main window objects    
     m_pResultTab = dynamic_cast<QResultTab*>(parent);
@@ -126,13 +126,12 @@ void DataProcessing::startProcessing(QString fileName)
 				m_syncFlimProcessing.deallocate_queue_buffer();
 				
 				// Visualization /////////////////////////////////////////////////////////////////////////////
-				m_pResultTab->getViewTab()->invalidate();		
-
-				// Flag //////////////////////////////////////////////////////////////////////////////////////
-				m_bIsDataLoaded = true;
+				m_pResultTab->getViewTab()->invalidate();	
 			}
 
 			file.close();
+
+			emit finishedProcessing(true);
 
             std::chrono::duration<double> elapsed = std::chrono::system_clock::now() - start;
 
@@ -220,17 +219,17 @@ void DataProcessing::deinterleaving(Configuration* pConfig)
 						memcpy(pVisTab->m_vectorOctImage.at(frameCount - pConfig->interFrameSync).raw_ptr(),
 							frame_ptr + sizeof(uint16_t) * pConfig->flimFrameSize, sizeof(float) * pConfig->octFrameSize);
 #endif
-						if (pConfig->verticalMirroring)
-						{
 #ifndef NEXT_GEN_SYSTEM
-							IppiSize roi_oct = { pConfig->octScans, pConfig->octAlines };
+						IppiSize roi_oct = { pConfig->octScans, pConfig->octAlines };
 #else
-							IppiSize roi_oct = { m_pConfig->octScansFFT / 2, m_pConfig->octAlines };
+						IppiSize roi_oct = { m_pConfig->octScansFFT / 2, m_pConfig->octAlines };
 #endif
+						if (pConfig->verticalMirroring)
 							ippiMirror_8u_C1IR(pVisTab->m_vectorOctImage.at(frameCount - pConfig->interFrameSync).raw_ptr(), roi_oct.width, roi_oct, ippAxsVertical);
-						}
 
-
+						ippiCopy_8u_C1R(pVisTab->m_vectorOctImage.at(frameCount - pConfig->interFrameSync).raw_ptr() + pConfig->innerOffsetLength, roi_oct.width,
+							pVisTab->m_vectorOctImage.at(frameCount - pConfig->interFrameSync).raw_ptr(), roi_oct.width,
+							{ roi_oct.width - pConfig->innerOffsetLength, roi_oct.height });
 					}
 					//else
 					//	memset(pVisTab->m_vectorOctImage.at(frameCount - pConfig->interFrameSync).raw_ptr(), 0, sizeof(uint8_t) * pConfig->octFrameSize);
@@ -289,11 +288,22 @@ void DataProcessing::flimProcessing(FLImProcess* pFLIm, Configuration* pConfig)
 
 				// Copy for Pulse Review
 				np::Array<float, 2> crop(pFLIm->_resize.nx, pFLIm->_resize.ny);
+				np::Array<float, 2> bg_sub(pFLIm->_resize.nx, pFLIm->_resize.ny);
 				np::Array<float, 2> mask(pFLIm->_resize.nx, pFLIm->_resize.ny);
+				np::Array<float, 2> ext(pFLIm->_resize.nsite, pFLIm->_resize.ny);
+				np::Array<float, 2> filt(pFLIm->_resize.nsite, pFLIm->_resize.ny);
+
 				memcpy(crop, pFLIm->_resize.crop_src, crop.length() * sizeof(float));
+				memcpy(bg_sub, pFLIm->_resize.bgsb_src, bg_sub.length() * sizeof(float));
 				memcpy(mask, pFLIm->_resize.mask_src, mask.length() * sizeof(float));
+				memcpy(ext, pFLIm->_resize.ext_src, ext.length() * sizeof(float));
+				memcpy(filt, pFLIm->_resize.filt_src, filt.length() * sizeof(float));
+
 				pViewTab->m_vectorPulseCrop.push_back(crop);
+				pViewTab->m_vectorPulseBgSub.push_back(bg_sub);
 				pViewTab->m_vectorPulseMask.push_back(mask);
+				pViewTab->m_vectorPulseSpline.push_back(ext);
+				pViewTab->m_vectorPulseFilter.push_back(filt);
 				
 				// Intensity compensation
 				for (int i = 0; i < 3; i++)
@@ -305,6 +315,12 @@ void DataProcessing::flimProcessing(FLImProcess* pFLIm, Configuration* pConfig)
                 memcpy(&pViewTab->m_intensityMap.at(0)(0, frameCount), &itn(0, 1), sizeof(float) * pConfig->flimAlines);
                 memcpy(&pViewTab->m_intensityMap.at(1)(0, frameCount), &itn(0, 2), sizeof(float) * pConfig->flimAlines);
                 memcpy(&pViewTab->m_intensityMap.at(2)(0, frameCount), &itn(0, 3), sizeof(float) * pConfig->flimAlines);
+
+				memcpy(&pViewTab->m_meandelayMap.at(0)(0, frameCount), &md(0, 0), sizeof(float) * pConfig->flimAlines);
+				memcpy(&pViewTab->m_meandelayMap.at(1)(0, frameCount), &md(0, 1), sizeof(float) * pConfig->flimAlines);
+				memcpy(&pViewTab->m_meandelayMap.at(2)(0, frameCount), &md(0, 2), sizeof(float) * pConfig->flimAlines);
+				memcpy(&pViewTab->m_meandelayMap.at(3)(0, frameCount), &md(0, 3), sizeof(float) * pConfig->flimAlines);
+
                 memcpy(&pViewTab->m_lifetimeMap.at(0)(0, frameCount), &ltm(0, 0), sizeof(float) * pConfig->flimAlines);
                 memcpy(&pViewTab->m_lifetimeMap.at(1)(0, frameCount), &ltm(0, 1), sizeof(float) * pConfig->flimAlines);
                 memcpy(&pViewTab->m_lifetimeMap.at(2)(0, frameCount), &ltm(0, 2), sizeof(float) * pConfig->flimAlines);

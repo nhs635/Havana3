@@ -59,6 +59,7 @@ public:
 
 	// callbacks
 	callback2<uint32_t, const np::Uint8Array2&> DidAcquireData;
+	callback2<uint32_t, const np::Uint8Array2&> DidAcquireBG;
     callback<void> DidStopData;
 	callback2<const char*, bool> SendStatusMessage;
 };

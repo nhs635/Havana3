@@ -1,115 +1,189 @@
 
 #include "AxsunControl.h"
 
+#include <ipps.h>
+#include <ippi.h>
 
-AxsunControl::AxsunControl() :
-	m_pAxsunOCTControl(nullptr),
-	m_bIsConnected(DISCONNECTED),
-	m_bInitialized(false),
-	m_daq_device(-1),
-	m_laser_device(-1)
-{
+
+// Convert AxDevType enum into string
+std::string AxDevTypeString(AxDevType device) {
+	switch (device) {
+	case AxDevType::LASER: return "Laser";
+	case AxDevType::EDAQ: return "EDAQ";
+	case AxDevType::CLDAQ: return "CLDAQ";
+	default: return "Unknown";
+	}
 }
 
+// Convert AxConnectionType enum into string
+std::string AxConnectTypeString(AxConnectionType connection) {
+	switch (connection) {
+	case AxConnectionType::USB: return "USB";
+	case AxConnectionType::RS232: return "RS-232";
+	case AxConnectionType::RS232_PASSTHROUGH: return "via EDAQ";
+	case AxConnectionType::ETHERNET: return "Ethernet";
+	default: return "Unknown";
+	}
+}
 
-AxsunControl::~AxsunControl()
-{
-	if (m_bIsConnected == CONNECTED)
-	{
-		unsigned long retvallong;
-		m_pAxsunOCTControl->CloseConnections();
-		m_pAxsunOCTControl->StopNetworkControlInterface(&retvallong);
-        CoUninitialize();
-		SendStatusMessage("[Axsun Control] Control Connections is successfully closed and uninitialized.", false);
+// Convert AxPipelineMode enum into string
+std::string AxPipelineModeString(AxPipelineMode mode) {
+	switch (mode) {
+	case AxPipelineMode::RAW_ADC: return "RAW_ADC";
+	case AxPipelineMode::WINDOWED: return "RS-WINDOWED";
+	case AxPipelineMode::IFFT: return "IFFT";
+	case AxPipelineMode::MOD_SQUARED: return "MOD_SQUARED";
+	case AxPipelineMode::SQRT: return "SQRT";
+	case AxPipelineMode::LOG: return "LOG";
+	case AxPipelineMode::EIGHT_BIT: return "EIGHT_BIT";
+	case AxPipelineMode::JPEG_COMP: return "JPEG_COMP";
+	default: return "Unknown";
+	}
+}
+
+// Convert AxTECState enum into string
+std::string AxTECStateString(AxTECState state) {
+	switch (state) {
+	case AxTECState::TEC_UNINITIALIZED: return "TEC has not been initialized.";
+	case AxTECState::WARMING_UP: return "RS-TEC is stabilizing (warming up).";
+	case AxTECState::WAITING_IN_RANGE: return "TEC is stabilizing (waiting).";
+	case AxTECState::READY: return "TEC is ready.";
+	case AxTECState::NOT_INSTALLED: return "TEC is not installed.";
+	case AxTECState::ERROR_NEVER_GOT_TO_READY: return "TEC error: never got to ready state.";
+	case AxTECState::ERROR_WENT_OUT_OF_RANGE: return "TEC error: temperature went out of range.";
+	default: return "Unknown";
 	}
 }
 
 
-bool AxsunControl::initialize(int n_device)
+AxsunControl::AxsunControl() :
+	m_bInitialized(false),
+	m_daq_device(AxDevType::UNDEFINED),
+	m_laser_device(AxDevType::UNDEFINED)
 {
-	HRESULT result;
-	unsigned long retvallong;
-	const char* pPreamble = "[Axsun Control] Failed to initialize Axsun OCT control devices: ";
+	background_frame = np::Uint16Array2(NUM_ALINES, ALINE_LENGTH);
+	background_vector = std::vector<uint16_t>(ALINE_LENGTH, 0);
+}
 
+AxsunControl::~AxsunControl()
+{
+	axCloseAxsunOCTControl();
+	SendStatusMessage("[Axsun Control] Control Connections is successfully closed and uninitialized.", false);
+}
+
+
+bool AxsunControl::initialize()
+{
+	AxErr retval = AxErr::NO_AxERROR;
+	const char* pPreamble = "[Axsun Control] Failed to initialize Axsun OCT control devices: ";
+	
 	SendStatusMessage("[Axsun Control] Initializing control devices...", false);
 
-	// Co-Initialization
-    result = CoInitialize(NULL);
-	//if (result == S_FALSE)
-	//{
-	//	dumpControlError(result, pPreamble);
-	//	return false;
-	//}
-	
-	// Dynamic Object for Axsun OCT Control
-	m_pAxsunOCTControl = IAxsunOCTControlPtr(__uuidof(struct AxsunOCTControl));
-	
-	// Start Ethernet Connection
-	result = m_pAxsunOCTControl->StartNetworkControlInterface(&retvallong);
-	if (result != S_OK)
+	// Open Axsun OCT control instance
+	retval = axOpenAxsunOCTControl(0);
+	if (retval != AxErr::NO_AxERROR)
 	{
-		dumpControlError(result, pPreamble);
+		dumpControlError(retval, pPreamble);
+		return false;
+	}
+
+	// Get AxsunOCTControl_LW version
+	uint32_t major, minor, patch, build;
+	retval = axLibraryVersion(&major, &minor, &patch, &build);
+	if (retval != AxErr::NO_AxERROR)
+	{
+		dumpControlError(retval, pPreamble);
+		return false;
+	}
+	else
+	{
+		char msg[256];
+		sprintf(msg, "[Axsun Control] Using AxsunOCTControl_LW library version: v%d.%d.%d.%d", major, minor, patch, build);
+		SendStatusMessage(msg, false);
+	}
+
+	// Open Ethernet network interface (for Ethernet DAQ connectivity only)
+	retval = axNetworkInterfaceOpen(1);
+	if (retval != AxErr::NO_AxERROR)
+	{
+		dumpControlError(retval, pPreamble);
 		return false;
 	}
 	std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
-	// Connect Device (DAQ and/or Laser)
-	unsigned long deviceNum = 0;
-	BSTR systemTypeString = SysAllocString(L"");
-	for (int i = 0; i < n_device; i++) // DAQ [42], Light Source [40]
+	// Connect Device (DAQ and/or Laser)	
+	uint32_t count = axCountConnectedDevices();
+	if (count > 0)
 	{
-		result = m_pAxsunOCTControl->ConnectToOCTDevice(i, &m_bIsConnected);
-		if (result != S_OK)
+		for (uint32_t i = 0; i < count; i++)
 		{
-			dumpControlError(result, pPreamble);
-			return false;
-		}
-
-		if (m_bIsConnected == CONNECTED)
-		{
-			result = m_pAxsunOCTControl->GetSystemType(&deviceNum, &systemTypeString, &retvallong);
-			if (result != S_OK)
+			// Get connection type
+			AxConnectionType connection_type;
+			retval = axConnectionType(&connection_type, i);
+			if (retval != AxErr::NO_AxERROR)
 			{
-				dumpControlError(result, pPreamble);
+				dumpControlError(retval, pPreamble);
 				return false;
 			}
-			
-			if (deviceNum == DAQ_DEVICE)
-				m_daq_device = i;
-			else if (deviceNum == LASER_DEVICE)
-				m_laser_device = i;
 
+			// Get device type
+			AxDevType device_type;
+			retval = axDeviceType(&device_type, i);
+			if (retval != AxErr::NO_AxERROR)
+			{
+				dumpControlError(retval, pPreamble);
+				return false;
+			}
+
+			// Get firmware version
+			uint32_t major, minor, patch;
+			retval = axFirmwareVersion(&major, &minor, &patch, i);
+			if (retval != AxErr::NO_AxERROR)
+			{
+				dumpControlError(retval, pPreamble);
+				return false;
+			}
+
+			// Get serial number
+			char serial_no[40];
+			retval = axSerialNumber(serial_no, i);
+
+			// Allocate device number
+			if (device_type == AxDevType::EDAQ)
+				m_daq_device = AxDevType::EDAQ;
+			else if (device_type == AxDevType::LASER)
+				m_laser_device = AxDevType::LASER;
+
+			// Print device information
 			char msg[256];
-			sprintf(msg, "[Axsun Control] %S (deviceNum: %d) is successfully connected.", systemTypeString, deviceNum);
+			sprintf(msg, "[Axsun Control] %s (v%d.%d.%d / SN: %s) is successfully connected through %s.",
+				AxDevTypeString(device_type).c_str(), major, minor, patch, serial_no,
+				AxConnectTypeString(connection_type).c_str());
 			SendStatusMessage(msg, false);
 		}
-		else
-		{
-			result = 80;
-			dumpControlError(result, pPreamble);
-			SendStatusMessage("[Axsun Control] Unable to connect to the devices.", false);
-			return false;
-		}
 	}
-	SysFreeString(systemTypeString);
+	else
+	{
+		dumpControlError(retval, pPreamble);
+		SendStatusMessage("[Axsun Control] Unable to connect to the devices.", false);
+		return false;
+	}
 	
-	if (n_device == 2)
+	if (m_daq_device == AxDevType::EDAQ)
 	{
 		// Image_Sync Setting (LVCMOS)
 		if (writeFPGARegSingleBit(2, 11, false) != true) return false; // external image sync
 		if (writeFPGARegSingleBit(2, 9, true) != true) return false;   // LVCMOS input (X)
 		if (writeFPGARegSingleBit(2, 10, true) != true) return false;
-		if (result != S_OK)
-		{
-			dumpControlError(result, pPreamble);
-			return false;
-		}
 		SendStatusMessage("[Axsun Control] Image_Sync mode is set to LVCMOS.", false);
 
 		// Image Channel Setting (Ch 1 H Only)
 		if (writeFPGARegSingleBit(20, 13, true) != true) return false;
 		if (writeFPGARegSingleBit(20, 5, true) != true) return false;
 		SendStatusMessage("[Axsun Control] Ch 1(H) signal is considered only.", false);
+
+		// Initialization flag
+		m_bInitialized = true;
 	}
 
 	return true;
@@ -118,33 +192,21 @@ bool AxsunControl::initialize(int n_device)
 
 bool AxsunControl::setLaserEmission(bool status)
 {
-	HRESULT result;
-	unsigned long retvallong;
+	AxErr retval = AxErr::NO_AxERROR;
 	const char* pPreamble = "[Axsun Control] Failed to set Laser Emission: ";
 	
-	result = m_pAxsunOCTControl->ConnectToOCTDevice(m_laser_device, &m_bIsConnected);
-	if (result != S_OK)
+	if (m_laser_device == AxDevType::LASER)
 	{
-		dumpControlError(result, pPreamble);
-		return false;
-	}
-
-	if (m_bIsConnected == CONNECTED)
-	{
-		if (status)
-			result = m_pAxsunOCTControl->StartScan(&retvallong);
-		else
-			result = m_pAxsunOCTControl->StopScan(&retvallong);
-		if (result != S_OK)
+		retval = axSetLaserEmission(status, 0);
+		if ((retval != AxErr::NO_AxERROR) && ((int)retval != -40))
 		{
-			dumpControlError(result, pPreamble);
+			dumpControlError(retval, pPreamble);
 			return false;
 		}
 	}
 	else
 	{
-		result = 80;
-		dumpControlError(result, pPreamble);
+		dumpControlError(retval, pPreamble);
 		SendStatusMessage("[Axsun Control] Unable to connect to the devices.", false);
 		return false;
 	}
@@ -158,23 +220,16 @@ bool AxsunControl::setLaserEmission(bool status)
 
 bool AxsunControl::setLiveImagingMode(bool status)
 {
-	HRESULT result;
+	AxErr retval = AxErr::NO_AxERROR;
 	const char* pPreamble = "[Axsun Control] Failed to set Live Imaging mode: ";
-
-	result = m_pAxsunOCTControl->ConnectToOCTDevice(m_daq_device, &m_bIsConnected);
-	if (result != S_OK)
-	{
-		dumpControlError(result, pPreamble);
-		return false;
-	}
-
-	if (m_bIsConnected == CONNECTED)
+	
+	if (m_daq_device == AxDevType::EDAQ)
 	{
 		if (status)
 		{
 			if (writeFPGARegSingleBit(19, 15, true) != true) return false;
 			if (writeFPGARegSingleBit(2, 2, true) != true) return false;
-            //if (writeFPGARegSingleBit(31, 0, false) != true) return false; // burst recording
+            ///if (writeFPGARegSingleBit(31, 0, false) != true) return false; // burst recording
 		}
 		else
 		{
@@ -184,8 +239,7 @@ bool AxsunControl::setLiveImagingMode(bool status)
 	}
 	else
 	{
-		result = 80;
-		dumpControlError(result, pPreamble);
+		dumpControlError(retval, pPreamble);
 		SendStatusMessage("[Axsun Control] Unable to connect to the devices.", false);
 		return false;
 	}
@@ -198,86 +252,35 @@ bool AxsunControl::setLiveImagingMode(bool status)
 }
 
 
-//bool AxsunOCT::setBurstRecording(unsigned short n_images, bool recording)
-//{
-//    HRESULT result;
-//    unsigned long retvallong;
-//    const char* pPreamble = "[Axsun Control] Failed to set burst recording: ";
-//
-//    result = m_pAxsunOCTControl->ConnectToOCTDevice(DAQ_DEVICE, &m_bIsConnected);
-//    if (result != S_OK)
-//    {
-//        dumpControlError(result, pPreamble);
-//        return false;
-//    }
-//
-//    if (m_bIsConnected == CONNECTED)
-//    {
-//        if (recording)
-//        {
-//            result = m_pAxsunOCTControl->SetFPGARegister(33, n_images, &retvallong);
-//            if (result != S_OK)
-//            {
-//                dumpControlError(result, pPreamble);
-//                return false;
-//            }
-//        }
-//        if (writeFPGARegSingleBit(31, 0, recording) != true) return false;
-//
-//        if (recording)
-//            printf("[Axsun Control] Burst recording is started (n_images: %d).", n_images);
-//        else
-//            printf("[Axsun Control] Burst recording is finished.");
-//    }
-//    else
-//    {
-//        result = 80;
-//        dumpControlError(result, pPreamble);
-//        printf("[Axsun Control] Unable to connect to the devices.");
-//        return false;
-//    }
-//
-//    return true;
-//}
-//
-//
-
-bool AxsunControl::setBackground(const unsigned short* pBackground)
+bool AxsunControl::setBackground()
 {
-    HRESULT result = 0;
-	unsigned long retvallong;
+	AxErr retval = AxErr::NO_AxERROR;
 	const char* pPreamble = "[Axsun Control] Failed to set background: ";
 
-	result = m_pAxsunOCTControl->ConnectToOCTDevice(m_daq_device, &m_bIsConnected);
-	if (result != S_OK)
-	{
-		dumpControlError(result, pPreamble);
-		return false;
-	}
-
-	if (m_bIsConnected == CONNECTED)
-	{
-		// Send array to FPGA register
+	if (m_daq_device == AxDevType::EDAQ)
+	{			
 		for (int i = 0; i < ALINE_LENGTH; i++)
 		{
-			result = m_pAxsunOCTControl->SetFPGARegister(37, (pBackground != nullptr) ? pBackground[i] : 0x0000, &retvallong);
-			if (result != S_OK)
-			{
-				dumpControlError(result, pPreamble);
-				return false;
-			}
-			DidTransferArray(i);
+			double mean;
+			ippiMean_16u_C1R(&background_frame(0, i), sizeof(uint16_t) * NUM_ALINES / 2, { NUM_ALINES / 2, 1 }, &mean);
+			background_vector[i] = (uint16_t)mean;
+		}
+		
+		// Background subtraction
+		retval = axSetFPGADataArray(37, background_vector.data(), background_vector.size(), 0);
+		if (retval != AxErr::NO_AxERROR)
+		{
+			dumpControlError(retval, pPreamble);
+			return false;
 		}
 
-		if (pBackground)
-			SendStatusMessage("[Axsun Control] Background is successfully set.", false);
-		else
-			SendStatusMessage("[Axsun Control] Background is set to zero.", false);
+		char msg[256];
+		sprintf(msg, "[Axsun Control] background subtraction is successfully set.");;
+		SendStatusMessage(msg, false);
 	}
 	else
 	{
-		result = 80;
-		dumpControlError(result, pPreamble);
+		dumpControlError(retval, pPreamble);
 		SendStatusMessage("[Axsun Control] Unable to connect to the devices.", false);
 		return false;
 	}
@@ -288,23 +291,15 @@ bool AxsunControl::setBackground(const unsigned short* pBackground)
 
 bool AxsunControl::setDispersionCompensation(double a2, double a3, int length)
 {
-    HRESULT result;
-    unsigned long retvallong;
+	AxErr retval = AxErr::NO_AxERROR;
     const char* pPreamble = "[Axsun Control] Failed to set dispersion compensating window function: ";
-
-    result = m_pAxsunOCTControl->ConnectToOCTDevice(m_daq_device, &m_bIsConnected);
-    if (result != S_OK)
-    {
-        dumpControlError(result, pPreamble);
-        return false;
-    }
-
-    if (m_bIsConnected == CONNECTED)
+	
+	if (m_daq_device == AxDevType::EDAQ)
     {
         if (length <= MAX_SAMPLE_LENGTH)
         {
-            short* win_real = new short[MAX_SAMPLE_LENGTH]; memset(win_real, 0, sizeof(short) * MAX_SAMPLE_LENGTH);
-            short* win_imag = new short[MAX_SAMPLE_LENGTH]; memset(win_imag, 0, sizeof(short) * MAX_SAMPLE_LENGTH);
+			std::vector<uint16_t> win_real(MAX_SAMPLE_LENGTH, 0);
+			std::vector<uint16_t> win_imag(MAX_SAMPLE_LENGTH, 0);
 
 			double temp_win = 0;
             double pi = 3.14159265358979323846;
@@ -317,49 +312,36 @@ bool AxsunControl::setDispersionCompensation(double a2, double a3, int length)
 			
             // Real Part of Dispersion Compensating Window
             if (writeFPGARegSingleBit(20, 14, false) != true) return false;
-			for (int i = 0; i < MAX_SAMPLE_LENGTH; i++)
+			retval = axSetFPGADataArray(25, win_real.data(), win_real.size(), 0);
+			if (retval != AxErr::NO_AxERROR)
 			{
-				result = m_pAxsunOCTControl->SetFPGARegister(25, win_real[i], &retvallong);
-				if (result != S_OK)
-				{
-					dumpControlError(result, pPreamble);
-					return false;
-				}
-				DidTransferArray(i);
-			}
-
-            // Imag Part of Dispersion Compensating Window
-            if (writeFPGARegSingleBit(20, 14, true) != true) return false;
-			for (int i = 0; i < MAX_SAMPLE_LENGTH; i++)
-			{
-				result = m_pAxsunOCTControl->SetFPGARegister(25, win_imag[i], &retvallong);
-				if (result != S_OK)
-				{
-					dumpControlError(result, pPreamble);
-					return false;
-				}
-				DidTransferArray(MAX_SAMPLE_LENGTH + i);
+				dumpControlError(retval, pPreamble);
+				return false;
 			}
 			
-            delete[] win_real;
-            delete[] win_imag;
-
+			// Imag Part of Dispersion Compensating Window
+            if (writeFPGARegSingleBit(20, 14, true) != true) return false;
+			retval = axSetFPGADataArray(25, win_imag.data(), win_imag.size(), 0);
+			if (retval != AxErr::NO_AxERROR)
+			{
+				dumpControlError(retval, pPreamble);
+				return false;
+			}
+			
 			char msg[256];
             sprintf(msg, "[Axsun Control] Dispcomp window is successfully defined (a2 = %.1f, a3 = %.1f, len = %d).", a2, a3, length);
 			SendStatusMessage(msg, false);
         }
         else
         {
-            result = 82;
-            dumpControlError(result, pPreamble);
+            dumpControlError(retval, pPreamble);
 			SendStatusMessage("[Axsun Control] Too long sample length.", false);
             return false;
         }
     }
     else
     {
-        result = 80;
-        dumpControlError(result, pPreamble);
+        dumpControlError(retval, pPreamble);
 		SendStatusMessage("[Axsun Control] Unable to connect to the devices.", false);
         return false;
     }
@@ -368,104 +350,45 @@ bool AxsunControl::setDispersionCompensation(double a2, double a3, int length)
 }
 
 
-bool AxsunControl::setBypassMode(bypass_mode _bypass_mode)
+bool AxsunControl::setPipelineMode(AxPipelineMode pipeline_mode)
 {
-    HRESULT result;
-    unsigned long retvallong;
+	AxErr retval = AxErr::NO_AxERROR;
     const char* pPreamble = "[Axsun Control] Failed to set bypass mode: ";
 
-    result = m_pAxsunOCTControl->ConnectToOCTDevice(m_daq_device, &m_bIsConnected);
-    if (result != S_OK)
+	if (m_daq_device == AxDevType::EDAQ)
     {
-        dumpControlError(result, pPreamble);
-        return false;
-    }
-
-    if (m_bIsConnected == CONNECTED)
-    {
-		unsigned int M = 1;
-		unsigned short bypass_config = 0;
-		const char* mode_name;
-
-		switch (_bypass_mode)
-		{
-		//case raw_adc_data:
-		//	M = 8;
-		//	bypass_config = 0x81FC;
-		//	mode_name = "Raw ADC Data";
-		//	break;
-		//case windowed_data:
-		//	M = 16;
-		//	bypass_config = 0x80FE;
-		//	dataType = cmplx;
-		//	mode_name = "Windowed Data";
-		//	break;
-		//case post_fft:
-		//	M = 8;
-		//	bypass_config = 0x007E;
-		//	dataType = cmplx;
-		//	mode_name = "Post-FFT";
-		//	break;
-		//case abs2:
-		//	M = 8;
-		//	bypass_config = 0x003E;
-		//	dataType = u32;
-		//	mode_name = "Abs()2";
-		//	break;
-		case abs2_with_bg_subtracted:
-			M = 10;
-			bypass_config = 0x001C;
-			mode_name = "Abs() with BG Subtracted";
-			break;
-		//case log_compressed:
-		//	M = 4;
-		//	bypass_config = 0x000C;
-		//	mode_name = "Log Compressed";
-		//	break;
-		//case dynamic_range_reduced:
-		//	M = 4;
-		//	bypass_config = 0x0002;
-		//	mode_name = "Dynamic Range Reduced";
-		//	break;
-		case jpeg_compressed:
-			M = 1;
-			bypass_config = 0x0000;
-			mode_name = "JPEG Compressed";
-			break;
-		default:
-			result = 81;
-			dumpControlError(result, pPreamble);
-			SendStatusMessage("[Axsun Control] Unsupported bypass mode.", false);
-			return false;
+		uint8_t subsampling_factor = 1;
+		switch (pipeline_mode) {
+		case AxPipelineMode::RAW_ADC: subsampling_factor = 8;
+		case AxPipelineMode::WINDOWED: subsampling_factor = 16;
+		case AxPipelineMode::IFFT: subsampling_factor = 8;
+		case AxPipelineMode::MOD_SQUARED:subsampling_factor = 8;
+		case AxPipelineMode::SQRT: subsampling_factor = 10;
+		case AxPipelineMode::LOG: subsampling_factor = 4;
+		case AxPipelineMode::EIGHT_BIT: subsampling_factor = 4;
+		case AxPipelineMode::JPEG_COMP: subsampling_factor = 1;
+		default: subsampling_factor = 1;
 		}
 
-		result = m_pAxsunOCTControl->SetFPGARegister(60, M - 1, &retvallong);
-		if (result != S_OK)
+		// Set subsampling factor first
+		//if (!setSubSampling(subsampling_factor))
+			//return false;
+
+		// Set pipeline mode next
+		retval = axSetPipelineMode(pipeline_mode, AxChannelMode::CHAN_1, 0);
+		if (retval != AxErr::NO_AxERROR)
 		{
-			dumpControlError(result, pPreamble);
-			return false;
-		}
-		result = m_pAxsunOCTControl->SetFPGARegister(61, bypass_config, &retvallong);
-		if (result != S_OK)
-		{
-			dumpControlError(result, pPreamble);
-			return false;
-		}
-		result = m_pAxsunOCTControl->SetFPGARegister(61, bypass_config + 1, &retvallong);
-		if (result != S_OK)
-		{
-			dumpControlError(result, pPreamble);
+			dumpControlError(retval, pPreamble);
 			return false;
 		}
 
 		char msg[256];
-		sprintf(msg, "[Axsun Control] Bypass mode is set to %s (subsampling factor: %d).", mode_name, M);
+		sprintf(msg, "[Axsun Control] Pipeline mode is set to %s (subsampling factor: %d).", AxPipelineModeString(pipeline_mode).c_str(), subsampling_factor);
 		SendStatusMessage(msg, false);
     }
     else
     {
-        result = 80;
-        dumpControlError(result, pPreamble);
+        dumpControlError(retval, pPreamble);
 		SendStatusMessage("[Axsun Control] Unable to connect to the devices.", false);
         return false;
     }
@@ -474,36 +397,27 @@ bool AxsunControl::setBypassMode(bypass_mode _bypass_mode)
 }
 
 
-bool AxsunControl::setSubSampling(int M)
+bool AxsunControl::setSubSampling(uint8_t subsampling_factor)
 {
-	HRESULT result;
-	unsigned long retvallong;
+	AxErr retval = AxErr::NO_AxERROR;
 	const char* pPreamble = "[Axsun Control] Failed to set bypass mode: ";
 
-	result = m_pAxsunOCTControl->ConnectToOCTDevice(m_daq_device, &m_bIsConnected);
-	if (result != S_OK)
+	if (m_daq_device == AxDevType::EDAQ)
 	{
-		dumpControlError(result, pPreamble);
-		return false;
-	}
-
-	if (m_bIsConnected == CONNECTED)
-	{
-		result = m_pAxsunOCTControl->SetFPGARegister(60, M - 1, &retvallong);
-		if (result != S_OK)
+		retval = axSetSubsamplingFactor(subsampling_factor, 0);
+		if (retval != AxErr::NO_AxERROR)
 		{
-			dumpControlError(result, pPreamble);
+			dumpControlError(retval, pPreamble);
 			return false;
 		}
 
 		char msg[256];
-		sprintf(msg, "[Axsun Control] Sub-sampling mode is set (subsampling factor: %d).", M);
+		sprintf(msg, "[Axsun Control] Sub-sampling mode is set (subsampling factor: %d).", subsampling_factor);
 		SendStatusMessage(msg, false);
 	}
 	else
 	{
-		result = 80;
-		dumpControlError(result, pPreamble);
+		dumpControlError(retval, pPreamble);
 		SendStatusMessage("[Axsun Control] Unable to connect to the devices.", false);
 		return false;
 	}
@@ -516,31 +430,22 @@ bool AxsunControl::setVDLHome()
 {
 	std::unique_lock<std::mutex> lock(vdl_mutex);
 	{
-		HRESULT result;
-		unsigned long retvallong;
+		AxErr retval = AxErr::NO_AxERROR;
 		const char* pPreamble = "[Axsun Control] Failed to set VDL home: ";
 
-		result = m_pAxsunOCTControl->ConnectToOCTDevice(m_laser_device, &m_bIsConnected);
-		if (result != S_OK)
+		if (m_laser_device == AxDevType::LASER)
 		{
-			dumpControlError(result, pPreamble);
-			return false;
-		}
-
-		if (m_bIsConnected == CONNECTED)
-		{
-			result = m_pAxsunOCTControl->HomeVDL(&retvallong);
-			if (result != S_OK)
+			retval = axHomeVDL(0);
+			if (retval != AxErr::NO_AxERROR)
 			{
-				dumpControlError(result, pPreamble);
+				dumpControlError(retval, pPreamble);
 				return false;
 			}
 			SendStatusMessage("[Axsun Control] VDL length is set to home.", false);
 		}
 		else
 		{
-			result = 80;
-			dumpControlError(result, pPreamble);
+			dumpControlError(retval, pPreamble);
 			SendStatusMessage("[Axsun Control] Unable to connect to the devices.", false);
 			return false;
 		}
@@ -554,23 +459,15 @@ bool AxsunControl::setVDLLength(float position)
 {
 	std::unique_lock<std::mutex> lock(vdl_mutex);
 	{
-		HRESULT result;
-		unsigned long retvallong;
+		AxErr retval = AxErr::NO_AxERROR;
 		const char* pPreamble = "[Axsun Control] Failed to set VDL length: ";
 
-		result = m_pAxsunOCTControl->ConnectToOCTDevice(m_laser_device, &m_bIsConnected);
-		if (result != S_OK)
+		if (m_laser_device == AxDevType::LASER)
 		{
-			dumpControlError(result, pPreamble);
-			return false;
-		}
-
-		if (m_bIsConnected == CONNECTED)
-		{
-			result = m_pAxsunOCTControl->MoveAbsVDL(position, 5, &retvallong);
-			if (result != S_OK)
+			retval = axMoveAbsVDL(position, 5, 0);
+			if (retval != AxErr::NO_AxERROR)
 			{
-				dumpControlError(result, pPreamble);
+				dumpControlError(retval, pPreamble);
 				return false;
 			}
 
@@ -580,8 +477,7 @@ bool AxsunControl::setVDLLength(float position)
 		}
 		else
 		{
-			result = 80;
-			dumpControlError(result, pPreamble);
+			dumpControlError(retval, pPreamble);
 			SendStatusMessage("[Axsun Control] Unable to connect to the devices.", false);
 			return false;
 		}
@@ -591,29 +487,58 @@ bool AxsunControl::setVDLLength(float position)
 }
 
 
-bool AxsunControl::setClockDelay(unsigned long delay)
+void AxsunControl::getVDLStatus()
 {
-	HRESULT result;
-	unsigned long retvallong;
+	AxErr retval = AxErr::NO_AxERROR;
+	const char* pPreamble = "[Axsun Control] Failed to get VDL status: ";
+
+	if (m_laser_device == AxDevType::LASER)
+	{
+		float current_pos, target_pos, speed; 
+		int32_t error_from_last_home;
+		uint32_t last_move_time; 
+		uint8_t state, home_switch, limit_switch, VDL_error;
+
+		retval = axGetVDLStatus(&current_pos, &target_pos, &speed, &error_from_last_home,
+			&last_move_time, &state, &home_switch, &limit_switch, &VDL_error, 0);
+		if (retval != AxErr::NO_AxERROR)
+		{
+			dumpControlError(retval, pPreamble);
+			return;
+		}
+
+		printf("%f %f %f %d / %d %d %d %d %d\n", current_pos, target_pos, speed, error_from_last_home,
+			last_move_time, state, home_switch, limit_switch, VDL_error);
+
+		char msg[256];
+		//sprintf(msg, "[Axsun Control] VDL length is set to %.2f mm.", position);
+		SendStatusMessage(msg, false);
+	}
+	else
+	{
+		dumpControlError(retval, pPreamble);
+		SendStatusMessage("[Axsun Control] Unable to connect to the devices.", false);
+		return;
+	}
+}
+
+
+bool AxsunControl::setClockDelay(uint32_t delay)
+{
+	AxErr retval = AxErr::NO_AxERROR;
 	const char* pPreamble = "[Axsun Control] Failed to set clock delay: ";
 
-    result = m_pAxsunOCTControl->ConnectToOCTDevice(m_laser_device, &m_bIsConnected);
-	if (result != S_OK)
-	{
-		dumpControlError(result, pPreamble);
-		return false;
-	}
-
-	if (m_bIsConnected == CONNECTED)
+	if (m_laser_device == AxDevType::LASER)
     {
-        unsigned long delay0;
-        result = m_pAxsunOCTControl->SetClockDelay(delay, &retvallong);
-		if (result != S_OK)
+		retval = axSetClockDelay(delay, 0);
+		if (retval != AxErr::NO_AxERROR)
 		{
-			dumpControlError(result, pPreamble);
+			dumpControlError(retval, pPreamble);
 			return false;
 		}
-        result = m_pAxsunOCTControl->GetClockDelay(&delay0, &retvallong);
+
+		uint32_t delay0;
+		axGetClockDelay(&delay0, 0);
 
 		char msg[256];
         sprintf(msg, "[Axsun Control] Clock delay is set to %.3f nsec [%d].", CLOCK_GAIN * (double)delay + CLOCK_OFFSET, delay0);
@@ -621,8 +546,7 @@ bool AxsunControl::setClockDelay(unsigned long delay)
 	}
 	else
 	{
-		result = 80;
-		dumpControlError(result, pPreamble);
+		dumpControlError(retval, pPreamble);
 		SendStatusMessage("[Axsun Control] Unable to connect to the devices.", false);
 		return false;
 	}
@@ -633,11 +557,42 @@ bool AxsunControl::setClockDelay(unsigned long delay)
 
 bool AxsunControl::setDecibelRange(double min_dB, double max_dB)
 {
+	AxErr retval = AxErr::NO_AxERROR;
+	const char* pPreamble = "[Axsun Control] Failed to set decibel range: ";
+
     double gain = 1275.0 * log10(2) / (max_dB - min_dB);
     double offset = -gain * (min_dB / 10.0 / log10(2) + 6.0);
 
-    if ((offset > 127.996) || (offset < -128.000) || (gain < 0) || (gain > 15.9997))
-    {
+	if ((offset < 127.996) && (offset > -128.000) && (gain > 0) && (gain < 15.9997))
+	{
+		if (m_daq_device == AxDevType::EDAQ)
+		{
+			retval = axSetEightBitOffset(offset, 0);
+			if (retval != AxErr::NO_AxERROR)
+			{
+				dumpControlError(retval, pPreamble);
+				return false;
+			}
+			retval = axSetEightBitGain(gain, 0);
+			if (retval != AxErr::NO_AxERROR)
+			{
+				dumpControlError(retval, pPreamble);
+				return false;
+			}			
+
+			char msg[256];
+			sprintf(msg, "[Axsun Control] Decibel range is set to [%.1f %.1f] (offset: %.3f / gain: %.4f)", min_dB, max_dB, offset, gain);
+			SendStatusMessage(msg, false);
+		}
+		else
+		{
+			dumpControlError(retval, pPreamble);
+			SendStatusMessage("[Axsun Control] Unable to connect to the devices.", false);
+			return false;
+		}
+	}
+	else
+	{
 		char msg[256];
         sprintf(msg, "[Axsun Control] Invalid decibel range... (offset: %.3f / gain: %.4f)", offset, gain);
 		SendStatusMessage(msg, false);
@@ -645,68 +600,31 @@ bool AxsunControl::setDecibelRange(double min_dB, double max_dB)
         return false;
     }
 
-    if (setOffset(offset) != true) return false;
-    if (setGain(gain) != true) return false;
-
-	char msg[256];
-    sprintf(msg, "[Axsun Control] Decibel range is set to [%.1f %.1f] (offset: %.3f / gain: %.4f)", min_dB, max_dB, offset, gain);
-	SendStatusMessage(msg, false);
-
-
     return true;
 }
 
 bool AxsunControl::getDeviceState()
 {
-	HRESULT result;
-	//unsigned long retvallong;
+	AxErr retval = AxErr::NO_AxERROR;
 	const char* pPreamble = "[Axsun Control] Failed to get device state: ";
 
-	result = m_pAxsunOCTControl->ConnectToOCTDevice(m_laser_device, &m_bIsConnected);
-	if (result != S_OK)
+	if (m_daq_device == AxDevType::EDAQ) 
 	{
-		dumpControlError(result, pPreamble);
-		return false;
-	}
-
-	if (m_bIsConnected == CONNECTED)
-	{
-		//unsigned long laser_time;
-		//result = m_pAxsunOCTControl->GetLaserOnTime(&laser_time, &retvallong);
-		//if (result != S_OK)
-		//{
-		//	dumpControlError(result, pPreamble);
-		//	return false;
-		//}
-
-		//unsigned long rawVal;
-		//float scaledVal;
-		//BSTR temp; temp = _bstr_t("test");
-		////result = m_pAxsunOCTControl->Get GetLowSpeedADOneChannel(5, &rawVal, &scaledVal, &temp);
-		//if (result != S_OK)
-		//{
-		//	dumpControlError(result, pPreamble);
-		//	return false;
-		//}		
-		//printf("[%d] %d %f %s\n", laser_time, rawVal, scaledVal, temp);
-
-		//unsigned long delay0;
-		//result = m_pAxsunOCTControl->SetClockDelay(delay, &retvallong);
-		//if (result != S_OK)
-		//{
-		//	dumpControlError(result, pPreamble);
-		//	return false;
-		//}
-		//result = m_pAxsunOCTControl->GetClockDelay(&delay0, &retvallong);
-
-		//char msg[256];
-		//sprintf(msg, "[Axsun Control] Clock delay is set to %.3f nsec [%d].", CLOCK_GAIN * (double)delay + CLOCK_OFFSET, delay0);
-		//SendStatusMessage(msg, false);
+		AxTECState TEC_state;
+		retval = axGetTECState(&TEC_state, 1, 0);
+		if (retval != AxErr::NO_AxERROR)
+		{
+			dumpControlError(retval, pPreamble);
+			return false;
+		}
+		
+		char msg[256];
+		sprintf(msg, "[Axsun Control] %s", AxTECStateString(TEC_state).c_str());
+		SendStatusMessage(msg, false);
 	}
 	else
-	{
-		result = 80;
-		dumpControlError(result, pPreamble);
+	{		
+		dumpControlError(retval, pPreamble);
 		SendStatusMessage("[Axsun Control] Unable to connect to the devices.", false);
 		return false;
 	}
@@ -718,24 +636,16 @@ bool AxsunControl::getDeviceState()
 
 bool AxsunControl::writeFPGARegSingleBit(unsigned long regNum, int bitNum, bool set)
 {
-	HRESULT result;
-	unsigned long retvallong;
+	AxErr retval = AxErr::NO_AxERROR;
 	const char* pPreamble = "[Axsun Control] Failed to write FPGA single register bit: ";
-
-	result = m_pAxsunOCTControl->ConnectToOCTDevice(m_daq_device, &m_bIsConnected);
-	if (result != S_OK)
-	{
-		dumpControlError(result, pPreamble);
-		return false;
-	}
-
-	if (m_bIsConnected == CONNECTED)
+	
+	if (m_daq_device == AxDevType::EDAQ)
 	{			
 		unsigned short regVal = 0;
-		result = m_pAxsunOCTControl->GetFPGARegister(regNum, &regVal, &retvallong);
-		if (result != S_OK)
+		retval = axGetFPGARegister(regNum, &regVal, 0);
+		if (retval != AxErr::NO_AxERROR)
 		{
-			dumpControlError(result, pPreamble);
+			dumpControlError(retval, pPreamble);
 			return false;
 		}
 		//printf("[%d-%d-%s] RegVal : 0x%04x", regNum, bitNum, set ? "set" : "clr", regVal);	
@@ -751,86 +661,16 @@ bool AxsunControl::writeFPGARegSingleBit(unsigned long regNum, int bitNum, bool 
 		//printf("[%d-%d-%s] RegMask: 0x%04x", regNum, bitNum, set ? "set" : "clr", regMask);
 		//printf("[%d-%d-%s] RegVal1: 0x%04x", regNum, bitNum, set ? "set" : "clr", regVal);
 		
-		result = m_pAxsunOCTControl->SetFPGARegister(regNum, regVal, &retvallong);
-		if (result != S_OK)
+		retval = axSetFPGARegister(regNum, regVal, 0);
+		if (retval != AxErr::NO_AxERROR)
 		{
-			dumpControlError(result, pPreamble);
+			dumpControlError(retval, pPreamble);
 			return false;
 		}
 	}
-	//else
-	//{
-	//	result = 80;
-	//	dumpControlError(result, pPreamble);
-	//	SendStatusMessage("[Axsun Control] Unable to connect to the devices.", false);
-	//	return false;
-	//}
-
-	return true;
-}
-
-
-bool AxsunControl::setOffset(double offset)
-{
-	HRESULT result;
-	unsigned long retvallong;
-	const char* pPreamble = "[Axsun Control] Failed to set Offset: ";
-
-	result = m_pAxsunOCTControl->ConnectToOCTDevice(m_daq_device, &m_bIsConnected);
-	if (result != S_OK)
-	{
-		dumpControlError(result, pPreamble);
-		return false;
-	}
-
-	if (m_bIsConnected == CONNECTED)
-	{
-		bool bit[17] = { 0, };
-
-		double offset0 = offset;
-		if (offset0 < 0)
-		{
-			bit[16] = 1;
-			offset0 = 128.0 + offset0;
-		}
-		offset0 = floor(1000.0 * offset0) / 1000.0;
-
-		double integer_part = floor(offset0);
-		double fraction_part = offset0 - integer_part;
-
-		for (int i = 0; i < 7; i++)
-		{
-			bit[i + 9] = ((char)integer_part % 2) == 1;
-			integer_part = floor(integer_part / 2);
-		}
-
-		for (int i = 0; i < 9; i++)
-		{ 
-			fraction_part = 2 * fraction_part;
-			bit[8 - i] = (int)(floor(fraction_part)) == 1;
-			fraction_part = fraction_part - floor(fraction_part);
-		}
-
-		unsigned short regVal = 0;
-		for (int i = 0; i < 16; i++)
-			regVal += bit[i + 1] << i;
-		regVal += bit[0];
-
-		result = m_pAxsunOCTControl->SetFPGARegister(23, regVal, &retvallong);
-		if (result != S_OK)
-		{
-			dumpControlError(result, pPreamble);
-			return false;
-		}
-
-		char msg[256];
-		sprintf(msg, "[Axsun Control] Offset value is set to %.3f (0x%04X).", offset, regVal);
-		SendStatusMessage(msg, false);
-	}	
 	else
 	{
-		result = 80;
-		dumpControlError(result, pPreamble);
+		dumpControlError(retval, pPreamble);
 		SendStatusMessage("[Axsun Control] Unable to connect to the devices.", false);
 		return false;
 	}
@@ -839,78 +679,19 @@ bool AxsunControl::setOffset(double offset)
 }
 
 
-bool AxsunControl::setGain(double gain)
-{
-	HRESULT result;
-	unsigned long retvallong;
-	const char* pPreamble = "[Axsun Control] Failed to set Gain: ";
-
-	result = m_pAxsunOCTControl->ConnectToOCTDevice(m_daq_device, &m_bIsConnected);
-	if (result != S_OK)
-	{
-		dumpControlError(result, pPreamble);
-		return false;
-	}
-
-	if (m_bIsConnected == CONNECTED)
-	{
-		bool bit[17] = { 0, };
-
-		gain = floor(10000.0 * gain) / 10000.0;
-
-		double integer_part = floor(gain);
-		double fraction_part = gain - integer_part;
-
-		for (int i = 0; i < 4; i++)
-		{
-			bit[i + 13] = ((char)integer_part % 2) == 1;
-			integer_part = floor(integer_part / 2);
-		}
-
-		for (int i = 0; i < 13; i++)
-		{
-			fraction_part = 2 * fraction_part;
-			bit[12 - i] = (int)(floor(fraction_part)) == 1;
-			fraction_part = fraction_part - floor(fraction_part);
-		}
-
-		unsigned short regVal = 0;
-		for (int i = 0; i < 16; i++)
-			regVal += bit[i + 1] << i;
-		regVal += bit[0];
-
-		result = m_pAxsunOCTControl->SetFPGARegister(24, regVal, &retvallong);
-		if (result != S_OK)
-		{
-			dumpControlError(result, pPreamble);
-			return false;
-		}
-
-		char msg[256];
-		sprintf(msg, "[Axsun Control] Gain value is set to %.4f (0x%04X).", gain, regVal);
-		SendStatusMessage(msg, false);
-	}
-	else
-	{
-		result = 80;
-		dumpControlError(result, pPreamble);
-		SendStatusMessage("[Axsun Control] Unable to connect to the devices.", false);
-		return false;
-	}
-
-	return true;
-}
-
-
-void AxsunControl::dumpControlError(long res, const char* pPreamble)
+void AxsunControl::dumpControlError(AxErr res, const char* pPreamble)
 {
     char msg[256] = { 0, };
     memcpy(msg, pPreamble, strlen(pPreamble));
 
-    char err[256] = { 0, };
-    sprintf_s(err, 256, "Control error code (%d)", res);
-	
-    strcat(msg, err);
+	char err_msg[256];
+	axGetErrorExplained(res, err_msg);
+		
+	if (res != AxErr::NO_AxERROR)
+		strcat(msg, err_msg);
+	else
+		strcat(msg, "Connection failed.");
 
 	SendStatusMessage(msg, true);
+	axCloseAxsunOCTControl();
 }

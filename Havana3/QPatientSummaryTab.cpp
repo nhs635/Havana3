@@ -8,13 +8,20 @@
 #include <Havana3/MainWindow.h>
 #include <Havana3/Configuration.h>
 #include <Havana3/HvnSqlDataBase.h>
+#include <Havana3/QStreamTab.h>
 #include <Havana3/QResultTab.h>
 #include <Havana3/Dialog/AddPatientDlg.h>
 #include <Havana3/Dialog/SettingDlg.h>
 
+#include <DeviceControl/DeviceControl.h>
+#include <DeviceControl/FaulhaberMotor/PullbackMotor.h>
+
+#include <iostream>
+#include <thread>
+
 
 QPatientSummaryTab::QPatientSummaryTab(QString patient_id, QWidget *parent) :
-    QDialog(parent), m_pEditPatientDlg(nullptr), m_pSettingDlg(nullptr)
+    QDialog(parent), m_pDeviceControl(nullptr), m_pEditPatientDlg(nullptr), m_pSettingDlg(nullptr)
 {
     // Set title
     setWindowTitle("Patient Summary");
@@ -40,6 +47,11 @@ QPatientSummaryTab::QPatientSummaryTab(QString patient_id, QWidget *parent) :
 QPatientSummaryTab::~QPatientSummaryTab()
 {
 	m_pTableWidget_RecordInformation->clear();
+	if (m_pDeviceControl)
+	{
+		delete m_pDeviceControl;
+		m_pDeviceControl = nullptr;
+	}
 }
 
 void QPatientSummaryTab::keyPressEvent(QKeyEvent *e)
@@ -65,13 +77,19 @@ void QPatientSummaryTab::createPatientSummaryViewWidgets()
     m_pLabel_PatientInformation = new QLabel(this);
     loadPatientInformation();
     m_pLabel_PatientInformation->setStyleSheet("QLabel{font-size:12pt}");
+	
+	m_pPushButton_NewRecord = new QPushButton(this);
+	m_pPushButton_NewRecord->setText("  New Record");
+	m_pPushButton_NewRecord->setIcon(style()->standardIcon(QStyle::SP_FileIcon));
+	m_pPushButton_NewRecord->setStyleSheet("QPushButton{font-size:12pt; font-weight:bold}");
+	m_pPushButton_NewRecord->setFixedSize(180, 35);
 
-    m_pPushButton_NewRecord = new QPushButton(this);
-    m_pPushButton_NewRecord->setText("  New Record");
-    m_pPushButton_NewRecord->setIcon(style()->standardIcon(QStyle::SP_FileIcon));
-    m_pPushButton_NewRecord->setStyleSheet("QPushButton{font-size:12pt; font-weight:bold}");
-    m_pPushButton_NewRecord->setFixedSize(180, 35);
-
+	m_pToggleButton_CatheterConnect = new QPushButton(this);
+	m_pToggleButton_CatheterConnect->setText("  Catheter Connect");
+	m_pToggleButton_CatheterConnect->setCheckable(true);
+	m_pToggleButton_CatheterConnect->setIcon(style()->standardIcon(QStyle::SP_BrowserReload));
+	m_pToggleButton_CatheterConnect->setFixedSize(150, 25);
+	
 	m_pPushButton_Import = new QPushButton(this);
 	m_pPushButton_Import->setText("  Import");
 	m_pPushButton_Import->setIcon(style()->standardIcon(QStyle::SP_DialogOpenButton));
@@ -97,6 +115,7 @@ void QPatientSummaryTab::createPatientSummaryViewWidgets()
 	pHBoxLayout_Title->setSpacing(8);
 	pHBoxLayout_Title->addWidget(m_pLabel_PatientSummary);
 	pHBoxLayout_Title->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed));
+	pHBoxLayout_Title->addWidget(m_pToggleButton_CatheterConnect, 0, Qt::AlignBottom);
 	pHBoxLayout_Title->addWidget(m_pPushButton_NewRecord);
 
 	QHBoxLayout *pHBoxLayout_Info = new QHBoxLayout;
@@ -115,6 +134,7 @@ void QPatientSummaryTab::createPatientSummaryViewWidgets()
 
 
     // Connect signal and slot
+	connect(m_pToggleButton_CatheterConnect, SIGNAL(toggled(bool)), this, SLOT(catheterConnect(bool)));
 	connect(m_pPushButton_Import, SIGNAL(clicked(bool)), this, SLOT(import()));
     connect(m_pPushButton_EditPatient, SIGNAL(clicked(bool)), this, SLOT(editPatient()));
 	connect(m_pPushButton_Setting, SIGNAL(clicked(bool)), this, SLOT(createSettingDlg()));
@@ -150,6 +170,7 @@ void QPatientSummaryTab::createPatientSummaryTable()
 
     // Header properties
     m_pTableWidget_RecordInformation->verticalHeader()->setDefaultSectionSize(150);
+	m_pTableWidget_RecordInformation->verticalHeader()->setDefaultAlignment(Qt::AlignCenter);
     m_pTableWidget_RecordInformation->verticalHeader()->setSectionResizeMode(QHeaderView::Fixed);
     m_pTableWidget_RecordInformation->horizontalHeader()->setMinimumSectionSize(100);
     m_pTableWidget_RecordInformation->horizontalHeader()->setSectionResizeMode(5, QHeaderView::Stretch);
@@ -165,6 +186,61 @@ void QPatientSummaryTab::createPatientSummaryTable()
 	connect(this, SIGNAL(requestDelete(QString)), this, SLOT(deleteRecordData(QString)));
 }
 
+
+void QPatientSummaryTab::catheterConnect(bool toggled)
+{
+	if (toggled)
+	{
+		if (m_pMainWnd->getStreamTab())
+			m_pDeviceControl = m_pMainWnd->getStreamTab()->getDeviceControl();
+		else if (!m_pDeviceControl)
+			m_pDeviceControl = new DeviceControl(m_pConfig);
+
+		if (m_pDeviceControl->connectPullbackMotor(true))
+		{
+			m_pPushButton_NewRecord->setEnabled(false);
+			m_pPushButton_Setting->setEnabled(false);
+			m_pToggleButton_CatheterConnect->setStyleSheet("QPushButton { background-color:#ff0000; }");	
+
+			m_pDeviceControl->getPullbackMotor()->DidRotateEnd.clear();
+			if (!m_pConfig->pullbackFlag)
+			{
+				m_pConfig->pullbackFlag = true;
+				m_pConfig->setConfigFile("Havana3.ini");
+				m_pDeviceControl->moveAbsolute();
+			}
+		}
+		else
+		{
+			m_pToggleButton_CatheterConnect->setChecked(false);
+		}		
+	}
+	else
+	{
+		if (m_pDeviceControl->getPullbackMotor())
+		{
+			m_pDeviceControl->getPullbackMotor()->DidRotateEnd.clear();
+			m_pDeviceControl->getPullbackMotor()->DidRotateEnd += [&](int timeout) {
+				if (timeout)
+				{
+					m_pConfig->pullbackFlag = false;
+					m_pConfig->setConfigFile("Havana3.ini");
+				}
+			};
+			m_pDeviceControl->home();
+			std::this_thread::sleep_for(std::chrono::milliseconds(3500));
+
+			m_pDeviceControl->connectPullbackMotor(false);
+		}
+
+		m_pPushButton_NewRecord->setEnabled(true);
+		m_pPushButton_Setting->setEnabled(true);
+		m_pToggleButton_CatheterConnect->setStyleSheet("QPushButton { background-color:#353535; }");
+
+		if (m_pMainWnd->getStreamTab())
+			m_pDeviceControl = nullptr;
+	}
+}
 
 void QPatientSummaryTab::newRecord()
 {
