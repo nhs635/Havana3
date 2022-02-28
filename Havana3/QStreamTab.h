@@ -84,7 +84,6 @@ private slots:
 	void resetCatheterCalibration();
     void scrollCatheterCalibration(int);
 	void scrollInnerOffsetLength(int);
-	void catheterConnection(bool);
     
 public slots:
 	void enableRotation(bool);
@@ -160,9 +159,7 @@ private:
 	QPushButton *m_pPushButton_CatheterCalibrationReset;
     QScrollBar *m_pScrollBar_CatheterCalibration;
 	QScrollBar *m_pScrollBar_InnerOffset;
-
-	QPushButton *m_pToggleButton_CatheterConnection;
-
+	
     QPushButton *m_pToggleButton_EnableRotation;
     QPushButton *m_pToggleButton_StartPullback;
 

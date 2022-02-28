@@ -19,11 +19,15 @@
 #ifdef NI_ENABLE
 #include <DeviceControl/FreqDivider/FreqDivider.h>
 #endif
+#ifdef AXSUN_ENABLE
 #include <DeviceControl/AxsunControl/AxsunControl.h>
+#endif
 
 #include <DataAcquisition/DataAcquisition.h>
 #include <DataAcquisition/SignatecDAQ/SignatecDAQ.h>
+#ifdef AXSUN_ENABLE
 #include <DataAcquisition/AxsunCapture/AxsunCapture.h>
+#endif
 
 #include <Common/Array.h>
 
@@ -585,6 +589,7 @@ bool DeviceControl::startSynchronization(bool enabled, bool async)
 	}
 #else
 	(void)enabled;
+	(void)async;
 #endif
 
 	return true;
@@ -593,6 +598,7 @@ bool DeviceControl::startSynchronization(bool enabled, bool async)
 
 bool DeviceControl::connectAxsunControl(bool toggled)
 {
+#ifdef AXSUN_ENABLE
 	if (toggled)
 	{
 		// Create Axsun OCT control objects
@@ -662,22 +668,30 @@ bool DeviceControl::connectAxsunControl(bool toggled)
 			m_pAxsunControl = nullptr;
 		}
 	}
+#else
+	(void)toggled;
+#endif
 
     return true;
 }
 
 void DeviceControl::setLightSource(bool toggled)
 {
+#ifdef AXSUN_ENABLE
 	if (m_pAxsunControl)
 	{
 		// Start or stop Axsun light source operation
 		if (m_pAxsunControl->isInitialized())
 			m_pAxsunControl->setLaserEmission(toggled);		
 	}
+#else
+	(void)toggled;
+#endif
 }
 
 void DeviceControl::setLiveImaging(bool toggled)
 {
+#ifdef AXSUN_ENABLE
 #ifndef NEXT_GEN_SYSTEM
 	if (m_pAxsunControl)
 	{
@@ -688,10 +702,14 @@ void DeviceControl::setLiveImaging(bool toggled)
 #else
 	(void)toggled;
 #endif
+#else
+	(void)toggled;
+#endif
 }
 
 void DeviceControl::adjustDecibelRange(double min, double max)
 {
+#ifdef AXSUN_ENABLE
 #ifndef NEXT_GEN_SYSTEM
 	if (m_pAxsunControl)
 	{
@@ -703,59 +721,80 @@ void DeviceControl::adjustDecibelRange(double min, double max)
 	m_pConfig->axsunDbRange.min = min;
 	m_pConfig->axsunDbRange.max = max;
 #endif
+#else
+	(void)min;
+	(void)max;
+#endif
 }
 
 void DeviceControl::setBackground()
 {
+#ifdef AXSUN_ENABLE
 	if (m_pAxsunControl)
-	{
 		m_pAxsunControl->setBackground();
-	}
+#endif
 }
 
 void DeviceControl::setDispersionCompensation(float a2, float a3)
 {
+#ifdef AXSUN_ENABLE
 	if (m_pAxsunControl)
 	{
 		m_pConfig->axsunDispComp_a2 = a2;
 		m_pConfig->axsunDispComp_a3 = a3;
 		m_pAxsunControl->setDispersionCompensation(a2, a3);
 	}
+#else
+	(void)a2;
+	(void)a3;
+#endif
 }
 
 void DeviceControl::setClockDelay(double)
 {
+#ifdef AXSUN_ENABLE
 	if (m_pAxsunControl)
 		m_pAxsunControl->setClockDelay(CLOCK_DELAY);
+#endif
 }
 
 void DeviceControl::setSubSampling(int M)
 {
+#ifdef AXSUN_ENABLE
 	if (m_pAxsunControl)
 		m_pAxsunControl->setSubSampling(M);
+#else
+	(void)M;
+#endif
 }
 
 void DeviceControl::setVDLLength(double length)
 {
+#ifdef AXSUN_ENABLE
 	if (m_pAxsunControl)
 	{
 		m_pConfig->axsunVDLLength = length;
 		m_pAxsunControl->setVDLLength(length);
 	}
+#else
+	(void)length;
+#endif
 }
 
 void DeviceControl::setVDLHome()
 {
+#ifdef AXSUN_ENABLE
 	if (m_pAxsunControl)
 	{
 		m_pConfig->axsunVDLLength = 0.0f;
 		m_pAxsunControl->setVDLHome();
 	}
+#endif
 }
 
 void DeviceControl::requestOctStatus()
 {
-	//if (m_pAxsunControl) 
-	//	if (m_pAxsunControl->isInitialized())
-	//		m_pAxsunControl->getDeviceState();
+	///if (m_pAxsunControl) 
+	///	if (m_pAxsunControl->isInitialized())
+	///		m_pAxsunControl->getDeviceState();
 }

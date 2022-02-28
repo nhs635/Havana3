@@ -5,9 +5,12 @@
 #include <Havana3/QStreamTab.h>
 #include <Havana3/QResultTab.h>
 #include <Havana3/Viewer/QImageView.h>
+#include <Havana3/Dialog/SettingDlg.h>
+#include <Havana3/Dialog/ViewOptionTab.h>
+#include <Havana3/Dialog/PulseReviewTab.h>
 
-#include <ippcore.h>
-#include <ippvm.h>
+#include <DataAcquisition/DataProcessing.h>
+
 #include <ipps.h>
 
 #include <tbb/parallel_for.h>
@@ -15,17 +18,17 @@
 
 
 QViewTab::QViewTab(bool is_streaming, QWidget *parent) :
-    QDialog(parent), m_pStreamTab(nullptr), m_pResultTab(nullptr),
-    m_pImgObjRectImage(nullptr), m_pImgObjCircImage(nullptr), m_pImgObjIntensity(nullptr), m_pImgObjLifetime(nullptr),
-	m_pImgObjOctProjection(nullptr), m_pImgObjIntensityMap(nullptr), m_pImgObjLifetimeMap(nullptr), m_pImgObjLongiImage(nullptr),
-    m_pCirc(nullptr), m_pMedfiltRect(nullptr), m_pMedfiltIntensityMap(nullptr), m_pMedfiltLifetimeMap(nullptr), m_pMedfiltLongi(nullptr) //, m_pAnn(nullptr)
+	QDialog(parent), m_pStreamTab(nullptr), m_pResultTab(nullptr), m_pConfigTemp(nullptr),
+	m_pImgObjRectImage(nullptr), m_pImgObjCircImage(nullptr), m_pImgObjIntensity(nullptr), m_pImgObjLifetime(nullptr),
+	m_pImgObjOctProjection(nullptr), m_pImgObjIntensityMap(nullptr), m_pImgObjLifetimeMap(nullptr), m_pImgObjIntensityRatioMap(nullptr), m_pImgObjLongiImage(nullptr), m_pImgObjLongiImageRe(nullptr),
+	m_pCirc(nullptr), m_pMedfiltRect(nullptr), m_pMedfiltIntensityMap(nullptr), m_pMedfiltLifetimeMap(nullptr), m_pMedfiltLongi(nullptr), _running(false) //, m_pAnn(nullptr)
 {
-    // Set configuration objects
+	// Set configuration objects
 	if (is_streaming)
 		m_pStreamTab = (QStreamTab*)parent;
-	else	
+	else
 		m_pResultTab = (QResultTab*)parent;
-	m_pConfig = is_streaming? m_pStreamTab->getMainWnd()->m_pConfiguration : m_pResultTab->getMainWnd()->m_pConfiguration;
+	m_pConfig = is_streaming ? m_pStreamTab->getMainWnd()->m_pConfiguration : m_pResultTab->getMainWnd()->m_pConfiguration;
 
     // Create view tab widgets
     createViewTabWidgets(is_streaming);
@@ -36,6 +39,13 @@ QViewTab::QViewTab(bool is_streaming, QWidget *parent) :
 
 QViewTab::~QViewTab()
 {
+	disconnect(this, SIGNAL(playingDone(void)), 0, 0);
+	if (playing.joinable())
+	{
+		_running = false;
+		playing.join();
+	}
+
 	if (m_pImgObjRectImage) delete m_pImgObjRectImage;
 	if (m_pImgObjCircImage) delete m_pImgObjCircImage;
 	if (m_pImgObjIntensity) delete m_pImgObjIntensity;
@@ -46,6 +56,7 @@ QViewTab::~QViewTab()
 	if (m_pImgObjLifetimeMap) delete m_pImgObjLifetimeMap;
 
     if (m_pImgObjLongiImage) delete m_pImgObjLongiImage;
+	if (m_pImgObjLongiImageRe) delete m_pImgObjLongiImageRe;
 
 	if (m_pCirc) delete m_pCirc;
 	if (m_pMedfiltRect) delete m_pMedfiltRect;
@@ -69,28 +80,57 @@ void QViewTab::createViewTabWidgets(bool is_streaming)
 	if (is_streaming)		
 		m_pImageView_CircImage->setMinimumSize(810, 810);
 	else
+#ifndef ALTERNATIVE_VIEW
 		m_pImageView_CircImage->setMinimumSize(650, 650);
+#else
+		m_pImageView_CircImage->setMinimumSize(620, 620);
+#endif
 
 	m_pImageView_CircImage->setSquare(true);
 	m_pImageView_CircImage->setCircle(1, OUTER_SHEATH_POSITION);
+
+#ifdef ALTERNATIVE_VIEW
+	if (!is_streaming)
+	{
+		for (int i = 0; i < 4; i++)
+		{
+			m_pWidget[i] = new QWidget(this);
+			m_pWidget[i]->setFixedWidth(274);
+			m_pWidget[i]->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
+		}
+	}
+#endif
 
     if (!is_streaming)
     {
         // Create image view : en-face
         ColorTable temp_ctable;
         m_pImageView_EnFace = new QImageView(ColorTable::colortable(LIFETIME_COLORTABLE), 1, m_pConfig->flimAlines, true, this);
+#ifndef ALTERNATIVE_VIEW
         m_pImageView_EnFace->setMinimumSize(500, 250);
+#else
+		m_pImageView_EnFace->setMinimumSize(250, 160); 
+		m_pImageView_EnFace->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::MinimumExpanding);
+#endif
 		        
         // Create image view : longitudinal
         m_pImageView_Longi = new QImageView(ColorTable::colortable(OCT_COLORTABLE), 1, diameter, true, this);
+		m_pImageView_Longi->getRender()->m_bCenterGrid = true;
+#ifndef ALTERNATIVE_VIEW		
         m_pImageView_Longi->setMinimumSize(500, 350);		
+#else
+		m_pImageView_Longi->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+#endif
 		
         // Create image view : colorbar
         uint8_t color[256 * 4];
         for (int i = 0; i < 256 * 4; i++)
             color[i] = 255 - i / 4;
 
-        m_pImageView_ColorBar = new QImageView(ColorTable::colortable(LIFETIME_COLORTABLE), 4, 256, false, this);
+		if (m_pConfig->flimVisualizationMode == VisualizationMode::_LIFETIME_)
+	        m_pImageView_ColorBar = new QImageView(ColorTable::colortable(LIFETIME_COLORTABLE), 4, 256, false, this);
+		else if (m_pConfig->flimVisualizationMode == VisualizationMode::_INTENSITY_RATIO_)
+			m_pImageView_ColorBar = new QImageView(ColorTable::colortable(INTENSITY_RATIO_COLORTABLE), 4, 256, false, this);
         m_pImageView_ColorBar->getRender()->setFixedWidth(30);
         m_pImageView_ColorBar->drawImage(color);
         m_pImageView_ColorBar->setFixedWidth(20);
@@ -111,8 +151,8 @@ void QViewTab::createViewTabWidgets(bool is_streaming)
 
         // Create slider for exploring frames
         m_pSlider_SelectFrame = new QSlider(this);
-        m_pSlider_SelectFrame->setTickPosition(QSlider::TicksBothSides);
-        m_pSlider_SelectFrame->setTickInterval(20);		
+        ///m_pSlider_SelectFrame->setTickPosition(QSlider::TicksBothSides);
+        ///m_pSlider_SelectFrame->setTickInterval(20);		
         m_pSlider_SelectFrame->setOrientation(Qt::Horizontal);
         QPalette pal = m_pSlider_SelectFrame->palette();
         pal.setColor(QPalette::Highlight, QColor(42, 42, 42));
@@ -120,19 +160,27 @@ void QViewTab::createViewTabWidgets(bool is_streaming)
         m_pSlider_SelectFrame->setPalette(pal);
         m_pSlider_SelectFrame->setValue(0);		
 		
-        // Create push button for measuring distance
+        // Create push buttons for measuring distance & area
         m_pToggleButton_MeasureDistance = new QPushButton(this);
         m_pToggleButton_MeasureDistance->setCheckable(true);
         m_pToggleButton_MeasureDistance->setText("Measure Distance");
-        m_pToggleButton_MeasureDistance->setFixedWidth(120);
+	    m_pToggleButton_MeasureDistance->setFixedWidth(120);
+		
+		m_pToggleButton_MeasureArea = new QPushButton(this);
+		m_pToggleButton_MeasureArea->setCheckable(true);
+		m_pToggleButton_MeasureArea->setText("Measure Area");
+		m_pToggleButton_MeasureArea->setFixedWidth(120);
 
         // Create widgets for FLIm emission control
         m_pComboBox_ViewMode = new QComboBox(this);
-        m_pComboBox_ViewMode->addItem("Ch 1");
-        m_pComboBox_ViewMode->addItem("Ch 2");
-        m_pComboBox_ViewMode->addItem("Ch 3");
-        m_pComboBox_ViewMode->setCurrentIndex(m_pConfig->flimEmissionChannel - 1);
-        m_pComboBox_ViewMode->setFixedWidth(60);
+        m_pComboBox_ViewMode->addItem("Ch 1 Lifetime");
+        m_pComboBox_ViewMode->addItem("Ch 2 Lifetime");
+        m_pComboBox_ViewMode->addItem("Ch 3 Lifetime");
+		m_pComboBox_ViewMode->addItem("Ch 1/3 IntRatio");
+		m_pComboBox_ViewMode->addItem("Ch 2/1 IntRatio");
+		m_pComboBox_ViewMode->addItem("Ch 3/2 IntRatio");
+        m_pComboBox_ViewMode->setCurrentIndex(3 * m_pConfig->flimVisualizationMode + m_pConfig->flimEmissionChannel - 1);
+        m_pComboBox_ViewMode->setFixedWidth(120);
 
         m_pLabel_ViewMode = new QLabel("View Mode ", this);
         m_pLabel_ViewMode->setAlignment(Qt::AlignVCenter | Qt::AlignRight);
@@ -142,11 +190,12 @@ void QViewTab::createViewTabWidgets(bool is_streaming)
     // Set layout
     QGridLayout *pGridLayout = new QGridLayout;
     pGridLayout->setSpacing(4);
-
-    pGridLayout->addWidget(m_pImageView_CircImage, 0, 0, 3, 1);
-
+	
     if (!is_streaming)
     {
+#ifndef ALTERNATIVE_VIEW
+		pGridLayout->addWidget(m_pImageView_CircImage, 0, 0, 3, 1);
+
         pGridLayout->addWidget(m_pImageView_EnFace, 0, 1);
         pGridLayout->addWidget(m_pSlider_SelectFrame, 1, 1);
         pGridLayout->addWidget(m_pImageView_Longi, 2, 1);
@@ -161,6 +210,7 @@ void QViewTab::createViewTabWidgets(bool is_streaming)
         pHBoxLayout1->addWidget(m_pPushButton_Increment);
         pHBoxLayout1->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed));
         pHBoxLayout1->addWidget(m_pToggleButton_MeasureDistance);
+		pHBoxLayout1->addWidget(m_pToggleButton_MeasureArea);
 
         QHBoxLayout *pHBoxLayout2 = new QHBoxLayout;
         pHBoxLayout2->setSpacing(4);
@@ -171,7 +221,59 @@ void QViewTab::createViewTabWidgets(bool is_streaming)
 
         pGridLayout->addItem(pHBoxLayout1, 3, 0);
         pGridLayout->addItem(pHBoxLayout2, 3, 1);
+#else
+		QHBoxLayout *pHBoxLayout1 = new QHBoxLayout;
+		pHBoxLayout1->setSpacing(4);
+
+		pHBoxLayout1->addWidget(m_pPushButton_Decrement);
+		pHBoxLayout1->addWidget(m_pToggleButton_Play);
+		pHBoxLayout1->addWidget(m_pPushButton_Increment);
+		pHBoxLayout1->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed));
+
+		m_pWidget[1]->setLayout(pHBoxLayout1);
+		
+		QHBoxLayout *pHBoxLayout2 = new QHBoxLayout;
+		pHBoxLayout2->setSpacing(4);
+		
+		pHBoxLayout2->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed));
+		pHBoxLayout2->addWidget(m_pToggleButton_MeasureDistance);
+		pHBoxLayout2->addWidget(m_pToggleButton_MeasureArea);
+		
+		QHBoxLayout *pHBoxLayout3 = new QHBoxLayout;
+		pHBoxLayout3->setSpacing(4);
+
+		pHBoxLayout3->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed));
+		pHBoxLayout3->addWidget(m_pLabel_ViewMode);
+		pHBoxLayout3->addWidget(m_pComboBox_ViewMode);
+
+		QVBoxLayout *pVBoxLayout23 = new QVBoxLayout;
+		pVBoxLayout23->setSpacing(4);
+
+		pVBoxLayout23->addWidget(m_pImageView_EnFace);
+		pVBoxLayout23->addItem(new QSpacerItem(0, 0, QSizePolicy::Fixed, QSizePolicy::Maximum));
+		pVBoxLayout23->addItem(pHBoxLayout2);
+		pVBoxLayout23->addItem(pHBoxLayout3);
+
+		m_pWidget[3]->setLayout(pVBoxLayout23);
+		
+		QGridLayout *pGridLayout_CircView = new QGridLayout;
+		pGridLayout_CircView->setSpacing(4);
+
+		pGridLayout_CircView->addWidget(m_pWidget[0], 0, 0);
+		pGridLayout_CircView->addWidget(m_pWidget[1], 1, 0, Qt::AlignBottom | Qt::AlignLeft);
+		pGridLayout_CircView->addWidget(m_pImageView_CircImage, 0, 1, 2, 1);
+		pGridLayout_CircView->addWidget(m_pWidget[2], 0, 2);
+		pGridLayout_CircView->addWidget(m_pWidget[3], 1, 2, Qt::AlignBottom | Qt::AlignRight);
+
+		pGridLayout->addItem(pGridLayout_CircView, 0, 0, 1, 4);
+
+		pGridLayout->addWidget(m_pSlider_SelectFrame, 1, 0, 1, 3);
+		pGridLayout->addWidget(m_pImageView_Longi, 2, 0, 1, 3);
+		pGridLayout->addWidget(m_pImageView_ColorBar, 2, 3);
+#endif
     }
+	else
+		pGridLayout->addWidget(m_pImageView_CircImage, 0, 0, 3, 1);
 
     m_pViewWidget = new QWidget(this);
     m_pViewWidget->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
@@ -186,11 +288,13 @@ void QViewTab::createViewTabWidgets(bool is_streaming)
     if (!is_streaming)
     {
 		connect(m_pToggleButton_Play, SIGNAL(toggled(bool)), this, SLOT(play(bool)));
+		connect(this, &QViewTab::playingDone, [&]() { m_pToggleButton_Play->setChecked(false); });
         connect(m_pPushButton_Increment, &QPushButton::clicked, [&]() { m_pSlider_SelectFrame->setValue(m_pSlider_SelectFrame->value() + 1); });
         connect(m_pPushButton_Decrement, &QPushButton::clicked, [&]() { m_pSlider_SelectFrame->setValue(m_pSlider_SelectFrame->value() - 1); });
 
         connect(m_pSlider_SelectFrame, SIGNAL(valueChanged(int)), this, SLOT(visualizeImage(int)));
         connect(m_pToggleButton_MeasureDistance, SIGNAL(toggled(bool)), this, SLOT(measureDistance(bool)));
+		connect(m_pToggleButton_MeasureArea, SIGNAL(toggled(bool)), this, SLOT(measureArea(bool)));
 
         connect(m_pComboBox_ViewMode, SIGNAL(currentIndexChanged(int)), this, SLOT(changeEmissionChannel(int)));
 
@@ -202,13 +306,57 @@ void QViewTab::createViewTabWidgets(bool is_streaming)
 
 void QViewTab::invalidate()
 {
+	if (!m_pConfigTemp)
+	{
+		if (m_pResultTab)
+		{
+			m_pConfigTemp = m_pResultTab->getDataProcessing()->getConfigTemp();
+			m_pImageView_Longi->getRender()->m_nPullbackLength = m_pConfigTemp->pullbackLength;
+		}
+	}
+
 	visualizeEnFaceMap(true);
 	visualizeImage(getCurrentFrame());
 	visualizeLongiImage(getCurrentAline());
 	
-	m_pImageView_ColorBar->setText(QPoint(0, 0), QString("%1               Lifetime (nsec)               %2")
-		.arg(m_pConfig->flimLifetimeRange[m_pConfig->flimEmissionChannel - 1].max, 2, 'f', 1)
-		.arg(m_pConfig->flimLifetimeRange[m_pConfig->flimEmissionChannel - 1].min, 2, 'f', 1), true);
+	if (m_pConfig->flimVisualizationMode == VisualizationMode::_LIFETIME_)
+	{
+#ifndef ALTERNATIVE_VIEW
+		m_pImageView_EnFace->setEnterCallback([&]() { m_pImageView_EnFace->setText(QPoint(8, 4),
+			QString::fromLocal8Bit("2-D FLIm En Face Mapping - Ch %1 Lifetime (z-θ)").arg(m_pConfig->flimEmissionChannel)); });
+#else
+		m_pImageView_EnFace->setEnterCallback([&]() { m_pImageView_EnFace->setText(QPoint(8, 4),
+			QString::fromLocal8Bit("2-D FLIm En Face Mapping\n- Ch %1 Lifetime (z-θ)").arg(m_pConfig->flimEmissionChannel)); });
+#endif
+
+#ifndef ALTERNATIVE_VIEW
+		m_pImageView_ColorBar->setText(QPoint(0, 0), QString("%1               Lifetime (nsec)               %2")
+#else
+		m_pImageView_ColorBar->setText(QPoint(0, 0), QString("%1            Lifetime (nsec)            %2")
+#endif
+			.arg(m_pConfig->flimLifetimeRange[m_pConfig->flimEmissionChannel - 1].max, 2, 'f', 1)
+			.arg(m_pConfig->flimLifetimeRange[m_pConfig->flimEmissionChannel - 1].min, 2, 'f', 1), true);
+		m_pImageView_ColorBar->resetColormap(ColorTable::colortable(LIFETIME_COLORTABLE));
+	}
+	else if (m_pConfig->flimVisualizationMode == VisualizationMode::_INTENSITY_RATIO_)
+	{
+#ifndef ALTERNATIVE_VIEW
+		m_pImageView_EnFace->setEnterCallback([&]() { m_pImageView_EnFace->setText(QPoint(8, 4),
+			QString::fromLocal8Bit("2-D FLIm En Face Mapping - Ch %1/%2 Intensity Ratio (z-θ)").arg(m_pConfig->flimEmissionChannel).arg((m_pConfig->flimEmissionChannel == 1) ? 3 : m_pConfig->flimEmissionChannel - 1)); });
+#else
+		m_pImageView_EnFace->setEnterCallback([&]() { m_pImageView_EnFace->setText(QPoint(8, 4),
+			QString::fromLocal8Bit("2-D FLIm En Face Mapping\n- Ch %1/%2 Intensity Ratio (z-θ)").arg(m_pConfig->flimEmissionChannel).arg((m_pConfig->flimEmissionChannel == 1) ? 3 : m_pConfig->flimEmissionChannel - 1)); });
+#endif
+
+#ifndef ALTERNATIVE_VIEW
+		m_pImageView_ColorBar->setText(QPoint(0, 0), QString("%1           Intensity Ratio (AU)           %2")
+#else
+		m_pImageView_ColorBar->setText(QPoint(0, 0), QString("%1        Intensity Ratio (AU)        %2")
+#endif
+			.arg(m_pConfig->flimIntensityRatioRange[m_pConfig->flimEmissionChannel - 1].max, 2, 'f', 1)
+			.arg(m_pConfig->flimIntensityRatioRange[m_pConfig->flimEmissionChannel - 1].min, 2, 'f', 1), true);
+		m_pImageView_ColorBar->resetColormap(ColorTable::colortable(INTENSITY_RATIO_COLORTABLE));
+	}
 	m_pImageView_ColorBar->update();
 }
 
@@ -302,8 +450,10 @@ void QViewTab::setBuffers(Configuration* pConfig)
 	{
 		np::FloatArray2 intensity = np::FloatArray2(pConfig->flimAlines, pConfig->frames);
 		np::FloatArray2 lifetime = np::FloatArray2(pConfig->flimAlines, pConfig->frames);
+		np::FloatArray2 intensity_ratio = np::FloatArray2(pConfig->flimAlines, pConfig->frames);
 		m_intensityMap.push_back(intensity);
 		m_lifetimeMap.push_back(lifetime);
+		m_intensityRatioMap.push_back(intensity_ratio);
 	}
 	for (int i = 0; i < 4; i++)
 	{
@@ -343,10 +493,14 @@ void QViewTab::setObjects(Configuration * pConfig)
 	m_pImgObjIntensityMap = new ImageObject(frames4, pConfig->flimAlines, temp_ctable.m_colorTableVector.at(ColorTable::gray));
 	if (m_pImgObjLifetimeMap) delete m_pImgObjLifetimeMap;
 	m_pImgObjLifetimeMap = new ImageObject(frames4, pConfig->flimAlines, temp_ctable.m_colorTableVector.at(LIFETIME_COLORTABLE));
+	if (m_pImgObjIntensityRatioMap) delete m_pImgObjIntensityRatioMap;
+	m_pImgObjIntensityRatioMap = new ImageObject(frames4, pConfig->flimAlines, temp_ctable.m_colorTableVector.at(INTENSITY_RATIO_COLORTABLE));
 
 	// Longitudinal image visualization buffers
 	if (m_pImgObjLongiImage) delete m_pImgObjLongiImage;
 	m_pImgObjLongiImage = new ImageObject(frames4, diameter, temp_ctable.m_colorTableVector.at(OCT_COLORTABLE));
+	if (m_pImgObjLongiImageRe) delete m_pImgObjLongiImageRe;
+	m_pImgObjLongiImageRe = new ImageObject(LONGI_WIDTH, LONGI_HEIGHT, temp_ctable.m_colorTableVector.at(OCT_COLORTABLE));
 	
 	// Circ & Medfilt objects
 	if (m_pCirc) delete m_pCirc;
@@ -355,9 +509,11 @@ void QViewTab::setObjects(Configuration * pConfig)
 	if (m_pMedfiltRect) delete m_pMedfiltRect;
 	m_pMedfiltRect = new medfilt(diameter / 2, pConfig->octAlines, 3, 3);
 	if (m_pMedfiltIntensityMap) delete m_pMedfiltIntensityMap;
-	m_pMedfiltIntensityMap = new medfilt(frames4, pConfig->flimAlines, 3, 5);
+	//m_pMedfiltIntensityMap = new medfilt(frames4, pConfig->flimAlines, 3, 5);
+	m_pMedfiltIntensityMap = new medfilt(pConfig->flimAlines, pConfig->frames, 5, 3);
 	if (m_pMedfiltLifetimeMap) delete m_pMedfiltLifetimeMap;
-	m_pMedfiltLifetimeMap = new medfilt(frames4, pConfig->flimAlines, 5, 7);
+	//m_pMedfiltLifetimeMap = new medfilt(frames4, pConfig->flimAlines, 5, 7);
+	m_pMedfiltLifetimeMap = new medfilt(pConfig->flimAlines, pConfig->frames, 7, 5);
 	if (m_pMedfiltLongi) delete m_pMedfiltLongi;
 	m_pMedfiltLongi = new medfilt(frames4, diameter, 3, 3);
 
@@ -378,38 +534,81 @@ void QViewTab::setWidgets(Configuration* pConfig)
 	// Set slider 
 	m_pSlider_SelectFrame->setRange(0, pConfig->frames - 1);
 	m_pSlider_SelectFrame->setValue(0);
-	m_pSlider_SelectFrame->setTickInterval(int(pConfig->frames / 5));
+	m_pSlider_SelectFrame->setTickInterval(int(pConfig->frames / 4));
 
 	// ImageView objects
 	m_pImageView_CircImage->resetSize(diameter, diameter);
-	m_pImageView_CircImage->setRLineChangeCallback([&](int aline) { visualizeLongiImage(aline); });
-	m_pImageView_CircImage->setVerticalLine(1, 0);
+	m_pImageView_CircImage->setRLineChangeCallback([&](int aline) { 
+		visualizeLongiImage(aline); 
+		if (m_pResultTab->getSettingDlg())
+			m_pResultTab->getSettingDlg()->getPulseReviewTab()->setCurrentAline(aline / 4);
+	});
+	m_pImageView_CircImage->setVerticalLine(1, pConfig->octAlines / 8);
 	m_pImageView_CircImage->getRender()->m_bRadial = true;
 	m_pImageView_CircImage->getRender()->m_bDiametric = true;
 	m_pImageView_CircImage->getRender()->m_rMax = pConfig->octAlines;
-	m_pImageView_CircImage->setWheelMouseCallback([&]() { m_pToggleButton_MeasureDistance->setChecked(false); });
+	///m_pImageView_CircImage->setWheelMouseCallback([&]() { m_pToggleButton_MeasureDistance->setChecked(false); });
 	m_pImageView_CircImage->getRender()->m_bCanBeMagnified = true;
-	m_pImageView_CircImage->setScaleBar(int(2.0 * OUTER_SHEATH_POSITION / 1.1));
+	m_pImageView_CircImage->setScaleBar(int(1000.0 / PIXEL_RESOLUTION));
 
 	m_pImageView_EnFace->resetSize(frames4, pConfig->flimAlines);
 	m_pImageView_EnFace->setVLineChangeCallback([&](int frame) { m_pSlider_SelectFrame->setValue(frame); });
-	m_pImageView_EnFace->setVerticalLine(1, 0);
+	m_pImageView_EnFace->setVerticalLine(1, 0);	
 	m_pImageView_EnFace->setHLineChangeCallback([&](int aline) { visualizeLongiImage(4 * aline); });
 	m_pImageView_EnFace->setHorizontalLine(1, 0);
-	m_pImageView_EnFace->setEnterCallback([&]() { m_pImageView_EnFace->setText(QPoint(8, 18), 
-												  QString::fromLocal8Bit("2-D FLIm En Face Mapping - Channel %1 (z-theta)").arg(m_pConfig->flimEmissionChannel)); });
+	if (m_pConfig->flimVisualizationMode == VisualizationMode::_LIFETIME_)
+	{
+#ifndef ALTERNATIVE_VIEW
+		m_pImageView_EnFace->setEnterCallback([&]() { m_pImageView_EnFace->setText(QPoint(8, 4),
+			QString::fromLocal8Bit("2-D FLIm En Face Mapping - Ch %1 Lifetime (z-θ)").arg(m_pConfig->flimEmissionChannel)); });
+#else
+		m_pImageView_EnFace->setEnterCallback([&]() { m_pImageView_EnFace->setText(QPoint(8, 4),
+			QString::fromLocal8Bit("2-D FLIm En Face Mapping\n- Ch %1 Lifetime (z-θ)").arg(m_pConfig->flimEmissionChannel)); });
+#endif
+	}
+	else if (m_pConfig->flimVisualizationMode == VisualizationMode::_INTENSITY_RATIO_)
+	{
+#ifndef ALTERNATIVE_VIEW
+		m_pImageView_EnFace->setEnterCallback([&]() { m_pImageView_EnFace->setText(QPoint(8, 4),
+			QString::fromLocal8Bit("2-D FLIm En Face Mapping - Ch %1/%2 Intensity Ratio (z-θ)").arg(m_pConfig->flimEmissionChannel).arg((m_pConfig->flimEmissionChannel == 1) ? 3 : m_pConfig->flimEmissionChannel - 1)); });
+#else
+		m_pImageView_EnFace->setEnterCallback([&]() { m_pImageView_EnFace->setText(QPoint(8, 4),
+			QString::fromLocal8Bit("2-D FLIm En Face Mapping\n- Ch %1/%2 Intensity Ratio (z-θ)").arg(m_pConfig->flimEmissionChannel).arg((m_pConfig->flimEmissionChannel == 1) ? 3 : m_pConfig->flimEmissionChannel - 1)); });
+#endif
+	}
 	m_pImageView_EnFace->setLeaveCallback([&]() { m_pImageView_EnFace->setText(QPoint(8, 18), ""); });
 
 	m_pImageView_Longi->resetSize(frames4, diameter);
+	//m_pImageView_Longi->resetSize(LONGI_WIDTH, LONGI_HEIGHT);
 	m_pImageView_Longi->setVLineChangeCallback([&](int frame) { m_pSlider_SelectFrame->setValue(frame); });
-	m_pImageView_Longi->setVerticalLine(1, 0);
-	m_pImageView_Longi->setHorizontalLine(2, diameter / 2 + OUTER_SHEATH_POSITION, diameter / 2 - OUTER_SHEATH_POSITION);
-	m_pImageView_Longi->setEnterCallback([&]() { m_pImageView_Longi->setText(QPoint(8, 18), "Longitudinal View (z-r)"); });
-	m_pImageView_Longi->setLeaveCallback([&]() { m_pImageView_Longi->setText(QPoint(8, 18), ""); });
-
-	m_pImageView_ColorBar->setText(QPoint(0, 0), QString("%1               Lifetime (nsec)               %2")
-		.arg(m_pConfig->flimLifetimeRange[m_pConfig->flimEmissionChannel - 1].max, 2, 'f', 1)
-		.arg(m_pConfig->flimLifetimeRange[m_pConfig->flimEmissionChannel - 1].min, 2, 'f', 1), true);
+	m_pImageView_Longi->setVerticalLine(1, 0); 
+	m_pImageView_Longi->getRender()->m_bDiametric = true;
+	///m_pImageView_Longi->setHorizontalLine(2, diameter / 2 + OUTER_SHEATH_POSITION, diameter / 2 - OUTER_SHEATH_POSITION);
+	m_pImageView_Longi->setEnterCallback([&]() { m_pImageView_Longi->setText(QPoint(8, 4), "Longitudinal View (z-r)"); });
+	m_pImageView_Longi->setLeaveCallback([&]() { m_pImageView_Longi->setText(QPoint(8, 4), ""); });
+	
+	if (m_pConfig->flimVisualizationMode == VisualizationMode::_LIFETIME_)
+	{
+#ifndef ALTERNATIVE_VIEW
+		m_pImageView_ColorBar->setText(QPoint(0, 0), QString("%1               Lifetime (nsec)               %2")
+#else
+		m_pImageView_ColorBar->setText(QPoint(0, 0), QString("%1            Lifetime (nsec)            %2")
+#endif
+			.arg(m_pConfig->flimLifetimeRange[m_pConfig->flimEmissionChannel - 1].max, 2, 'f', 1)
+			.arg(m_pConfig->flimLifetimeRange[m_pConfig->flimEmissionChannel - 1].min, 2, 'f', 1), true);
+		m_pImageView_ColorBar->resetColormap(ColorTable::colortable(LIFETIME_COLORTABLE));
+	}
+	else if (m_pConfig->flimVisualizationMode == VisualizationMode::_INTENSITY_RATIO_)
+	{
+#ifndef ALTERNATIVE_VIEW
+		m_pImageView_ColorBar->setText(QPoint(0, 0), QString("%1           Intensity Ratio (AU)           %2")
+#else
+		m_pImageView_ColorBar->setText(QPoint(0, 0), QString("%1        Intensity Ratio (AU)        %2")
+#endif
+			.arg(m_pConfig->flimIntensityRatioRange[m_pConfig->flimEmissionChannel - 1].max, 2, 'f', 1)
+			.arg(m_pConfig->flimIntensityRatioRange[m_pConfig->flimEmissionChannel - 1].min, 2, 'f', 1), true);
+		m_pImageView_ColorBar->resetColormap(ColorTable::colortable(INTENSITY_RATIO_COLORTABLE));
+	}
 
 	m_pConfig->writeToLog("Reviewing widgets are initialized.");
 }
@@ -452,10 +651,13 @@ void QViewTab::visualizeEnFaceMap(bool scaling)
 			///circShift(m_pImgObjOctProjection->arr, m_pConfig->rotatedAlines);
 
 			// Scaling FLIM map
-			scaleFLImEnFaceMap(m_pImgObjIntensityMap, m_pImgObjLifetimeMap, m_pComboBox_ViewMode->currentIndex());
+			scaleFLImEnFaceMap(m_pImgObjIntensityMap, m_pImgObjLifetimeMap, m_pImgObjIntensityRatioMap, m_pConfig->flimEmissionChannel - 1, m_pConfig->flimVisualizationMode);
 		}
 
-		emit paintEnFaceMap(m_pImgObjLifetimeMap->qrgbimg.bits());
+		if (m_pConfig->flimVisualizationMode == VisualizationMode::_LIFETIME_)
+			emit paintEnFaceMap(m_pImgObjLifetimeMap->qrgbimg.bits());
+		else if (m_pConfig->flimVisualizationMode == VisualizationMode::_INTENSITY_RATIO_)
+			emit paintEnFaceMap(m_pImgObjIntensityRatioMap->qrgbimg.bits());
 	}
 }
 
@@ -509,6 +711,10 @@ void QViewTab::visualizeImage(int frame)
 {
     if (m_vectorOctImage.size() != 0)
     {
+		// Measure state uncheck
+		if (m_pToggleButton_MeasureDistance->isChecked()) m_pToggleButton_MeasureDistance->setChecked(false);
+		if (m_pToggleButton_MeasureArea->isChecked()) m_pToggleButton_MeasureArea->setChecked(false);
+
         // OCT Visualization
 		IppiSize roi_oct = { m_pImgObjRectImage->getWidth(), m_pImgObjRectImage->getHeight() };
 
@@ -517,12 +723,12 @@ void QViewTab::visualizeImage(int frame)
         ippsConvert_8u32f(m_vectorOctImage.at(frame).raw_ptr(), scale_temp.raw_ptr(), scale_temp.length());
         ippiScale_32f8u_C1R(scale_temp.raw_ptr(), roi_oct.width * sizeof(float),
             m_pImgObjRectImage->arr.raw_ptr(), roi_oct.width * sizeof(uint8_t), roi_oct, 
-			(float)m_pConfig->octGrayRange.min, (float)m_pConfig->octGrayRange.max);
+			(float)m_pConfigTemp->octGrayRange.min, (float)m_pConfigTemp->octGrayRange.max);
 #else
 		ippiScale_32f8u_C1R(m_vectorOctImage.at(frame).raw_ptr(), roi_oct.width * sizeof(float),
 			m_pImgObjRectImage->arr.raw_ptr(), roi_oct.width * sizeof(uint8_t), roi_oct, (float)m_pConfig->axsunDbRange.min, (float)m_pConfig->axsunDbRange.max);
 #endif
-		circShift(m_pImgObjRectImage->arr, m_pConfig->rotatedAlines);
+		circShift(m_pImgObjRectImage->arr, (m_pConfigTemp->rotatedAlines + m_pConfigTemp->intraFrameSync) % m_pConfig->octAlines);
         (*m_pMedfiltRect)(m_pImgObjRectImage->arr.raw_ptr());
 		
 		// Convert RGB
@@ -531,16 +737,26 @@ void QViewTab::visualizeImage(int frame)
         // FLIM Visualization
 		IppiSize roi_flimring = { 1, m_pImgObjIntensityMap->arr.size(1) };
 		
-		ImageObject temp_imgobj(roi_flimring.height, 1, m_pImgObjLifetimeMap->getColorTable());
-		ippiCopy_8u_C3R(m_pImgObjLifetimeMap->qrgbimg.constBits() + 3 * frame, 3 * m_pImgObjLifetimeMap->arr.size(0),
-			temp_imgobj.qrgbimg.bits(), 3, roi_flimring);
-		temp_imgobj.scaledRgb4();
+		ImageObject *temp_imgobj;
+		if (m_pConfig->flimVisualizationMode == VisualizationMode::_LIFETIME_)
+		{
+			temp_imgobj = new ImageObject(roi_flimring.height, 1, m_pImgObjLifetimeMap->getColorTable());
+			ippiCopy_8u_C3R(m_pImgObjLifetimeMap->qrgbimg.constBits() + 3 * frame, 3 * m_pImgObjLifetimeMap->arr.size(0),
+				temp_imgobj->qrgbimg.bits(), 3, roi_flimring);
+		}
+		else if (m_pConfig->flimVisualizationMode == VisualizationMode::_INTENSITY_RATIO_)
+		{
+			temp_imgobj = new ImageObject(roi_flimring.height, 1, m_pImgObjIntensityRatioMap->getColorTable());
+			ippiCopy_8u_C3R(m_pImgObjIntensityRatioMap->qrgbimg.constBits() + 3 * frame, 3 * m_pImgObjIntensityRatioMap->arr.size(0),
+				temp_imgobj->qrgbimg.bits(), 3, roi_flimring);
+		}
+		temp_imgobj->scaledRgb4();
 
 		tbb::parallel_for(tbb::blocked_range<size_t>(1, (size_t)RING_THICKNESS),
 			[&](const tbb::blocked_range<size_t>& r) {
 			for (size_t i = r.begin(); i != r.end(); ++i)
 			{
-				ippiCopy_8u_C3R(temp_imgobj.qrgbimg.constBits(), 3 * roi_flimring.width,
+				ippiCopy_8u_C3R(temp_imgobj->qrgbimg.constBits(), 3 * roi_flimring.width,
 					m_pImgObjRectImage->qrgbimg.bits() + 3 * (m_pImgObjRectImage->arr.size(0) - RING_THICKNESS + i), 
 					3 * m_pImgObjRectImage->arr.size(0), { 1, m_pImgObjRectImage->arr.size(1) });
 			}
@@ -557,10 +773,18 @@ void QViewTab::visualizeImage(int frame)
         // Longitudinval Lines
         m_pImageView_Longi->setVerticalLine(1, frame);
 		m_pImageView_Longi->getRender()->update();
+
+		// Pulse review tab
+		if (m_pResultTab->getSettingDlg())
+			m_pResultTab->getSettingDlg()->getPulseReviewTab()->drawPulse(getCurrentAline() / 4);
 		
         // Status Update
 		QString str; str.sprintf("Frame : %3d / %3d", frame + 1, (int)m_vectorOctImage.size());
-		m_pImageView_CircImage->setText(QPoint(15, 635), str);
+#ifndef ALTERNATIVE_VIEW
+		m_pImageView_CircImage->setText(QPoint(15, 620), str);
+#else
+		m_pImageView_CircImage->setText(QPoint(15, 590), str);
+#endif
     }
 }
 
@@ -568,12 +792,14 @@ void QViewTab::visualizeLongiImage(int aline)
 {
 	// Pre-determined values
 	int frames = (int)m_vectorOctImage.size();
-	int octScans = m_pImageView_Longi->getHeight() / 2;
+	int octScans = m_pConfigTemp->octScans; 
     int octAlines = m_octProjection.size(0);
 
     // Specified A line
-	int aline0 = (aline + m_pConfig->rotatedAlines) % octAlines;
-    int aline1 = (aline0 + octAlines / 2) % octAlines;
+	int aline_ = (aline + octAlines / 2) % octAlines; // aline & aline_ paired
+
+	int aline0 = (aline + m_pConfigTemp->rotatedAlines + m_pConfigTemp->intraFrameSync) % octAlines;
+    int aline1 = (aline0 + octAlines / 2) % octAlines; // aline0 & aline1 paired
 
     // Make longitudinal - OCT
 	IppiSize roi_longi = { m_pImgObjLongiImage->getHeight(), m_pImgObjLongiImage->getWidth() };
@@ -599,7 +825,7 @@ void QViewTab::visualizeLongiImage(int aline)
 #ifndef NEXT_GEN_SYSTEM
     ippsConvert_8u32f(scale_temp.raw_ptr(), longi_temp.raw_ptr(), scale_temp.length());
     ippiScale_32f8u_C1R(longi_temp.raw_ptr(), roi_longi.width * sizeof(float),
-        scale_temp.raw_ptr(), roi_longi.width * sizeof(uint8_t), roi_longi, m_pConfig->octGrayRange.min, m_pConfig->octGrayRange.max);
+        scale_temp.raw_ptr(), roi_longi.width * sizeof(uint8_t), roi_longi, m_pConfigTemp->octGrayRange.min, m_pConfigTemp->octGrayRange.max);
 #else
 	ippiScale_32f8u_C1R(longi_temp.raw_ptr(), roi_longi.width * sizeof(float),
 		scale_temp.raw_ptr(), roi_longi.width * sizeof(uint8_t), roi_longi, m_pConfig->axsunDbRange.min, m_pConfig->axsunDbRange.max);
@@ -612,18 +838,36 @@ void QViewTab::visualizeLongiImage(int aline)
     m_pImgObjLongiImage->convertRgb();
 
     // Make longitudinal - FLIM
-    tbb::parallel_for(tbb::blocked_range<size_t>(1, (size_t)RING_THICKNESS),
-        [&](const tbb::blocked_range<size_t>& r) {
-        for (size_t i = r.begin(); i != r.end(); ++i)
-        {
-			memcpy(m_pImgObjLongiImage->qrgbimg.bits() + 3 * (int)i * m_pImgObjLongiImage->getWidth(),
-				m_pImgObjLifetimeMap->qrgbimg.bits() + 3 * int(aline0 / 4) * m_pImgObjLifetimeMap->getWidth(), sizeof(uint8_t) * 3 * m_pImgObjLongiImage->getWidth());
-			memcpy(m_pImgObjLongiImage->qrgbimg.bits() + 3 * (int)(m_pImgObjLongiImage->getHeight() - i) * m_pImgObjLongiImage->getWidth(),
-				m_pImgObjLifetimeMap->qrgbimg.bits() + 3 * int(aline1 / 4) * m_pImgObjLifetimeMap->getWidth(), sizeof(uint8_t) * 3 * m_pImgObjLongiImage->getWidth());
-        }
-    });
-
+	if (m_pConfig->flimVisualizationMode == VisualizationMode::_LIFETIME_)
+	{
+		tbb::parallel_for(tbb::blocked_range<size_t>(1, (size_t)RING_THICKNESS),
+			[&](const tbb::blocked_range<size_t>& r) {
+			for (size_t i = r.begin(); i != r.end(); ++i)
+			{
+				memcpy(m_pImgObjLongiImage->qrgbimg.bits() + 3 * (int)i * m_pImgObjLongiImage->getWidth(),
+					m_pImgObjLifetimeMap->qrgbimg.bits() + 3 * int(aline / 4) * m_pImgObjLifetimeMap->getWidth(), sizeof(uint8_t) * 3 * m_pImgObjLongiImage->getWidth());
+				memcpy(m_pImgObjLongiImage->qrgbimg.bits() + 3 * (int)(m_pImgObjLongiImage->getHeight() - i) * m_pImgObjLongiImage->getWidth(),
+					m_pImgObjLifetimeMap->qrgbimg.bits() + 3 * int(aline_ / 4) * m_pImgObjLifetimeMap->getWidth(), sizeof(uint8_t) * 3 * m_pImgObjLongiImage->getWidth());
+			}
+		});
+	}
+	else
+	{
+		tbb::parallel_for(tbb::blocked_range<size_t>(1, (size_t)RING_THICKNESS),
+			[&](const tbb::blocked_range<size_t>& r) {
+			for (size_t i = r.begin(); i != r.end(); ++i)
+			{
+				memcpy(m_pImgObjLongiImage->qrgbimg.bits() + 3 * (int)i * m_pImgObjLongiImage->getWidth(),
+					m_pImgObjIntensityRatioMap->qrgbimg.bits() + 3 * int(aline / 4) * m_pImgObjIntensityRatioMap->getWidth(), sizeof(uint8_t) * 3 * m_pImgObjLongiImage->getWidth());
+				memcpy(m_pImgObjLongiImage->qrgbimg.bits() + 3 * (int)(m_pImgObjLongiImage->getHeight() - i) * m_pImgObjLongiImage->getWidth(),
+					m_pImgObjIntensityRatioMap->qrgbimg.bits() + 3 * int(aline_ / 4) * m_pImgObjIntensityRatioMap->getWidth(), sizeof(uint8_t) * 3 * m_pImgObjLongiImage->getWidth());
+			}
+		});
+	}
+	
 	// Draw longitudinal view
+	m_pImgObjLongiImage->qrgbimg.scaled(LONGI_WIDTH, LONGI_HEIGHT, Qt::IgnoreAspectRatio, Qt::SmoothTransformation).save("test.bmp");
+	//emit paintLongiImage(m_pImgObjLongiImage->qrgbimg.scaled(LONGI_WIDTH, LONGI_HEIGHT).bits());
     emit paintLongiImage(m_pImgObjLongiImage->qrgbimg.bits());
 
 	// Circular view lines
@@ -649,33 +893,43 @@ void QViewTab::constructCircImage()
 
 void QViewTab::play(bool enabled)
 {
-	static bool is_stop = false;
-
 	if (enabled)
 	{
 		m_pToggleButton_Play->setIcon(style()->standardIcon(QStyle::SP_MediaStop));
+		m_pToggleButton_MeasureDistance->setDisabled(true);
+		m_pToggleButton_MeasureArea->setDisabled(true);
 		
 		int cur_frame = m_pSlider_SelectFrame->value();
 		int end_frame = (int)m_vectorOctImage.size();
 
-		std::thread playing([&, cur_frame, end_frame]() {
+		if (cur_frame + 1 == end_frame)
+			cur_frame = 0;
+
+		_running = true;
+		playing = std::thread([&, cur_frame, end_frame]() {
 			for (int i = cur_frame; i < end_frame; i++)
 			{
 				m_pSlider_SelectFrame->setValue(i);
 				std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-				if (is_stop) break;
+				if (!_running) break;
 			}
-			m_pToggleButton_Play->setChecked(false);
+			emit playingDone();
 		});
-		playing.detach();
 
 		m_pConfig->writeToLog(QString("Playing mode: frame: [%1 ==> %2].").arg(cur_frame).arg(end_frame));
 	}
 	else
 	{
-		is_stop = true;
+		if (playing.joinable())
+		{
+			_running = false;
+			playing.join();
+		}
+
 		m_pToggleButton_Play->setIcon(style()->standardIcon(QStyle::SP_MediaPlay));
+		m_pToggleButton_MeasureDistance->setDisabled(false);
+		m_pToggleButton_MeasureArea->setDisabled(false);
 
 		m_pConfig->writeToLog("Stop playing mode.");
 	}
@@ -684,34 +938,78 @@ void QViewTab::play(bool enabled)
 void QViewTab::measureDistance(bool toggled)
 {
 	m_pImageView_CircImage->getRender()->m_bMeasureDistance = toggled;
+	m_pImageView_Longi->getRender()->m_bMeasureDistance = toggled;
 	if (!toggled)
 	{
-		m_pImageView_CircImage->setRLineChangeCallback([&](int aline) { visualizeLongiImage(aline); });
+		m_pImageView_CircImage->setRLineChangeCallback([&](int aline) {
+			visualizeLongiImage(aline);
+			if (m_pResultTab->getSettingDlg())
+				m_pResultTab->getSettingDlg()->getPulseReviewTab()->setCurrentAline(aline / 4);
+		});
+		m_pImageView_Longi->setVLineChangeCallback([&](int frame) { m_pSlider_SelectFrame->setValue(frame); });
+
 		m_pImageView_CircImage->getRender()->m_nClicked = 0;
+		m_pImageView_CircImage->getRender()->m_vecPoint.clear();
 		m_pImageView_CircImage->getRender()->update();
 
-		m_pConfig->writeToLog("Measure distance on.");
+		m_pImageView_Longi->getRender()->m_nClicked = 0;
+		m_pImageView_Longi->getRender()->m_vecPoint.clear();
+		m_pImageView_Longi->getRender()->update();
+
+		m_pConfig->writeToLog("Measure distance off.");
 	}
 	else
 	{
+		if (m_pToggleButton_MeasureArea->isChecked()) m_pToggleButton_MeasureArea->setChecked(false);
+
+		m_pImageView_CircImage->setRLineChangeCallback([&](int aline) { (void)aline; });
+		m_pImageView_Longi->setVLineChangeCallback([&](int frame) { (void)frame; });
+		
+		m_pConfig->writeToLog("Measure distance on.");
+	}
+}
+
+void QViewTab::measureArea(bool toggled)
+{
+	m_pImageView_CircImage->getRender()->m_bMeasureArea = toggled;
+	if (!toggled)
+	{
+		m_pImageView_CircImage->setRLineChangeCallback([&](int aline) {
+			visualizeLongiImage(aline);
+			if (m_pResultTab->getSettingDlg())
+				m_pResultTab->getSettingDlg()->getPulseReviewTab()->setCurrentAline(aline / 4);
+		});
+
+		m_pImageView_CircImage->getRender()->m_nClicked = 0;
+		m_pImageView_CircImage->getRender()->m_vecPoint.clear();
+		m_pImageView_CircImage->getRender()->update();
+
+		m_pConfig->writeToLog("Measure area on.");
+	}
+	else
+	{
+		if (m_pToggleButton_MeasureDistance->isChecked()) m_pToggleButton_MeasureDistance->setChecked(false);
+
 		m_pImageView_CircImage->setRLineChangeCallback([&](int aline) { (void)aline; });
 
-		m_pConfig->writeToLog("Measure distance off.");
+		m_pConfig->writeToLog("Measure area off.");
 	}
 }
 
 void QViewTab::changeEmissionChannel(int index)
-{
-	m_pConfig->writeToLog(QString("Changed emission channel: [%1 ==> %2].").arg(m_pConfig->flimEmissionChannel).arg(index + 1));
+{	
+	int ch = index % 3;
+	int mode = index / 3;
 
-	m_pConfig->flimEmissionChannel = index + 1;
-	
-	visualizeEnFaceMap(true);
-	visualizeImage(getCurrentFrame());
-	visualizeLongiImage(getCurrentAline());
+	m_pConfig->writeToLog(QString("Changed emission channel: [%1 ==> %2].").arg(m_pConfig->flimEmissionChannel).arg(ch + 1));
+
+	m_pConfig->flimEmissionChannel = ch + 1;
+	m_pConfig->flimVisualizationMode = mode;
+
+	invalidate();
 }
 
-void QViewTab::scaleFLImEnFaceMap(ImageObject* pImgObjIntensityMap, ImageObject* pImgObjLifetimeMap, int ch)
+void QViewTab::scaleFLImEnFaceMap(ImageObject* pImgObjIntensityMap, ImageObject* pImgObjLifetimeMap, ImageObject* pImgObjIntensityRatioMap, int ch, int mode)
 {
 	IppiSize roi_flimproj = { m_intensityMap.at(0).size(0), m_intensityMap.at(0).size(1) };
 	IppiSize roi_flimproj4 = { roi_flimproj.width, ((roi_flimproj.height + 3) >> 2) << 2 };
@@ -724,25 +1022,56 @@ void QViewTab::scaleFLImEnFaceMap(ImageObject* pImgObjIntensityMap, ImageObject*
 		m_pConfig->flimIntensityRange[ch].min, m_pConfig->flimIntensityRange[ch].max);
 	ippiTranspose_8u_C1R(scale_temp.raw_ptr(), sizeof(uint8_t) * roi_flimproj4.width,
 		pImgObjIntensityMap->arr.raw_ptr(), sizeof(uint8_t) * roi_flimproj4.height, roi_flimproj4);
-	//circShift(pImgObjIntensityMap->arr, int(m_pConfig->rotatedAlines / 4));
-	(*m_pMedfiltIntensityMap)(pImgObjIntensityMap->arr.raw_ptr());
+	circShift(pImgObjIntensityMap->arr, int(m_pConfigTemp->rotatedAlines / 4));
+	setAxialOffset(pImgObjIntensityMap->arr, m_pConfigTemp->interFrameSync);
+	//(*m_pMedfiltIntensityMap)(pImgObjIntensityMap->arr.raw_ptr());
 
-	// Lifetime map
-	ippiScale_32f8u_C1R(m_lifetimeMap.at(ch), sizeof(float) * roi_flimproj.width,
-		scale_temp.raw_ptr(), sizeof(uint8_t) * roi_flimproj4.width, roi_flimproj,
-		m_pConfig->flimLifetimeRange[ch].min, m_pConfig->flimLifetimeRange[ch].max);
-	ippiTranspose_8u_C1R(scale_temp.raw_ptr(), sizeof(uint8_t) * roi_flimproj4.width,
-		pImgObjLifetimeMap->arr.raw_ptr(), sizeof(uint8_t) * roi_flimproj4.height, roi_flimproj);
-	//circShift(pImgObjLifetimeMap->arr, int(m_pConfig->rotatedAlines / 4));
-	(*m_pMedfiltLifetimeMap)(pImgObjLifetimeMap->arr.raw_ptr());
+	if (mode == VisualizationMode::_LIFETIME_)
+	{
+		// Lifetime map
+		ippiScale_32f8u_C1R(m_lifetimeMap.at(ch), sizeof(float) * roi_flimproj.width,
+			scale_temp.raw_ptr(), sizeof(uint8_t) * roi_flimproj4.width, roi_flimproj,
+			m_pConfig->flimLifetimeRange[ch].min, m_pConfig->flimLifetimeRange[ch].max);
+		ippiTranspose_8u_C1R(scale_temp.raw_ptr(), sizeof(uint8_t) * roi_flimproj4.width,
+			pImgObjLifetimeMap->arr.raw_ptr(), sizeof(uint8_t) * roi_flimproj4.height, roi_flimproj);
+		circShift(pImgObjLifetimeMap->arr, int(m_pConfigTemp->rotatedAlines / 4));
+		setAxialOffset(pImgObjLifetimeMap->arr, m_pConfigTemp->interFrameSync);
+		//(*m_pMedfiltLifetimeMap)(pImgObjLifetimeMap->arr.raw_ptr());
 
-	// RGB conversion
-	pImgObjIntensityMap->convertRgb();
-	pImgObjLifetimeMap->convertRgb();
+		// RGB conversion
+		pImgObjIntensityMap->convertRgb();
+		pImgObjLifetimeMap->convertRgb();
 
-	// Intensity-weight lifetime map
-	ippsMul_8u_ISfs(pImgObjIntensityMap->qrgbimg.bits(), pImgObjLifetimeMap->qrgbimg.bits(), pImgObjIntensityMap->qrgbimg.byteCount(), 8);
+		// Intensity-weight lifetime map
+		ippsMul_8u_ISfs(pImgObjIntensityMap->qrgbimg.bits(), pImgObjLifetimeMap->qrgbimg.bits(), pImgObjIntensityMap->qrgbimg.byteCount(), 8);
+	}
+	else if (mode == VisualizationMode::_INTENSITY_RATIO_)
+	{
+		//int ch_num = ch;
+		//int ch_den = (ch == 0) ? 2 : ch - 1;
 
+		//np::FloatArray2 ratio_temp(roi_flimproj4.width, roi_flimproj4.height);
+		//np::FloatArray2 log_ratio_temp(roi_flimproj4.width, roi_flimproj4.height);
+
+		// Intensity ratio map
+		//ippsDiv_32f(m_intensityMap.at(ch_num), m_intensityMap.at(ch_den), ratio_temp.raw_ptr(), m_intensityMap.at(ch_num).length());
+		//ippsLog10_32f_A11(ratio_temp.raw_ptr(), log_ratio_temp.raw_ptr(), log_ratio_temp.length());
+		ippiScale_32f8u_C1R(m_intensityRatioMap.at(ch), sizeof(float) * roi_flimproj.width,
+			scale_temp.raw_ptr(), sizeof(uint8_t) * roi_flimproj4.width, roi_flimproj,
+			m_pConfig->flimIntensityRatioRange[ch].min, m_pConfig->flimIntensityRatioRange[ch].max);
+		ippiTranspose_8u_C1R(scale_temp.raw_ptr(), sizeof(uint8_t) * roi_flimproj4.width,
+			pImgObjIntensityRatioMap->arr.raw_ptr(), sizeof(uint8_t) * roi_flimproj4.height, roi_flimproj4);
+		circShift(pImgObjIntensityRatioMap->arr, int(m_pConfigTemp->rotatedAlines / 4));
+		setAxialOffset(pImgObjIntensityRatioMap->arr, m_pConfigTemp->interFrameSync);
+		//(*m_pMedfiltIntensityMap)(pImgObjIntensityRatioMap->arr.raw_ptr());
+
+		// RGB conversion
+		pImgObjIntensityMap->convertRgb();
+		pImgObjIntensityRatioMap->convertRgb();
+
+		// Intensity-weight intensity ratio map
+		ippsMul_8u_ISfs(pImgObjIntensityMap->qrgbimg.bits(), pImgObjIntensityRatioMap->qrgbimg.bits(), pImgObjIntensityMap->qrgbimg.byteCount(), 8);
+	}
 }
 
 void QViewTab::circShift(np::Uint8Array2& image, int shift)
@@ -754,6 +1083,22 @@ void QViewTab::circShift(np::Uint8Array2& image, int shift)
 		ippiCopy_8u_C1R(&image(0, 0), image.size(0), &temp(0, 0), image.size(0), { image.size(0), shift });
 		ippiCopy_8u_C1R(&image(0, shift), image.size(0), &image(0, 0), image.size(0), { image.size(0), image.size(1) - shift });
 		ippiCopy_8u_C1R(&temp(0, 0), image.size(0), &image(0, image.size(1) - shift), image.size(0), { image.size(0), shift });
+	}
+}
+
+void QViewTab::setAxialOffset(np::Uint8Array2& image, int offset)
+{
+	np::Uint8Array2 temp(image.size(0), image.size(1));
+	memset(temp, 0, temp.length());
+	if (offset > 0)
+	{		
+		ippiCopy_8u_C1R(&image(0, 0), image.size(0), &temp(offset, 0), temp.size(0), { image.size(0) - offset, image.size(1) });
+		memcpy(&image(0, 0), &temp(0, 0), image.length());
+	}
+	else if (offset < 0)
+	{
+		ippiCopy_8u_C1R(&image(-offset, 0), image.size(0), &temp(0, 0), temp.size(0), { image.size(0) + offset, image.size(1) });
+		memcpy(&image(0, 0), &temp(0, 0), image.length());
 	}
 }
 

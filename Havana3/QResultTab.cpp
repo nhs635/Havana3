@@ -68,7 +68,11 @@ void QResultTab::createResultReviewWidgets()
     // Create widgets for live streaming view
     m_pGroupBox_ResultReview = new QGroupBox(this);
     m_pGroupBox_ResultReview->setMinimumWidth(1100);
+#ifndef ALTERNATIVE_VIEW
     m_pGroupBox_ResultReview->setFixedHeight(780);
+#else^
+	m_pGroupBox_ResultReview->setMinimumHeight(780);
+#endif
     m_pGroupBox_ResultReview->setStyleSheet("QGroupBox{padding-top:15px; margin-top:-15px}");
     m_pGroupBox_ResultReview->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
 
@@ -119,9 +123,18 @@ void QResultTab::createResultReviewWidgets()
 
     QGridLayout *pGridLayout_RecordInformation = new QGridLayout;
     pGridLayout_RecordInformation->setSpacing(2);
+#ifndef ALTERNATIVE_VIEW
     pGridLayout_RecordInformation->addWidget(m_pLabel_RecordInformation, 0, 0, 1, 2);
     pGridLayout_RecordInformation->addWidget(m_pComboBox_Vessel, 1, 0);
     pGridLayout_RecordInformation->addWidget(m_pComboBox_Procedure, 1, 1);
+#else	
+	pGridLayout_RecordInformation->setAlignment(Qt::AlignLeft);
+	pGridLayout_RecordInformation->addWidget(m_pLabel_RecordInformation, 0, 0, 1, 2);
+	pGridLayout_RecordInformation->addWidget(m_pComboBox_Vessel, 1, 0);
+	pGridLayout_RecordInformation->addWidget(m_pComboBox_Procedure, 1, 1);
+	pGridLayout_RecordInformation->addWidget(m_pLabel_PatientInformation, 2, 0, 1, 2);
+	pGridLayout_RecordInformation->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Expanding), 3, 0, 1, 2);
+#endif
 
     QGridLayout *pGridLayout_Buttons = new QGridLayout;
     pGridLayout_Buttons->setSpacing(5);
@@ -129,7 +142,11 @@ void QResultTab::createResultReviewWidgets()
 	pGridLayout_Buttons->addWidget(m_pPushButton_Comment, 0, 1);
     pGridLayout_Buttons->addWidget(m_pPushButton_Export, 1, 0);
     pGridLayout_Buttons->addWidget(m_pPushButton_Setting, 1, 1);
+#ifdef ALTERNATIVE_VIEW
+	pGridLayout_Buttons->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Expanding), 2, 0, 1, 2);
+#endif
 
+#ifndef ALTERNATIVE_VIEW
     QHBoxLayout *pHBoxLayout_Title = new QHBoxLayout;
     pHBoxLayout_Title->setSpacing(5);
     pHBoxLayout_Title->setAlignment(m_pPushButton_Export, Qt::AlignBottom);
@@ -138,9 +155,16 @@ void QResultTab::createResultReviewWidgets()
     pHBoxLayout_Title->addItem(pGridLayout_RecordInformation);
     pHBoxLayout_Title->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed));
     pHBoxLayout_Title->addItem(pGridLayout_Buttons);
+#endif
 
+#ifndef ALTERNATIVE_VIEW
     pVBoxLayout_ResultReview->addItem(pHBoxLayout_Title);
+#endif
     pVBoxLayout_ResultReview->addWidget(m_pViewTab->getViewWidget());
+#ifdef ALTERNATIVE_VIEW	
+	m_pViewTab->getVisWidget(0)->setLayout(pGridLayout_RecordInformation);
+	m_pViewTab->getVisWidget(2)->setLayout(pGridLayout_Buttons);
+#endif
     pVBoxLayout_ResultReview->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Minimum));
 
     m_pGroupBox_ResultReview->setLayout(pVBoxLayout_ResultReview);
@@ -205,7 +229,7 @@ void QResultTab::readRecordData()
 		///		//}
 		///	});
 		///	tab_close.detach();
-
+		
 		m_bIsDataLoaded = true;
 	}
 	else
@@ -223,7 +247,9 @@ void QResultTab::loadRecordInfo()
 			m_recordInfo.date = _sqlQuery.value(3).toString();
 			m_recordInfo.vessel = _sqlQuery.value(12).toInt();
 			m_recordInfo.procedure = _sqlQuery.value(11).toInt();
-			m_recordInfo.filename = _sqlQuery.value(9).toString();
+			m_recordInfo.filename0 = _sqlQuery.value(9).toString();
+			int idx = m_recordInfo.filename0.indexOf("record");
+			m_recordInfo.filename = m_pConfig->dbPath + m_recordInfo.filename0.remove(0, idx - 1);;
 			m_recordInfo.comment = _sqlQuery.value(8).toString();
 
 			m_pLabel_RecordInformation->setText(QString("<b><font size=6>%1</font></b>"
@@ -246,10 +272,20 @@ void QResultTab::loadPatientInfo()
 		{
 			m_recordInfo.patientName = _sqlQuery.value(1).toString() + ", " + _sqlQuery.value(0).toString();
 
-			m_pLabel_PatientInformation->setText(QString("<b>%1</b>"
-				"&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>ID:</b> %2").
-				arg(m_recordInfo.patientName).
-				arg(m_recordInfo.patientId));
+			QDate date_of_birth = QDate::fromString(_sqlQuery.value(4).toString(), "yyyy-MM-dd");
+			QDate date_today = QDate::currentDate();
+			int age = (int)((double)date_of_birth.daysTo(date_today) / 365.25);
+			QString gender = m_pHvnSqlDataBase->getGender(_sqlQuery.value(5).toInt());
+
+#ifndef ALTERNATIVE_VIEW
+			m_pLabel_PatientInformation->setText(QString("<b>%1 (%2%3)</b>\n"
+				"&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>ID:</b> %4").
+#else
+			m_pLabel_PatientInformation->setText(QString("<br><b>%1 (%2%3)</b>\n"
+				"&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br><br><b>ID:</b> %4").
+#endif
+				arg(m_recordInfo.patientName).arg(age).arg(gender).
+				arg(QString("%1").arg(m_recordInfo.patientId.toInt(), 8, 10, QChar('0'))));
 			setWindowTitle(QString("Review: %1: %2").arg(m_recordInfo.patientName).arg(m_recordInfo.date));
 		}
 
@@ -364,6 +400,12 @@ void QResultTab::deleteSettingDlg()
 	m_pViewTab->setCircImageViewClickedMouseCallback([&]() { });
 	m_pViewTab->setEnFaceImageViewClickedMouseCallback([&]() { });
 	m_pViewTab->setLongiImageViewClickedMouseCallback([&]() { });
+	
+	QImageView *pCircView = m_pViewTab->getCircImageView();
+	pCircView->getRender()->m_bArcRoiSelect = false;
+	pCircView->getRender()->m_bArcRoiShow = false;
+	pCircView->getRender()->m_nClicked = 0;
+	pCircView->getRender()->update();
 
 	m_pSettingDlg->deleteLater();
     m_pSettingDlg = nullptr;

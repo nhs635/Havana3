@@ -85,6 +85,7 @@ private:
 // Variables ////////////////////////////////////////////
 private:
 	Configuration* m_pConfig;
+	Configuration* m_pConfigTemp;
 	QResultTab* m_pResultTab;
 	QViewTab* m_pViewTab;
 

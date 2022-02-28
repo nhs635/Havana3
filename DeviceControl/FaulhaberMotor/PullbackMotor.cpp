@@ -121,7 +121,7 @@ void PullbackMotor::Controlword(char value)
 	SendStatusMessage(msg, false);
 
 	m_pSerialComm->writeSerialPort(controlword, 11);
-	m_pSerialComm->waitUntilResponse();
+	m_pSerialComm->waitUntilResponse(100);
 }
 
 
@@ -190,7 +190,7 @@ void PullbackMotor::RotateMotor(int RPM)
 	if (m_pSerialComm)
 	{
 		m_pSerialComm->writeSerialPort(target_velocity, 13);
-		m_pSerialComm->waitUntilResponse();
+		m_pSerialComm->waitUntilResponse(100);
 	}
 
 	current_rpm = RPM;
@@ -229,7 +229,7 @@ void PullbackMotor::StopMotor()
 	if (m_pSerialComm)
 	{
 		m_pSerialComm->writeSerialPort(target_velocity, 13);
-		m_pSerialComm->waitUntilResponse();
+		m_pSerialComm->waitUntilResponse(100);
 	}
 
 	current_rpm = 0;

@@ -22,6 +22,7 @@ struct RecordInfo
 	QByteArray preview;
 	int vessel = 0;
 	int procedure = 0;
+	QString filename0;
 	QString filename;
 	QString comment = "";
 };
@@ -52,11 +53,13 @@ private:
 private slots:
 	void catheterConnect(bool);
     void newRecord();
+	void exportRawData(bool);
 	void import();
     void editPatient();
     void deleteEditPatientDlg();
 	void createSettingDlg();
 	void deleteSettingDlg();
+	void editComment(int, int);
 	void deleteRecordData(const QString &);
 
 public:
@@ -67,7 +70,7 @@ signals:
     void requestNewRecord(const QString &);
     void requestReview(const QString &);
 	void requestDelete(const QString &);
-//    void sendStatusMessage(QString, bool);
+///    void sendStatusMessage(QString, bool);
 
 // Variables ////////////////////////////////////////////
 private:
@@ -88,13 +91,15 @@ private:
 
 	QPushButton *m_pToggleButton_CatheterConnect;
     QPushButton *m_pPushButton_NewRecord;
+
+	QPushButton *m_pToggleButton_Export;
 	QPushButton *m_pPushButton_Import;
     QPushButton *m_pPushButton_EditPatient;
 	QPushButton *m_pPushButton_Setting;
 
     QTableWidget *m_pTableWidget_RecordInformation;
 
-    // Edit Patient Dialog
+    // Dialogs
     AddPatientDlg *m_pEditPatientDlg;
 	SettingDlg *m_pSettingDlg;
 };

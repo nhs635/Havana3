@@ -105,47 +105,49 @@ void ElforlightLaser::DisconnectDevice()
 void ElforlightLaser::IncreasePower()
 {
 	std::unique_lock<std::mutex> lock(mtx_power);
+	{
+		char buff[2] = "+";
 
-	char buff[2] = "+";
+		char msg[256];
+		sprintf(msg, "[ELFORLIGHT] Send: %s", buff);
+		SendStatusMessage(msg, false);
 
-	char msg[256];
-	sprintf(msg, "[ELFORLIGHT] Send: %s", buff);
-	SendStatusMessage(msg, false);
-
-	std::this_thread::sleep_for(std::chrono::milliseconds(250));
-	m_pSerialComm->writeSerialPort(buff);
-    m_pSerialComm->waitUntilResponse();
+		m_pSerialComm->writeSerialPort(buff);
+		m_pSerialComm->waitUntilResponse(500);
+	}
 }
 
 
 void ElforlightLaser::DecreasePower()
 {
 	std::unique_lock<std::mutex> lock(mtx_power);
+	{
+		char buff[2] = "-";
 
-	char buff[2] = "-";
+		char msg[256];
+		sprintf(msg, "[ELFORLIGHT] Send: %s", buff);
+		SendStatusMessage(msg, false);
 
-	char msg[256];
-	sprintf(msg, "[ELFORLIGHT] Send: %s", buff);
-	SendStatusMessage(msg, false);
-
-	std::this_thread::sleep_for(std::chrono::milliseconds(250));
-	m_pSerialComm->writeSerialPort(buff);
-    m_pSerialComm->waitUntilResponse();
+		m_pSerialComm->writeSerialPort(buff);
+		m_pSerialComm->waitUntilResponse(500);
+	}
 }
 
 
 void ElforlightLaser::SendCommand(char* command)
 {
-	char msg[256];
-	if (command[0] != '?')
+	std::unique_lock<std::mutex> lock(mtx_power);
 	{
-		sprintf(msg, "[ELFORLIGHT] Send: %s", command);
-		SendStatusMessage(msg, false);
-	}
+		if (command[0] != '?')
+		{
+			char msg[256];
+			sprintf(msg, "[ELFORLIGHT] Send: %s", command);
+			SendStatusMessage(msg, false);
+		}
 
-	std::this_thread::sleep_for(std::chrono::milliseconds(250));
-	m_pSerialComm->writeSerialPort(command);
-	m_pSerialComm->waitUntilResponse();
+		m_pSerialComm->writeSerialPort(command);
+		m_pSerialComm->waitUntilResponse(500);
+	}
 }
 
 

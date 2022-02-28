@@ -7,6 +7,9 @@
 
 #include <DataAcquisition/FLImProcess/FLImProcess.h>
 
+#include <ippcore.h>
+#include <ippvm.h>
+
 #include <iostream>
 #include <thread>
 
@@ -37,7 +40,11 @@ DataProcessing::DataProcessing(QWidget *parent)
 
 DataProcessing::~DataProcessing()
 {
-	if (m_pConfigTemp) delete m_pConfigTemp;
+	if (m_pConfigTemp)
+	{
+		m_pConfigTemp->setConfigFile(m_iniName);
+		delete m_pConfigTemp;
+	}
 	if (m_pFLIm) delete m_pFLIm;
 }
 
@@ -64,19 +71,19 @@ void DataProcessing::startProcessing(QString fileName)
                 for (int i = 0; i < fileName.length(); i++)
                     if (fileName.at(i) == QChar('.')) fileTitle = fileName.left(i);
 
-                QString iniName = fileTitle + ".ini";
+                m_iniName = fileTitle + ".ini";
                 QString maskName = fileTitle + ".flim_mask";
 
                 if (m_pConfigTemp) delete m_pConfigTemp;
                 m_pConfigTemp = new Configuration;
 
-                m_pConfigTemp->getConfigFile(iniName);
+                m_pConfigTemp->getConfigFile(m_iniName);
 #ifndef NEXT_GEN_SYSTEM
                 m_pConfigTemp->frames = (int)(file.size() / (sizeof(uint8_t) * (qint64)m_pConfigTemp->octFrameSize + sizeof(uint16_t) * (qint64)m_pConfigTemp->flimFrameSize));
 #else
 				m_pConfigTemp->frames = (int)(file.size() / (sizeof(float) * (qint64)m_pConfigTemp->octFrameSize + sizeof(uint16_t) * (qint64)m_pConfigTemp->flimFrameSize));
 #endif
-                m_pConfigTemp->frames -= m_pConfigTemp->interFrameSync;
+                //m_pConfigTemp->frames -= m_pConfigTemp->interFrameSync;
 
 				char msg[256];
 				sprintf(msg, "Start record review processing... (Total nFrame: %d)", m_pConfigTemp->frames);
@@ -127,6 +134,7 @@ void DataProcessing::startProcessing(QString fileName)
 				
 				// Visualization /////////////////////////////////////////////////////////////////////////////
 				m_pResultTab->getViewTab()->invalidate();	
+				m_pResultTab->getViewTab()->getPlayButton()->setChecked(true);
 			}
 
 			file.close();
@@ -148,7 +156,7 @@ void DataProcessing::startProcessing(QString fileName)
 void DataProcessing::loadingRawData(QFile* pFile, Configuration* pConfig)
 {
 	int frameCount = 0;
-	while (frameCount < pConfig->frames + pConfig->interFrameSync)
+	while (frameCount < pConfig->frames) //  + pConfig->interFrameSync)
 	{
 		// Get buffers from threading queues
 		uint8_t* frame_data = nullptr;
@@ -185,7 +193,7 @@ void DataProcessing::deinterleaving(Configuration* pConfig)
     QViewTab* pVisTab = m_pResultTab->getViewTab();
 
 	int frameCount = 0;
-	while (frameCount < pConfig->frames + pConfig->interFrameSync)
+	while (frameCount < pConfig->frames) // + pConfig->interFrameSync)
 	{
 		// Get the buffer from the previous sync Queue
 		uint8_t* frame_ptr = m_syncDeinterleaving.Queue_sync.pop();
@@ -210,13 +218,13 @@ void DataProcessing::deinterleaving(Configuration* pConfig)
 				{
 					// Data deinterleaving
 					memcpy(pulse_ptr, frame_ptr, sizeof(uint16_t) * pConfig->flimFrameSize);
-					if (frameCount >= pConfig->interFrameSync)
+					if (frameCount >= 0) //pConfig->interFrameSync)
 					{
 #ifndef NEXT_GEN_SYSTEM
-						memcpy(pVisTab->m_vectorOctImage.at(frameCount - pConfig->interFrameSync).raw_ptr(),
+						memcpy(pVisTab->m_vectorOctImage.at(frameCount).raw_ptr(), //  - pConfig->interFrameSync
 							frame_ptr + sizeof(uint16_t) * pConfig->flimFrameSize, sizeof(uint8_t) * pConfig->octFrameSize);
 #else
-						memcpy(pVisTab->m_vectorOctImage.at(frameCount - pConfig->interFrameSync).raw_ptr(),
+						memcpy(pVisTab->m_vectorOctImage.at(frameCount).raw_ptr(), //  - pConfig->interFrameSync
 							frame_ptr + sizeof(uint16_t) * pConfig->flimFrameSize, sizeof(float) * pConfig->octFrameSize);
 #endif
 #ifndef NEXT_GEN_SYSTEM
@@ -225,10 +233,10 @@ void DataProcessing::deinterleaving(Configuration* pConfig)
 						IppiSize roi_oct = { m_pConfig->octScansFFT / 2, m_pConfig->octAlines };
 #endif
 						if (pConfig->verticalMirroring)
-							ippiMirror_8u_C1IR(pVisTab->m_vectorOctImage.at(frameCount - pConfig->interFrameSync).raw_ptr(), roi_oct.width, roi_oct, ippAxsVertical);
+							ippiMirror_8u_C1IR(pVisTab->m_vectorOctImage.at(frameCount).raw_ptr(), roi_oct.width, roi_oct, ippAxsVertical);  //  - pConfig->interFrameSync
 
-						ippiCopy_8u_C1R(pVisTab->m_vectorOctImage.at(frameCount - pConfig->interFrameSync).raw_ptr() + pConfig->innerOffsetLength, roi_oct.width,
-							pVisTab->m_vectorOctImage.at(frameCount - pConfig->interFrameSync).raw_ptr(), roi_oct.width,
+						ippiCopy_8u_C1R(pVisTab->m_vectorOctImage.at(frameCount).raw_ptr() + pConfig->innerOffsetLength, roi_oct.width,  //  - pConfig->interFrameSync
+							pVisTab->m_vectorOctImage.at(frameCount).raw_ptr(), roi_oct.width,  // - pConfig->interFrameSync
 							{ roi_oct.width - pConfig->innerOffsetLength, roi_oct.height });
 					}
 					//else
@@ -267,64 +275,62 @@ void DataProcessing::flimProcessing(FLImProcess* pFLIm, Configuration* pConfig)
 	///file.open(QIODevice::WriteOnly);
 
 	int frameCount = 0;
-	while (frameCount < pConfig->frames + pConfig->interFrameSync)
+	while (frameCount < pConfig->frames) //  + pConfig->interFrameSync)
 	{
 		// Get the buffer from the previous sync Queue
 		uint16_t* pulse_data = m_syncFlimProcessing.Queue_sync.pop();
 		if (pulse_data != nullptr)
-		{
-			if (frameCount < pConfig->frames)
-			{
-				// Pulse array definition
-				np::Uint16Array2 pulse_temp(pulse_data, pConfig->flimScans, pConfig->flimAlines);
-				np::Uint16Array2 pulse(pConfig->flimScans, pConfig->flimAlines);
+		{			
+			// Pulse array definition
+			np::Uint16Array2 pulse_temp(pulse_data, pConfig->flimScans, pConfig->flimAlines);
+			np::Uint16Array2 pulse(pConfig->flimScans, pConfig->flimAlines);
 
-				// Additional intra frame synchronization process by pulse circulating
-				memcpy(&pulse(0, 0), &pulse_temp(0, pConfig->intraFrameSync), sizeof(uint16_t) * pulse.size(0) * (pulse.size(1) - pConfig->intraFrameSync));
-				memcpy(&pulse(0, pulse.size(1) - pConfig->intraFrameSync), &pulse_temp(0, 0), sizeof(uint16_t) * pulse.size(0) * pConfig->intraFrameSync);
+			// Additional intra frame synchronization process by pulse circulating
+			memcpy(&pulse(0, 0), &pulse_temp(0, 0), sizeof(uint16_t) * pulse.size(0) * pulse.size(1));  //pConfig->intraFrameSync // - pConfig->intraFrameSync
+			//memcpy(&pulse(0, pulse.size(1) - pConfig->intraFrameSync), &pulse_temp(0, 0), sizeof(uint16_t) * pulse.size(0) * pConfig->intraFrameSync);
 
-				// FLIM Process
-				(*pFLIm)(itn, md, ltm, pulse);
+			// FLIM Process
+			(*pFLIm)(itn, md, ltm, pulse);
 
-				// Copy for Pulse Review
-				np::Array<float, 2> crop(pFLIm->_resize.nx, pFLIm->_resize.ny);
-				np::Array<float, 2> bg_sub(pFLIm->_resize.nx, pFLIm->_resize.ny);
-				np::Array<float, 2> mask(pFLIm->_resize.nx, pFLIm->_resize.ny);
-				np::Array<float, 2> ext(pFLIm->_resize.nsite, pFLIm->_resize.ny);
-				np::Array<float, 2> filt(pFLIm->_resize.nsite, pFLIm->_resize.ny);
+			// Copy for Pulse Review
+			np::Array<float, 2> crop(pFLIm->_resize.nx, pFLIm->_resize.ny);
+			np::Array<float, 2> bg_sub(pFLIm->_resize.nx, pFLIm->_resize.ny);
+			np::Array<float, 2> mask(pFLIm->_resize.nx, pFLIm->_resize.ny);
+			np::Array<float, 2> ext(pFLIm->_resize.nsite, pFLIm->_resize.ny);
+			np::Array<float, 2> filt(pFLIm->_resize.nsite, pFLIm->_resize.ny);
 
-				memcpy(crop, pFLIm->_resize.crop_src, crop.length() * sizeof(float));
-				memcpy(bg_sub, pFLIm->_resize.bgsb_src, bg_sub.length() * sizeof(float));
-				memcpy(mask, pFLIm->_resize.mask_src, mask.length() * sizeof(float));
-				memcpy(ext, pFLIm->_resize.ext_src, ext.length() * sizeof(float));
-				memcpy(filt, pFLIm->_resize.filt_src, filt.length() * sizeof(float));
+			memcpy(crop, pFLIm->_resize.crop_src, crop.length() * sizeof(float));
+			memcpy(bg_sub, pFLIm->_resize.bgsb_src, bg_sub.length() * sizeof(float));
+			memcpy(mask, pFLIm->_resize.mask_src, mask.length() * sizeof(float));
+			memcpy(ext, pFLIm->_resize.ext_src, ext.length() * sizeof(float));
+			memcpy(filt, pFLIm->_resize.filt_src, filt.length() * sizeof(float));
 
-				pViewTab->m_vectorPulseCrop.push_back(crop);
-				pViewTab->m_vectorPulseBgSub.push_back(bg_sub);
-				pViewTab->m_vectorPulseMask.push_back(mask);
-				pViewTab->m_vectorPulseSpline.push_back(ext);
-				pViewTab->m_vectorPulseFilter.push_back(filt);
+			pViewTab->m_vectorPulseCrop.push_back(crop);
+			pViewTab->m_vectorPulseBgSub.push_back(bg_sub);
+			pViewTab->m_vectorPulseMask.push_back(mask);
+			pViewTab->m_vectorPulseSpline.push_back(ext);
+			pViewTab->m_vectorPulseFilter.push_back(filt);
 				
-				// Intensity compensation
-				for (int i = 0; i < 3; i++)
-					ippsDivC_32f_I(pConfig->flimIntensityComp[i], &itn(0, i + 1), pConfig->flimAlines);
+			// Intensity compensation
+			for (int i = 0; i < 3; i++)
+				ippsDivC_32f_I(pConfig->flimIntensityComp[i], &itn(0, i + 1), pConfig->flimAlines);
 
-				///file.write(reinterpret_cast<const char*>(pFLIm->_resize.filt_src.raw_ptr()), sizeof(float) * pFLIm->_resize.nsite);
+			///file.write(reinterpret_cast<const char*>(pFLIm->_resize.filt_src.raw_ptr()), sizeof(float) * pFLIm->_resize.nsite);
 
-				// Copy for Intensity & Lifetime			
-                memcpy(&pViewTab->m_intensityMap.at(0)(0, frameCount), &itn(0, 1), sizeof(float) * pConfig->flimAlines);
-                memcpy(&pViewTab->m_intensityMap.at(1)(0, frameCount), &itn(0, 2), sizeof(float) * pConfig->flimAlines);
-                memcpy(&pViewTab->m_intensityMap.at(2)(0, frameCount), &itn(0, 3), sizeof(float) * pConfig->flimAlines);
+			// Copy for Intensity & Lifetime			
+            memcpy(&pViewTab->m_intensityMap.at(0)(0, frameCount), &itn(0, 1), sizeof(float) * pConfig->flimAlines);
+            memcpy(&pViewTab->m_intensityMap.at(1)(0, frameCount), &itn(0, 2), sizeof(float) * pConfig->flimAlines);
+            memcpy(&pViewTab->m_intensityMap.at(2)(0, frameCount), &itn(0, 3), sizeof(float) * pConfig->flimAlines);
 
-				memcpy(&pViewTab->m_meandelayMap.at(0)(0, frameCount), &md(0, 0), sizeof(float) * pConfig->flimAlines);
-				memcpy(&pViewTab->m_meandelayMap.at(1)(0, frameCount), &md(0, 1), sizeof(float) * pConfig->flimAlines);
-				memcpy(&pViewTab->m_meandelayMap.at(2)(0, frameCount), &md(0, 2), sizeof(float) * pConfig->flimAlines);
-				memcpy(&pViewTab->m_meandelayMap.at(3)(0, frameCount), &md(0, 3), sizeof(float) * pConfig->flimAlines);
+			memcpy(&pViewTab->m_meandelayMap.at(0)(0, frameCount), &md(0, 0), sizeof(float) * pConfig->flimAlines);
+			memcpy(&pViewTab->m_meandelayMap.at(1)(0, frameCount), &md(0, 1), sizeof(float) * pConfig->flimAlines);
+			memcpy(&pViewTab->m_meandelayMap.at(2)(0, frameCount), &md(0, 2), sizeof(float) * pConfig->flimAlines);
+			memcpy(&pViewTab->m_meandelayMap.at(3)(0, frameCount), &md(0, 3), sizeof(float) * pConfig->flimAlines);
 
-                memcpy(&pViewTab->m_lifetimeMap.at(0)(0, frameCount), &ltm(0, 0), sizeof(float) * pConfig->flimAlines);
-                memcpy(&pViewTab->m_lifetimeMap.at(1)(0, frameCount), &ltm(0, 1), sizeof(float) * pConfig->flimAlines);
-                memcpy(&pViewTab->m_lifetimeMap.at(2)(0, frameCount), &ltm(0, 2), sizeof(float) * pConfig->flimAlines);
-            }
+            memcpy(&pViewTab->m_lifetimeMap.at(0)(0, frameCount), &ltm(0, 0), sizeof(float) * pConfig->flimAlines);
+            memcpy(&pViewTab->m_lifetimeMap.at(1)(0, frameCount), &ltm(0, 1), sizeof(float) * pConfig->flimAlines);
+            memcpy(&pViewTab->m_lifetimeMap.at(2)(0, frameCount), &ltm(0, 2), sizeof(float) * pConfig->flimAlines);
+         
 			emit processedSingleFrame(int(double(100 * frameCount++) / (double)pConfig->frames + 1));
 
 			// Return (push) the buffer to the previous threading queue
@@ -338,6 +344,22 @@ void DataProcessing::flimProcessing(FLImProcess* pFLIm, Configuration* pConfig)
 			printf("flimProcessing is halted.\n");
 			break;
 		}
+	}
+
+	for (int i = 0; i < 3; i++)
+	{
+		(*pViewTab->getMedfiltIntensityMap())(pViewTab->m_intensityMap.at(i));
+		(*pViewTab->getMedfiltLifetimeMap())(pViewTab->m_lifetimeMap.at(i));
+	}
+
+	for (int i = 0; i < 3; i++)
+	{
+		int ch_num = i;
+		int ch_den = (i == 0) ? 2 : i - 1;
+
+		FloatArray2 ratio_temp(pViewTab->m_intensityMap.at(i).size(0), pViewTab->m_intensityMap.at(i).size(1));
+		ippsDiv_32f(pViewTab->m_intensityMap.at(ch_num), pViewTab->m_intensityMap.at(ch_den), ratio_temp.raw_ptr(), ratio_temp.length());
+		ippsLog10_32f_A11(ratio_temp.raw_ptr(), pViewTab->m_intensityRatioMap.at(ch_num).raw_ptr(), pViewTab->m_intensityRatioMap.at(ch_num).length());
 	}
 
 	///file.close();

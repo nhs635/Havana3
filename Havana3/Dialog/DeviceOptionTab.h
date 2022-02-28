@@ -84,6 +84,7 @@ private slots:
 	
 signals:
 	void stopPullback(bool);
+	void showCurrentUVPower(int);
 
 // Variables ////////////////////////////////////////////
 private:
@@ -114,6 +115,7 @@ private:
 	QLabel *m_pLabel_PullbackMode;
 	QRadioButton *m_pRadioButton_20mms50mm;
 	QRadioButton *m_pRadioButton_10mms30mm;
+	QRadioButton *m_pRadioButton_10mms40mm;
 	QButtonGroup *m_pButtonGroup_PullbackMode;
 
 	QLabel *m_pLabel_PullbackOperation;

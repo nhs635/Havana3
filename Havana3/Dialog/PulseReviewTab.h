@@ -7,6 +7,9 @@
 #include <Havana3/Viewer/QScope.h>
 #include <Havana3/Dialog/FlimCalibTab.h>
 
+#include <iostream>
+#include <vector>
+
 class Configuration;
 class QResultTab;
 class QViewTab;
@@ -36,7 +39,18 @@ public slots :
 	void showWindow(bool);
 	void showMeanDelay(bool);
 	void drawPulse(int);
-	void changeType();
+	void changePulseType();
+	void addRoi(bool);
+	void modifyRoi(bool);
+	void deleteRoi();
+	void set();
+	void cancel();
+	void selectRow(int, int);
+	void changePlaqueType(int);
+
+public:
+	void saveRois();
+	void loadRois();
 
 // Variables ////////////////////////////////////////////
 private:	
@@ -45,6 +59,11 @@ private:
 	QResultTab* m_pResultTab;
     QViewTab* m_pViewTab;
 	FLImProcess* m_pFLIm;
+
+public:
+	int m_start, m_end;
+	std::vector<QStringList> m_vectorRois;
+	int m_totalRois;
 
 private:
 	Histogram* m_pHistogramIntensity;
@@ -67,6 +86,21 @@ private:
 	QComboBox *m_pComboBox_PulseType;
 
 	QTableWidget *m_pTableWidget_CurrentResult;
+
+	// Widgets for arc ROI labeling
+	QPushButton *m_pToggleButton_AddRoi;
+	QPushButton *m_pToggleButton_ModifyRoi;
+	QPushButton *m_pPushButton_DeleteRoi;
+	QPushButton *m_pPushButton_Set;
+	QPushButton *m_pPushButton_Cancel;
+
+	QLabel *m_pLabel_PlaqueType;
+	QComboBox *m_pComboBox_PlaqueType;
+
+	QLabel *m_pLabel_Comments;
+	QLineEdit *m_pLineEdit_Comments;
+
+	QTableWidget *m_pTableWidget_RoiList;
 
 	// Histogram widgets
 	QLabel *m_pLabel_FluIntensity;

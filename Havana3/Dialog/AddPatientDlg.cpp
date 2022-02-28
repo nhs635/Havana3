@@ -70,7 +70,8 @@ AddPatientDlg::AddPatientDlg(QWidget *parent, const QString& patient_id) :
     m_pLabel_Keywords->setStyleSheet("QLabel{font-weight:bold}");
 
     m_pLineEdit_PatientId = new QLineEdit(this);
-    m_pLineEdit_PatientId->setValidator(new QIntValidator(0, 9999999, this));
+    m_pLineEdit_PatientId->setValidator(new QIntValidator(0, 99999999, this));
+	m_pLineEdit_PatientId->setMaxLength(8);
     m_pLineEdit_PatientId->setFixedWidth(150);
 
     m_pLineEdit_FirstName = new QLineEdit(this);
@@ -248,7 +249,7 @@ void AddPatientDlg::changeLastName(const QString &str)
 
 void AddPatientDlg::add()
 {
-    QString patient_id = m_pLineEdit_PatientId->text();
+    QString patient_id = QString("%1").arg(m_pLineEdit_PatientId->text().toInt());
     QString first_name = m_pLineEdit_FirstName->text();
     QString last_name = m_pLineEdit_LastName->text();
     QString date_of_birth = m_pDateEdit_DateOfBirth->date().toString("yyyy-MM-dd");
@@ -284,7 +285,7 @@ void AddPatientDlg::add()
 
 void AddPatientDlg::edit()
 {
-    QString patient_id = m_pLineEdit_PatientId->text();
+    QString patient_id = QString("%1").arg(m_pLineEdit_PatientId->text().toInt());
     QString first_name = m_pLineEdit_FirstName->text();
     QString last_name = m_pLineEdit_LastName->text();
     QString date_of_birth = m_pDateEdit_DateOfBirth->date().toString("yyyy-MM-dd");
@@ -295,7 +296,7 @@ void AddPatientDlg::edit()
 
     QString command = QString("UPDATE patients SET first_name='%1', last_name='%2', dob='%4', gender=%5, accession_number='%6', notes='%7', physician_name='%8' WHERE patient_id='%3'")
                               .arg(first_name).arg(last_name).arg(patient_id).arg(date_of_birth).arg(gender).arg(accession_number).arg(keywords).arg(physician_name);
-
+	
     if (m_pHvnSqlDataBase->queryDatabase(command))
     {
         m_pPatientSummaryTab->loadPatientInformation();
@@ -314,7 +315,7 @@ void AddPatientDlg::loadPatientInformation()
 
         while (_sqlQuery.next())
         {
-            m_pLineEdit_PatientId->setText(_sqlQuery.value(3).toString());
+            m_pLineEdit_PatientId->setText(QString("%1").arg(_sqlQuery.value(3).toString().toInt(), 8, 10, QChar('0')));
             m_pLineEdit_FirstName->setText(_sqlQuery.value(0).toString());
             m_pLineEdit_LastName->setText(_sqlQuery.value(1).toString());
             m_pDateEdit_DateOfBirth->setDate(_sqlQuery.value(4).toDate());

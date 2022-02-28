@@ -130,6 +130,7 @@ void QHomeTab::signIn()
 			m_pConfig->writeToLog("Permission error: Authentication failed. Please try again.");
             QMessageBox MsgBox(QMessageBox::Critical, "Permission error", "Authentication failed. Please try again.");
             MsgBox.exec();
+			m_pConfig->dbPath = "";
         }
     }
     else

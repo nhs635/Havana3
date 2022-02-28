@@ -81,9 +81,9 @@ public:
 		return false;
 	}
 
-	void waitUntilResponse()
+	void waitUntilResponse(int wait_msec)
 	{
-		m_pSerialPort->waitForReadyRead(100);
+		m_pSerialPort->waitForReadyRead(wait_msec);
 	}
 	
 public slots:

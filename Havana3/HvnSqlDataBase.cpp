@@ -41,7 +41,7 @@ bool HvnSqlDataBase::openDatabase(const QString& username, const QString& passwo
 
 #ifdef ENABLE_DATABASE_ENCRYPTION
 			m_sqlDataBase = QSqlDatabase::addDatabase("SQLITECIPHER", "DBConnection");
-			m_sqlDataBase.setDatabaseName(m_pConfig->dbPath + "/db.sqlite");
+			m_sqlDataBase.setDatabaseName(m_pConfig->dbPath + "/db.sqlite");		
 			m_sqlDataBase.setUserName(username);
 			m_sqlDataBase.setPassword(password);
 			m_sqlDataBase.setConnectOptions("QSQLITE_USE_CIPHER=sqlcipher");
@@ -118,6 +118,28 @@ void HvnSqlDataBase::initializeDatabase()
 	}
 	m_pMainWnd->setCursor(Qt::ArrowCursor);
 }
+
+void HvnSqlDataBase::createDatabase()
+{
+	QFile sql_file("initialize_query.sql");
+	if (sql_file.open(QIODevice::ReadOnly))
+	{
+		QString query_str(sql_file.readAll());
+		QStringList query_str_list = query_str.split(';', QString::SkipEmptyParts);
+
+		foreach(const QString& command, query_str_list)
+			if (command.trimmed() != "")
+				queryDatabase(command);
+		sql_file.close();
+
+		// Make directory for recorded data
+		if (!QDir().exists(m_pConfig->dbPath + "/record"))
+			QDir().mkdir(m_pConfig->dbPath + "/record");
+
+		m_pConfig->writeToLog("Database created: Successful initialization");
+	}
+}
+
 
 bool HvnSqlDataBase::queryDatabase(const QString &command, std::function<void(QSqlQuery &)> const &DidQuery, bool db_opened, const QByteArray & preview)
 {

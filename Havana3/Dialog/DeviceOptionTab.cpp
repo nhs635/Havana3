@@ -18,11 +18,15 @@
 #ifdef NI_ENABLE
 #include <DeviceControl/FreqDivider/FreqDivider.h>
 #endif
+#ifdef AXSUN_ENABLE
 #include <DeviceControl/AxsunControl/AxsunControl.h>
+#endif
 
 #include <DataAcquisition/DataAcquisition.h>
 #include <DataAcquisition/SignatecDAQ/SignatecDAQ.h>
+#ifdef AXSUN_ENABLE
 #include <DataAcquisition/AxsunCapture/AxsunCapture.h>
+#endif
 
 #include <Common/Array.h>
 
@@ -35,7 +39,8 @@
 enum PullbackMode
 {
 	_20MM_S_50MM_ = 0,
-	_10MM_S_30MM_ = 1
+	_10MM_S_30MM_ = 1,
+	_10MM_S_40MM_ = 2
 };
 
 
@@ -172,21 +177,30 @@ void DeviceOptionTab::createHelicalScanningControl()
 	m_pLabel_PullbackConnect->setText("Pullback Motor");
 
 	m_pRadioButton_20mms50mm = new QRadioButton(this);
-	m_pRadioButton_20mms50mm->setText("20 mm/s, 50 mm");
+	m_pRadioButton_20mms50mm->setText("20, 50");
 	m_pRadioButton_20mms50mm->setDisabled(true);
 	m_pRadioButton_10mms30mm = new QRadioButton(this);
-	m_pRadioButton_10mms30mm->setText("10 mm/s, 30 mm");
+	m_pRadioButton_10mms30mm->setText("10, 30");
 	m_pRadioButton_10mms30mm->setDisabled(true);
+	m_pRadioButton_10mms40mm = new QRadioButton(this);
+	m_pRadioButton_10mms40mm->setText("10, 40");
+	m_pRadioButton_10mms40mm->setDisabled(true);
 	m_pButtonGroup_PullbackMode = new QButtonGroup(this);
-	m_pButtonGroup_PullbackMode->addButton(m_pRadioButton_20mms50mm, 0);
-	m_pButtonGroup_PullbackMode->addButton(m_pRadioButton_10mms30mm, 1);
-	m_pLabel_PullbackMode = new QLabel("Pullback Mode", this);
+	m_pButtonGroup_PullbackMode->addButton(m_pRadioButton_20mms50mm, _20MM_S_50MM_);
+	m_pButtonGroup_PullbackMode->addButton(m_pRadioButton_10mms30mm, _10MM_S_30MM_);
+	m_pButtonGroup_PullbackMode->addButton(m_pRadioButton_10mms30mm, _10MM_S_40MM_);
+	m_pLabel_PullbackMode = new QLabel("Pullback Mode (mm/s, mm)", this);
 	m_pLabel_PullbackMode->setDisabled(true);
 
 	if (m_pConfig->pullbackSpeed == 20.0)
 		m_pRadioButton_20mms50mm->setChecked(true);
 	else if (m_pConfig->pullbackSpeed == 10.0)
-		m_pRadioButton_10mms30mm->setChecked(true);
+	{
+		if (m_pConfig->pullbackLength == 30.0)
+			m_pRadioButton_10mms30mm->setChecked(true);
+		else if (m_pConfig->pullbackLength == 40.0)
+			m_pRadioButton_10mms40mm->setChecked(true);
+	}
 
 	m_pPushButton_Pullback = new QPushButton(this);
 	m_pPushButton_Pullback->setText("Pullback");
@@ -230,6 +244,7 @@ void DeviceOptionTab::createHelicalScanningControl()
 	pHBoxLayout_PullbackMode->setSpacing(3);
 	pHBoxLayout_PullbackMode->addWidget(m_pRadioButton_20mms50mm);
 	pHBoxLayout_PullbackMode->addWidget(m_pRadioButton_10mms30mm);
+	pHBoxLayout_PullbackMode->addWidget(m_pRadioButton_10mms40mm);
 	pGridLayout_PullbackMotor->addItem(pHBoxLayout_PullbackMode, 1, 2, 1, 4, Qt::AlignRight);
 
 	pGridLayout_PullbackMotor->addWidget(m_pLabel_PullbackOperation, 2, 0);
@@ -414,6 +429,7 @@ void DeviceOptionTab::createFlimSystemControl()
 	connect(m_pToggleButton_FlimLaserConnect, SIGNAL(toggled(bool)), this, SLOT(connectFlimLaser(bool)));	
 #ifndef NEXT_GEN_SYSTEM
 	connect(m_pSpinBox_FlimLaserPowerControl, SIGNAL(valueChanged(int)), this, SLOT(adjustLaserPower(int)));
+	connect(this, &DeviceOptionTab::showCurrentUVPower, [&](int level) { m_pLabel_FlimLaserPowerLevel->setText(QString::number(level)); });
 #else
 	connect(m_pLineEdit_FlimLaserPowerControl, SIGNAL(textChanged(const QString &)), this, SLOT(changeFlimLaserPower(const QString &)));
 	connect(m_pPushButton_FlimLaserPowerControl, SIGNAL(clicked(bool)), this, SLOT(applyFlimLaserPower()));
@@ -659,6 +675,7 @@ bool DeviceOptionTab::connectPullbackMotor(bool toggled)
 			m_pLabel_PullbackMode->setEnabled(true);
 			m_pRadioButton_20mms50mm->setEnabled(true);
 			m_pRadioButton_10mms30mm->setEnabled(true);
+			m_pRadioButton_10mms40mm->setEnabled(true);
 
 			m_pLabel_PullbackOperation->setEnabled(true);
 			m_pPushButton_Pullback->setEnabled(true);
@@ -682,6 +699,7 @@ bool DeviceOptionTab::connectPullbackMotor(bool toggled)
 		m_pLabel_PullbackMode->setDisabled(true);
 		m_pRadioButton_20mms50mm->setDisabled(true);
 		m_pRadioButton_10mms30mm->setDisabled(true);
+		m_pRadioButton_10mms40mm->setDisabled(true);
 
 		m_pLabel_PullbackOperation->setDisabled(true);
 		m_pPushButton_Pullback->setDisabled(true);
@@ -707,6 +725,11 @@ void DeviceOptionTab::setPullbackMode(int id)
 	{
 		m_pDeviceControl->setTargetSpeed(10.0);
 		m_pDeviceControl->changePullbackLength(30.0);
+	}
+	else if (id == _10MM_S_40MM_)
+	{
+		m_pDeviceControl->setTargetSpeed(10.0);
+		m_pDeviceControl->changePullbackLength(40.0);
 	}
 }
 
@@ -891,7 +914,7 @@ bool DeviceOptionTab::connectFlimLaser(bool toggled)
 		{
 			// Set callback
 			m_pDeviceControl->getElforlightLaser()->UpdatePowerLevel += [&](int laser_power_level) {
-				m_pLabel_FlimLaserPowerLevel->setText(QString::number(laser_power_level));
+				//emit showCurrentUVPower(laser_power_level);
 			};
 
 			// Set widgets
@@ -1004,6 +1027,7 @@ void DeviceOptionTab::connectAxsunControl(bool toggled)
 {
 	if (toggled)
 	{
+#ifdef AXSUN_ENABLE
 		// Connect to Axsun OCT engine
 		if (m_pDeviceControl->connectAxsunControl(toggled))
 		{
@@ -1033,6 +1057,9 @@ void DeviceOptionTab::connectAxsunControl(bool toggled)
 		}
 		else
 			m_pToggleButton_AxsunOctConnect->setChecked(false);
+#else
+		m_pToggleButton_AxsunOctConnect->setChecked(false);
+#endif
 	}
 	else
 	{
@@ -1064,8 +1091,10 @@ void DeviceOptionTab::connectAxsunControl(bool toggled)
 		m_pSpinBox_VDLLength->setDisabled(true);
 		m_pPushButton_VDLHome->setDisabled(true);
 		
+#ifdef AXSUN_ENABLE
 		// Disconnect from Axsun OCT engine
 		m_pDeviceControl->connectAxsunControl(toggled);
+#endif
 	}
 }
 
@@ -1073,8 +1102,10 @@ void DeviceOptionTab::setLightSource(bool toggled)
 {
 	if (toggled)
 	{
+#ifdef AXSUN_ENABLE
 		// Start Axsun light source operation
 		m_pDeviceControl->setLightSource(true);
+#endif
 
 		// Set widgets
 		m_pToggleButton_LightSource->setText("Off");
@@ -1086,8 +1117,10 @@ void DeviceOptionTab::setLightSource(bool toggled)
 		m_pToggleButton_LightSource->setText("On");
 		m_pToggleButton_LightSource->setStyleSheet("QPushButton { background-color:#ff0000; }");
 
+#ifdef AXSUN_ENABLE
 		// Stop Axsun light source operation
 		m_pDeviceControl->setLightSource(false);
+#endif
 	}
 }
 
@@ -1096,8 +1129,10 @@ void DeviceOptionTab::setLiveImaging(bool toggled)
 #ifndef NEXT_GEN_SYSTEM
 	if (toggled)
 	{
+#ifdef AXSUN_ENABLE
 		// Start Axsun light source operation
 		m_pDeviceControl->setLiveImaging(true);
+#endif
 
 		// Set widgets
 		m_pToggleButton_LiveImaging->setText("Off");
@@ -1109,8 +1144,10 @@ void DeviceOptionTab::setLiveImaging(bool toggled)
 		m_pToggleButton_LiveImaging->setText("On");
 		m_pToggleButton_LiveImaging->setStyleSheet("QPushButton { background-color:#ff0000; }");
 
+#ifdef AXSUN_ENABLE
 		// Stop Axsun light source operation
 		m_pDeviceControl->setLiveImaging(false);
+#endif
 	}
 #else
 	(void)toggled;
@@ -1119,21 +1156,25 @@ void DeviceOptionTab::setLiveImaging(bool toggled)
 
 void DeviceOptionTab::setBackground()
 {
+#ifdef AXSUN_ENABLE
 	m_pDeviceControl->getAxsunControl()->setPipelineMode(AxPipelineMode::SQRT);
 	m_pDeviceControl->setBackground();
 	m_pDeviceControl->getAxsunControl()->setPipelineMode(AxPipelineMode::JPEG_COMP);
+#endif
 			
-	//QFile file("bg.data");
-	//if (file.open(QIODevice::WriteOnly))
-	//	file.write(reinterpret_cast<const char*>(getDeviceControl()->getAxsunControl()->background_vector.data()),
-	//		sizeof(uint16_t) * getDeviceControl()->getAxsunControl()->background_vector.size());
-	//file.close();
+	///QFile file("bg.data");
+	///if (file.open(QIODevice::WriteOnly))
+	///	file.write(reinterpret_cast<const char*>(getDeviceControl()->getAxsunControl()->background_vector.data()),
+	///		sizeof(uint16_t) * getDeviceControl()->getAxsunControl()->background_vector.size());
+	///file.close();
 }
 
 void DeviceOptionTab::resetBackground()
 {
+#ifdef AXSUN_ENABLE
 	memset(m_pDeviceControl->getAxsunControl()->background_frame, 0, sizeof(uint16_t) * m_pDeviceControl->getAxsunControl()->background_frame.length());
 	m_pDeviceControl->setBackground();
+#endif
 }
 
 void DeviceOptionTab::setDispersionCompensation()
@@ -1141,24 +1182,34 @@ void DeviceOptionTab::setDispersionCompensation()
 	m_pConfig->axsunDispComp_a2 = m_pLineEdit_DispComp_a2->text().toFloat();
 	m_pConfig->axsunDispComp_a3 = m_pLineEdit_DispComp_a3->text().toFloat();
 
+#ifdef AXSUN_ENABLE
 	m_pDeviceControl->setDispersionCompensation(m_pConfig->axsunDispComp_a2, m_pConfig->axsunDispComp_a3);
+#endif
 }
 
 void DeviceOptionTab::setClockDelay(double)
 {
+#ifdef AXSUN_ENABLE
 	m_pDeviceControl->setClockDelay(CLOCK_DELAY);
+#endif
 }
 
 void DeviceOptionTab::setVDLLength(double length)
 {
+#ifdef AXSUN_ENABLE
 	m_pDeviceControl->setVDLLength(length);
 	if (m_pStreamTab)
 		m_pStreamTab->getCalibScrollBar()->setValue(int(length * 100.0));
+#else
+	(void)length;
+#endif
 }
 
 void DeviceOptionTab::setVDLHome()
 {
+#ifdef AXSUN_ENABLE
 	m_pDeviceControl->setVDLHome();
+#endif
 	m_pSpinBox_VDLLength->setValue(0.0);
 }
 

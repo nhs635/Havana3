@@ -17,6 +17,7 @@
 
 #include <iostream>
 #include <vector>
+#include <thread>
 
 
 class QStreamTab;
@@ -38,6 +39,9 @@ public:
 	inline QStreamTab* getStreamTab() const { return m_pStreamTab; }
 	inline QResultTab* getResultTab() const { return m_pResultTab; }
 	inline QImageView* getCircImageView() const { return m_pImageView_CircImage; }
+#ifdef ALTERNATIVE_VIEW
+	inline QWidget* getVisWidget(int i) const { return m_pWidget[i]; }
+#endif
     inline QImageView* getEnFaceImageView() const { return m_pImageView_EnFace; }
     inline QImageView* getLongiImageView() const { return m_pImageView_Longi; }
 	inline circularize* getCirc() const { return m_pCirc; }
@@ -45,8 +49,10 @@ public:
 	inline medfilt* getMedfiltIntensityMap() const { return m_pMedfiltIntensityMap; }
 	inline medfilt* getMedfiltLifetimeMap() const { return m_pMedfiltLifetimeMap; }
 	inline medfilt* getMedfiltLongi() const { return m_pMedfiltLongi; }
+	inline QPushButton* getPlayButton() const { return m_pToggleButton_Play; }
     inline QSlider* getSliderSelectFrame() const { return m_pSlider_SelectFrame; }
-	inline void setEmissionChannel(int ch) { m_pComboBox_ViewMode->setCurrentIndex(ch - 1); }
+	inline void setViewMode(int ch) { m_pComboBox_ViewMode->setCurrentIndex(ch); }
+	inline int getViewMode() { return m_pComboBox_ViewMode->currentIndex(); }
 	inline void setCurrentFrame(int frame) { m_pSlider_SelectFrame->setValue(frame); }
     inline int getCurrentFrame() { return m_pSlider_SelectFrame->value(); }
 	inline int getCurrentAline() { return m_pImageView_CircImage->getRender()->m_pVLineInd[0]; }
@@ -78,16 +84,19 @@ private slots:
     void constructCircImage();
 	void play(bool);
 	void measureDistance(bool);
+	void measureArea(bool);
 	void changeEmissionChannel(int);
 
 public:
-	void scaleFLImEnFaceMap(ImageObject* pImgObjIntensityMap, ImageObject* pImgObjLifetimeMap, int ch);
+	void scaleFLImEnFaceMap(ImageObject* pImgObjIntensityMap, ImageObject* pImgObjLifetimeMap, ImageObject* pImgObjIntensityRatioMap, int ch, int mode);
 	void circShift(np::Uint8Array2& image, int shift);
+	void setAxialOffset(np::Uint8Array2& image, int offset);
 
 public slots:
 	void getCapture(QByteArray &);
 	
 signals:
+	void playingDone();
 	void drawImage(uint8_t*, float*, float*);
 	void makeCirc(void);
 	void paintCircImage(uint8_t*);
@@ -97,6 +106,7 @@ signals:
 // Variables ////////////////////////////////////////////
 private:
     Configuration* m_pConfig;
+	Configuration* m_pConfigTemp;
 	QStreamTab* m_pStreamTab;
     QResultTab* m_pResultTab;
 
@@ -118,6 +128,7 @@ public: // for post processing
 	std::vector<np::FloatArray2> m_intensityMap; // (256 x N) x 3
 	std::vector<np::FloatArray2> m_meandelayMap; // (256 X N) x 4
 	std::vector<np::FloatArray2> m_lifetimeMap; // (256 x N) x 3
+	std::vector<np::FloatArray2> m_intensityRatioMap; // (256 x N) x 3
 
 	std::vector<np::FloatArray2> m_vectorPulseCrop;
 	std::vector<np::FloatArray2> m_vectorPulseBgSub;
@@ -136,9 +147,11 @@ private:
 	ImageObject* m_pImgObjOctProjection;
 	ImageObject *m_pImgObjIntensityMap;
 	ImageObject *m_pImgObjLifetimeMap;
+	ImageObject *m_pImgObjIntensityRatioMap;
 
     // Image visualization buffers - longitudinal
     ImageObject *m_pImgObjLongiImage;
+	ImageObject *m_pImgObjLongiImageRe;
 
 private:
 	circularize* m_pCirc;
@@ -149,11 +162,18 @@ private:
 	//ann* m_pAnn;
 	
 private:
+	std::thread playing;
+	bool _running;
+
+private:
     // Layout
     QWidget *m_pViewWidget;
 
     // Image viewer widgets
     QImageView *m_pImageView_CircImage;
+#ifdef ALTERNATIVE_VIEW
+	QWidget *m_pWidget[4];
+#endif
     QImageView *m_pImageView_EnFace;
     QImageView *m_pImageView_Longi;
     QImageView *m_pImageView_ColorBar;
@@ -166,6 +186,7 @@ private:
 
     // View option widgets
     QPushButton *m_pToggleButton_MeasureDistance;
+	QPushButton *m_pToggleButton_MeasureArea;
 
     QComboBox *m_pComboBox_ViewMode;
     QLabel *m_pLabel_ViewMode;

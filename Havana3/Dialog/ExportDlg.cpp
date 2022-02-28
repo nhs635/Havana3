@@ -5,6 +5,8 @@
 #include <Havana3/QResultTab.h>
 #include <Havana3/QViewTab.h>
 
+#include <DataAcquisition/DataProcessing.h>
+
 #include <ippi.h>
 #include <ippcc.h>
 
@@ -28,6 +30,7 @@ ExportDlg::ExportDlg(QWidget *parent) :
     // Set main window objects
     m_pResultTab = dynamic_cast<QResultTab*>(parent);
 	m_pConfig = m_pResultTab->getMainWnd()->m_pConfiguration;
+	m_pConfigTemp = m_pResultTab->getDataProcessing()->getConfigTemp();
 	m_pViewTab = m_pResultTab->getViewTab();
 	
 	// Exporting
@@ -230,10 +233,12 @@ ExportDlg::ExportDlg(QWidget *parent) :
 	m_pCheckBox_LongiImage->setChecked(true);
 	m_pCheckBox_CrossSectionCh1->setChecked(true);
 	m_pCheckBox_CrossSectionCh2->setChecked(true);
+	m_pCheckBox_CrossSectionCh3->setChecked(true);
 
 	m_pCheckBox_ScaledImage->setChecked(true);
 	m_pCheckBox_EnFaceCh1->setChecked(true);
 	m_pCheckBox_EnFaceCh2->setChecked(true);
+	m_pCheckBox_EnFaceCh3->setChecked(true);
 
 	m_exportPath = m_pResultTab->getRecordInfo().filename;
 	for (int i = m_exportPath.size() - 1; i >= 0; i--)
@@ -277,7 +282,7 @@ void ExportDlg::exportResults()
 
 void ExportDlg::findExportPath()
 {
-	QString path = QFileDialog::getExistingDirectory(nullptr, "Select Export Path...", m_pConfig->dbPath,
+	QString path = QFileDialog::getExistingDirectory(nullptr, "Select Export Path...", QDir::homePath(),
 		QFileDialog::ShowDirsOnly | QFileDialog::DontUseNativeDialog);
 	if (path != "")
 	{
@@ -318,7 +323,7 @@ void ExportDlg::saveCrossSections()
 			for (int i = 0; i < 3; i++)
 			{
 				ImageObject* pImgObjLifetimeMap = new ImageObject(frames4, alines, temp_ctable.m_colorTableVector.at(LIFETIME_COLORTABLE));
-				m_pViewTab->scaleFLImEnFaceMap(pImgObjIntensityMap, pImgObjLifetimeMap, i);
+				m_pViewTab->scaleFLImEnFaceMap(pImgObjIntensityMap, pImgObjLifetimeMap, nullptr, i, 0);
 
 				// Push to the vector
 				vectorLifetimeMap.push_back(pImgObjLifetimeMap);
@@ -397,14 +402,20 @@ void ExportDlg::saveEnFaceMaps()
 					if (false != fileIntensity.open(QIODevice::WriteOnly))
 					{
 						np::FloatArray2 intensity_map(flimAlines, frames);
-						memcpy(intensity_map.raw_ptr(), m_pViewTab->m_intensityMap.at(i).raw_ptr(), sizeof(float) * m_pViewTab->m_intensityMap.at(i).length());
-
-						if (m_pConfig->rotatedAlines > 0)
+						memset(intensity_map, 0, sizeof(float) * intensity_map.length());
+						if (m_pConfigTemp->interFrameSync >= 0)
+							ippiCopy_32f_C1R(m_pViewTab->m_intensityMap.at(i).raw_ptr(), sizeof(float) * roi_flim.width,
+								&intensity_map(0, m_pConfigTemp->interFrameSync), sizeof(float) * roi_flim.width, { roi_flim.width, roi_flim.height - m_pConfigTemp->interFrameSync });
+						else
+							ippiCopy_32f_C1R(&m_pViewTab->m_intensityMap.at(i)(0, -m_pConfigTemp->interFrameSync), sizeof(float) * roi_flim.width,
+								&intensity_map(0, 0), sizeof(float) * roi_flim.width, { roi_flim.width, roi_flim.height + m_pConfigTemp->interFrameSync });
+						
+						if (m_pConfigTemp->rotatedAlines > 0)
 						{
 							for (int i = 0; i < roi_flim.height; i++)
 							{
 								float* pImg = intensity_map.raw_ptr() + i * roi_flim.width;
-								std::rotate(pImg, pImg + m_pConfig->rotatedAlines, pImg + roi_flim.width);
+								std::rotate(pImg, pImg + m_pConfigTemp->rotatedAlines / 4, pImg + roi_flim.width);
 							}
 						}
 
@@ -416,14 +427,20 @@ void ExportDlg::saveEnFaceMaps()
 					if (false != fileLifetime.open(QIODevice::WriteOnly))
 					{
 						np::FloatArray2 lifetime_map(flimAlines, frames);
-						memcpy(lifetime_map.raw_ptr(), m_pViewTab->m_lifetimeMap.at(i).raw_ptr(), sizeof(float) * m_pViewTab->m_lifetimeMap.at(i).length());
+						memset(lifetime_map, 0, sizeof(float) * lifetime_map.length());
+						if (m_pConfigTemp->interFrameSync >= 0)
+							ippiCopy_32f_C1R(m_pViewTab->m_lifetimeMap.at(i).raw_ptr(), sizeof(float) * roi_flim.width,
+								&lifetime_map(0, m_pConfigTemp->interFrameSync), sizeof(float) * roi_flim.width, { roi_flim.width, roi_flim.height - m_pConfigTemp->interFrameSync });
+						else
+							ippiCopy_32f_C1R(&m_pViewTab->m_lifetimeMap.at(i)(0, -m_pConfigTemp->interFrameSync), sizeof(float) * roi_flim.width,
+								&lifetime_map(0, 0), sizeof(float) * roi_flim.width, { roi_flim.width, roi_flim.height + m_pConfigTemp->interFrameSync });
 
-						if (m_pConfig->rotatedAlines > 0)
+						if (m_pConfigTemp->rotatedAlines > 0)
 						{
 							for (int i = 0; i < roi_flim.height; i++)
 							{
 								float* pImg = lifetime_map.raw_ptr() + i * roi_flim.width;
-								std::rotate(pImg, pImg + m_pConfig->rotatedAlines, pImg + roi_flim.width);
+								std::rotate(pImg, pImg + m_pConfigTemp->rotatedAlines / 4, pImg + roi_flim.width);
 							}
 						}
 
@@ -475,7 +492,7 @@ void ExportDlg::saveEnFaceMaps()
 				{
 					// Intensity-weight lifetime map
 					ImageObject* pImgObjLifetimeMap = new ImageObject(frame4, alines, temp_ctable.m_colorTableVector.at(LIFETIME_COLORTABLE));
-					m_pViewTab->scaleFLImEnFaceMap(pImgObjIntensityMap, pImgObjLifetimeMap, i);
+					m_pViewTab->scaleFLImEnFaceMap(pImgObjIntensityMap, pImgObjLifetimeMap, nullptr, i, 0 );
 
 					pImgObjLifetimeMap->qrgbimg.copy(start, 0, end - start + 1, roi_flimproj.width)
 						.save(enFacePath + QString("flim_map_range[%1 %2]_ch%3_i[%4 %5]_t[%6 %7].bmp").arg(start).arg(end).arg(i + 1)
@@ -719,12 +736,12 @@ void ExportDlg::scaling(std::vector<np::FloatArray2>& vectorOctImage, std::vecto
 #ifndef NEXT_GEN_SYSTEM
 			ippsConvert_8u32f(vectorOctImage.at(frameCount).raw_ptr(), scale_temp.raw_ptr(), scale_temp.length());
 			ippiScale_32f8u_C1R(scale_temp.raw_ptr(), roi_oct.width * sizeof(float),
-				pImgObjVec->at(0)->arr.raw_ptr(), roi_oct.width * sizeof(uint8_t), roi_oct, (float)m_pConfig->octGrayRange.min, (float)m_pConfig->octGrayRange.max);
+				pImgObjVec->at(0)->arr.raw_ptr(), roi_oct.width * sizeof(uint8_t), roi_oct, (float)m_pConfigTemp->octGrayRange.min, (float)m_pConfigTemp->octGrayRange.max);
 #else
 			ippiScale_32f8u_C1R(vectorOctImage.at(frameCount).raw_ptr(), roi_oct.width * sizeof(float),
 				pImgObjVec->at(0)->arr.raw_ptr(), roi_oct.width * sizeof(uint8_t), roi_oct, (float)m_pConfig->axsunDbRange.min, (float)m_pConfig->axsunDbRange.max);
 #endif
-			m_pViewTab->circShift(pImgObjVec->at(0)->arr, m_pConfig->rotatedAlines);
+			m_pViewTab->circShift(pImgObjVec->at(0)->arr, (m_pConfigTemp->rotatedAlines + m_pConfigTemp->intraFrameSync) % m_pConfigTemp->octAlines);
 			(*m_pViewTab->getMedfiltRect())(pImgObjVec->at(0)->arr.raw_ptr());
 
 			// FLIM Visualization		
@@ -959,7 +976,7 @@ void ExportDlg::circularizing(CrossSectionCheckList checkList) // with longitudi
 		if (!checkList.bCh[0] && !checkList.bCh[1] && !checkList.bCh[2])
 		{
 #ifndef NEXT_GEN_SYSTEM
-			QString longiPath = m_exportPath + QString("/longi_image[%1 %2]_gray[%3 %4]/").arg(start).arg(end).arg(m_pConfig->octGrayRange.min).arg(m_pConfig->octGrayRange.max);
+			QString longiPath = m_exportPath + QString("/longi_image[%1 %2]_gray[%3 %4]/").arg(start).arg(end).arg(m_pConfigTemp->octGrayRange.min).arg(m_pConfigTemp->octGrayRange.max);
 #else
 			QString longiPath = m_exportPath + QString("/longi_image[%1 %2]_dB[%3 %4]/").arg(start).arg(end).arg(m_pConfig->axsunDbRange.min).arg(m_pConfig->axsunDbRange.max);
 #endif
@@ -998,7 +1015,7 @@ void ExportDlg::circularizing(CrossSectionCheckList checkList) // with longitudi
 					{		
 #ifndef NEXT_GEN_SYSTEM
 						longiPath[i] = m_exportPath + QString("/longi_image[%1 %2]_gray[%3 %4]_ch%5_i[%6 %7]_t[%8 %9]/")
-							.arg(start).arg(end).arg(m_pConfig->octGrayRange.min).arg(m_pConfig->octGrayRange.max)
+							.arg(start).arg(end).arg(m_pConfigTemp->octGrayRange.min).arg(m_pConfigTemp->octGrayRange.max)
 							.arg(i + 1).arg(m_pConfig->flimIntensityRange[i].min, 2, 'f', 1).arg(m_pConfig->flimIntensityRange[i].max, 2, 'f', 1)
 							.arg(m_pConfig->flimLifetimeRange[i].min, 2, 'f', 1).arg(m_pConfig->flimLifetimeRange[i].max, 2, 'f', 1);
 #else
@@ -1110,9 +1127,9 @@ void ExportDlg::circWriting(CrossSectionCheckList checkList)
 	if (!checkList.bCh[0] && !checkList.bCh[1] && !checkList.bCh[2]) // Grayscale OCT
 	{
 #ifndef NEXT_GEN_SYSTEM
-		QString circPath = m_exportPath + QString("/circ_image_gray[%1 %2]/").arg(m_pConfig->octGrayRange.min).arg(m_pConfig->octGrayRange.max);;
+		QString circPath = m_exportPath + QString("/circ_image_gray[%1 %2]/").arg(m_pConfigTemp->octGrayRange.min).arg(m_pConfigTemp->octGrayRange.max);
 #else
-		QString circPath = m_exportPath + QString("/circ_image_gray[%1 %2]/").arg(m_pConfig->axsunDbRange.min).arg(m_pConfig->axsunDbRange.max);;
+		QString circPath = m_exportPath + QString("/circ_image_gray[%1 %2]/").arg(m_pConfig->axsunDbRange.min).arg(m_pConfig->axsunDbRange.max);
 #endif
 		if (checkList.bCirc) QDir().mkdir(circPath);
 
@@ -1155,7 +1172,7 @@ void ExportDlg::circWriting(CrossSectionCheckList checkList)
 				{					
 #ifndef NEXT_GEN_SYSTEM
 					circPath[i] = m_exportPath + QString("/circ_image_gray[%1 %2]_ch%3_i[%4 %5]_t[%6 %7]/")
-					.arg(m_pConfig->octGrayRange.min).arg(m_pConfig->octGrayRange.max)
+					.arg(m_pConfigTemp->octGrayRange.min).arg(m_pConfigTemp->octGrayRange.max)
 					.arg(i + 1).arg(m_pConfig->flimIntensityRange[i].min, 2, 'f', 1).arg(m_pConfig->flimIntensityRange[i].max, 2, 'f', 1)
 					.arg(m_pConfig->flimLifetimeRange[i].min, 2, 'f', 1).arg(m_pConfig->flimLifetimeRange[i].max, 2, 'f', 1);			
 #else

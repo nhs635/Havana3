@@ -11,6 +11,10 @@
 
 #include <Common/array.h>
 #include <Common/callback.h>
+
+#include <iostream>
+#include <vector>
+
 using ColorTableVector = QVector<QVector<QRgb>>;
 
 class ColorTable
@@ -19,8 +23,7 @@ public:
 	explicit ColorTable();
 
 public:
-	enum colortable { gray = 0, inv_gray, sepia, jet, parula, hot, fire, hsv, 
-		smart, blueorange, cool, gem, greenfireblue, ice, lifetime2, vessel, hsv1, magenta, blue_hot, clf }; // 새로 만든 colortable 이름 추가하기
+	enum colortable { gray = 0, invgray, sepia, jet, parula, hot, fire, hsv, hsv1, clf, graysb, viridis, bwr, hsv2 }; // 새로 만든 colortable 이름 추가하기
 	QVector<QString> m_cNameVector;
 	ColorTableVector m_colorTableVector;
 };
@@ -121,14 +124,25 @@ public:
 	QRect m_rectMagnified;
 	float m_fMagnLevel;
 	int m_rMax;
-	QColor m_colorLine;
+	QColor m_colorVLine1, m_colorVLine2;
+	QColor m_colorHLine;
+	QColor m_colorRLine1, m_colorRLine2, m_colorCLine;
+	QColor m_colorALine;
 
     np::Uint16Array m_contour;
 
+	bool m_bArcRoiSelect, m_bArcRoiShow;
+	int m_RLines[2];
+	bool m_bCW;
+
 	bool m_bMeasureDistance;
-	int m_bIsClicking;
+	bool m_bMeasureArea;
+	bool m_bIsClicking;
 	int m_nClicked;
-	int m_point[2][2];
+	std::vector<QPointF> m_vecPoint;
+
+	bool m_bCenterGrid;
+	int m_nPullbackLength;
 
 	QPoint m_textPos;
 	QString m_str;

@@ -1,7 +1,7 @@
 #ifndef CONFIGURATION_H
 #define CONFIGURATION_H
 
-#define VERSION						"0.0.0" ///"2.0.0"
+#define VERSION						"0.0.0" ///"2.1.0"
 
 #define POWER_2(x)					(1 << x)
 #define NEAR_2_POWER(x)				(int)(1 << (int)ceil(log2(x)))
@@ -12,7 +12,8 @@
 ///#define NEXT_GEN_SYSTEM
 ///#define ENABLE_FPGA_FFT
 #define ENABLE_DATABASE_ENCRYPTION
-#define NI_ENABLE
+//#define AXSUN_ENABLE
+//#define NI_ENABLE
 
 //////////////////////// Size Setup /////////////////////////
 #define FLIM_SCANS                  512
@@ -67,17 +68,23 @@
 /////////////////////// Visualization ///////////////////////
 #define RING_THICKNESS				160
 
-#define OCT_COLORTABLE              0 // gray
+#define ALTERNATIVE_VIEW
+
+#define LONGI_WIDTH					1180
+#define LONGI_HEIGHT				243
+
+#define OCT_COLORTABLE              2 // sepia
 #define INTENSITY_COLORTABLE		6 // fire
-#define LIFETIME_COLORTABLE         14 // hsv1 ==> Viewer/QImageView.cpp
+#define INTENSITY_RATIO_COLORTABLE	12 // bwr
+#define LIFETIME_COLORTABLE         13 // hsv2 ==> Viewer/QImageView.cpp
 
 #define INTER_FRAME_SYNC			0 // Frames adjustment
 #define INTRA_FRAME_SYNC			0 // A-lines adjustment
 
 #define RENEWAL_COUNT				8 
 #define REDUCED_COUNT				8
-#define PIXEL_RESOLUTION			5.7 // micrometers
-#define OUTER_SHEATH_POSITION		120 // (int)((150 * 1.45 + 180 * 1 + 150 * 1.33) / PIXEL_RESOLUTION)
+#define PIXEL_RESOLUTION			5.0757 // micrometers
+#define OUTER_SHEATH_POSITION		114 // (int)((150 * 1.45 + 180 * 1 + 150 * 1.33) / PIXEL_RESOLUTION) // 0.034 inch OD
 
 
 
@@ -98,8 +105,6 @@ struct ContrastRange
 
 #include <Common/callback.h>
 
-
-static int ratio_index[3][2] = { { 2, 3 }, { 1, 3 }, { 1, 2 } };
 
 class Configuration
 {
@@ -145,20 +150,15 @@ public:
 		
         // Visualization
         flimEmissionChannel = settings.value("flimEmissionChannel").toInt();
+		flimVisualizationMode = settings.value("flimVisualizationMode").toInt();
 		for (int i = 0; i < 3; i++)
 		{
-			flimIntensityRatioRefIdx[i] = settings.value(QString("flimIntensityRatioRefIdx_Ch%1").arg(i + 1)).toInt();
-
 			flimIntensityRange[i].max = settings.value(QString("flimIntensityRangeMax_Ch%1").arg(i + 1)).toFloat();
 			flimIntensityRange[i].min = settings.value(QString("flimIntensityRangeMin_Ch%1").arg(i + 1)).toFloat();
 			flimLifetimeRange[i].max = settings.value(QString("flimLifetimeRangeMax_Ch%1").arg(i + 1)).toFloat();
 			flimLifetimeRange[i].min = settings.value(QString("flimLifetimeRangeMin_Ch%1").arg(i + 1)).toFloat();
-
-			for (int j = 0; j < 2; j++)
-			{
-				flimIntensityRatioRange[i][j].max = settings.value(QString("flimIntensityRatioRangeMax_Ch%1_%2").arg(i + 1).arg(ratio_index[i][j])).toFloat();
-				flimIntensityRatioRange[i][j].min = settings.value(QString("flimIntensityRatioRangeMin_Ch%1_%2").arg(i + 1).arg(ratio_index[i][j])).toFloat();
-			}
+			flimIntensityRatioRange[i].max = settings.value(QString("flimIntensityRatioRangeMax_Ch%1_%2").arg(i + 1).arg((i == 0) ? 3 : i)).toFloat();
+			flimIntensityRatioRange[i].min = settings.value(QString("flimIntensityRatioRangeMin_Ch%1_%2").arg(i + 1).arg((i == 0) ? 3 : i)).toFloat();
 
 			float temp = settings.value(QString("flimIntensityComp_%1").arg(i + 1)).toFloat();
 			flimIntensityComp[i] = (temp == 0.0f) ? 1.0f : temp;			
@@ -172,8 +172,8 @@ public:
 		verticalMirroring = settings.value("verticalMirroring").toBool();
 		
 		// Additional synchronization parameters
-		intraFrameSync = settings.value("flimSyncAdjust").toInt();
-		interFrameSync = settings.value("flimSyncInterFrame").toInt();
+		intraFrameSync = settings.value("intraFrameSync").toInt();
+		interFrameSync = settings.value("interFrameSync").toInt();
 
 		// Device control
 		rotaryRpm = settings.value("rotaryRpm").toInt();
@@ -226,20 +226,15 @@ public:
 
 		// Visualization
         settings.setValue("flimEmissionChannel", flimEmissionChannel);
+		settings.setValue("flimVisualizationMode", flimVisualizationMode);
 		for (int i = 0; i < 3; i++)
 		{
-			settings.setValue(QString("flimIntensityRatioRefIdx_Ch%1").arg(i + 1), flimIntensityRatioRefIdx[i]);
-
 			settings.setValue(QString("flimIntensityRangeMax_Ch%1").arg(i + 1), QString::number(flimIntensityRange[i].max, 'f', 1));
 			settings.setValue(QString("flimIntensityRangeMin_Ch%1").arg(i + 1), QString::number(flimIntensityRange[i].min, 'f', 1));
 			settings.setValue(QString("flimLifetimeRangeMax_Ch%1").arg(i + 1), QString::number(flimLifetimeRange[i].max, 'f', 1));
 			settings.setValue(QString("flimLifetimeRangeMin_Ch%1").arg(i + 1), QString::number(flimLifetimeRange[i].min, 'f', 1));
-
-			for (int j = 0; j < 2; j++)
-			{
-				settings.setValue(QString("flimIntensityRatioRangeMax_Ch%1_%2").arg(i + 1).arg(ratio_index[i][j]), QString::number(flimIntensityRatioRange[i][j].max, 'f', 1));
-				settings.setValue(QString("flimIntensityRatioRangeMin_Ch%1_%2").arg(i + 1).arg(ratio_index[i][j]), QString::number(flimIntensityRatioRange[i][j].min, 'f', 1));
-			}
+			settings.setValue(QString("flimIntensityRatioRangeMax_Ch%1_%2").arg(i + 1).arg((i == 0) ? 3 : i), QString::number(flimIntensityRatioRange[i].max, 'f', 1));
+			settings.setValue(QString("flimIntensityRatioRangeMin_Ch%1_%2").arg(i + 1).arg((i == 0) ? 3 : i), QString::number(flimIntensityRatioRange[i].min, 'f', 1));
 		}
 #ifndef NEXT_GEN_SYSTEM
 		settings.setValue("octGrayRangeMax", octGrayRange.max);
@@ -248,6 +243,10 @@ public:
 		settings.setValue("rotatedAlines", rotatedAlines);
 		settings.setValue("innerOffsetLength", innerOffsetLength);
 		settings.setValue("verticalMirroring", verticalMirroring);
+
+		// Additional synchronization parameters
+		settings.setValue("intraFrameSync", intraFrameSync);
+		settings.setValue("interFrameSync", interFrameSync);
 
 		// Device control
 		settings.setValue("rotaryRpm", rotaryRpm);
@@ -307,10 +306,10 @@ public:
 	
 	// Visualization    
     int flimEmissionChannel;
+	int flimVisualizationMode;
     ContrastRange<float> flimIntensityRange[3];
     ContrastRange<float> flimLifetimeRange[3];
-	int flimIntensityRatioRefIdx[3];
-    ContrastRange<float> flimIntensityRatioRange[3][3];
+    ContrastRange<float> flimIntensityRatioRange[3];
 	float flimIntensityComp[3];
 #ifndef NEXT_GEN_SYSTEM
     ContrastRange<int> octGrayRange;

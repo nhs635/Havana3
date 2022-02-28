@@ -118,7 +118,7 @@ void QPatientSelectionTab::createPatientSelectionTable()
     m_pTableWidget_PatientInformation->setColumnCount(7);
 
     QStringList colLabels;
-    colLabels << "Patient Name" << "Patient ID" << "Gender" << "Date of Birth" << "Last Case (Total)" << "Physician" << "Keywords";
+    colLabels << "Patient Name" << "Patient ID" << "Gender" << "Date of Birth (Age)" << "Last Case (Total)" << "Physician" << "Keywords";
     m_pTableWidget_PatientInformation->setHorizontalHeaderLabels(colLabels);    
 
     // Cell items properties
@@ -140,8 +140,8 @@ void QPatientSelectionTab::createPatientSelectionTable()
     m_pTableWidget_PatientInformation->horizontalHeader()->setStretchLastSection(true);
     m_pTableWidget_PatientInformation->setColumnWidth(0, 200);
     m_pTableWidget_PatientInformation->setColumnWidth(1, 100);
-    m_pTableWidget_PatientInformation->setColumnWidth(2, 100);
-    m_pTableWidget_PatientInformation->setColumnWidth(3, 120);
+    m_pTableWidget_PatientInformation->setColumnWidth(2, 80);
+    m_pTableWidget_PatientInformation->setColumnWidth(3, 150);
     m_pTableWidget_PatientInformation->setColumnWidth(4, 150);
     m_pTableWidget_PatientInformation->setColumnWidth(5, 150);
 }
@@ -182,7 +182,7 @@ void QPatientSelectionTab::removePatient()
     }
 	
     int current_row = m_pTableWidget_PatientInformation->currentRow();
-	QString patient_id = m_pTableWidget_PatientInformation->item(current_row, 1)->text();
+	QString patient_id = QString("%1").arg(m_pTableWidget_PatientInformation->item(current_row, 1)->text().toInt());
 	QString patient_name = m_pTableWidget_PatientInformation->item(current_row, 0)->text();
 
 	foreach(QDialog* pTabView, m_pMainWnd->getVectorTabViews())
@@ -204,7 +204,7 @@ void QPatientSelectionTab::editDatabaseLocation(const QString &dbPath)
 
 void QPatientSelectionTab::findDatabaseLocation()
 {
-    QString dbPath = QFileDialog::getExistingDirectory(nullptr, "Select Database...", m_pConfig->dbPath,
+	QString dbPath = QFileDialog::getExistingDirectory(nullptr, "Select Database...", QDir::homePath(),
                                                        QFileDialog::ShowDirsOnly | QFileDialog::DontUseNativeDialog);
 	QString prevDbPath = m_pConfig->dbPath;
     if (dbPath != "")
@@ -259,10 +259,14 @@ void QPatientSelectionTab::loadPatientDatabase()
                 }
             }, true);
 
+			QDate date_of_birth = QDate::fromString(_sqlQuery.value(4).toString(), "yyyy-MM-dd");
+			QDate date_today = QDate::currentDate();
+			int age = (int)((double)date_of_birth.daysTo(date_today) / 365.25);
+
             pNameItem->setText(_sqlQuery.value(1).toString() + ", " + _sqlQuery.value(0).toString());
-            pIdItem->setText(_sqlQuery.value(3).toString());
+            pIdItem->setText(QString("%1").arg(_sqlQuery.value(3).toString().toInt(), 8, 10, QChar('0')));
             pGenderItem->setText(m_pHvnSqlDataBase->getGender(_sqlQuery.value(5).toInt()));
-            pDobItem->setText(_sqlQuery.value(4).toString());
+            pDobItem->setText(QString("%1 (%2)").arg(_sqlQuery.value(4).toString()).arg(age));
             pLastCaseItem->setText((total != 0 ? last_date.toString("yyyy-MM-dd") : "N/A") + QString(" (%1)").arg(total));
             pPhysicianItem->setText(_sqlQuery.value(8).toString());
             pKeywordsItem->setText(_sqlQuery.value(7).toString());
@@ -290,4 +294,5 @@ void QPatientSelectionTab::loadPatientDatabase()
     });
 
     m_pTableWidget_PatientInformation->setSortingEnabled(true);
+	m_pTableWidget_PatientInformation->sortItems(4, Qt::DescendingOrder);
 }

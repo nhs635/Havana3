@@ -15,7 +15,9 @@
 #include <DataAcquisition/DataAcquisition.h>
 #include <DataAcquisition/ThreadManager.h>
 #ifndef NEXT_GEN_SYSTEM
+#ifdef AXSUN_ENABLE
 #include <DataAcquisition/AxsunCapture/AxsunCapture.h>
+#endif
 #include <DataAcquisition/SignatecDAQ/SignatecDAQ.h>
 #else
 #include <DataAcquisition/AlazarDAQ/AlazarDAQ.h>
@@ -28,7 +30,9 @@
 #include <DeviceControl/FaulhaberMotor/RotaryMotor.h>
 #include <DeviceControl/FaulhaberMotor/PullbackMotor.h>
 #include <DeviceControl/ElforlightLaser/ElforlightLaser.h>
+#ifdef AXSUN_ENABLE
 #include <DeviceControl/AxsunControl/AxsunControl.h>
+#endif
 
 #include <iostream>
 #include <thread>
@@ -299,10 +303,16 @@ void QStreamTab::changePatient(QString patient_id)
 		while (_sqlQuery.next())
 		{
 			m_recordInfo.patientName = _sqlQuery.value(1).toString() + ", " + _sqlQuery.value(0).toString();
-			m_pLabel_PatientInformation->setText(QString("<b>%1</b>"
-				"&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>ID:</b> %2").
-				arg(m_recordInfo.patientName).
-				arg(m_recordInfo.patientId));
+
+			QDate date_of_birth = QDate::fromString(_sqlQuery.value(4).toString(), "yyyy-MM-dd");
+			QDate date_today = QDate::currentDate();
+			int age = (int)((double)date_of_birth.daysTo(date_today) / 365.25);
+			QString gender = m_pHvnSqlDataBase->getGender(_sqlQuery.value(5).toInt());
+
+			m_pLabel_PatientInformation->setText(QString("<b>%1 (%2%3)</b>"
+				"&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>ID:</b> %4").
+				arg(m_recordInfo.patientName).arg(age).arg(gender).
+				arg(QString("%1").arg(m_recordInfo.patientId.toInt(), 8, 10, QChar('0'))));
 			QString title = QString("Live Streaming: %1").arg(m_recordInfo.patientName);
 			setWindowTitle(title);
 			
@@ -330,7 +340,7 @@ void QStreamTab::startLiveImaging(bool start)
 		msg_box.setStandardButtons(0);
 		msg_box.setWindowModality(Qt::WindowModal);
 		msg_box.setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::CustomizeWindowHint);
-		msg_box.move((m_pMainWnd->width() - msg_box.width()) / 2, (m_pMainWnd->height() - msg_box.height()) / 2);
+		msg_box.move(QApplication::desktop()->screen()->rect().center() - msg_box.rect().center());
 		msg_box.setFixedSize(msg_box.width(), msg_box.height());
 		connect(this, SIGNAL(deviceInitialized()), &msg_box, SLOT(accept()));
 		msg_box.show();
@@ -676,7 +686,7 @@ void QStreamTab::setOctAcquisitionCallback()
 	});
 
 	m_pDataAcquisition->ConnectAcquiredOctBG([&](uint32_t frame_count, const np::Uint8Array2& frame) {
-
+#ifdef AXSUN_ENABLE
 		np::Uint16Array2 bg((uint16_t*)frame.raw_ptr(), frame.size(0) / 2, frame.size(1));
 		ippiTranspose_16u_C1R(bg, sizeof(uint16_t) * bg.size(0),
 			getDeviceControl()->getAxsunControl()->background_frame, sizeof(uint16_t) * bg.size(1), { bg.size(0), bg.size(1) });
@@ -686,6 +696,10 @@ void QStreamTab::setOctAcquisitionCallback()
 			file.write(reinterpret_cast<const char*>(getDeviceControl()->getAxsunControl()->background_frame.raw_ptr()), 
 				sizeof(uint16_t) * getDeviceControl()->getAxsunControl()->background_frame.length());
 		file.close();
+#else
+		(void)frame_count;
+		(void)frame;
+#endif
 	});
 
 	m_pDataAcquisition->ConnectStopOctData([&]() {
@@ -1032,7 +1046,9 @@ void QStreamTab::resetCatheterCalibration()
 		{
 			m_pConfig->axsunVDLLength = 0.0;
 			m_pScrollBar_CatheterCalibration->setValue(0);
+#ifdef AXSUN_ENABLE
 			m_pDeviceControl->getAxsunControl()->setVDLHome();
+#endif
 		}
 	});
 	calib.detach();	
@@ -1047,7 +1063,9 @@ void QStreamTab::scrollCatheterCalibration(int value)
 		if (m_pDeviceControl->getAxsunControl())
 		{
 			m_pConfig->axsunVDLLength = (float)value / 100.0f;
+#ifdef AXSUN_ENABLE
 			m_pDeviceControl->getAxsunControl()->setVDLLength(m_pConfig->axsunVDLLength);
+#endif
 		}
 	});
 	calib.detach();
@@ -1058,21 +1076,6 @@ void QStreamTab::scrollInnerOffsetLength(int offset)
 	m_pConfig->innerOffsetLength = offset;
 }
 
-void QStreamTab::catheterConnection(bool enabled)
-{
-	//if (enabled)
-	//{
-	//	if (m_pToggleButton_EnableRotation->isChecked())
-	//		m_pToggleButton_EnableRotation->setChecked(false);
-	//	m_pToggleButton_EnableRotation->setDisabled(true);
-	//	m_pDeviceControl->moveAbsolute();
-	//}
-	//else
-	//{
-	//	m_pToggleButton_EnableRotation->setEnabled(true);
-	//	m_pDeviceControl->home();
-	//}
-}
 
 void QStreamTab::enableRotation(bool enabled)
 {	
@@ -1143,6 +1146,8 @@ void QStreamTab::startPullback(bool enabled)
 		MsgBox.setStandardButtons(QMessageBox::Ok | QMessageBox::Cancel);
 		MsgBox.setDefaultButton(QMessageBox::Ok);
 		MsgBox.setButtonText(QMessageBox::Ok, "Pullback");
+		MsgBox.move(QApplication::desktop()->screen()->rect().center().x() - MsgBox.rect().center().x(),
+			QApplication::desktop()->screen()->rect().center().y() - MsgBox.rect().center().y() + 250);
 		int ret = MsgBox.exec();
 
 		switch (ret)
@@ -1238,9 +1243,14 @@ void QStreamTab::onTimerSyncMonitor()
 	size_t fv_bfn = getFlimVisualizationBufferQueueSize();
 	size_t ov_bfn = getOctVisualizationBufferQueueSize();
 #ifndef NEXT_GEN_SYSTEM
-	double oct_fps = m_pDataAcquisition->getAxsunCapture()->frameRate;
-	double flim_fps = m_pDataAcquisition->getDigitizer()->frameRate;
+#ifdef AXSUN_ENABLE
+	double oct_fps = m_pDataAcquisition->getAxsunCapture()->frameRate;	
 	uint32_t dropped_packets = m_pDataAcquisition->getAxsunCapture()->dropped_packets;
+#else
+	double oct_fps = 0.0;
+	uint32_t dropped_packets = 0;
+#endif
+	double flim_fps = m_pDataAcquisition->getDigitizer()->frameRate;
 
 	m_pLabel_StreamingSyncStatus->setText(QString("\n[Sync]\nFP#: %1\nOP#: %2\nFV#: %3\nOV#: %4\nOCT: %5 fps\nFLIM: %6 fps\ndrop ptks: %7")
 		.arg(fp_bfn, 3).arg(op_bfn, 3).arg(fv_bfn, 3).arg(ov_bfn, 3).arg(oct_fps, 3, 'f', 2).arg(flim_fps, 3, 'f', 2).arg(dropped_packets));

@@ -37,16 +37,14 @@ LIBS += $$PWD/lib/intel64_win/ippcore.lib \
         $$PWD/lib/intel64_win/ippi.lib \
         $$PWD/lib/intel64_win/ipps.lib \
         $$PWD/lib/intel64_win/ippvm.lib
-LIBS += $$PWD/lib/intel64_win/vc14/tbb_debug.lib
-release {
-    LIBS += $$PWD/lib/intel64_win/vc14/tbb.lib
-}
+LIBS += $$PWD/lib/intel64_win/vc14/tbb_debug.lib \
+        $$PWD/lib/intel64_win/vc14/tbb.lib
 LIBS += $$PWD/lib/intel64_win/mkl_core.lib \
         $$PWD/lib/intel64_win/mkl_tbb_thread.lib \
         $$PWD/lib/intel64_win/mkl_intel_lp64.lib
-debug {
-    LIBS += $$PWD/lib/vld.lib
-}
+#debug {
+#    LIBS += $$PWD/lib/vld.lib
+#}
 
 
 SOURCES += Havana3/Havana3.cpp \

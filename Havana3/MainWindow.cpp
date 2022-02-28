@@ -12,6 +12,8 @@
 #include <Havana3/QStreamTab.h>
 #include <Havana3/QResultTab.h>
 
+#include <Havana3/QViewTab.h>
+
 #include <Havana3/Dialog/SettingDlg.h>
 
 #include <DataAcquisition/DataAcquisition.h>
@@ -65,7 +67,17 @@ MainWindow::MainWindow(QWidget *parent) :
 
     ui->centralWidget->setLayout(m_pGridLayout);
 
-    this->setMinimumSize(1280, 994);
+	this->setGeometry(0, 30, this->geometry().width(), this->geometry().height());
+	if (QApplication::desktop()->screen()->rect().width() == 1280)
+	{
+		this->setMinimumSize(1280, 994);
+		this->setWindowState(Qt::WindowMaximized);
+	}
+	else
+	{		
+		this->setFixedSize(1280, 994);
+		this->move(QApplication::desktop()->screen()->rect().center() - this->rect().center());
+	}
 
     // Connect signal and slot
     connect(m_pTabWidget, SIGNAL(currentChanged(int)), this, SLOT(tabCurrentChanged(int)));
@@ -88,6 +100,15 @@ void MainWindow::closeEvent(QCloseEvent *e)
 	if (m_pStreamTab)
 		if (m_pStreamTab->getDataAcquisition()->getAcquisitionState())
 			m_pStreamTab->startLiveImaging(false);
+
+	//foreach(QDialog* _pTabView, m_vectorTabViews)
+	//{
+	//	if (_pTabView->windowTitle().contains("Review"))
+	//	{
+	//		if (dynamic_cast<QResultTab*>(_pTabView)->getViewTab()->getPlayButton()->isChecked())
+	//			dynamic_cast<QResultTab*>(_pTabView)->getViewTab()->getPlayButton()->setChecked(false);
+	//	}
+	//}
 
     e->accept();
 }
@@ -241,6 +262,9 @@ void MainWindow::tabCloseRequested(int index)
 		}
 		else if (pTabView->windowTitle().contains("Review"))
 		{
+			if (dynamic_cast<QResultTab*>(pTabView)->getViewTab()->getPlayButton()->isChecked())
+				dynamic_cast<QResultTab*>(pTabView)->getViewTab()->getPlayButton()->setChecked(false);
+
 			int _index = 0;
 			foreach(QDialog* _pTabView, m_vectorTabViews)
 			{
@@ -274,8 +298,8 @@ void MainWindow::makePatientSelectionTab()
 
 void MainWindow::makePatientSummaryTab(int row)
 {
-    QString patient_id = m_pPatientSelectionTab->getTableWidgetPatientInformation()->item(row, 1)->text();
-
+    QString patient_id = QString("%1").arg(m_pPatientSelectionTab->getTableWidgetPatientInformation()->item(row, 1)->text().toInt());
+	
     foreach (QDialog* pTabView, m_vectorTabViews)
     {
         if (pTabView->windowTitle().contains("Summary"))

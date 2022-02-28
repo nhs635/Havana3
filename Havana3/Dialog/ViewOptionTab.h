@@ -12,6 +12,13 @@ class QResultTab;
 class QViewTab;
 class QImageView;
 
+enum VisualizationMode
+{
+	_LIFETIME_ = 0,
+	_INTENSITY_RATIO_ = 1
+};
+
+
 class ViewOptionTab : public QDialog
 {
     Q_OBJECT
@@ -30,18 +37,18 @@ public:
     inline QGroupBox* getLayoutBox() const { return m_pGroupBox_ViewOption; }
 
 	inline int getCurrentRotation() const { return m_pScrollBar_Rotation->value(); }
-	inline bool getIntensityRatioMode() const { return m_pCheckBox_IntensityRatio->isChecked(); }	
+	//inline bool getIntensityRatioMode() const { return m_pCheckBox_IntensityRatio->isChecked(); }	
 	inline bool isClassification() const { return m_pCheckBox_Classification->isChecked(); }
 	
 private:
     void createFlimVisualizationOptionTab();
     void createOctVisualizationOptionTab();
+	void createSyncVisualizationOptionTab();
 
 private slots:
     // FLIm visualization option control
 	void changeEmissionChannel(int);
-	void enableIntensityRatioMode(bool);
-	void changeIntensityRatioRef(int);
+	void setVisualizationMode(int);
 	void enableClassification(bool);
     void adjustFlimContrast();
 
@@ -50,9 +57,13 @@ private slots:
 	void adjustDecibelRange();
 	void adjustOctGrayContrast();
 
+	void setIntraFrameSync(int);
+	void setInterFrameSync(int);
+
 // Variables ////////////////////////////////////////////
 private:
     Configuration* m_pConfig;
+	Configuration* m_pConfigTemp;
 	QPatientSummaryTab* m_pPatientSummaryTab;
     QStreamTab* m_pStreamTab;
     QResultTab* m_pResultTab;
@@ -67,19 +78,25 @@ private:
     QLabel *m_pLabel_EmissionChannel;
     QComboBox *m_pComboBox_EmissionChannel;
 
-	QCheckBox *m_pCheckBox_IntensityRatio;
-	QComboBox *m_pComboBox_IntensityRef;
+	QLabel *m_pLabel_VisualizationMode;
+	QRadioButton *m_pRadioButton_Lifetime;
+	QRadioButton *m_pRadioButton_IntensityRatio;
+	QButtonGroup *m_pButtonGroup_Visualization;
 
 	QCheckBox *m_pCheckBox_Classification;;
 	
     QLabel *m_pLabel_NormIntensity;
     QLabel *m_pLabel_Lifetime;
+	QLabel *m_pLabel_IntensityRatio;
     QLineEdit *m_pLineEdit_IntensityMax;
     QLineEdit *m_pLineEdit_IntensityMin;
     QLineEdit *m_pLineEdit_LifetimeMax;
     QLineEdit *m_pLineEdit_LifetimeMin;
+	QLineEdit *m_pLineEdit_IntensityRatioMax;
+	QLineEdit *m_pLineEdit_IntensityRatioMin;
     QImageView *m_pImageView_IntensityColorbar;
     QImageView *m_pImageView_LifetimeColorbar;
+	QImageView *m_pImageView_IntensityRatioColorbar;
 
     // OCT visualization option widgets
 	QLabel *m_pLabel_Rotation;
@@ -93,6 +110,12 @@ private:
     QLineEdit *m_pLineEdit_OctGrayMax;
     QLineEdit *m_pLineEdit_OctGrayMin;
     QImageView *m_pImageView_OctColorbar;
+
+	// Manual synchronization
+	QLabel *m_pLabel_IntraFrameSync;
+	QScrollBar *m_pScrollBar_IntraFrameSync;
+	QLabel *m_pLabel_InterFrameSync;
+	QScrollBar *m_pScrollBar_InterFrameSync;
 };
 
 #endif // VIEWOPTIONTAB_H

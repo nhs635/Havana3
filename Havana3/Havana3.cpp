@@ -46,8 +46,6 @@ int main(int argc, char *argv[])
 
     MainWindow w;
     w.show();
-
-    w.setGeometry(0, 30, w.geometry().width(), w.geometry().height());
-
+		
     return a.exec();
 }

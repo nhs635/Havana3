@@ -30,6 +30,7 @@ public:
 	bool openDatabase(const QString & username, const QString & password);
     void closeDatabase();
     void initializeDatabase();
+	void createDatabase();
     bool queryDatabase(const QString &, std::function<void(QSqlQuery &)> const &DidQuery = [](QSqlQuery &){}, bool db_opened = false, const QByteArray & preview = QByteArray(0, '\0'));
 	
 public:

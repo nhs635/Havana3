@@ -64,6 +64,9 @@ private:
     SyncObject<uint16_t> m_syncFlimProcessing;
 
 private:
+	QString m_iniName;
+
+private:
 	callback2<const char*, bool> SendStatusMessage;
 };
 

@@ -8,11 +8,13 @@
 #include <Havana3/QViewTab.h>
 
 #include <Havana3/Dialog/SettingDlg.h>
+#include <Havana3/Dialog/PulseReviewTab.h>
 #include <Havana3/Viewer/QScope.h>
 #include <Havana3/Viewer/QImageView.h>
 
 #include <DataAcquisition/DataAcquisition.h>
 #include <DataAcquisition/FLImProcess/FLImProcess.h>
+#include <DataAcquisition/DataProcessing.h>
 #include <DeviceControl/DeviceControl.h>
 
 
@@ -39,6 +41,7 @@ ViewOptionTab::ViewOptionTab(QWidget *parent) :
 		parent_name = "Review";
 		m_pResultTab = dynamic_cast<QResultTab*>(parent);
 		m_pConfig = m_pResultTab->getMainWnd()->m_pConfiguration;
+		m_pConfigTemp = m_pResultTab->getDataProcessing()->getConfigTemp();
 		m_pViewTab = m_pResultTab->getViewTab();
 	}
 			
@@ -55,6 +58,9 @@ ViewOptionTab::ViewOptionTab(QWidget *parent) :
 
 	// Create OCT visualization option tab
 	createOctVisualizationOptionTab();
+
+	// Create Sync visualization option tab
+	if (!m_pStreamTab) createSyncVisualizationOptionTab();
 
 	// Set layout
 	m_pVBoxLayout_ViewOption->addStretch(1);
@@ -87,17 +93,18 @@ void ViewOptionTab::createFlimVisualizationOptionTab()
 	if (!m_pStreamTab)
 	{
 		// Create widgets for FLIm intensity ratio image
-		m_pCheckBox_IntensityRatio = new QCheckBox(this);
-		m_pCheckBox_IntensityRatio->setText(" Intensity Ratio Visualization ");
-		m_pCheckBox_IntensityRatio->setDisabled(true); /* currently not supported */
+		m_pLabel_VisualizationMode = new QLabel("Visualization Mode   ", this);
+		m_pLabel_VisualizationMode->setAlignment(Qt::AlignVCenter | Qt::AlignRight);
 
-		m_pComboBox_IntensityRef = new QComboBox(this);
-		for (int i = 0; i < 3; i++)
-			if (i != m_pConfig->flimEmissionChannel - 1)
-				m_pComboBox_IntensityRef->addItem(QString("Ch %1").arg(i + 1));
-		m_pComboBox_IntensityRef->setCurrentIndex(m_pConfig->flimIntensityRatioRefIdx[m_pConfig->flimEmissionChannel - 1]);
-		m_pComboBox_IntensityRef->setFixedWidth(60);
-		m_pComboBox_IntensityRef->setDisabled(true);
+		m_pRadioButton_Lifetime = new QRadioButton(this);
+		m_pRadioButton_Lifetime->setText("Lifetime");
+		m_pRadioButton_Lifetime->setChecked(m_pConfig->flimVisualizationMode == VisualizationMode::_LIFETIME_);
+		m_pRadioButton_IntensityRatio = new QRadioButton(this);
+		m_pRadioButton_IntensityRatio->setText(QString("Intensity Ratio (%1/%2)").arg(m_pConfig->flimEmissionChannel).arg((m_pConfig->flimEmissionChannel == 1) ? 3 : m_pConfig->flimEmissionChannel - 1));
+		m_pRadioButton_IntensityRatio->setChecked(m_pConfig->flimVisualizationMode == VisualizationMode::_INTENSITY_RATIO_);
+		m_pButtonGroup_Visualization = new QButtonGroup(this);
+		m_pButtonGroup_Visualization->addButton(m_pRadioButton_Lifetime, 0);
+		m_pButtonGroup_Visualization->addButton(m_pRadioButton_IntensityRatio, 1);
 		
 		// Create widgets for FLIm based classification 
 		m_pCheckBox_Classification = new QCheckBox(this);
@@ -122,6 +129,18 @@ void ViewOptionTab::createFlimVisualizationOptionTab()
     m_pLineEdit_LifetimeMin->setFixedWidth(35);
 	m_pLineEdit_LifetimeMin->setText(QString::number(m_pConfig->flimLifetimeRange[m_pConfig->flimEmissionChannel - 1].min, 'f', 1));
 	m_pLineEdit_LifetimeMin->setAlignment(Qt::AlignCenter);
+	if (!m_pStreamTab)
+	{
+		m_pLineEdit_IntensityRatioMax = new QLineEdit(this);
+		m_pLineEdit_IntensityRatioMax->setFixedWidth(35);
+		m_pLineEdit_IntensityRatioMax->setText(QString::number(m_pConfig->flimIntensityRatioRange[m_pConfig->flimEmissionChannel - 1].max, 'f', 1));
+		m_pLineEdit_IntensityRatioMax->setAlignment(Qt::AlignCenter);
+		m_pLineEdit_IntensityRatioMin = new QLineEdit(this);
+		m_pLineEdit_IntensityRatioMin->setFixedWidth(35);
+		m_pLineEdit_IntensityRatioMin->setText(QString::number(m_pConfig->flimIntensityRatioRange[m_pConfig->flimEmissionChannel - 1].min, 'f', 1));
+		m_pLineEdit_IntensityRatioMin->setAlignment(Qt::AlignCenter);
+		m_pLineEdit_IntensityRatioMin->setDisabled(true);
+	}
 
 	// Create color bar for FLIM visualization
 	uint8_t color[256];
@@ -134,22 +153,35 @@ void ViewOptionTab::createFlimVisualizationOptionTab()
 	m_pImageView_LifetimeColorbar = new QImageView(ColorTable::colortable(LIFETIME_COLORTABLE), 256, 1, false, this);
     m_pImageView_LifetimeColorbar->setFixedSize(190, 20);
 	m_pImageView_LifetimeColorbar->drawImage(color);
+	if (!m_pStreamTab)
+	{
+		m_pImageView_IntensityRatioColorbar = new QImageView(ColorTable::colortable(INTENSITY_RATIO_COLORTABLE), 256, 1, false, this);
+		m_pImageView_IntensityRatioColorbar->setFixedSize(190, 20);
+		m_pImageView_IntensityRatioColorbar->drawImage(color);
+	}
 	m_pLabel_NormIntensity = new QLabel(QString("Ch%1 Intensity (AU) ").arg(m_pConfig->flimEmissionChannel), this);
     m_pLabel_NormIntensity->setFixedWidth(140);
 	m_pLabel_NormIntensity->setAlignment(Qt::AlignVCenter | Qt::AlignLeft);
 	m_pLabel_Lifetime = new QLabel(QString("Ch%1 Lifetime (nsec) ").arg(m_pConfig->flimEmissionChannel), this);
     m_pLabel_Lifetime->setFixedWidth(140);
 	m_pLabel_Lifetime->setAlignment(Qt::AlignVCenter | Qt::AlignLeft);
+	if (!m_pStreamTab)
+	{
+		m_pLabel_IntensityRatio = new QLabel(QString("Ch%1/%2 IntRatio (AU) ").arg(m_pConfig->flimEmissionChannel).arg((m_pConfig->flimEmissionChannel == 1) ? 3 : m_pConfig->flimEmissionChannel - 1), this);
+		m_pLabel_IntensityRatio->setFixedWidth(140);
+		m_pLabel_IntensityRatio->setAlignment(Qt::AlignVCenter | Qt::AlignLeft);
+	}
 		
     // Set layout
     QHBoxLayout *pHBoxLayout_FlimVisualization1 = new QHBoxLayout;
 	pHBoxLayout_FlimVisualization1->setSpacing(3);
     pHBoxLayout_FlimVisualization1->addWidget(m_pLabel_EmissionChannel);
-    pHBoxLayout_FlimVisualization1->addWidget(m_pComboBox_EmissionChannel);
 	pHBoxLayout_FlimVisualization1->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed));
+    pHBoxLayout_FlimVisualization1->addWidget(m_pComboBox_EmissionChannel);
 
 	QHBoxLayout *pHBoxLayout_IntensityColorbar = new QHBoxLayout;
 	QHBoxLayout *pHBoxLayout_LifetimeColorbar = new QHBoxLayout;
+	QHBoxLayout *pHBoxLayout_IntensityRatioColorbar = new QHBoxLayout;
 
 	pHBoxLayout_IntensityColorbar->setSpacing(1);
 	pHBoxLayout_IntensityColorbar->addWidget(m_pLabel_NormIntensity);
@@ -164,8 +196,17 @@ void ViewOptionTab::createFlimVisualizationOptionTab()
 	pHBoxLayout_LifetimeColorbar->addWidget(m_pLineEdit_LifetimeMin);
 	pHBoxLayout_LifetimeColorbar->addWidget(m_pImageView_LifetimeColorbar);
 	pHBoxLayout_LifetimeColorbar->addWidget(m_pLineEdit_LifetimeMax);
-  
 
+	if (!m_pStreamTab)
+	{
+		pHBoxLayout_IntensityRatioColorbar->setSpacing(1);
+		pHBoxLayout_IntensityRatioColorbar->addWidget(m_pLabel_IntensityRatio);
+		pHBoxLayout_IntensityRatioColorbar->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed));
+		pHBoxLayout_IntensityRatioColorbar->addWidget(m_pLineEdit_IntensityRatioMin);
+		pHBoxLayout_IntensityRatioColorbar->addWidget(m_pImageView_IntensityRatioColorbar);
+		pHBoxLayout_IntensityRatioColorbar->addWidget(m_pLineEdit_IntensityRatioMax);
+	}
+  
 	QVBoxLayout *pVBoxLayout_FlimVisualization = new QVBoxLayout;
 	pVBoxLayout_FlimVisualization->setSpacing(5);
 
@@ -175,15 +216,17 @@ void ViewOptionTab::createFlimVisualizationOptionTab()
 		QHBoxLayout *pHBoxLayout_FlimVisualization2 = new QHBoxLayout;
 		pHBoxLayout_FlimVisualization2->setSpacing(3);
 
-		pHBoxLayout_FlimVisualization2->addWidget(m_pCheckBox_IntensityRatio);
-		pHBoxLayout_FlimVisualization2->addWidget(m_pComboBox_IntensityRef);
+		pHBoxLayout_FlimVisualization2->addWidget(m_pLabel_VisualizationMode);
 		pHBoxLayout_FlimVisualization2->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed));
+		pHBoxLayout_FlimVisualization2->addWidget(m_pRadioButton_Lifetime);
+		pHBoxLayout_FlimVisualization2->addWidget(m_pRadioButton_IntensityRatio);
 
 		pVBoxLayout_FlimVisualization->addItem(pHBoxLayout_FlimVisualization2);
 		pVBoxLayout_FlimVisualization->addWidget(m_pCheckBox_Classification);
 	}
 	pVBoxLayout_FlimVisualization->addItem(pHBoxLayout_IntensityColorbar);
 	pVBoxLayout_FlimVisualization->addItem(pHBoxLayout_LifetimeColorbar);
+	if (!m_pStreamTab) pVBoxLayout_FlimVisualization->addItem(pHBoxLayout_IntensityRatioColorbar);
 
 	pGroupBox_FlimVisualization->setLayout(pVBoxLayout_FlimVisualization);
 
@@ -193,15 +236,21 @@ void ViewOptionTab::createFlimVisualizationOptionTab()
     connect(m_pComboBox_EmissionChannel, SIGNAL(currentIndexChanged(int)), this, SLOT(changeEmissionChannel(int)));
 	if (!m_pStreamTab)
 	{
-		connect(m_pCheckBox_IntensityRatio, SIGNAL(toggled(bool)), this, SLOT(enableIntensityRatioMode(bool)));
-		connect(m_pComboBox_IntensityRef, SIGNAL(currentIndexChanged(int)), this, SLOT(changeIntensityRatioRef(int)));		
+		connect(m_pButtonGroup_Visualization, SIGNAL(buttonClicked(int)), this, SLOT(setVisualizationMode(int)));
 		connect(m_pCheckBox_Classification, SIGNAL(toggled(bool)), this, SLOT(enableClassification(bool)));
 	}
-
 	connect(m_pLineEdit_IntensityMax, SIGNAL(textEdited(const QString &)), this, SLOT(adjustFlimContrast()));
 	connect(m_pLineEdit_IntensityMin, SIGNAL(textEdited(const QString &)), this, SLOT(adjustFlimContrast()));
 	connect(m_pLineEdit_LifetimeMax, SIGNAL(textEdited(const QString &)), this, SLOT(adjustFlimContrast()));
 	connect(m_pLineEdit_LifetimeMin, SIGNAL(textEdited(const QString &)), this, SLOT(adjustFlimContrast()));
+	if (!m_pStreamTab)
+	{
+		connect(m_pLineEdit_IntensityRatioMax, SIGNAL(textEdited(const QString &)), this, SLOT(adjustFlimContrast()));
+		connect(m_pLineEdit_IntensityRatioMin, SIGNAL(textEdited(const QString &)), this, SLOT(adjustFlimContrast()));
+		
+		// Initialization
+		setVisualizationMode(m_pConfig->flimVisualizationMode);
+	}
 }
 
 void ViewOptionTab::createOctVisualizationOptionTab()
@@ -216,13 +265,13 @@ void ViewOptionTab::createOctVisualizationOptionTab()
 		m_pScrollBar_Rotation = new QScrollBar(this);
 		m_pScrollBar_Rotation->setOrientation(Qt::Horizontal);
 		m_pScrollBar_Rotation->setRange(0, m_pConfig->octAlines - 1);
-		m_pScrollBar_Rotation->setValue(m_pConfig->rotatedAlines);
+		m_pScrollBar_Rotation->setValue(m_pConfigTemp->rotatedAlines);
 		m_pScrollBar_Rotation->setSingleStep(1);
 		m_pScrollBar_Rotation->setPageStep(m_pScrollBar_Rotation->maximum() / 10);
 		m_pScrollBar_Rotation->setFocusPolicy(Qt::StrongFocus);
 		m_pScrollBar_Rotation->setFixedSize(200, 18);
 
-		QString str; str.sprintf("Rotation %4d / %4d ", m_pConfig->rotatedAlines, m_pConfig->octAlines - 1);
+		QString str; str.sprintf("Rotation %4d / %4d ", m_pConfigTemp->rotatedAlines, m_pConfig->octAlines - 1);
 		m_pLabel_Rotation = new QLabel(str, this);
 		m_pLabel_Rotation->setBuddy(m_pScrollBar_Rotation);
 	}
@@ -254,11 +303,11 @@ void ViewOptionTab::createOctVisualizationOptionTab()
 	{
 		m_pLineEdit_OctGrayMax = new QLineEdit(this);
 		m_pLineEdit_OctGrayMax->setFixedWidth(35);
-		m_pLineEdit_OctGrayMax->setText(QString::number(m_pConfig->octGrayRange.max));
+		m_pLineEdit_OctGrayMax->setText(QString::number(m_pConfigTemp->octGrayRange.max));
 		m_pLineEdit_OctGrayMax->setAlignment(Qt::AlignCenter);
 		m_pLineEdit_OctGrayMin = new QLineEdit(this);
 		m_pLineEdit_OctGrayMin->setFixedWidth(35);
-		m_pLineEdit_OctGrayMin->setText(QString::number(m_pConfig->octGrayRange.min));
+		m_pLineEdit_OctGrayMin->setText(QString::number(m_pConfigTemp->octGrayRange.min));
 		m_pLineEdit_OctGrayMin->setAlignment(Qt::AlignCenter);
 	}
 #endif
@@ -337,6 +386,65 @@ void ViewOptionTab::createOctVisualizationOptionTab()
 #endif
 }
 
+void ViewOptionTab::createSyncVisualizationOptionTab()
+{
+	QGroupBox *pGroupBox_SyncVisualization = new QGroupBox;
+	pGroupBox_SyncVisualization->setStyleSheet("QGroupBox{padding-top:15px; margin-top:-15px}");
+	pGroupBox_SyncVisualization->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
+
+	// Create widgets for OCT-FLIm synchronization
+	if (!m_pStreamTab)
+	{
+		m_pScrollBar_IntraFrameSync = new QScrollBar(this);
+		m_pScrollBar_IntraFrameSync->setOrientation(Qt::Horizontal);
+		m_pScrollBar_IntraFrameSync->setRange(0, m_pConfig->octAlines - 1);
+		m_pScrollBar_IntraFrameSync->setValue(m_pConfigTemp->intraFrameSync);
+		m_pScrollBar_IntraFrameSync->setSingleStep(1);
+		m_pScrollBar_IntraFrameSync->setPageStep(m_pScrollBar_Rotation->maximum() / 10);
+		m_pScrollBar_IntraFrameSync->setFocusPolicy(Qt::StrongFocus);
+		m_pScrollBar_IntraFrameSync->setFixedSize(200, 18);
+
+		QString str; str.sprintf("Intra Sync %4d / %4d ", m_pConfigTemp->intraFrameSync, m_pConfig->octAlines - 1);
+		m_pLabel_IntraFrameSync = new QLabel(str, this);
+		m_pLabel_IntraFrameSync->setBuddy(m_pScrollBar_Rotation);
+
+		m_pScrollBar_InterFrameSync = new QScrollBar(this);
+		m_pScrollBar_InterFrameSync->setOrientation(Qt::Horizontal);
+		m_pScrollBar_InterFrameSync->setRange(-m_pConfigTemp->frames + 1, m_pConfigTemp->frames - 1);
+		m_pScrollBar_InterFrameSync->setValue(m_pConfigTemp->interFrameSync);
+		m_pScrollBar_InterFrameSync->setSingleStep(1);
+		m_pScrollBar_InterFrameSync->setPageStep(m_pScrollBar_Rotation->maximum() / 10);
+		m_pScrollBar_InterFrameSync->setFocusPolicy(Qt::StrongFocus);
+		m_pScrollBar_InterFrameSync->setFixedSize(200, 18);
+
+		str.sprintf("Inter Sync %4d /|%3d| ", m_pConfigTemp->interFrameSync, m_pConfigTemp->frames - 1);
+		m_pLabel_InterFrameSync = new QLabel(str, this);
+		m_pLabel_InterFrameSync->setBuddy(m_pScrollBar_Rotation);
+	}
+
+
+	// Set layout	
+	if (!m_pStreamTab)
+	{
+		QGridLayout *pGridLayout_FrameSync = new QGridLayout;
+		pGridLayout_FrameSync->setSpacing(3);
+
+		pGridLayout_FrameSync->addWidget(m_pLabel_IntraFrameSync, 0, 0);
+		pGridLayout_FrameSync->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed), 0, 1);
+		pGridLayout_FrameSync->addWidget(m_pScrollBar_IntraFrameSync, 0, 2);
+		pGridLayout_FrameSync->addWidget(m_pLabel_InterFrameSync, 1, 0);
+		pGridLayout_FrameSync->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed), 1, 1);
+		pGridLayout_FrameSync->addWidget(m_pScrollBar_InterFrameSync, 1, 2);
+		
+		pGroupBox_SyncVisualization->setLayout(pGridLayout_FrameSync);
+		m_pVBoxLayout_ViewOption->addWidget(pGroupBox_SyncVisualization);
+
+		// Connect signal and slot
+		connect(m_pScrollBar_IntraFrameSync, SIGNAL(valueChanged(int)), this, SLOT(setIntraFrameSync(int)));
+		connect(m_pScrollBar_InterFrameSync, SIGNAL(valueChanged(int)), this, SLOT(setInterFrameSync(int)));
+	}
+}
+
 
 void ViewOptionTab::changeEmissionChannel(int ch)
 {
@@ -344,11 +452,14 @@ void ViewOptionTab::changeEmissionChannel(int ch)
 	
 	m_pLabel_NormIntensity->setText(QString("Ch%1 Intensity (AU) ").arg(ch + 1));
 	m_pLabel_Lifetime->setText(QString("Ch%1 Lifetime (nsec) ").arg(ch + 1));
+	m_pLabel_IntensityRatio->setText(QString("Ch%1/%2 IntRatio (AU) ").arg(m_pConfig->flimEmissionChannel).arg((m_pConfig->flimEmissionChannel == 1) ? 3 : m_pConfig->flimEmissionChannel - 1));
 
 	m_pLineEdit_IntensityMin->setText(QString::number(m_pConfig->flimIntensityRange[ch].min, 'f', 1));
 	m_pLineEdit_IntensityMax->setText(QString::number(m_pConfig->flimIntensityRange[ch].max, 'f', 1));
 	m_pLineEdit_LifetimeMin->setText(QString::number(m_pConfig->flimLifetimeRange[ch].min, 'f', 1));
 	m_pLineEdit_LifetimeMax->setText(QString::number(m_pConfig->flimLifetimeRange[ch].max, 'f', 1));
+	m_pLineEdit_IntensityRatioMin->setText(QString::number(m_pConfig->flimIntensityRatioRange[ch].min, 'f', 1));
+	m_pLineEdit_IntensityRatioMax->setText(QString::number(m_pConfig->flimIntensityRatioRange[ch].max, 'f', 1));
 
 	if (m_pStreamTab)
 	{
@@ -357,22 +468,23 @@ void ViewOptionTab::changeEmissionChannel(int ch)
 	{
 		if (m_pViewTab)
 		{
-			m_pViewTab->setEmissionChannel(m_pConfig->flimEmissionChannel);
+			int mode = (int)m_pRadioButton_IntensityRatio->isChecked();
+			m_pViewTab->setViewMode(ch + 3 * mode);
 			m_pViewTab->invalidate();
 		}
 
 		{
-			disconnect(m_pComboBox_IntensityRef, 0, this, 0);
+			//disconnect(m_pComboBox_IntensityRef, 0, this, 0);
 
-			m_pComboBox_IntensityRef->removeItem(0);
-			m_pComboBox_IntensityRef->removeItem(0);
-			for (int i = 0; i < 3; i++)
-				if (i != ch)
-					m_pComboBox_IntensityRef->addItem(QString("Ch %1").arg(i + 1));
+			//m_pComboBox_IntensityRef->removeItem(0);
+			//m_pComboBox_IntensityRef->removeItem(0);
+			//for (int i = 0; i < 3; i++)
+			//	if (i != ch)
+			//		m_pComboBox_IntensityRef->addItem(QString("Ch %1").arg(i + 1));
 
-			connect(m_pComboBox_IntensityRef, SIGNAL(currentIndexChanged(int)), this, SLOT(changeIntensityRatioRef(int)));
+			//connect(m_pComboBox_IntensityRef, SIGNAL(currentIndexChanged(int)), this, SLOT(changeIntensityRatioRef(int)));
 
-			m_pComboBox_IntensityRef->setCurrentIndex(m_pConfig->flimIntensityRatioRefIdx[ch]);
+			//m_pComboBox_IntensityRef->setCurrentIndex(m_pConfig->flimIntensityRatioRefIdx[ch]);
 		}
 	}
 
@@ -418,8 +530,36 @@ void ViewOptionTab::changeEmissionChannel(int ch)
 }
 
 
-void ViewOptionTab::enableIntensityRatioMode(bool toggled)
+void ViewOptionTab::setVisualizationMode(int mode)
 {
+	if (mode == VisualizationMode::_LIFETIME_)
+	{
+		m_pLabel_Lifetime->setVisible(true);
+		m_pLineEdit_LifetimeMin->setVisible(true);
+		m_pImageView_LifetimeColorbar->setVisible(true);
+		m_pLineEdit_LifetimeMax->setVisible(true);
+
+		m_pLabel_IntensityRatio->setVisible(false);
+		m_pLineEdit_IntensityRatioMin->setVisible(false);
+		m_pImageView_IntensityRatioColorbar->setVisible(false);
+		m_pLineEdit_IntensityRatioMax->setVisible(false);
+	}
+	else if (mode == VisualizationMode::_INTENSITY_RATIO_)
+	{
+		m_pLabel_Lifetime->setVisible(false);
+		m_pLineEdit_LifetimeMin->setVisible(false);
+		m_pImageView_LifetimeColorbar->setVisible(false);
+		m_pLineEdit_LifetimeMax->setVisible(false);
+
+		m_pLabel_IntensityRatio->setVisible(true);
+		m_pLineEdit_IntensityRatioMin->setVisible(true);
+		m_pImageView_IntensityRatioColorbar->setVisible(true);
+		m_pLineEdit_IntensityRatioMax->setVisible(true);
+	}
+
+	changeEmissionChannel(m_pConfig->flimEmissionChannel - 1);
+	adjustFlimContrast();
+
 	//// Set widget
 	//m_pComboBox_IntensityRef->setEnabled(toggled);
 
@@ -446,12 +586,10 @@ void ViewOptionTab::enableIntensityRatioMode(bool toggled)
 	//// Only result tab function
 	////	visualizeEnFaceMap(true);
 	////	visualizeImage(m_pSlider_SelectFrame->value());
-
-	(void)toggled;
 }
 
-void ViewOptionTab::changeIntensityRatioRef(int index)
-{
+//void ViewOptionTab::changeIntensityRatioRef(int index)
+//{
 	//m_pConfig->flimIntensityRatioRefIdx[m_pConfig->flimEmissionChannel - 1] = index;
 
 	//// Set widget
@@ -468,8 +606,8 @@ void ViewOptionTab::changeIntensityRatioRef(int index)
 	////	visualizeEnFaceMap(true);
 	////	visualizeImage(m_pSlider_SelectFrame->value());
 
-	(void)index;
-}
+	//(void)index;
+//}
 
 void ViewOptionTab::enableClassification(bool toggled)
 {
@@ -513,42 +651,53 @@ void ViewOptionTab::adjustFlimContrast()
 	}
 	else if (m_pResultTab)
 	{
-		if (!m_pCheckBox_IntensityRatio->isChecked())
+		if (m_pRadioButton_Lifetime->isChecked())
 		{
 			m_pConfig->flimIntensityRange[m_pConfig->flimEmissionChannel - 1].min = m_pLineEdit_IntensityMin->text().toFloat();
 			m_pConfig->flimIntensityRange[m_pConfig->flimEmissionChannel - 1].max = m_pLineEdit_IntensityMax->text().toFloat();
+			m_pConfig->flimLifetimeRange[m_pConfig->flimEmissionChannel - 1].min = m_pLineEdit_LifetimeMin->text().toFloat();
+			m_pConfig->flimLifetimeRange[m_pConfig->flimEmissionChannel - 1].max = m_pLineEdit_LifetimeMax->text().toFloat();
 		}
-		else
+		else if (m_pRadioButton_IntensityRatio->isChecked())
 		{
-			m_pConfig->flimIntensityRatioRange[m_pConfig->flimEmissionChannel - 1]
-				[m_pConfig->flimIntensityRatioRefIdx[m_pConfig->flimEmissionChannel - 1]].min = m_pLineEdit_IntensityMin->text().toFloat();
-			m_pConfig->flimIntensityRatioRange[m_pConfig->flimEmissionChannel - 1]
-				[m_pConfig->flimIntensityRatioRefIdx[m_pConfig->flimEmissionChannel - 1]].max = m_pLineEdit_IntensityMax->text().toFloat();
-		}
-		m_pConfig->flimLifetimeRange[m_pConfig->flimEmissionChannel - 1].min = m_pLineEdit_LifetimeMin->text().toFloat();
-		m_pConfig->flimLifetimeRange[m_pConfig->flimEmissionChannel - 1].max = m_pLineEdit_LifetimeMax->text().toFloat();
+			if (m_pConfig->flimIntensityRatioRange[m_pConfig->flimEmissionChannel - 1].min == m_pLineEdit_IntensityRatioMin->text().toFloat())
+			{
+				m_pConfig->flimIntensityRatioRange[m_pConfig->flimEmissionChannel - 1].min = -m_pLineEdit_IntensityRatioMax->text().toFloat();
+				m_pConfig->flimIntensityRatioRange[m_pConfig->flimEmissionChannel - 1].max = m_pLineEdit_IntensityRatioMax->text().toFloat();
+
+				m_pLineEdit_IntensityRatioMin->setText(QString::number(m_pConfig->flimIntensityRatioRange[m_pConfig->flimEmissionChannel - 1].min, 'f', 1));
+			}
+			else if (m_pConfig->flimIntensityRatioRange[m_pConfig->flimEmissionChannel - 1].max == m_pLineEdit_IntensityRatioMax->text().toFloat())
+			{
+				// 구현 필요가 없음.
+			}
+		}		
 
 		if (m_pViewTab) m_pViewTab->invalidate();
 	}
 
-	m_pConfig->writeToLog(QString("FLIm contrast range set: ch%1 i[%2 %3] l[%4 %5]")
+	m_pConfig->writeToLog(QString("FLIm contrast range set: ch%1 i[%2 %3] l[%4 %5] ir[%6 %7]")
 		.arg(m_pConfig->flimEmissionChannel)
 		.arg(m_pConfig->flimIntensityRange[m_pConfig->flimEmissionChannel - 1].min)
 		.arg(m_pConfig->flimIntensityRange[m_pConfig->flimEmissionChannel - 1].max)
 		.arg(m_pConfig->flimLifetimeRange[m_pConfig->flimEmissionChannel - 1].min)
-		.arg(m_pConfig->flimLifetimeRange[m_pConfig->flimEmissionChannel - 1].max));
+		.arg(m_pConfig->flimLifetimeRange[m_pConfig->flimEmissionChannel - 1].max)
+		.arg(m_pConfig->flimIntensityRatioRange[m_pConfig->flimEmissionChannel - 1].min)
+		.arg(m_pConfig->flimIntensityRatioRange[m_pConfig->flimEmissionChannel - 1].max));
 }
 
 
 void ViewOptionTab::rotateImage(int shift)
 {
 	// Only result tab function
-	m_pConfig->rotatedAlines = shift;
+	m_pConfigTemp->rotatedAlines = shift;
 
 	QString str; str.sprintf("Rotation %4d / %4d ", shift, m_pScrollBar_Rotation->maximum());
 	m_pLabel_Rotation->setText(str);
 
 	if (m_pViewTab) m_pViewTab->invalidate();
+	if (m_pResultTab->getSettingDlg()->getPulseReviewTab())
+		m_pResultTab->getSettingDlg()->getPulseReviewTab()->loadRois();
 
 	m_pConfig->writeToLog(QString("Rotated alines set: %1").arg(shift));
 }
@@ -591,12 +740,38 @@ void ViewOptionTab::adjustOctGrayContrast()
 {
 #ifndef NEXT_GEN_SYSTEM
 	// Only result tab function
-	m_pConfig->octGrayRange.min = m_pLineEdit_OctGrayMin->text().toFloat();
-	m_pConfig->octGrayRange.max = m_pLineEdit_OctGrayMax->text().toFloat();
+	m_pConfigTemp->octGrayRange.min = m_pLineEdit_OctGrayMin->text().toFloat();
+	m_pConfigTemp->octGrayRange.max = m_pLineEdit_OctGrayMax->text().toFloat();
 
 	if (m_pViewTab) m_pViewTab->invalidate();
 
 	m_pConfig->writeToLog(QString("OCT decibel range set: [%1 %2]")
-		.arg(m_pConfig->octGrayRange.min).arg(m_pConfig->octGrayRange.max));
+		.arg(m_pConfigTemp->octGrayRange.min).arg(m_pConfigTemp->octGrayRange.max));
 #endif
+}
+
+void ViewOptionTab::setIntraFrameSync(int sync)
+{
+	// Only result tab function
+	m_pConfigTemp->intraFrameSync = sync;
+	
+	QString str; str.sprintf("Intra Sync %4d / %4d ", m_pConfigTemp->intraFrameSync, m_pScrollBar_IntraFrameSync->maximum());
+	m_pLabel_IntraFrameSync->setText(str);
+
+	if (m_pViewTab) m_pViewTab->invalidate();
+
+	m_pConfig->writeToLog(QString("Intra frame sync set: %1").arg(sync));
+}
+
+void ViewOptionTab::setInterFrameSync(int sync)
+{
+	// Only result tab function
+	m_pConfigTemp->interFrameSync = sync;
+
+	QString str; str.sprintf("Inter Sync %4d /|%3d| ", m_pConfigTemp->interFrameSync, m_pScrollBar_InterFrameSync->maximum());
+	m_pLabel_InterFrameSync->setText(str);
+
+	if (m_pViewTab) m_pViewTab->invalidate();
+
+	m_pConfig->writeToLog(QString("Inter frame sync set: %1").arg(sync));
 }
