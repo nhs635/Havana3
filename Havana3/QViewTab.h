@@ -88,7 +88,8 @@ private slots:
 	void changeEmissionChannel(int);
 
 public:
-	void scaleFLImEnFaceMap(ImageObject* pImgObjIntensityMap, ImageObject* pImgObjLifetimeMap, ImageObject* pImgObjIntensityRatioMap, int ch, int mode);
+	void scaleFLImEnFaceMap(ImageObject* pImgObjIntensityMap, ImageObject* pImgObjLifetimeMap, 
+		ImageObject* pImgObjIntensityPropMap, ImageObject* pImgObjIntensityRatioMap, int ch, int mode);
 	void circShift(np::Uint8Array2& image, int shift);
 	void setAxialOffset(np::Uint8Array2& image, int offset);
 
@@ -128,6 +129,7 @@ public: // for post processing
 	std::vector<np::FloatArray2> m_intensityMap; // (256 x N) x 3
 	std::vector<np::FloatArray2> m_meandelayMap; // (256 X N) x 4
 	std::vector<np::FloatArray2> m_lifetimeMap; // (256 x N) x 3
+	std::vector<np::FloatArray2> m_intensityProportionMap; // (256 x N) x 3
 	std::vector<np::FloatArray2> m_intensityRatioMap; // (256 x N) x 3
 
 	std::vector<np::FloatArray2> m_vectorPulseCrop;
@@ -147,11 +149,11 @@ private:
 	ImageObject* m_pImgObjOctProjection;
 	ImageObject *m_pImgObjIntensityMap;
 	ImageObject *m_pImgObjLifetimeMap;
+	ImageObject *m_pImgObjIntensityPropMap;
 	ImageObject *m_pImgObjIntensityRatioMap;
 
     // Image visualization buffers - longitudinal
     ImageObject *m_pImgObjLongiImage;
-	ImageObject *m_pImgObjLongiImageRe;
 
 private:
 	circularize* m_pCirc;

@@ -628,6 +628,8 @@ void QPatientSummaryTab::loadPatientInformation()
 
 void QPatientSummaryTab::loadRecordDatabase()
 {
+	int currentRow = m_pTableWidget_RecordInformation->currentRow();
+
     m_pTableWidget_RecordInformation->clearContents();
 	m_pTableWidget_RecordInformation->setRowCount(0);
     m_pTableWidget_RecordInformation->setSortingEnabled(false);
@@ -722,4 +724,6 @@ void QPatientSummaryTab::loadRecordDatabase()
 
     m_pTableWidget_RecordInformation->setSortingEnabled(true);
 	m_pTableWidget_RecordInformation->sortItems(2, Qt::DescendingOrder);
+
+	if (currentRow >= 0) m_pTableWidget_RecordInformation->selectRow(currentRow);
 }

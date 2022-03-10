@@ -126,13 +126,13 @@ void PulseReviewTab::createPulseView()
 	m_pComboBox_PulseType->setCurrentIndex(1);
 	
 	m_pTableWidget_CurrentResult = new QTableWidget(this);
-	m_pTableWidget_CurrentResult->setFixedSize(419, 91);
+	m_pTableWidget_CurrentResult->setFixedSize(419, 114);
 	m_pTableWidget_CurrentResult->clearContents();
-	m_pTableWidget_CurrentResult->setRowCount(3);
+	m_pTableWidget_CurrentResult->setRowCount(4);
 	m_pTableWidget_CurrentResult->setColumnCount(3);
 
 	QStringList rowLabels, colLabels;
-	rowLabels << "Intensity (AU)" << "Lifetime (nsec)" << "IntRatio (AU)";
+	rowLabels << "Intensity (AU)" << "Lifetime (nsec)" << "IntProp (AU)" << "IntRatio (AU)";
 	colLabels << "Ch 1 (390)" << "Ch 2 (450)" << "Ch 3 (540)";
 	m_pTableWidget_CurrentResult->setVerticalHeaderLabels(rowLabels);
 	m_pTableWidget_CurrentResult->setHorizontalHeaderLabels(colLabels);
@@ -154,7 +154,7 @@ void PulseReviewTab::createPulseView()
 	m_pTableWidget_CurrentResult->setColumnWidth(1, 105);
 	m_pTableWidget_CurrentResult->setColumnWidth(2, 105);
 
-	for (int i = 0; i < 3; i++)
+	for (int i = 0; i < 4; i++)
 	{
 		for (int j = 0; j < 3; j++)
 		{
@@ -300,7 +300,7 @@ void PulseReviewTab::createPulseView()
 	connect(m_pPushButton_Set, SIGNAL(clicked(bool)), this, SLOT(set()));
 	connect(m_pPushButton_Cancel, SIGNAL(clicked(bool)), this, SLOT(cancel()));
 	connect(m_pComboBox_PlaqueType, SIGNAL(currentIndexChanged(int)), this, SLOT(changePlaqueType(int)));
-	connect(m_pTableWidget_RoiList, SIGNAL(cellClicked(int, int)), this, SLOT(selectRow(int, int)));
+	connect(m_pTableWidget_RoiList, SIGNAL(currentCellChanged(int, int, int, int)), this, SLOT(selectRow(int, int, int, int)));
 		
 	// Load roi data
 	loadRois();
@@ -500,6 +500,7 @@ void PulseReviewTab::drawPulse(int aline)
 	auto intensity = m_pViewTab->m_intensityMap;
 	auto mean_delay = m_pViewTab->m_meandelayMap;
 	auto lifetime = m_pViewTab->m_lifetimeMap;
+	auto int_prop = m_pViewTab->m_intensityProportionMap;
 	auto int_ratio = m_pViewTab->m_intensityRatioMap;
 	
 	// Window
@@ -545,7 +546,8 @@ void PulseReviewTab::drawPulse(int aline)
 		{
 			m_pTableWidget_CurrentResult->item(0, i)->setText(QString::number(intensity.at(i)(aline0, frame), 'f', 3));
 			m_pTableWidget_CurrentResult->item(1, i)->setText(QString::number(lifetime.at(i)(aline0, frame), 'f', 3));
-			m_pTableWidget_CurrentResult->item(2, i)->setText(QString::number(int_ratio.at(i)(aline0, frame), 'f', 3));
+			m_pTableWidget_CurrentResult->item(2, i)->setText(QString::number(int_prop.at(i)(aline0, frame), 'f', 3));
+			m_pTableWidget_CurrentResult->item(3, i)->setText(QString::number(int_ratio.at(i)(aline0, frame), 'f', 3));
 		}
 	}
 	else
@@ -556,13 +558,14 @@ void PulseReviewTab::drawPulse(int aline)
 
 		for (int i = 0; i < 3; i++)
 		{
-			float mi, ml, mr;
+			float mi, ml, mp, mr;
 			if (!cw)
 			{
 				if (start4 < end4)
 				{
 					ippsMean_32f(&intensity.at(i)(start4, frame), end4 - start4, &mi, ippAlgHintFast);
 					ippsMean_32f(&lifetime.at(i)(start4, frame), end4 - start4, &ml, ippAlgHintFast);
+					ippsMean_32f(&int_prop.at(i)(start4, frame), end4 - start4, &mp, ippAlgHintFast);
 					ippsMean_32f(&int_ratio.at(i)(start4, frame), end4 - start4, &mr, ippAlgHintFast);
 				}
 				else
@@ -576,6 +579,10 @@ void PulseReviewTab::drawPulse(int aline)
 					ippsSum_32f(&lifetime.at(i)(0, frame), end4, &temp2, ippAlgHintFast);
 					ml = (temp1 + temp2) / (m_pConfigTemp->flimAlines - start4 + end4);
 
+					ippsSum_32f(&int_prop.at(i)(start4, frame), m_pConfigTemp->flimAlines - start4, &temp1, ippAlgHintFast);
+					ippsSum_32f(&int_prop.at(i)(0, frame), end4, &temp2, ippAlgHintFast);
+					mp = (temp1 + temp2) / (m_pConfigTemp->flimAlines - start4 + end4);
+
 					ippsSum_32f(&int_ratio.at(i)(start4, frame), m_pConfigTemp->flimAlines - start4, &temp1, ippAlgHintFast);
 					ippsSum_32f(&int_ratio.at(i)(0, frame), end4, &temp2, ippAlgHintFast);
 					mr = (temp1 + temp2) / (m_pConfigTemp->flimAlines - start4 + end4);
@@ -587,6 +594,7 @@ void PulseReviewTab::drawPulse(int aline)
 				{
 					ippsMean_32f(&intensity.at(i)(end4, frame), start4 - end4, &mi, ippAlgHintFast);
 					ippsMean_32f(&lifetime.at(i)(end4, frame), start4 - end4, &ml, ippAlgHintFast);
+					ippsMean_32f(&int_prop.at(i)(end4, frame), start4 - end4, &mp, ippAlgHintFast);
 					ippsMean_32f(&int_ratio.at(i)(end4, frame), start4 - end4, &mr, ippAlgHintFast);
 				}
 				else
@@ -600,6 +608,10 @@ void PulseReviewTab::drawPulse(int aline)
 					ippsSum_32f(&lifetime.at(i)(end4, frame), m_pConfigTemp->flimAlines - end4, &temp2, ippAlgHintFast);
 					ml = (temp1 + temp2) / (m_pConfigTemp->flimAlines - end4 + start4);
 
+					ippsSum_32f(&int_prop.at(i)(0, frame), start4, &temp1, ippAlgHintFast);
+					ippsSum_32f(&int_prop.at(i)(end4, frame), m_pConfigTemp->flimAlines - end4, &temp2, ippAlgHintFast);
+					mp = (temp1 + temp2) / (m_pConfigTemp->flimAlines - end4 + start4);
+
 					ippsSum_32f(&int_ratio.at(i)(0, frame), start4, &temp1, ippAlgHintFast);
 					ippsSum_32f(&int_ratio.at(i)(end4, frame), m_pConfigTemp->flimAlines - end4, &temp2, ippAlgHintFast);
 					mr = (temp1 + temp2) / (m_pConfigTemp->flimAlines - end4 + start4);
@@ -608,7 +620,8 @@ void PulseReviewTab::drawPulse(int aline)
 			
 			m_pTableWidget_CurrentResult->item(0, i)->setText(QString::number(mi, 'f', 3));
 			m_pTableWidget_CurrentResult->item(1, i)->setText(QString::number(ml, 'f', 3));
-			m_pTableWidget_CurrentResult->item(2, i)->setText(QString::number(mr, 'f', 3));
+			m_pTableWidget_CurrentResult->item(2, i)->setText(QString::number(mp, 'f', 3));
+			m_pTableWidget_CurrentResult->item(3, i)->setText(QString::number(mr, 'f', 3));
 		}
 	}	
 		
@@ -874,7 +887,7 @@ void PulseReviewTab::changePlaqueType(int type)
 	pCircView->getRender()->update();
 }
 
-void PulseReviewTab::selectRow(int row, int column)
+void PulseReviewTab::selectRow(int row, int, int, int)
 {
 	QImageView *pCircView = m_pResultTab->getViewTab()->getCircImageView();
 
@@ -905,13 +918,14 @@ void PulseReviewTab::selectRow(int row, int column)
 	auto intensity = m_pViewTab->m_intensityMap;
 	auto mean_delay = m_pViewTab->m_meandelayMap;
 	auto lifetime = m_pViewTab->m_lifetimeMap;
+	auto int_prop = m_pViewTab->m_intensityProportionMap;
 	auto int_ratio = m_pViewTab->m_intensityRatioMap;
 
 	int start4 = start / 4;
 	int end4 = end / 4;
 	for (int i = 0; i < 3; i++)
 	{
-		float mi, ml, mr;
+		float mi, ml, mp, mr;
 
 		if (!cw)
 		{
@@ -919,6 +933,7 @@ void PulseReviewTab::selectRow(int row, int column)
 			{
 				ippsMean_32f(&intensity.at(i)(start4, frame), end4 - start4, &mi, ippAlgHintFast);
 				ippsMean_32f(&lifetime.at(i)(start4, frame), end4 - start4, &ml, ippAlgHintFast);
+				ippsMean_32f(&int_prop.at(i)(start4, frame), end4 - start4, &mp, ippAlgHintFast);
 				ippsMean_32f(&int_ratio.at(i)(start4, frame), end4 - start4, &mr, ippAlgHintFast);
 			}
 			else
@@ -932,6 +947,10 @@ void PulseReviewTab::selectRow(int row, int column)
 				ippsSum_32f(&lifetime.at(i)(0, frame), end4, &temp2, ippAlgHintFast);
 				ml = (temp1 + temp2) / (m_pConfigTemp->flimAlines - start4 + end4);
 
+				ippsSum_32f(&int_prop.at(i)(start4, frame), m_pConfigTemp->flimAlines - start4, &temp1, ippAlgHintFast);
+				ippsSum_32f(&int_prop.at(i)(0, frame), end4, &temp2, ippAlgHintFast);
+				mp = (temp1 + temp2) / (m_pConfigTemp->flimAlines - start4 + end4);
+
 				ippsSum_32f(&int_ratio.at(i)(start4, frame), m_pConfigTemp->flimAlines - start4, &temp1, ippAlgHintFast);
 				ippsSum_32f(&int_ratio.at(i)(0, frame), end4, &temp2, ippAlgHintFast);
 				mr = (temp1 + temp2) / (m_pConfigTemp->flimAlines - start4 + end4);
@@ -943,6 +962,7 @@ void PulseReviewTab::selectRow(int row, int column)
 			{
 				ippsMean_32f(&intensity.at(i)(end4, frame), start4 - end4, &mi, ippAlgHintFast);
 				ippsMean_32f(&lifetime.at(i)(end4, frame), start4 - end4, &ml, ippAlgHintFast);
+				ippsMean_32f(&int_prop.at(i)(end4, frame), start4 - end4, &mp, ippAlgHintFast);
 				ippsMean_32f(&int_ratio.at(i)(end4, frame), start4 - end4, &mr, ippAlgHintFast);
 			}
 			else
@@ -956,6 +976,10 @@ void PulseReviewTab::selectRow(int row, int column)
 				ippsSum_32f(&lifetime.at(i)(end4, frame), m_pConfigTemp->flimAlines - end4, &temp2, ippAlgHintFast);
 				ml = (temp1 + temp2) / (m_pConfigTemp->flimAlines - end4 + start4);
 
+				ippsSum_32f(&int_prop.at(i)(0, frame), start4, &temp1, ippAlgHintFast);
+				ippsSum_32f(&int_prop.at(i)(end4, frame), m_pConfigTemp->flimAlines - end4, &temp2, ippAlgHintFast);
+				mp = (temp1 + temp2) / (m_pConfigTemp->flimAlines - end4 + start4);
+
 				ippsSum_32f(&int_ratio.at(i)(0, frame), start4, &temp1, ippAlgHintFast);
 				ippsSum_32f(&int_ratio.at(i)(end4, frame), m_pConfigTemp->flimAlines - end4, &temp2, ippAlgHintFast);
 				mr = (temp1 + temp2) / (m_pConfigTemp->flimAlines - end4 + start4);
@@ -964,10 +988,9 @@ void PulseReviewTab::selectRow(int row, int column)
 		
 		m_pTableWidget_CurrentResult->item(0, i)->setText(QString::number(mi, 'f', 3));
 		m_pTableWidget_CurrentResult->item(1, i)->setText(QString::number(ml, 'f', 3));
-		m_pTableWidget_CurrentResult->item(2, i)->setText(QString::number(mr, 'f', 3));
+		m_pTableWidget_CurrentResult->item(2, i)->setText(QString::number(mp, 'f', 3));
+		m_pTableWidget_CurrentResult->item(3, i)->setText(QString::number(mr, 'f', 3));
 	}
-
-	(void)column;
 }
 
 void PulseReviewTab::saveRois()

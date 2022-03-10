@@ -99,12 +99,16 @@ void ViewOptionTab::createFlimVisualizationOptionTab()
 		m_pRadioButton_Lifetime = new QRadioButton(this);
 		m_pRadioButton_Lifetime->setText("Lifetime");
 		m_pRadioButton_Lifetime->setChecked(m_pConfig->flimVisualizationMode == VisualizationMode::_LIFETIME_);
+		m_pRadioButton_IntensityProp = new QRadioButton(this);
+		m_pRadioButton_IntensityProp->setText("Intensity Proportion");
+		m_pRadioButton_IntensityProp->setChecked(m_pConfig->flimVisualizationMode == VisualizationMode::_INTENSITY_PROP_);
 		m_pRadioButton_IntensityRatio = new QRadioButton(this);
 		m_pRadioButton_IntensityRatio->setText(QString("Intensity Ratio (%1/%2)").arg(m_pConfig->flimEmissionChannel).arg((m_pConfig->flimEmissionChannel == 1) ? 3 : m_pConfig->flimEmissionChannel - 1));
 		m_pRadioButton_IntensityRatio->setChecked(m_pConfig->flimVisualizationMode == VisualizationMode::_INTENSITY_RATIO_);
 		m_pButtonGroup_Visualization = new QButtonGroup(this);
-		m_pButtonGroup_Visualization->addButton(m_pRadioButton_Lifetime, 0);
-		m_pButtonGroup_Visualization->addButton(m_pRadioButton_IntensityRatio, 1);
+		m_pButtonGroup_Visualization->addButton(m_pRadioButton_Lifetime, _LIFETIME_);
+		m_pButtonGroup_Visualization->addButton(m_pRadioButton_IntensityProp, _INTENSITY_PROP_);
+		m_pButtonGroup_Visualization->addButton(m_pRadioButton_IntensityRatio, _INTENSITY_RATIO_);
 		
 		// Create widgets for FLIm based classification 
 		m_pCheckBox_Classification = new QCheckBox(this);
@@ -131,6 +135,15 @@ void ViewOptionTab::createFlimVisualizationOptionTab()
 	m_pLineEdit_LifetimeMin->setAlignment(Qt::AlignCenter);
 	if (!m_pStreamTab)
 	{
+		m_pLineEdit_IntensityPropMax = new QLineEdit(this);
+		m_pLineEdit_IntensityPropMax->setFixedWidth(35);
+		m_pLineEdit_IntensityPropMax->setText(QString::number(m_pConfig->flimIntensityPropRange[m_pConfig->flimEmissionChannel - 1].max, 'f', 1));
+		m_pLineEdit_IntensityPropMax->setAlignment(Qt::AlignCenter);
+		m_pLineEdit_IntensityPropMin = new QLineEdit(this);
+		m_pLineEdit_IntensityPropMin->setFixedWidth(35);
+		m_pLineEdit_IntensityPropMin->setText(QString::number(m_pConfig->flimIntensityPropRange[m_pConfig->flimEmissionChannel - 1].min, 'f', 1));
+		m_pLineEdit_IntensityPropMin->setAlignment(Qt::AlignCenter);
+
 		m_pLineEdit_IntensityRatioMax = new QLineEdit(this);
 		m_pLineEdit_IntensityRatioMax->setFixedWidth(35);
 		m_pLineEdit_IntensityRatioMax->setText(QString::number(m_pConfig->flimIntensityRatioRange[m_pConfig->flimEmissionChannel - 1].max, 'f', 1));
@@ -155,6 +168,9 @@ void ViewOptionTab::createFlimVisualizationOptionTab()
 	m_pImageView_LifetimeColorbar->drawImage(color);
 	if (!m_pStreamTab)
 	{
+		m_pImageView_IntensityPropColorbar = new QImageView(ColorTable::colortable(INTENSITY_PROP_COLORTABLE), 256, 1, false, this);
+		m_pImageView_IntensityPropColorbar->setFixedSize(190, 20);
+		m_pImageView_IntensityPropColorbar->drawImage(color);
 		m_pImageView_IntensityRatioColorbar = new QImageView(ColorTable::colortable(INTENSITY_RATIO_COLORTABLE), 256, 1, false, this);
 		m_pImageView_IntensityRatioColorbar->setFixedSize(190, 20);
 		m_pImageView_IntensityRatioColorbar->drawImage(color);
@@ -167,6 +183,10 @@ void ViewOptionTab::createFlimVisualizationOptionTab()
 	m_pLabel_Lifetime->setAlignment(Qt::AlignVCenter | Qt::AlignLeft);
 	if (!m_pStreamTab)
 	{
+		m_pLabel_IntensityProp = new QLabel(QString("Ch%1 IntProp (AU) ").arg(m_pConfig->flimEmissionChannel), this);
+		m_pLabel_IntensityProp->setFixedWidth(140);
+		m_pLabel_IntensityProp->setAlignment(Qt::AlignVCenter | Qt::AlignLeft);
+
 		m_pLabel_IntensityRatio = new QLabel(QString("Ch%1/%2 IntRatio (AU) ").arg(m_pConfig->flimEmissionChannel).arg((m_pConfig->flimEmissionChannel == 1) ? 3 : m_pConfig->flimEmissionChannel - 1), this);
 		m_pLabel_IntensityRatio->setFixedWidth(140);
 		m_pLabel_IntensityRatio->setAlignment(Qt::AlignVCenter | Qt::AlignLeft);
@@ -181,6 +201,7 @@ void ViewOptionTab::createFlimVisualizationOptionTab()
 
 	QHBoxLayout *pHBoxLayout_IntensityColorbar = new QHBoxLayout;
 	QHBoxLayout *pHBoxLayout_LifetimeColorbar = new QHBoxLayout;
+	QHBoxLayout *pHBoxLayout_IntensityPropColorbar = new QHBoxLayout;
 	QHBoxLayout *pHBoxLayout_IntensityRatioColorbar = new QHBoxLayout;
 
 	pHBoxLayout_IntensityColorbar->setSpacing(1);
@@ -199,6 +220,13 @@ void ViewOptionTab::createFlimVisualizationOptionTab()
 
 	if (!m_pStreamTab)
 	{
+		pHBoxLayout_IntensityPropColorbar->setSpacing(1);
+		pHBoxLayout_IntensityPropColorbar->addWidget(m_pLabel_IntensityProp);
+		pHBoxLayout_IntensityPropColorbar->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed));
+		pHBoxLayout_IntensityPropColorbar->addWidget(m_pLineEdit_IntensityPropMin);
+		pHBoxLayout_IntensityPropColorbar->addWidget(m_pImageView_IntensityPropColorbar);
+		pHBoxLayout_IntensityPropColorbar->addWidget(m_pLineEdit_IntensityPropMax);
+
 		pHBoxLayout_IntensityRatioColorbar->setSpacing(1);
 		pHBoxLayout_IntensityRatioColorbar->addWidget(m_pLabel_IntensityRatio);
 		pHBoxLayout_IntensityRatioColorbar->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed));
@@ -213,19 +241,21 @@ void ViewOptionTab::createFlimVisualizationOptionTab()
 	pVBoxLayout_FlimVisualization->addItem(pHBoxLayout_FlimVisualization1);
 	if (!m_pStreamTab)
 	{
-		QHBoxLayout *pHBoxLayout_FlimVisualization2 = new QHBoxLayout;
-		pHBoxLayout_FlimVisualization2->setSpacing(3);
+		QGridLayout *pGridLayout_FlimVisualization2 = new QGridLayout;
+		pGridLayout_FlimVisualization2->setSpacing(3);
 
-		pHBoxLayout_FlimVisualization2->addWidget(m_pLabel_VisualizationMode);
-		pHBoxLayout_FlimVisualization2->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed));
-		pHBoxLayout_FlimVisualization2->addWidget(m_pRadioButton_Lifetime);
-		pHBoxLayout_FlimVisualization2->addWidget(m_pRadioButton_IntensityRatio);
+		pGridLayout_FlimVisualization2->addWidget(m_pLabel_VisualizationMode, 0, 0);
+		pGridLayout_FlimVisualization2->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed), 0, 1);
+		pGridLayout_FlimVisualization2->addWidget(m_pRadioButton_Lifetime, 0, 2);
+		pGridLayout_FlimVisualization2->addWidget(m_pRadioButton_IntensityProp, 0, 3);
+		pGridLayout_FlimVisualization2->addWidget(m_pRadioButton_IntensityRatio, 1, 3);
 
-		pVBoxLayout_FlimVisualization->addItem(pHBoxLayout_FlimVisualization2);
+		pVBoxLayout_FlimVisualization->addItem(pGridLayout_FlimVisualization2);
 		pVBoxLayout_FlimVisualization->addWidget(m_pCheckBox_Classification);
 	}
 	pVBoxLayout_FlimVisualization->addItem(pHBoxLayout_IntensityColorbar);
 	pVBoxLayout_FlimVisualization->addItem(pHBoxLayout_LifetimeColorbar);
+	if (!m_pStreamTab) pVBoxLayout_FlimVisualization->addItem(pHBoxLayout_IntensityPropColorbar);
 	if (!m_pStreamTab) pVBoxLayout_FlimVisualization->addItem(pHBoxLayout_IntensityRatioColorbar);
 
 	pGroupBox_FlimVisualization->setLayout(pVBoxLayout_FlimVisualization);
@@ -245,6 +275,8 @@ void ViewOptionTab::createFlimVisualizationOptionTab()
 	connect(m_pLineEdit_LifetimeMin, SIGNAL(textEdited(const QString &)), this, SLOT(adjustFlimContrast()));
 	if (!m_pStreamTab)
 	{
+		connect(m_pLineEdit_IntensityPropMax, SIGNAL(textEdited(const QString &)), this, SLOT(adjustFlimContrast()));
+		connect(m_pLineEdit_IntensityPropMin, SIGNAL(textEdited(const QString &)), this, SLOT(adjustFlimContrast()));
 		connect(m_pLineEdit_IntensityRatioMax, SIGNAL(textEdited(const QString &)), this, SLOT(adjustFlimContrast()));
 		connect(m_pLineEdit_IntensityRatioMin, SIGNAL(textEdited(const QString &)), this, SLOT(adjustFlimContrast()));
 		
@@ -452,12 +484,15 @@ void ViewOptionTab::changeEmissionChannel(int ch)
 	
 	m_pLabel_NormIntensity->setText(QString("Ch%1 Intensity (AU) ").arg(ch + 1));
 	m_pLabel_Lifetime->setText(QString("Ch%1 Lifetime (nsec) ").arg(ch + 1));
+	m_pLabel_IntensityProp->setText(QString("Ch%1 IntProp (AU) ").arg(ch + 1));
 	m_pLabel_IntensityRatio->setText(QString("Ch%1/%2 IntRatio (AU) ").arg(m_pConfig->flimEmissionChannel).arg((m_pConfig->flimEmissionChannel == 1) ? 3 : m_pConfig->flimEmissionChannel - 1));
 
 	m_pLineEdit_IntensityMin->setText(QString::number(m_pConfig->flimIntensityRange[ch].min, 'f', 1));
 	m_pLineEdit_IntensityMax->setText(QString::number(m_pConfig->flimIntensityRange[ch].max, 'f', 1));
 	m_pLineEdit_LifetimeMin->setText(QString::number(m_pConfig->flimLifetimeRange[ch].min, 'f', 1));
 	m_pLineEdit_LifetimeMax->setText(QString::number(m_pConfig->flimLifetimeRange[ch].max, 'f', 1));
+	m_pLineEdit_IntensityPropMin->setText(QString::number(m_pConfig->flimIntensityPropRange[ch].min, 'f', 1));
+	m_pLineEdit_IntensityPropMax->setText(QString::number(m_pConfig->flimIntensityPropRange[ch].max, 'f', 1));
 	m_pLineEdit_IntensityRatioMin->setText(QString::number(m_pConfig->flimIntensityRatioRange[ch].min, 'f', 1));
 	m_pLineEdit_IntensityRatioMax->setText(QString::number(m_pConfig->flimIntensityRatioRange[ch].max, 'f', 1));
 
@@ -468,49 +503,23 @@ void ViewOptionTab::changeEmissionChannel(int ch)
 	{
 		if (m_pViewTab)
 		{
-			int mode = (int)m_pRadioButton_IntensityRatio->isChecked();
+			int mode;
+			if (m_pRadioButton_Lifetime->isChecked())
+				mode = _LIFETIME_;
+			else if (m_pRadioButton_IntensityProp->isChecked())
+				mode = _INTENSITY_PROP_;
+			else if (m_pRadioButton_IntensityRatio->isChecked())
+				mode = _INTENSITY_RATIO_;
+			
 			m_pViewTab->setViewMode(ch + 3 * mode);
 			m_pViewTab->invalidate();
-		}
 
-		{
-			//disconnect(m_pComboBox_IntensityRef, 0, this, 0);
-
-			//m_pComboBox_IntensityRef->removeItem(0);
-			//m_pComboBox_IntensityRef->removeItem(0);
-			//for (int i = 0; i < 3; i++)
-			//	if (i != ch)
-			//		m_pComboBox_IntensityRef->addItem(QString("Ch %1").arg(i + 1));
-
-			//connect(m_pComboBox_IntensityRef, SIGNAL(currentIndexChanged(int)), this, SLOT(changeIntensityRatioRef(int)));
-
-			//m_pComboBox_IntensityRef->setCurrentIndex(m_pConfig->flimIntensityRatioRefIdx[ch]);
+			m_pConfig->writeToLog(QString("Visualization mode changed: %1").arg(mode));
 		}
 	}
 
 	m_pConfig->writeToLog(QString("Emission channel changed: ch %1").arg(ch + 1));
-
-////		if (!m_pCheckBox_IntensityWeightedLifetimeMap->isChecked())
-////			m_pLabel_LifetimeMap->setText(QString::fromLocal8Bit("FLIm Ch%1 Lifetime Map (еш-z) (nsec)").arg(ch + 1));
-////		else
-////			m_pLabel_LifetimeMap->setText(QString::fromLocal8Bit("FLIm Ch%1 Intensity-Weighted Lifetime Map (еш-z) (nsec)").arg(ch + 1));
-//
-//		if (!m_pCheckBox_IntensityRatio->isChecked())
-//		{
-////			m_pLabel_IntensityMap->setText(QString::fromLocal8Bit("FLIm Ch%1 Intensity Map (еш-z) (AU)").arg(ch + 1));
-//			m_pLineEdit_IntensityMin->setText(QString::number(m_pConfig->flimIntensityRange[ch].min, 'f', 1));
-//			m_pLineEdit_IntensityMax->setText(QString::number(m_pConfig->flimIntensityRange[ch].max, 'f', 1));
-//		}
-//		else
-//		{			
-////			m_pLabel_IntensityMap->setText(QString::fromLocal8Bit("FLIm Ch%1 / Ch%2 Intensity Ratio Map (еш-z) (AU)").arg(ch + 1)
-////				.arg(ratio_index[ch][m_pConfig->flimIntensityRatioRefIdx[ch]]));
-//			m_pLineEdit_IntensityMin->setText(QString::number(m_pConfig->flimIntensityRatioRange[ch]
-//				[m_pConfig->flimIntensityRatioRefIdx[ch]].min, 'f', 1));
-//			m_pLineEdit_IntensityMax->setText(QString::number(m_pConfig->flimIntensityRatioRange[ch]
-//				[m_pConfig->flimIntensityRatioRefIdx[ch]].max, 'f', 1));
-//		}
-		
+			
 //	if (m_pStreamTab)
 //	{
 //		// Transfer to FLIm calibration dlg
@@ -539,6 +548,28 @@ void ViewOptionTab::setVisualizationMode(int mode)
 		m_pImageView_LifetimeColorbar->setVisible(true);
 		m_pLineEdit_LifetimeMax->setVisible(true);
 
+		m_pLabel_IntensityProp->setVisible(false);
+		m_pLineEdit_IntensityPropMin->setVisible(false);
+		m_pImageView_IntensityPropColorbar->setVisible(false);
+		m_pLineEdit_IntensityPropMax->setVisible(false);
+
+		m_pLabel_IntensityRatio->setVisible(false);
+		m_pLineEdit_IntensityRatioMin->setVisible(false);
+		m_pImageView_IntensityRatioColorbar->setVisible(false);
+		m_pLineEdit_IntensityRatioMax->setVisible(false);
+	}
+	else if (mode == VisualizationMode::_INTENSITY_PROP_)
+	{
+		m_pLabel_Lifetime->setVisible(false);
+		m_pLineEdit_LifetimeMin->setVisible(false);
+		m_pImageView_LifetimeColorbar->setVisible(false);
+		m_pLineEdit_LifetimeMax->setVisible(false);
+
+		m_pLabel_IntensityProp->setVisible(true);
+		m_pLineEdit_IntensityPropMin->setVisible(true);
+		m_pImageView_IntensityPropColorbar->setVisible(true);
+		m_pLineEdit_IntensityPropMax->setVisible(true);
+
 		m_pLabel_IntensityRatio->setVisible(false);
 		m_pLineEdit_IntensityRatioMin->setVisible(false);
 		m_pImageView_IntensityRatioColorbar->setVisible(false);
@@ -551,6 +582,11 @@ void ViewOptionTab::setVisualizationMode(int mode)
 		m_pImageView_LifetimeColorbar->setVisible(false);
 		m_pLineEdit_LifetimeMax->setVisible(false);
 
+		m_pLabel_IntensityProp->setVisible(false);
+		m_pLineEdit_IntensityPropMin->setVisible(false);
+		m_pImageView_IntensityPropColorbar->setVisible(false);
+		m_pLineEdit_IntensityPropMax->setVisible(false);
+
 		m_pLabel_IntensityRatio->setVisible(true);
 		m_pLineEdit_IntensityRatioMin->setVisible(true);
 		m_pImageView_IntensityRatioColorbar->setVisible(true);
@@ -559,55 +595,8 @@ void ViewOptionTab::setVisualizationMode(int mode)
 
 	changeEmissionChannel(m_pConfig->flimEmissionChannel - 1);
 	adjustFlimContrast();
-
-	//// Set widget
-	//m_pComboBox_IntensityRef->setEnabled(toggled);
-
-	//if (toggled)
-	//{
-	//	//		if (m_pResultTab)
-	//	//			m_pLabel_IntensityMap->setText(QString::fromLocal8Bit("FLIm Ch%1 / Ch%2 Intensity Ratio Map (еш-z) (AU)").arg(m_pConfig->flimEmissionChannel)
-	//	//				.arg(ratio_index[m_pConfig->flimEmissionChannel - 1][m_pConfig->flimIntensityRatioRefIdx[m_pConfig->flimEmissionChannel - 1]]));
-
-	//	m_pLineEdit_IntensityMin->setText(QString::number(m_pConfig->flimIntensityRatioRange[m_pConfig->flimEmissionChannel - 1]
-	//		[m_pConfig->flimIntensityRatioRefIdx[m_pConfig->flimEmissionChannel - 1]].min, 'f', 1));
-	//	m_pLineEdit_IntensityMax->setText(QString::number(m_pConfig->flimIntensityRatioRange[m_pConfig->flimEmissionChannel - 1]
-	//		[m_pConfig->flimIntensityRatioRefIdx[m_pConfig->flimEmissionChannel - 1]].max, 'f', 1));
-	//}
-	//else
-	//{
-	//	//		if (m_pResultTab)
-	//	//			m_pLabel_IntensityMap->setText(QString::fromLocal8Bit("FLIm Ch%1 Intensity Map (еш-z) (AU)").arg(m_pConfig->flimEmissionChannel));
-
-	//	m_pLineEdit_IntensityMin->setText(QString::number(m_pConfig->flimIntensityRange[m_pConfig->flimEmissionChannel - 1].min, 'f', 1));
-	//	m_pLineEdit_IntensityMax->setText(QString::number(m_pConfig->flimIntensityRange[m_pConfig->flimEmissionChannel - 1].max, 'f', 1));
-	//}
-
-	//// Only result tab function
-	////	visualizeEnFaceMap(true);
-	////	visualizeImage(m_pSlider_SelectFrame->value());
 }
 
-//void ViewOptionTab::changeIntensityRatioRef(int index)
-//{
-	//m_pConfig->flimIntensityRatioRefIdx[m_pConfig->flimEmissionChannel - 1] = index;
-
-	//// Set widget
-	////	if (m_pResultTab)
-	////		m_pLabel_IntensityMap->setText(QString::fromLocal8Bit("FLIm Ch%1 / Ch%2 Intensity Ratio Map (еш-z) (AU)").arg(m_pConfig->flimEmissionChannel)
-	////			.arg(ratio_index[m_pConfig->flimEmissionChannel - 1][m_pConfig->flimIntensityRatioRefIdx[m_pConfig->flimEmissionChannel - 1]]));
-
-	//m_pLineEdit_IntensityMin->setText(QString::number(m_pConfig->flimIntensityRatioRange[m_pConfig->flimEmissionChannel - 1]
-	//	[m_pConfig->flimIntensityRatioRefIdx[m_pConfig->flimEmissionChannel - 1]].min, 'f', 1));
-	//m_pLineEdit_IntensityMax->setText(QString::number(m_pConfig->flimIntensityRatioRange[m_pConfig->flimEmissionChannel - 1]
-	//	[m_pConfig->flimIntensityRatioRefIdx[m_pConfig->flimEmissionChannel - 1]].max, 'f', 1));
-
-	//// Only result tab function
-	////	visualizeEnFaceMap(true);
-	////	visualizeImage(m_pSlider_SelectFrame->value());
-
-	//(void)index;
-//}
 
 void ViewOptionTab::enableClassification(bool toggled)
 {
@@ -658,6 +647,11 @@ void ViewOptionTab::adjustFlimContrast()
 			m_pConfig->flimLifetimeRange[m_pConfig->flimEmissionChannel - 1].min = m_pLineEdit_LifetimeMin->text().toFloat();
 			m_pConfig->flimLifetimeRange[m_pConfig->flimEmissionChannel - 1].max = m_pLineEdit_LifetimeMax->text().toFloat();
 		}
+		else if (m_pRadioButton_IntensityProp->isChecked())
+		{
+			m_pConfig->flimIntensityPropRange[m_pConfig->flimEmissionChannel - 1].min = m_pLineEdit_IntensityPropMin->text().toFloat();
+			m_pConfig->flimIntensityPropRange[m_pConfig->flimEmissionChannel - 1].max = m_pLineEdit_IntensityPropMax->text().toFloat();
+		}
 		else if (m_pRadioButton_IntensityRatio->isChecked())
 		{
 			if (m_pConfig->flimIntensityRatioRange[m_pConfig->flimEmissionChannel - 1].min == m_pLineEdit_IntensityRatioMin->text().toFloat())
@@ -676,12 +670,14 @@ void ViewOptionTab::adjustFlimContrast()
 		if (m_pViewTab) m_pViewTab->invalidate();
 	}
 
-	m_pConfig->writeToLog(QString("FLIm contrast range set: ch%1 i[%2 %3] l[%4 %5] ir[%6 %7]")
+	m_pConfig->writeToLog(QString("FLIm contrast range set: ch%1 i[%2 %3] l[%4 %5] ip[%6 %7] ir[%8 %9]")
 		.arg(m_pConfig->flimEmissionChannel)
 		.arg(m_pConfig->flimIntensityRange[m_pConfig->flimEmissionChannel - 1].min)
 		.arg(m_pConfig->flimIntensityRange[m_pConfig->flimEmissionChannel - 1].max)
 		.arg(m_pConfig->flimLifetimeRange[m_pConfig->flimEmissionChannel - 1].min)
 		.arg(m_pConfig->flimLifetimeRange[m_pConfig->flimEmissionChannel - 1].max)
+		.arg(m_pConfig->flimIntensityPropRange[m_pConfig->flimEmissionChannel - 1].min)
+		.arg(m_pConfig->flimIntensityPropRange[m_pConfig->flimEmissionChannel - 1].max)
 		.arg(m_pConfig->flimIntensityRatioRange[m_pConfig->flimEmissionChannel - 1].min)
 		.arg(m_pConfig->flimIntensityRatioRange[m_pConfig->flimEmissionChannel - 1].max));
 }

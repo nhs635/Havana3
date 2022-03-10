@@ -188,7 +188,7 @@ void DeviceOptionTab::createHelicalScanningControl()
 	m_pButtonGroup_PullbackMode = new QButtonGroup(this);
 	m_pButtonGroup_PullbackMode->addButton(m_pRadioButton_20mms50mm, _20MM_S_50MM_);
 	m_pButtonGroup_PullbackMode->addButton(m_pRadioButton_10mms30mm, _10MM_S_30MM_);
-	m_pButtonGroup_PullbackMode->addButton(m_pRadioButton_10mms30mm, _10MM_S_40MM_);
+	m_pButtonGroup_PullbackMode->addButton(m_pRadioButton_10mms40mm, _10MM_S_40MM_);
 	m_pLabel_PullbackMode = new QLabel("Pullback Mode (mm/s, mm)", this);
 	m_pLabel_PullbackMode->setDisabled(true);
 
@@ -342,16 +342,21 @@ void DeviceOptionTab::createFlimSystemControl()
 	m_pLabel_FlimLaserConnect->setText("FLIm UV Pulsed Laser");
 
 #ifndef NEXT_GEN_SYSTEM
-	m_pSpinBox_FlimLaserPowerControl = new QSpinBox(this);
-	m_pSpinBox_FlimLaserPowerControl->setValue(0);
-	m_pSpinBox_FlimLaserPowerControl->setRange(-10000, 10000);
-	m_pSpinBox_FlimLaserPowerControl->setFixedWidth(15);
-	m_pSpinBox_FlimLaserPowerControl->setDisabled(true);
-	static int flim_laser_power_level = 0;
+	m_pLineEdit_FlimLaserPowerMonitor = new QLineEdit(this);
+	m_pLineEdit_FlimLaserPowerMonitor->setReadOnly(true);
+	m_pLineEdit_FlimLaserPowerMonitor->setFixedWidth(30);
+	m_pLineEdit_FlimLaserPowerMonitor->setAlignment(Qt::AlignCenter);
+	m_pLineEdit_FlimLaserPowerMonitor->setDisabled(true);
 
-	m_pLabel_FlimLaserPowerLevel = new QLabel(this);
-	m_pLabel_FlimLaserPowerLevel->setAlignment(Qt::AlignCenter);
-	m_pLabel_FlimLaserPowerLevel->setDisabled(true);
+	m_pPushButton_FlimLaserPowerIncrease = new QPushButton(this);
+	m_pPushButton_FlimLaserPowerIncrease->setText(QString::fromLocal8Bit("¡ã"));
+	m_pPushButton_FlimLaserPowerIncrease->setFixedWidth(20);
+	m_pPushButton_FlimLaserPowerIncrease->setDisabled(true);
+
+	m_pPushButton_FlimLaserPowerDecrease = new QPushButton(this);
+	m_pPushButton_FlimLaserPowerDecrease->setText(QString::fromLocal8Bit("¡å"));
+	m_pPushButton_FlimLaserPowerDecrease->setFixedWidth(20);
+	m_pPushButton_FlimLaserPowerDecrease->setDisabled(true);
 #else
 	m_pLineEdit_FlimLaserPowerControl = new QLineEdit(this);
 	m_pLineEdit_FlimLaserPowerControl->setValidator(new QIntValidator(0, 255, this));
@@ -396,13 +401,14 @@ void DeviceOptionTab::createFlimSystemControl()
 
 	pGridLayout_FlimLaser->addWidget(m_pLabel_FlimLaserConnect, 0, 0);
 	pGridLayout_FlimLaser->addItem(new QSpacerItem(0, 0, QSizePolicy::MinimumExpanding, QSizePolicy::Fixed), 0, 1, 1, 2);	
-	pGridLayout_FlimLaser->addWidget(m_pToggleButton_FlimLaserConnect, 0, 3, 1, 2);
+	pGridLayout_FlimLaser->addWidget(m_pToggleButton_FlimLaserConnect, 0, 3, 1, 4, Qt::AlignRight); 
 
 	pGridLayout_FlimLaser->addWidget(m_pLabel_FlimLaserPowerControl, 1, 0);
-	pGridLayout_FlimLaser->addItem(new QSpacerItem(0, 0, QSizePolicy::MinimumExpanding, QSizePolicy::Fixed), 1, 1, 1, 2);
+	pGridLayout_FlimLaser->addItem(new QSpacerItem(0, 0, QSizePolicy::MinimumExpanding, QSizePolicy::Fixed), 1, 1, 1, 3); 
 #ifndef NEXT_GEN_SYSTEM
-	pGridLayout_FlimLaser->addWidget(m_pLabel_FlimLaserPowerLevel, 1, 3);
-	pGridLayout_FlimLaser->addWidget(m_pSpinBox_FlimLaserPowerControl, 1, 4, Qt::AlignRight);
+	pGridLayout_FlimLaser->addWidget(m_pLineEdit_FlimLaserPowerMonitor, 1, 4);
+	pGridLayout_FlimLaser->addWidget(m_pPushButton_FlimLaserPowerIncrease, 1, 5, Qt::AlignRight);
+	pGridLayout_FlimLaser->addWidget(m_pPushButton_FlimLaserPowerDecrease, 1, 6, Qt::AlignRight);
 #else
 	pGridLayout_FlimLaser->addWidget(m_pLineEdit_FlimLaserPowerControl, 1, 3, Qt::AlignRight);
 	pGridLayout_FlimLaser->addWidget(m_pPushButton_FlimLaserPowerControl, 1, 4, Qt::AlignRight);
@@ -428,8 +434,9 @@ void DeviceOptionTab::createFlimSystemControl()
 
 	connect(m_pToggleButton_FlimLaserConnect, SIGNAL(toggled(bool)), this, SLOT(connectFlimLaser(bool)));	
 #ifndef NEXT_GEN_SYSTEM
-	connect(m_pSpinBox_FlimLaserPowerControl, SIGNAL(valueChanged(int)), this, SLOT(adjustLaserPower(int)));
-	connect(this, &DeviceOptionTab::showCurrentUVPower, [&](int level) { m_pLabel_FlimLaserPowerLevel->setText(QString::number(level)); });
+	connect(m_pPushButton_FlimLaserPowerIncrease, SIGNAL(clicked(bool)), this, SLOT(increaseLaserPower()));
+	connect(m_pPushButton_FlimLaserPowerDecrease, SIGNAL(clicked(bool)), this, SLOT(decreaseLaserPower()));
+	connect(this, &DeviceOptionTab::showCurrentUVPower, [&](int level) { m_pLineEdit_FlimLaserPowerMonitor->setText(QString::number(level)); });
 #else
 	connect(m_pLineEdit_FlimLaserPowerControl, SIGNAL(textChanged(const QString &)), this, SLOT(changeFlimLaserPower(const QString &)));
 	connect(m_pPushButton_FlimLaserPowerControl, SIGNAL(clicked(bool)), this, SLOT(applyFlimLaserPower()));
@@ -914,7 +921,7 @@ bool DeviceOptionTab::connectFlimLaser(bool toggled)
 		{
 			// Set callback
 			m_pDeviceControl->getElforlightLaser()->UpdatePowerLevel += [&](int laser_power_level) {
-				//emit showCurrentUVPower(laser_power_level);
+				emit showCurrentUVPower(laser_power_level);
 			};
 
 			// Set widgets
@@ -925,8 +932,9 @@ bool DeviceOptionTab::connectFlimLaser(bool toggled)
 
 			m_pLabel_FlimLaserPowerControl->setEnabled(true);
 #ifndef NEXT_GEN_SYSTEM
-			m_pLabel_FlimLaserPowerLevel->setEnabled(true);
-			m_pSpinBox_FlimLaserPowerControl->setEnabled(true);
+			m_pLineEdit_FlimLaserPowerMonitor->setEnabled(true);
+			m_pPushButton_FlimLaserPowerIncrease->setEnabled(true);
+			m_pPushButton_FlimLaserPowerDecrease->setEnabled(true);
 #else
 			m_pLineEdit_FlimLaserPowerControl->setEnabled(true);
 			m_pPushButton_FlimLaserPowerControl->setEnabled(true);
@@ -945,8 +953,9 @@ bool DeviceOptionTab::connectFlimLaser(bool toggled)
 
 		m_pLabel_FlimLaserPowerControl->setDisabled(true);
 #ifndef NEXT_GEN_SYSTEM
-		m_pLabel_FlimLaserPowerLevel->setDisabled(true);
-		m_pSpinBox_FlimLaserPowerControl->setDisabled(true);
+		m_pLineEdit_FlimLaserPowerMonitor->setDisabled(true);
+		m_pPushButton_FlimLaserPowerIncrease->setDisabled(true);
+		m_pPushButton_FlimLaserPowerDecrease->setDisabled(true);
 #else
 		m_pLineEdit_FlimLaserPowerControl->setDisabled(true);
 		m_pPushButton_FlimLaserPowerControl->setDisabled(true);
@@ -959,12 +968,11 @@ bool DeviceOptionTab::connectFlimLaser(bool toggled)
 	return true;
 }
 
-void DeviceOptionTab::adjustLaserPower(int level)
+void DeviceOptionTab::increaseLaserPower()
 {
 #ifndef NEXT_GEN_SYSTEM
 	static int i = 0;
-
-	if (i == 0)
+	if (i++ == 0)
 	{
 		QMessageBox MsgBox;
 		MsgBox.setWindowTitle("Warning");
@@ -986,20 +994,14 @@ void DeviceOptionTab::adjustLaserPower(int level)
 		}
 	}
 
-	static int flim_laser_power_level = 0;
-	
-	if (level > flim_laser_power_level)
-	{
-		m_pDeviceControl->adjustLaserPower(level);
-		flim_laser_power_level++;
-	}
-	else
-	{
-		m_pDeviceControl->adjustLaserPower(level);
-		flim_laser_power_level--;
-	}
-#else
-	(void)level;
+	m_pDeviceControl->adjustLaserPower(1);
+#endif
+}
+
+void DeviceOptionTab::decreaseLaserPower()
+{
+#ifndef NEXT_GEN_SYSTEM
+	m_pDeviceControl->adjustLaserPower(-1);
 #endif
 }
 

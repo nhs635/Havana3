@@ -21,6 +21,7 @@ public:
 
 	void IncreasePower();
 	void DecreasePower();
+	void GetCurrentPower();
 
 	void SendCommand(char* command); 
 	void MonitoringState(char* msg);

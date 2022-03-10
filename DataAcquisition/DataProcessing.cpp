@@ -362,6 +362,13 @@ void DataProcessing::flimProcessing(FLImProcess* pFLIm, Configuration* pConfig)
 		ippsLog10_32f_A11(ratio_temp.raw_ptr(), pViewTab->m_intensityRatioMap.at(ch_num).raw_ptr(), pViewTab->m_intensityRatioMap.at(ch_num).length());
 	}
 
+	FloatArray2 sum(pViewTab->m_intensityMap.at(0).size(0), pViewTab->m_intensityMap.at(0).size(1));
+	ippsAdd_32f(pViewTab->m_intensityMap.at(0), pViewTab->m_intensityMap.at(1), sum, sum.length());
+	ippsAdd_32f_I(pViewTab->m_intensityMap.at(2), sum, sum.length());
+	for (int i = 0; i < 3; i++)
+	{
+		ippsDiv_32f(sum, pViewTab->m_intensityMap.at(i), pViewTab->m_intensityProportionMap.at(i), sum.length());
+	}
 	///file.close();
 }
 

@@ -1142,12 +1142,12 @@ void QStreamTab::startPullback(bool enabled)
 		}
 
 		// Check pullback proceeding
-		QMessageBox MsgBox(QMessageBox::Information, "OCT-FLIm", "Please push 'pullback' button to proceed...");
+		QMessageBox MsgBox(QMessageBox::Information, "OCT-FLIm", QString("Please push 'pullback' button to proceed...\n(pullback: %1 mm/s, %2 mm)")
+			.arg(m_pConfig->pullbackSpeed, 2, 'f', 1).arg(m_pConfig->pullbackLength, 2, 'f', 1), QMessageBox::NoButton, 0);
 		MsgBox.setStandardButtons(QMessageBox::Ok | QMessageBox::Cancel);
 		MsgBox.setDefaultButton(QMessageBox::Ok);
 		MsgBox.setButtonText(QMessageBox::Ok, "Pullback");
-		MsgBox.move(QApplication::desktop()->screen()->rect().center().x() - MsgBox.rect().center().x(),
-			QApplication::desktop()->screen()->rect().center().y() - MsgBox.rect().center().y() + 250);
+		MsgBox.move(446, 650);
 		int ret = MsgBox.exec();
 
 		switch (ret)

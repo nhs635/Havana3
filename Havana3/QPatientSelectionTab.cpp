@@ -227,6 +227,8 @@ void QPatientSelectionTab::findDatabaseLocation()
 void QPatientSelectionTab::loadPatientDatabase()
 {
 	// Get patient database
+	int currentRow = m_pTableWidget_PatientInformation->currentRow();
+
 	m_pTableWidget_PatientInformation->clearContents();
 	m_pTableWidget_PatientInformation->setRowCount(0);
     m_pTableWidget_PatientInformation->setSortingEnabled(false);
@@ -295,4 +297,6 @@ void QPatientSelectionTab::loadPatientDatabase()
 
     m_pTableWidget_PatientInformation->setSortingEnabled(true);
 	m_pTableWidget_PatientInformation->sortItems(4, Qt::DescendingOrder);
+
+	if (currentRow >= 0) m_pTableWidget_PatientInformation->selectRow(currentRow);
 }

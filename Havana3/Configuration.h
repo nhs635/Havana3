@@ -1,7 +1,7 @@
 #ifndef CONFIGURATION_H
 #define CONFIGURATION_H
 
-#define VERSION						"0.0.0" ///"2.1.0"
+#define VERSION						"0.0.0" ///"2.1.1"
 
 #define POWER_2(x)					(1 << x)
 #define NEAR_2_POWER(x)				(int)(1 << (int)ceil(log2(x)))
@@ -31,7 +31,7 @@
 #define ROTARY_MOTOR_COM_PORT		"COM4"
 #define PULLBACK_MOTOR_COM_PORT		"COM7"
 
-#define FLIM_LASER_COM_PORT			"COM5"
+#define FLIM_LASER_COM_PORT			"COM1"
 
 #define PMT_GAIN_AO_PORT			"Dev1/ao1"  
 
@@ -74,7 +74,8 @@
 #define LONGI_HEIGHT				243
 
 #define OCT_COLORTABLE              2 // sepia
-#define INTENSITY_COLORTABLE		6 // fire
+#define INTENSITY_COLORTABLE		0 // gray
+#define INTENSITY_PROP_COLORTABLE	6 // fire
 #define INTENSITY_RATIO_COLORTABLE	12 // bwr
 #define LIFETIME_COLORTABLE         13 // hsv2 ==> Viewer/QImageView.cpp
 
@@ -157,6 +158,8 @@ public:
 			flimIntensityRange[i].min = settings.value(QString("flimIntensityRangeMin_Ch%1").arg(i + 1)).toFloat();
 			flimLifetimeRange[i].max = settings.value(QString("flimLifetimeRangeMax_Ch%1").arg(i + 1)).toFloat();
 			flimLifetimeRange[i].min = settings.value(QString("flimLifetimeRangeMin_Ch%1").arg(i + 1)).toFloat();
+			flimIntensityPropRange[i].max = settings.value(QString("flimIntensityPropRangeMax_Ch%1").arg(i + 1)).toFloat();
+			flimIntensityPropRange[i].min = settings.value(QString("flimIntensityPropRangeMin_Ch%1").arg(i + 1)).toFloat();
 			flimIntensityRatioRange[i].max = settings.value(QString("flimIntensityRatioRangeMax_Ch%1_%2").arg(i + 1).arg((i == 0) ? 3 : i)).toFloat();
 			flimIntensityRatioRange[i].min = settings.value(QString("flimIntensityRatioRangeMin_Ch%1_%2").arg(i + 1).arg((i == 0) ? 3 : i)).toFloat();
 
@@ -233,6 +236,8 @@ public:
 			settings.setValue(QString("flimIntensityRangeMin_Ch%1").arg(i + 1), QString::number(flimIntensityRange[i].min, 'f', 1));
 			settings.setValue(QString("flimLifetimeRangeMax_Ch%1").arg(i + 1), QString::number(flimLifetimeRange[i].max, 'f', 1));
 			settings.setValue(QString("flimLifetimeRangeMin_Ch%1").arg(i + 1), QString::number(flimLifetimeRange[i].min, 'f', 1));
+			settings.setValue(QString("flimIntensityPropRangeMax_Ch%1").arg(i + 1), QString::number(flimIntensityPropRange[i].max, 'f', 1));
+			settings.setValue(QString("flimIntensityPropRangeMin_Ch%1").arg(i + 1), QString::number(flimIntensityPropRange[i].min, 'f', 1));
 			settings.setValue(QString("flimIntensityRatioRangeMax_Ch%1_%2").arg(i + 1).arg((i == 0) ? 3 : i), QString::number(flimIntensityRatioRange[i].max, 'f', 1));
 			settings.setValue(QString("flimIntensityRatioRangeMin_Ch%1_%2").arg(i + 1).arg((i == 0) ? 3 : i), QString::number(flimIntensityRatioRange[i].min, 'f', 1));
 		}
@@ -253,6 +258,7 @@ public:
 		settings.setValue("pullbackSpeed", QString::number(pullbackSpeed, 'f', 2));
 		settings.setValue("pullbackLength", QString::number(pullbackLength, 'f', 2));
 		settings.setValue("pullbackFlag", pullbackFlag);
+		settings.setValue("laserPowerLevel", laserPowerLevel);
 		settings.setValue("pmtGainVoltage", QString::number(pmtGainVoltage, 'f', 3));
 #ifndef NEXT_GEN_SYSTEM
         settings.setValue("px14DcOffset", px14DcOffset);
@@ -309,6 +315,7 @@ public:
 	int flimVisualizationMode;
     ContrastRange<float> flimIntensityRange[3];
     ContrastRange<float> flimLifetimeRange[3];
+	ContrastRange<float> flimIntensityPropRange[3];
     ContrastRange<float> flimIntensityRatioRange[3];
 	float flimIntensityComp[3];
 #ifndef NEXT_GEN_SYSTEM
@@ -328,6 +335,7 @@ public:
 	float pullbackLength;
 	bool pullbackFlag;
 	float pmtGainVoltage;
+	int laserPowerLevel;
 #ifndef NEXT_GEN_SYSTEM
     int px14DcOffset;
 #else

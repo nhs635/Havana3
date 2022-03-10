@@ -357,6 +357,10 @@ bool DeviceControl::connectFlimLaser(bool state)
 
 			return false;
 		}
+
+		// Check current power level
+		m_pElforlightLaser->GetCurrentPower();	
+		m_pConfig->laserPowerLevel = m_pElforlightLaser->getLaserPowerLevel();
 #else
 		// Create FLIM laser control objects
 		if (!m_pIPGPhotonicsLaser)

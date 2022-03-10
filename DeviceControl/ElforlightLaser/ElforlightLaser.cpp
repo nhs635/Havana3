@@ -134,6 +134,22 @@ void ElforlightLaser::DecreasePower()
 }
 
 
+void ElforlightLaser::GetCurrentPower()
+{
+	std::unique_lock<std::mutex> lock(mtx_power);
+	{
+		char buff[2] = "0";
+
+		char msg[256];
+		sprintf(msg, "[ELFORLIGHT] Send: %s", buff);
+		SendStatusMessage(msg, false);
+
+		m_pSerialComm->writeSerialPort(buff);
+		m_pSerialComm->waitUntilResponse(500);
+	}
+}
+
+
 void ElforlightLaser::SendCommand(char* command)
 {
 	std::unique_lock<std::mutex> lock(mtx_power);

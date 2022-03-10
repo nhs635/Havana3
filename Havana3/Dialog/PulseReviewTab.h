@@ -45,7 +45,7 @@ public slots :
 	void deleteRoi();
 	void set();
 	void cancel();
-	void selectRow(int, int);
+	void selectRow(int, int, int, int);
 	void changePlaqueType(int);
 
 public:

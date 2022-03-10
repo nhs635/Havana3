@@ -66,7 +66,8 @@ private slots:
 
     // FLIm Laser Power Control
     bool connectFlimLaser(bool);
-	void adjustLaserPower(int);
+	void increaseLaserPower();
+	void decreaseLaserPower();
 	void changeFlimLaserPower(const QString &);
 	void applyFlimLaserPower();
 
@@ -140,10 +141,14 @@ private:
 	QPushButton *m_pToggleButton_FlimLaserConnect;
 
 	QLabel *m_pLabel_FlimLaserPowerControl;
-	QLabel *m_pLabel_FlimLaserPowerLevel;
-	QSpinBox *m_pSpinBox_FlimLaserPowerControl;
+#ifndef NEXT_GEN_SYSTEM
+	QLineEdit *m_pLineEdit_FlimLaserPowerMonitor;
+	QPushButton *m_pPushButton_FlimLaserPowerIncrease;
+	QPushButton *m_pPushButton_FlimLaserPowerDecrease;
+#else
 	QLineEdit *m_pLineEdit_FlimLaserPowerControl;
 	QPushButton *m_pPushButton_FlimLaserPowerControl;
+#endif
 
     // Axsun OCT control widgets
 	QLabel *m_pLabel_AxsunOctConnect;
