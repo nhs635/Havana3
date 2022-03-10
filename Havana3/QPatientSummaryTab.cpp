@@ -693,7 +693,16 @@ void QPatientSummaryTab::loadRecordDatabase()
             pCommentItem->setText(_sqlQuery.value(8).toString()); pCommentItem->setTextAlignment(Qt::AlignLeft | Qt::AlignVCenter); 
 			            			
             QString record_id = _sqlQuery.value(0).toString();
-            connect(pPushButton_Review, &QPushButton::clicked, [&, record_id]() { emit requestReview(record_id); });
+            connect(pPushButton_Review, &QPushButton::clicked, [&, record_id]() 
+			{ 
+				emit requestReview(record_id); 
+				for (int i = 0; i < m_pTableWidget_RecordInformation->rowCount(); i++)
+				{
+					if (m_pTableWidget_RecordInformation->item(i, 0)->toolTip() == record_id)
+						m_pTableWidget_RecordInformation->selectRow(i);
+				}
+			
+			});
 			connect(pPushButton_Delete, &QPushButton::clicked, [&, record_id]() { emit requestDelete(record_id); });
 
 			pTitleItem->setToolTip(record_id);

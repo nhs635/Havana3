@@ -234,6 +234,19 @@ void QResultTab::readRecordData()
 	}
 	else
 		m_pViewTab->invalidate();
+
+	QClipboard *pClipBoard = QApplication::clipboard();
+	QString folderPath = m_recordInfo.filename;
+	for (int i = folderPath.size() - 1; i >= 0; i--)
+	{
+		int slash_pos = i;
+		if (folderPath.at(i) == '/')
+		{
+			folderPath = folderPath.left(slash_pos);
+			break;
+		}
+	}
+	pClipBoard->setText(folderPath);
 }
 
 void QResultTab::loadRecordInfo()
