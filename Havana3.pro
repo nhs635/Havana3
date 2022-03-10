@@ -6,7 +6,7 @@
 
 QT       += core gui sql
 
-greaterThan(QT_MAJOR_VERSION, 4): QT += widgets serialport multimedia
+greaterThan(QT_MAJOR_VERSION, 4): QT += widgets serialport
 
 TARGET = Havana3
 TEMPLATE = app

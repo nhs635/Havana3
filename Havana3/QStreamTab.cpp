@@ -242,7 +242,7 @@ void QStreamTab::createLiveStreamingViewWidgets()
 	connect(m_pSyncMonitorTimer, SIGNAL(timeout()), this, SLOT(onTimerSyncMonitor()));
 
 	m_pLaserMonitorTimer = new QTimer(this);
-	m_pLaserMonitorTimer->start(5000);
+	m_pLaserMonitorTimer->start(60000);
 	connect(m_pLaserMonitorTimer, SIGNAL(timeout()), this, SLOT(onTimerLaserMonitor()));
 #endif
 
@@ -353,7 +353,7 @@ void QStreamTab::startLiveImaging(bool start)
 
 			return;
 		}
-		
+
 		emit deviceInitialized();
 
 		m_pToggleButton_EnableRotation->setChecked(true);

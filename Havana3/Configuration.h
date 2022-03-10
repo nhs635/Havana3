@@ -12,8 +12,8 @@
 ///#define NEXT_GEN_SYSTEM
 ///#define ENABLE_FPGA_FFT
 #define ENABLE_DATABASE_ENCRYPTION
-//#define AXSUN_ENABLE
-//#define NI_ENABLE
+#define AXSUN_ENABLE
+#define NI_ENABLE
 
 //////////////////////// Size Setup /////////////////////////
 #define FLIM_SCANS                  512
@@ -31,7 +31,7 @@
 #define ROTARY_MOTOR_COM_PORT		"COM4"
 #define PULLBACK_MOTOR_COM_PORT		"COM7"
 
-#define FLIM_LASER_COM_PORT			"COM1"
+#define FLIM_LASER_COM_PORT			"COM5"
 
 #define PMT_GAIN_AO_PORT			"Dev1/ao1"  
 

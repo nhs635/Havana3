@@ -933,6 +933,7 @@ bool DeviceOptionTab::connectFlimLaser(bool toggled)
 			m_pLabel_FlimLaserPowerControl->setEnabled(true);
 #ifndef NEXT_GEN_SYSTEM
 			m_pLineEdit_FlimLaserPowerMonitor->setEnabled(true);
+			m_pLineEdit_FlimLaserPowerMonitor->setText(QString::number(m_pDeviceControl->getElforlightLaser()->getLaserPowerLevel()));
 			m_pPushButton_FlimLaserPowerIncrease->setEnabled(true);
 			m_pPushButton_FlimLaserPowerDecrease->setEnabled(true);
 #else
@@ -954,6 +955,7 @@ bool DeviceOptionTab::connectFlimLaser(bool toggled)
 		m_pLabel_FlimLaserPowerControl->setDisabled(true);
 #ifndef NEXT_GEN_SYSTEM
 		m_pLineEdit_FlimLaserPowerMonitor->setDisabled(true);
+		m_pLineEdit_FlimLaserPowerMonitor->setText("");
 		m_pPushButton_FlimLaserPowerIncrease->setDisabled(true);
 		m_pPushButton_FlimLaserPowerDecrease->setDisabled(true);
 #else

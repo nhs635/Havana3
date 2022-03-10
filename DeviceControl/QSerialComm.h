@@ -56,44 +56,53 @@ public:
 
 	void closeSerialPort()
 	{
-		if (m_pSerialPort->isOpen())
-			m_pSerialPort->close();
+		if (m_pSerialPort)
+			if (m_pSerialPort->isOpen())
+				m_pSerialPort->close();
 		m_bIsConnected = false;
 	}
 
 	bool writeSerialPort(char* data, qint64 len = 0)
 	{
-		if (m_pSerialPort->isOpen())
+		if (m_pSerialPort)
 		{
-			if (len == 0)
+			if (m_pSerialPort->isOpen())
 			{
-				qint64 nWrote = m_pSerialPort->write(data);
-				if (nWrote != 0)
-					return true;
-			}
-			else
-			{
-				qint64 nWrote = m_pSerialPort->write(data, len);
-				if (nWrote != 0)
-					return true;
+				if (len == 0)
+				{
+					qint64 nWrote = m_pSerialPort->write(data);
+					if (nWrote != 0)
+						return true;
+				}
+				else
+				{
+					qint64 nWrote = m_pSerialPort->write(data, len);
+					if (nWrote != 0)
+						return true;
+				}
 			}
 		}
+
 		return false;
 	}
 
 	void waitUntilResponse(int wait_msec)
 	{
-		m_pSerialPort->waitForReadyRead(wait_msec);
+		if (m_pSerialPort)
+			m_pSerialPort->waitForReadyRead(wait_msec);
 	}
 	
 public slots:
 	void readSerialPort()
 	{
-		qint64 nRead;
-		char buffer[50];
+		if (m_pSerialPort)
+		{
+			qint64 nRead;
+			char buffer[50];
 
-		nRead = m_pSerialPort->read(buffer, 50);
-		DidReadBuffer(buffer, nRead);
+			nRead = m_pSerialPort->read(buffer, 50);
+			DidReadBuffer(buffer, nRead);
+		}
 	}
 
 

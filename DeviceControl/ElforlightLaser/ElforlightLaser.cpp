@@ -93,7 +93,7 @@ void ElforlightLaser::DisconnectDevice()
 	{
 		///SendCommand((char*)"R");
 		///std::this_thread::sleep_for(std::chrono::milliseconds(500));
-		///m_pSerialComm->closeSerialPort();
+		m_pSerialComm->closeSerialPort();
 
 		char msg[256];
 		sprintf(msg, "[ELFORLIGHT] Success to disconnect to %s.", port_name);
@@ -138,7 +138,7 @@ void ElforlightLaser::GetCurrentPower()
 {
 	std::unique_lock<std::mutex> lock(mtx_power);
 	{
-		char buff[2] = "0";
+		char buff[2] = "2";
 
 		char msg[256];
 		sprintf(msg, "[ELFORLIGHT] Send: %s", buff);

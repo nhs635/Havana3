@@ -359,7 +359,7 @@ bool DeviceControl::connectFlimLaser(bool state)
 		}
 
 		// Check current power level
-		m_pElforlightLaser->GetCurrentPower();	
+		m_pElforlightLaser->GetCurrentPower();
 		m_pConfig->laserPowerLevel = m_pElforlightLaser->getLaserPowerLevel();
 #else
 		// Create FLIM laser control objects
@@ -439,21 +439,15 @@ bool DeviceControl::connectFlimLaser(bool state)
 void DeviceControl::adjustLaserPower(int level)
 {
 #ifndef NEXT_GEN_SYSTEM
-	static int flim_laser_power_level = 0;
-
-	if (level > flim_laser_power_level)
-	{
+	if (level > 0)
 		m_pElforlightLaser->IncreasePower();
-		flim_laser_power_level++;
-	}
 	else
-	{
 		m_pElforlightLaser->DecreasePower();
-		flim_laser_power_level--;
-	}
+
+	m_pConfig->laserPowerLevel = m_pElforlightLaser->getLaserPowerLevel();
 
 	char msg[256];
-	sprintf(msg, "[ELFORLIGHT] Laser power adjusted: %d", m_pElforlightLaser->getLaserPowerLevel());
+	sprintf(msg, "[ELFORLIGHT] Laser power adjusted: %d", m_pConfig->laserPowerLevel);
 	SendStatusMessage(msg, false);
 #else
 	if (m_pIPGPhotonicsLaser)

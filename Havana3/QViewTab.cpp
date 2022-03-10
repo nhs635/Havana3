@@ -1,8 +1,6 @@
 ﻿
 #include "QViewTab.h"
 
-#include <QMediaPlayer>
-
 #include <Havana3/MainWindow.h>
 #include <Havana3/QStreamTab.h>
 #include <Havana3/QResultTab.h>
