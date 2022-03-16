@@ -33,6 +33,8 @@ LIBS += $$PWD/lib/PX14_64.lib # \
 LIBS += $$PWD/lib/AxsunOCTControl_LW.lib \
         $$PWD/lib/AxsunOCTCapture.lib
 LIBS += $$PWD/lib/NIDAQmx.lib
+LIBS += $$PWD/lib/opencv_world3416d.lib \
+        $$PWD/lib/opencv_world3416.lib
 LIBS += $$PWD/lib/intel64_win/ippcore.lib \
         $$PWD/lib/intel64_win/ippi.lib \
         $$PWD/lib/intel64_win/ipps.lib \
@@ -59,6 +61,7 @@ SOURCES += Havana3/Havana3.cpp \
     Havana3/Viewer/QScope.cpp \
     Havana3/Viewer/QImageView.cpp \
     Havana3/Dialog/AddPatientDlg.cpp \
+    Havana3/Dialog/IvusViewerDlg.cpp \
     Havana3/Dialog/SettingDlg.cpp \
     Havana3/Dialog/ViewOptionTab.cpp \
     Havana3/Dialog/DeviceOptionTab.cpp \
@@ -100,6 +103,7 @@ HEADERS += Havana3/Configuration.h \
     Havana3/Viewer/QScope.h \
     Havana3/Viewer/QImageView.h \
     Havana3/Dialog/AddPatientDlg.h \
+    Havana3/Dialog/IvusViewerDlg.h \
     Havana3/Dialog/SettingDlg.h \
     Havana3/Dialog/ViewOptionTab.h \
     Havana3/Dialog/DeviceOptionTab.h \

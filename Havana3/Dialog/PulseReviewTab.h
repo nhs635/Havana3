@@ -40,6 +40,8 @@ public slots :
 	void showMeanDelay(bool);
 	void drawPulse(int);
 	void changePulseType();
+	void restoreOffsetValues();
+	void updateDelayOffset();
 	void addRoi(bool);
 	void modifyRoi(bool);
 	void deleteRoi();
@@ -84,6 +86,11 @@ private:
 	QSlider *m_pSlider_CurrentAline;
 	QLabel *m_pLabel_PulseType;
 	QComboBox *m_pComboBox_PulseType;
+	
+	QLabel *m_pLabel_DelayTimeOffset;
+	QLineEdit *m_pLineEdit_DelayTimeOffset[3];
+	QLabel *m_pLabel_NanoSec;
+	QPushButton *m_pPushButton_Update;
 
 	QTableWidget *m_pTableWidget_CurrentResult;
 

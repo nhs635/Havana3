@@ -40,6 +40,11 @@ void QPatientSelectionTab::keyPressEvent(QKeyEvent *e)
 {
 	if (e->key() != Qt::Key_Escape)
         QDialog::keyPressEvent(e);
+	else
+	{
+		m_pTableWidget_PatientInformation->clearSelection();
+		m_pTableWidget_PatientInformation->clearFocus();
+	}
 }
 
 

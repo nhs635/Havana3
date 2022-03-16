@@ -11,12 +11,13 @@
 #include <Havana3/Dialog/SettingDlg.h>
 #include <Havana3/Dialog/PulseReviewTab.h>
 #include <Havana3/Dialog/ExportDlg.h>
+#include <Havana3/Dialog/IvusViewerDlg.h>
 
 #include <DataAcquisition/DataProcessing.h>
 
 
 QResultTab::QResultTab(QString record_id, QWidget *parent) :
-    QDialog(parent), m_bIsDataLoaded(false), m_pSettingDlg(nullptr), m_pExportDlg(nullptr)
+    QDialog(parent), m_bIsDataLoaded(false), m_pSettingDlg(nullptr), m_pExportDlg(nullptr), m_pIvusViewerDlg(nullptr)
 {
 	// Set main window objects
 	m_pMainWnd = dynamic_cast<MainWindow*>(parent);
@@ -52,14 +53,20 @@ void QResultTab::closeEvent(QCloseEvent *e)
 {
 	if (m_pSettingDlg)
 		m_pSettingDlg->close();
+	if (m_pIvusViewerDlg)
+		m_pIvusViewerDlg->close();
 
 	e->accept();
 }
 
 void QResultTab::keyPressEvent(QKeyEvent *e)
 {
-	if (e->key() != Qt::Key_Escape)
-        QDialog::keyPressEvent(e);
+	if (e->key() == Qt::Key_BracketLeft)
+		m_pViewTab->getSliderSelectFrame()->setValue(m_pViewTab->getSliderSelectFrame()->value() - 1);
+	else if (e->key() == Qt::Key_BracketRight)
+		m_pViewTab->getSliderSelectFrame()->setValue(m_pViewTab->getSliderSelectFrame()->value() + 1);
+	else if (e->key() == Qt::Key_Backslash)
+		m_pViewTab->getPlayButton()->setChecked(!m_pViewTab->getPlayButton()->isChecked());
 }
 
 
@@ -98,23 +105,28 @@ void QResultTab::createResultReviewWidgets()
 
 	m_pPushButton_OpenFolder = new QPushButton(this);
 	m_pPushButton_OpenFolder->setText("  Open Folder");
-	m_pPushButton_OpenFolder->setIcon(style()->standardIcon(QStyle::SP_DirHomeIcon));
+	m_pPushButton_OpenFolder->setIcon(style()->standardIcon(QStyle::SP_DirOpenIcon));
 	m_pPushButton_OpenFolder->setFixedSize(125, 25);
 
 	m_pPushButton_Comment = new QPushButton(this);
-	m_pPushButton_Comment->setText("  Comment");
+	m_pPushButton_Comment->setText("  Comments");
 	m_pPushButton_Comment->setIcon(style()->standardIcon(QStyle::SP_FileDialogContentsView));
 	m_pPushButton_Comment->setFixedSize(125, 25);
-
-    m_pPushButton_Setting = new QPushButton(this);
-    m_pPushButton_Setting->setText("  Setting");
-    m_pPushButton_Setting->setIcon(style()->standardIcon(QStyle::SP_FileDialogInfoView));
-    m_pPushButton_Setting->setFixedSize(125, 25);
-
+	
     m_pPushButton_Export = new QPushButton(this);
     m_pPushButton_Export->setText("  Export");
     m_pPushButton_Export->setIcon(style()->standardIcon(QStyle::SP_DialogSaveButton));
     m_pPushButton_Export->setFixedSize(125, 25);
+
+	m_pPushButton_Setting = new QPushButton(this);
+	m_pPushButton_Setting->setText("  Setting");
+	m_pPushButton_Setting->setIcon(style()->standardIcon(QStyle::SP_FileDialogInfoView));
+	m_pPushButton_Setting->setFixedSize(125, 25);
+
+	m_pPushButton_IvusViewer = new QPushButton(this);
+	m_pPushButton_IvusViewer->setText("  IVUS Viewer");
+	m_pPushButton_IvusViewer->setIcon(style()->standardIcon(QStyle::SP_ComputerIcon));
+	m_pPushButton_IvusViewer->setFixedSize(125, 25);
 
     // Set layout: result review
     QVBoxLayout *pVBoxLayout_ResultReview = new QVBoxLayout;
@@ -142,8 +154,9 @@ void QResultTab::createResultReviewWidgets()
 	pGridLayout_Buttons->addWidget(m_pPushButton_Comment, 0, 1);
     pGridLayout_Buttons->addWidget(m_pPushButton_Export, 1, 0);
     pGridLayout_Buttons->addWidget(m_pPushButton_Setting, 1, 1);
+	pGridLayout_Buttons->addWidget(m_pPushButton_IvusViewer, 2, 0);
 #ifdef ALTERNATIVE_VIEW
-	pGridLayout_Buttons->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Expanding), 2, 0, 1, 2);
+	pGridLayout_Buttons->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Expanding), 3, 0, 1, 2);
 #endif
 
 #ifndef ALTERNATIVE_VIEW
@@ -185,9 +198,10 @@ void QResultTab::createResultReviewWidgets()
     connect(m_pComboBox_Vessel, SIGNAL(currentIndexChanged(int)), this, SLOT(changeVesselInfo(int)));
     connect(m_pComboBox_Procedure, SIGNAL(currentIndexChanged(int)), this, SLOT(changeProcedureInfo(int)));
 	connect(m_pPushButton_OpenFolder, SIGNAL(clicked(bool)), this, SLOT(openContainingFolder()));
-	connect(m_pPushButton_Comment, SIGNAL(clicked(bool)), this, SLOT(createCommentDlg()));
-    connect(m_pPushButton_Setting, SIGNAL(clicked(bool)), this, SLOT(createSettingDlg()));
+	connect(m_pPushButton_Comment, SIGNAL(clicked(bool)), this, SLOT(createCommentDlg()));    
     connect(m_pPushButton_Export, SIGNAL(clicked(bool)), this, SLOT(createExportDlg()));
+	connect(m_pPushButton_Setting, SIGNAL(clicked(bool)), this, SLOT(createSettingDlg()));
+	connect(m_pPushButton_IvusViewer, SIGNAL(clicked(bool)), this, SLOT(createIvusViewerDlg()));
 }
 
 
@@ -439,4 +453,27 @@ void QResultTab::deleteExportDlg()
 {
     m_pExportDlg->deleteLater();
     m_pExportDlg = nullptr;
+}
+
+void QResultTab::createIvusViewerDlg()
+{
+	if (m_pIvusViewerDlg == nullptr)
+	{
+		m_pIvusViewerDlg = new IvusViewerDlg(this);
+		connect(m_pIvusViewerDlg, SIGNAL(finished(int)), this, SLOT(deleteIvusViewerDlg()));
+		m_pIvusViewerDlg->show(); // modal-less				
+	}
+	m_pIvusViewerDlg->raise();
+	m_pIvusViewerDlg->activateWindow();
+
+	m_pViewTab->getIvusImageView()->setVisible(true);
+	m_pViewTab->invalidate();
+}
+
+void QResultTab::deleteIvusViewerDlg()
+{
+	m_pIvusViewerDlg->deleteLater();
+	m_pIvusViewerDlg = nullptr;
+
+	m_pViewTab->getIvusImageView()->setVisible(false);
 }

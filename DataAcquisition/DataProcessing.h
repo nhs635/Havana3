@@ -30,6 +30,7 @@ public:
 	inline Configuration* getConfigTemp() const { return m_pConfigTemp; }
     inline QResultTab* getResultTab() const { return m_pResultTab; }
     inline FLImProcess* getFLImProcess() const { return m_pFLIm; }
+	inline QString getIniName() const { return m_iniName; }
 
 public:
     void startProcessing(QString);

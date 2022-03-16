@@ -14,6 +14,7 @@ class HvnSqlDataBase;
 class QViewTab;
 class SettingDlg;
 class ExportDlg;
+class IvusViewerDlg;
 
 class DataProcessing;
 
@@ -37,6 +38,7 @@ public:
     inline DataProcessing* getDataProcessing() { return m_pDataProcessing; }
     inline QViewTab* getViewTab() const { return m_pViewTab; }
 	inline SettingDlg* getSettingDlg() const { return m_pSettingDlg; }
+	inline IvusViewerDlg* getIvusViewerDlg() const { return m_pIvusViewerDlg; }
 
 private:
     void createResultReviewWidgets();
@@ -58,6 +60,8 @@ private slots:
     void deleteSettingDlg();
     void createExportDlg();
     void deleteExportDlg();
+	void createIvusViewerDlg();
+	void deleteIvusViewerDlg();
 
 signals:
 	void getCapture(QByteArray &);
@@ -85,8 +89,9 @@ private:
 
 	QPushButton *m_pPushButton_OpenFolder;
 	QPushButton *m_pPushButton_Comment;
-    QPushButton *m_pPushButton_Setting;
     QPushButton *m_pPushButton_Export;
+	QPushButton *m_pPushButton_Setting;
+	QPushButton *m_pPushButton_IvusViewer;
 
     QViewTab* m_pViewTab;
 
@@ -95,6 +100,7 @@ private:
     // Dialogs
     SettingDlg *m_pSettingDlg;
     ExportDlg *m_pExportDlg;	
+	IvusViewerDlg *m_pIvusViewerDlg;
 };
 
 #endif // QRESULTTAB_H

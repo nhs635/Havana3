@@ -92,6 +92,7 @@ SettingDlg::SettingDlg(QWidget *parent) :
 		QScrollArea *pScrollArea_PulseReview = new QScrollArea;
 		pScrollArea_PulseReview->setWidget(m_pPulseReviewTab->getLayoutBox());
 		m_pTabWidget_Setting->addTab(pScrollArea_PulseReview, "    Analysis    ");
+		setMinimumHeight(765);
 	}
 
 	// Log tab

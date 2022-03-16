@@ -44,6 +44,7 @@ public:
 #endif
     inline QImageView* getEnFaceImageView() const { return m_pImageView_EnFace; }
     inline QImageView* getLongiImageView() const { return m_pImageView_Longi; }
+	inline QImageView* getIvusImageView() const { return m_pImageView_Ivus; }
 	inline circularize* getCirc() const { return m_pCirc; }
 	inline medfilt* getMedfiltRect() const { return m_pMedfiltRect; }
 	inline medfilt* getMedfiltIntensityMap() const { return m_pMedfiltIntensityMap; }
@@ -178,6 +179,7 @@ private:
 #endif
     QImageView *m_pImageView_EnFace;
     QImageView *m_pImageView_Longi;
+	QImageView *m_pImageView_Ivus;
     QImageView *m_pImageView_ColorBar;
 	
 	// Navigation widgets

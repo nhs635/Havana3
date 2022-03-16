@@ -59,6 +59,11 @@ void QPatientSummaryTab::keyPressEvent(QKeyEvent *e)
 {
 	if (e->key() != Qt::Key_Escape)
 		QDialog::keyPressEvent(e);
+	else
+	{
+		m_pTableWidget_RecordInformation->clearSelection();
+		m_pTableWidget_RecordInformation->clearFocus();
+	}
 }
 
 
@@ -91,6 +96,12 @@ void QPatientSummaryTab::createPatientSummaryViewWidgets()
 	m_pToggleButton_CatheterConnect->setIcon(style()->standardIcon(QStyle::SP_BrowserReload));
 	m_pToggleButton_CatheterConnect->setFixedSize(150, 25);
 
+	m_pToggleButton_ShowHiddenData = new QPushButton(this);
+	m_pToggleButton_ShowHiddenData->setText("  Show Hidden Data");
+	m_pToggleButton_ShowHiddenData->setCheckable(true);
+	m_pToggleButton_ShowHiddenData->setIcon(style()->standardIcon(QStyle::SP_FileDialogDetailedView));
+	m_pToggleButton_ShowHiddenData->setFixedSize(150, 25);
+
 	m_pPushButton_Import = new QPushButton(this);
 	m_pPushButton_Import->setText("  Import");
 	m_pPushButton_Import->setIcon(style()->standardIcon(QStyle::SP_DialogOpenButton));
@@ -122,6 +133,7 @@ void QPatientSummaryTab::createPatientSummaryViewWidgets()
 	pHBoxLayout_Title->setSpacing(8);
 	pHBoxLayout_Title->addWidget(m_pLabel_PatientSummary);
 	pHBoxLayout_Title->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed));
+	pHBoxLayout_Title->addWidget(m_pToggleButton_ShowHiddenData, 0, Qt::AlignBottom);
 	pHBoxLayout_Title->addWidget(m_pToggleButton_CatheterConnect, 0, Qt::AlignBottom);
 	pHBoxLayout_Title->addWidget(m_pPushButton_NewRecord);
 
@@ -142,12 +154,13 @@ void QPatientSummaryTab::createPatientSummaryViewWidgets()
 
 
     // Connect signal and slot
+	connect(m_pPushButton_NewRecord, SIGNAL(clicked(bool)), this, SLOT(newRecord()));
 	connect(m_pToggleButton_CatheterConnect, SIGNAL(toggled(bool)), this, SLOT(catheterConnect(bool)));
-	connect(m_pToggleButton_Export, SIGNAL(toggled(bool)), this, SLOT(exportRawData(bool)));
+	connect(m_pToggleButton_ShowHiddenData, SIGNAL(toggled(bool)), this, SLOT(showHiddenData(bool)));
 	connect(m_pPushButton_Import, SIGNAL(clicked(bool)), this, SLOT(import()));
+	connect(m_pToggleButton_Export, SIGNAL(toggled(bool)), this, SLOT(exportRawData(bool)));	
     connect(m_pPushButton_EditPatient, SIGNAL(clicked(bool)), this, SLOT(editPatient()));
-	connect(m_pPushButton_Setting, SIGNAL(clicked(bool)), this, SLOT(createSettingDlg()));
-    connect(m_pPushButton_NewRecord, SIGNAL(clicked(bool)), this, SLOT(newRecord()));
+	connect(m_pPushButton_Setting, SIGNAL(clicked(bool)), this, SLOT(createSettingDlg()));    
 }
 
 void QPatientSummaryTab::createPatientSummaryTable()
@@ -259,11 +272,27 @@ void QPatientSummaryTab::newRecord()
 	m_pConfig->writeToLog(QString("New record requested: %1 (ID: %2)").arg(m_patientInfo.patientName).arg(m_patientInfo.patientId));
 }
 
+void QPatientSummaryTab::showHiddenData(bool toggled)
+{
+	if (toggled)
+	{
+		m_pToggleButton_ShowHiddenData->setStyleSheet("QPushButton { background-color:#ff0000; }");
+	}
+	else
+	{
+		m_pToggleButton_ShowHiddenData->setStyleSheet("QPushButton { background-color:#353535; }");
+	}
+
+	loadRecordDatabase();
+}
+
 void QPatientSummaryTab::exportRawData(bool toggled)
 {
 	if (toggled)
 	{
 		// Set widgets 
+		m_pToggleButton_ShowHiddenData->setChecked(true);
+		m_pToggleButton_ShowHiddenData->setDisabled(true);
 		m_pToggleButton_CatheterConnect->setDisabled(true);
 		m_pPushButton_NewRecord->setDisabled(true);				
 		m_pPushButton_Import->setDisabled(true);
@@ -414,6 +443,8 @@ void QPatientSummaryTab::exportRawData(bool toggled)
 		loadRecordDatabase();
 
 		// Set widgets 
+		m_pToggleButton_ShowHiddenData->setChecked(false);
+		m_pToggleButton_ShowHiddenData->setEnabled(true);
 		m_pToggleButton_CatheterConnect->setEnabled(true);
 		m_pPushButton_NewRecord->setEnabled(true);
 		m_pPushButton_Import->setEnabled(true);
@@ -501,17 +532,20 @@ void QPatientSummaryTab::editComment(int row, int column)
 			pTextEdit_Comment->setPlainText(m_pTableWidget_RecordInformation->item(row, column)->text());
 			connect(pTextEdit_Comment, &QTextEdit::textChanged, [&, pTextEdit_Comment]() { m_pTableWidget_RecordInformation->item(row, column)->setText(pTextEdit_Comment->toPlainText()); });
 			connect(pDialog, &QDialog::finished, [&, pTextEdit_Comment]() {
-				QString command = QString("UPDATE records SET comment='%1' WHERE id=%2").arg(pTextEdit_Comment->toPlainText()).arg(m_pTableWidget_RecordInformation->item(row, 0)->toolTip());
+				QString comment = pTextEdit_Comment->toPlainText();
+				QString command = QString("UPDATE records SET comment='%1' WHERE id=%2").arg(comment).arg(m_pTableWidget_RecordInformation->item(row, 0)->toolTip());
 				m_pHvnSqlDataBase->queryDatabase(command);
 				m_pConfig->writeToLog(QString("Record comment updated: %1 (ID: %2): %3 : record id: %4")
 					.arg(m_patientInfo.patientName).arg(m_patientInfo.patientId).arg(m_pTableWidget_RecordInformation->item(row, 2)->text()).arg(m_pTableWidget_RecordInformation->item(row, 0)->toolTip()));
+				if (command.contains("[HIDDEN]"))
+					loadRecordDatabase();
 			});
 
 			QVBoxLayout *pVBoxLayout = new QVBoxLayout;
 			pVBoxLayout->addWidget(pTextEdit_Comment);
 			pDialog->setLayout(pVBoxLayout);
 		}
-		pDialog->setWindowTitle("Comment");
+		pDialog->setWindowTitle("Comments");
 		pDialog->setFixedSize(300, 200);
 		pDialog->setModal(true);
 		pDialog->exec();
@@ -686,12 +720,30 @@ void QPatientSummaryTab::loadRecordDatabase()
 				pPreviewItem->setTextColor(QColor(128, 128, 128));
 			}
 
+			QString comment = _sqlQuery.value(8).toString();
+			if (comment.contains("[HIDDEN]"))
+			{
+				if (!m_pToggleButton_ShowHiddenData->isChecked())
+				{
+					m_pTableWidget_RecordInformation->removeRow(rowCount);
+					continue;
+				}
+				else
+				{
+					pTitleItem->setTextColor(QColor(128, 128, 128));
+					pDateTimeItem->setTextColor(QColor(128, 128, 128));
+					pVesselItem->setTextColor(QColor(128, 128, 128));
+					pProcedureItem->setTextColor(QColor(128, 128, 128));
+					pCommentItem->setTextColor(QColor(128, 128, 128));
+				}
+			}
+
             pTitleItem->setText(_sqlQuery.value(7).toString()); pTitleItem->setTextAlignment(Qt::AlignCenter);            
             pDateTimeItem->setText(_sqlQuery.value(3).toString()); pDateTimeItem->setTextAlignment(Qt::AlignCenter);
             pVesselItem->setText(m_pHvnSqlDataBase->getVessel(_sqlQuery.value(12).toInt())); pVesselItem->setTextAlignment(Qt::AlignCenter);
             pProcedureItem->setText(m_pHvnSqlDataBase->getProcedure(_sqlQuery.value(11).toInt())); pProcedureItem->setTextAlignment(Qt::AlignCenter);            
-            pCommentItem->setText(_sqlQuery.value(8).toString()); pCommentItem->setTextAlignment(Qt::AlignLeft | Qt::AlignVCenter); 
-			            			
+            pCommentItem->setText(comment); pCommentItem->setTextAlignment(Qt::AlignLeft | Qt::AlignVCenter); 
+						            			
             QString record_id = _sqlQuery.value(0).toString();
             connect(pPushButton_Review, &QPushButton::clicked, [&, record_id]() 
 			{ 

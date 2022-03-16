@@ -132,8 +132,8 @@ private:
 	QCheckBox* m_pCheckBox_CrossSectionCh2;
 	QCheckBox* m_pCheckBox_CrossSectionCh3;
 	
-	// Save En Face Mapping
-	QGroupBox* m_pGroupBox_EnFaceMapping;
+	// Save En Face Chemogram
+	QGroupBox* m_pGroupBox_EnFaceChemogram;
 
 	QCheckBox* m_pCheckBox_RawData;
 	QCheckBox* m_pCheckBox_ScaledImage;

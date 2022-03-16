@@ -8,6 +8,7 @@
 #include <Havana3/Dialog/SettingDlg.h>
 #include <Havana3/Dialog/ViewOptionTab.h>
 #include <Havana3/Dialog/PulseReviewTab.h>
+#include <Havana3/Dialog/IvusViewerDlg.h>
 
 #include <DataAcquisition/DataProcessing.h>
 
@@ -122,6 +123,14 @@ void QViewTab::createViewTabWidgets(bool is_streaming)
 #else
 		m_pImageView_Longi->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 #endif
+
+		// Create image view : IVUS
+		m_pImageView_Ivus = new QImageView(ColorTable::colortable(IVUS_COLORTABLE), IVUS_IMG_SIZE, IVUS_IMG_SIZE, false, this);
+		m_pImageView_Ivus->setSquare(true);
+		m_pImageView_Ivus->setVisible(false);
+		m_pImageView_Ivus->setMinimumSize(258, 258);
+		m_pImageView_Ivus->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::MinimumExpanding);
+		m_pImageView_Ivus->getRender()->m_bCanBeMagnified = true;
 		
         // Create image view : colorbar
         uint8_t color[256 * 4];
@@ -191,19 +200,6 @@ void QViewTab::createViewTabWidgets(bool is_streaming)
         m_pLabel_ViewMode = new QLabel("View Mode ", this);
         m_pLabel_ViewMode->setAlignment(Qt::AlignVCenter | Qt::AlignRight);
         m_pLabel_ViewMode->setBuddy(m_pComboBox_ViewMode);
-
-		// Create widgets for IVUS movie		
-		//mp = new QMediaPlayer(this);
-		//vw = new QVideoWidget(this);
-		//QMediaPlaylist* playlist = new QMediaPlaylist(this);
-		//playlist->addMedia(QUrl::fromLocalFile("C:/Users/Public/Videos/Sample Videos/Wildlife.wmv"));
-		//playlist->setCurrentIndex(1);
-		//mp->setPlaylist(playlist);
-		//mp->setVideoOutput(vw);
-		//setGeometry(100, 100, 400, 500);
-		//vw->setGeometry(0, 0, 300, 400);
-		//show();
-		//play();
     }
 
     // Set layout
@@ -241,15 +237,20 @@ void QViewTab::createViewTabWidgets(bool is_streaming)
         pGridLayout->addItem(pHBoxLayout1, 3, 0);
         pGridLayout->addItem(pHBoxLayout2, 3, 1);
 #else
-		QHBoxLayout *pHBoxLayout1 = new QHBoxLayout;
-		pHBoxLayout1->setSpacing(4);
+		QGridLayout *pGridLayout1 = new QGridLayout;
+		pGridLayout1->setSpacing(4);
 
-		pHBoxLayout1->addWidget(m_pPushButton_Decrement);
-		pHBoxLayout1->addWidget(m_pToggleButton_Play);
-		pHBoxLayout1->addWidget(m_pPushButton_Increment);
-		pHBoxLayout1->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed));
+		QLabel *pLabel_Dummy = new QLabel(this);
+		pLabel_Dummy->setFixedHeight(25);
 
-		m_pWidget[1]->setLayout(pHBoxLayout1);
+		pGridLayout1->addWidget(m_pImageView_Ivus, 0, 0, 1, 4);
+		pGridLayout1->addWidget(pLabel_Dummy, 1, 0, 1, 4);
+		pGridLayout1->addWidget(m_pPushButton_Decrement, 2, 0);
+		pGridLayout1->addWidget(m_pToggleButton_Play, 2, 1);
+		pGridLayout1->addWidget(m_pPushButton_Increment, 2, 2);
+		pGridLayout1->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed), 2, 3);
+
+		m_pWidget[1]->setLayout(pGridLayout1);
 		
 		QHBoxLayout *pHBoxLayout2 = new QHBoxLayout;
 		pHBoxLayout2->setSpacing(4);
@@ -280,7 +281,7 @@ void QViewTab::createViewTabWidgets(bool is_streaming)
 
 		pGridLayout_CircView->addWidget(m_pWidget[0], 0, 0);
 		pGridLayout_CircView->addWidget(m_pWidget[1], 1, 0, Qt::AlignBottom | Qt::AlignLeft);
-		pGridLayout_CircView->addWidget(m_pImageView_CircImage, 0, 1, 2, 1);
+		pGridLayout_CircView->addWidget(m_pImageView_CircImage, 0, 1, 2, 1, Qt::AlignCenter);
 		pGridLayout_CircView->addWidget(m_pWidget[2], 0, 2);
 		pGridLayout_CircView->addWidget(m_pWidget[3], 1, 2, Qt::AlignBottom | Qt::AlignRight);
 
@@ -342,10 +343,10 @@ void QViewTab::invalidate()
 	{
 #ifndef ALTERNATIVE_VIEW
 		m_pImageView_EnFace->setEnterCallback([&]() { m_pImageView_EnFace->setText(QPoint(8, 4),
-			QString::fromLocal8Bit("2-D FLIm En Face Mapping - Ch %1 Lifetime (z-θ)").arg(m_pConfig->flimEmissionChannel)); });
+			QString::fromLocal8Bit("2-D FLIm En Face Chemogram - Ch %1 Lifetime (z-θ)").arg(m_pConfig->flimEmissionChannel)); });
 #else
 		m_pImageView_EnFace->setEnterCallback([&]() { m_pImageView_EnFace->setText(QPoint(8, 4),
-			QString::fromLocal8Bit("2-D FLIm En Face Mapping\n- Ch %1 Lifetime (z-θ)").arg(m_pConfig->flimEmissionChannel)); });
+			QString::fromLocal8Bit("2-D FLIm En Face Chemogram\n- Ch %1 Lifetime (z-θ)").arg(m_pConfig->flimEmissionChannel)); });
 #endif
 
 #ifndef ALTERNATIVE_VIEW
@@ -361,10 +362,10 @@ void QViewTab::invalidate()
 	{
 #ifndef ALTERNATIVE_VIEW
 		m_pImageView_EnFace->setEnterCallback([&]() { m_pImageView_EnFace->setText(QPoint(8, 4),
-			QString::fromLocal8Bit("2-D FLIm En Face Mapping - Ch %1 Intensity Proportion (z-θ)").arg(m_pConfig->flimEmissionChannel)); });
+			QString::fromLocal8Bit("2-D FLIm En Face Chemogram - Ch %1 Intensity Proportion (z-θ)").arg(m_pConfig->flimEmissionChannel)); });
 #else
 		m_pImageView_EnFace->setEnterCallback([&]() { m_pImageView_EnFace->setText(QPoint(8, 4),
-			QString::fromLocal8Bit("2-D FLIm En Face Mapping\n- Ch %1 Intensity Proportion (z-θ)").arg(m_pConfig->flimEmissionChannel)); });
+			QString::fromLocal8Bit("2-D FLIm En Face Chemogram\n- Ch %1 Intensity Proportion (z-θ)").arg(m_pConfig->flimEmissionChannel)); });
 #endif
 
 #ifndef ALTERNATIVE_VIEW
@@ -380,10 +381,10 @@ void QViewTab::invalidate()
 	{
 #ifndef ALTERNATIVE_VIEW
 		m_pImageView_EnFace->setEnterCallback([&]() { m_pImageView_EnFace->setText(QPoint(8, 4),
-			QString::fromLocal8Bit("2-D FLIm En Face Mapping - Ch %1/%2 Intensity Ratio (z-θ)").arg(m_pConfig->flimEmissionChannel).arg((m_pConfig->flimEmissionChannel == 1) ? 3 : m_pConfig->flimEmissionChannel - 1)); });
+			QString::fromLocal8Bit("2-D FLIm En Face Chemogram - Ch %1/%2 Intensity Ratio (z-θ)").arg(m_pConfig->flimEmissionChannel).arg((m_pConfig->flimEmissionChannel == 1) ? 3 : m_pConfig->flimEmissionChannel - 1)); });
 #else
 		m_pImageView_EnFace->setEnterCallback([&]() { m_pImageView_EnFace->setText(QPoint(8, 4),
-			QString::fromLocal8Bit("2-D FLIm En Face Mapping\n- Ch %1/%2 Intensity Ratio (z-θ)").arg(m_pConfig->flimEmissionChannel).arg((m_pConfig->flimEmissionChannel == 1) ? 3 : m_pConfig->flimEmissionChannel - 1)); });
+			QString::fromLocal8Bit("2-D FLIm En Face Chemogram\n- Ch %1/%2 Intensity Ratio (z-θ)").arg(m_pConfig->flimEmissionChannel).arg((m_pConfig->flimEmissionChannel == 1) ? 3 : m_pConfig->flimEmissionChannel - 1)); });
 #endif
 
 #ifndef ALTERNATIVE_VIEW
@@ -604,30 +605,30 @@ void QViewTab::setWidgets(Configuration* pConfig)
 	{
 #ifndef ALTERNATIVE_VIEW
 		m_pImageView_EnFace->setEnterCallback([&]() { m_pImageView_EnFace->setText(QPoint(8, 4),
-			QString::fromLocal8Bit("2-D FLIm En Face Mapping - Ch %1 Lifetime (z-θ)").arg(m_pConfig->flimEmissionChannel)); });
+			QString::fromLocal8Bit("2-D FLIm En Face Chemogram - Ch %1 Lifetime (z-θ)").arg(m_pConfig->flimEmissionChannel)); });
 #else
 		m_pImageView_EnFace->setEnterCallback([&]() { m_pImageView_EnFace->setText(QPoint(8, 4),
-			QString::fromLocal8Bit("2-D FLIm En Face Mapping\n- Ch %1 Lifetime (z-θ)").arg(m_pConfig->flimEmissionChannel)); });
+			QString::fromLocal8Bit("2-D FLIm En Face Chemogram\n- Ch %1 Lifetime (z-θ)").arg(m_pConfig->flimEmissionChannel)); });
 #endif
 	}
 	else if (m_pConfig->flimVisualizationMode == VisualizationMode::_INTENSITY_PROP_)
 	{
 #ifndef ALTERNATIVE_VIEW
 		m_pImageView_EnFace->setEnterCallback([&]() { m_pImageView_EnFace->setText(QPoint(8, 4),
-			QString::fromLocal8Bit("2-D FLIm En Face Mapping - Ch %1 Intensity Proportion (z-θ)").arg(m_pConfig->flimEmissionChannel)); });
+			QString::fromLocal8Bit("2-D FLIm En Face Chemogram - Ch %1 Intensity Proportion (z-θ)").arg(m_pConfig->flimEmissionChannel)); });
 #else
 		m_pImageView_EnFace->setEnterCallback([&]() { m_pImageView_EnFace->setText(QPoint(8, 4),
-			QString::fromLocal8Bit("2-D FLIm En Face Mapping\n- Ch %1 Intensity Proportion (z-θ)").arg(m_pConfig->flimEmissionChannel)); });
+			QString::fromLocal8Bit("2-D FLIm En Face Chemogram\n- Ch %1 Intensity Proportion (z-θ)").arg(m_pConfig->flimEmissionChannel)); });
 #endif
 	}
 	else if (m_pConfig->flimVisualizationMode == VisualizationMode::_INTENSITY_RATIO_)
 	{
 #ifndef ALTERNATIVE_VIEW
 		m_pImageView_EnFace->setEnterCallback([&]() { m_pImageView_EnFace->setText(QPoint(8, 4),
-			QString::fromLocal8Bit("2-D FLIm En Face Mapping - Ch %1/%2 Intensity Ratio (z-θ)").arg(m_pConfig->flimEmissionChannel).arg((m_pConfig->flimEmissionChannel == 1) ? 3 : m_pConfig->flimEmissionChannel - 1)); });
+			QString::fromLocal8Bit("2-D FLIm En Face Chemogram - Ch %1/%2 Intensity Ratio (z-θ)").arg(m_pConfig->flimEmissionChannel).arg((m_pConfig->flimEmissionChannel == 1) ? 3 : m_pConfig->flimEmissionChannel - 1)); });
 #else
 		m_pImageView_EnFace->setEnterCallback([&]() { m_pImageView_EnFace->setText(QPoint(8, 4),
-			QString::fromLocal8Bit("2-D FLIm En Face Mapping\n- Ch %1/%2 Intensity Ratio (z-θ)").arg(m_pConfig->flimEmissionChannel).arg((m_pConfig->flimEmissionChannel == 1) ? 3 : m_pConfig->flimEmissionChannel - 1)); });
+			QString::fromLocal8Bit("2-D FLIm En Face Chemogram\n- Ch %1/%2 Intensity Ratio (z-θ)").arg(m_pConfig->flimEmissionChannel).arg((m_pConfig->flimEmissionChannel == 1) ? 3 : m_pConfig->flimEmissionChannel - 1)); });
 #endif
 	}
 	m_pImageView_EnFace->setLeaveCallback([&]() { m_pImageView_EnFace->setText(QPoint(8, 18), ""); });
@@ -851,6 +852,40 @@ void QViewTab::visualizeImage(int frame)
 		if (m_pResultTab->getSettingDlg())
 			m_pResultTab->getSettingDlg()->getPulseReviewTab()->drawPulse(getCurrentAline() / 4);
 		
+		// Matched IVUS image
+		if (m_pResultTab->getIvusViewerDlg())
+		{
+			int k = 0;
+			IvusViewerDlg* pIvusViewerDlg = m_pResultTab->getIvusViewerDlg();
+			foreach(QStringList _matches, pIvusViewerDlg->m_vectorMatches)
+			{
+				if (_matches.at(0).toInt() == getCurrentFrame() + 1)
+					break;
+				k++;
+			}
+
+			np::Uint8Array2 ivusImage(IVUS_IMG_SIZE, IVUS_IMG_SIZE);
+			if (k != pIvusViewerDlg->m_vectorMatches.size())
+			{
+				QStringList matches = pIvusViewerDlg->m_vectorMatches.at(k);
+
+				int ivus_frame = matches.at(1).toInt() - 1;
+				int ivus_rotation = matches.at(2).toInt();
+				pIvusViewerDlg->getIvusImage(ivus_frame, ivus_rotation, ivusImage);
+
+				m_pImageView_Ivus->setEnterCallback([&, pIvusViewerDlg, ivus_frame, ivus_rotation]() { m_pImageView_Ivus->setText(QPoint(8, 230),
+					QString("%1 / %2 (CCW %3 deg)").arg(ivus_frame + 1).arg((int)pIvusViewerDlg->m_vectorIvusImages.size()).arg(ivus_rotation)); });	
+				m_pImageView_Ivus->setLeaveCallback([&]() { m_pImageView_Ivus->setText(QPoint(8, 230), ""); });
+			}
+			else
+			{
+				ippsSet_8u(52, ivusImage, ivusImage.length());
+				m_pImageView_Ivus->setEnterCallback([&]() { m_pImageView_Ivus->setText(QPoint(8, 230), ""); });
+			}
+
+			m_pImageView_Ivus->drawImage(ivusImage);
+		}
+
         // Status Update
 		QString str; str.sprintf("Frame : %3d / %3d", frame + 1, (int)m_vectorOctImage.size());
 #ifndef ALTERNATIVE_VIEW

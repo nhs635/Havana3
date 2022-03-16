@@ -2,6 +2,7 @@
 #include "PulseReviewTab.h"
 
 #include <Havana3/MainWindow.h>
+#include <Havana3/Configuration.h>
 #include <Havana3/QResultTab.h>
 #include <Havana3/QViewTab.h>
 
@@ -65,7 +66,7 @@ PulseReviewTab::PulseReviewTab(QWidget *parent) :
 
 	// Create widgets for pulse and result review
 	createPulseView();
-	createHistogram();
+	//createHistogram();
 
 	// Set layout
 	m_pGroupBox_PulseReviewTab = new QGroupBox(this);
@@ -101,19 +102,7 @@ void PulseReviewTab::createPulseView()
 	m_pCheckBox_ShowWindow->setText("Show Window  ");
 	m_pCheckBox_ShowMeanDelay = new QCheckBox(this);
 	m_pCheckBox_ShowMeanDelay->setText("Show Mean Delay  ");
-	//m_pCheckBox_ShowMeanDelay->setDisabled(true);
-
-	m_pLabel_CurrentAline = new QLabel(this);
-	QString str; str.sprintf("Current A-line : %4d / %4d (%3.2f deg)  ", 4 * (0 + 1), m_pFLIm->_resize.ny * 4,
-		360.0 * (double)(4 * 0) / (double)m_pConfigTemp->octAlines);
-	m_pLabel_CurrentAline->setText(str);
-	m_pLabel_CurrentAline->setFixedWidth(250);
-
-	m_pSlider_CurrentAline = new QSlider(this);
-	m_pSlider_CurrentAline->setOrientation(Qt::Horizontal);
-	m_pSlider_CurrentAline->setRange(0, m_pFLIm->_resize.ny - 1);
-	m_pSlider_CurrentAline->setValue(int(m_pViewTab->getCurrentAline() / 4));
-
+	
 	m_pLabel_PulseType = new QLabel(this);
 	m_pLabel_PulseType->setText("Pulse Type");
 
@@ -125,6 +114,36 @@ void PulseReviewTab::createPulseView()
 	m_pComboBox_PulseType->addItem("Filter");
 	m_pComboBox_PulseType->setCurrentIndex(1);
 	
+	m_pLabel_CurrentAline = new QLabel(this);
+	QString str; str.sprintf("Current A-line : %4d / %4d (%3.2f deg)  ", 4 * (0 + 1), m_pFLIm->_resize.ny * 4,
+		360.0 * (double)(4 * 0) / (double)m_pConfigTemp->octAlines);
+	m_pLabel_CurrentAline->setText(str);
+	m_pLabel_CurrentAline->setFixedWidth(250);
+
+	m_pSlider_CurrentAline = new QSlider(this);
+	m_pSlider_CurrentAline->setOrientation(Qt::Horizontal);
+	m_pSlider_CurrentAline->setRange(0, m_pFLIm->_resize.ny - 1);
+	m_pSlider_CurrentAline->setValue(int(m_pViewTab->getCurrentAline() / 4));
+
+	m_pLabel_DelayTimeOffset = new QLabel(this);
+	m_pLabel_DelayTimeOffset->setText("Delay Time Offset ");
+
+	for (int i = 0; i < 3; i++)
+	{
+		m_pLineEdit_DelayTimeOffset[i] = new QLineEdit(this);
+		m_pLineEdit_DelayTimeOffset[i]->setFixedWidth(65);
+		m_pLineEdit_DelayTimeOffset[i]->setText(QString::number(m_pConfigTemp->flimDelayOffset[i], 'f', 3));
+		m_pLineEdit_DelayTimeOffset[i]->setAlignment(Qt::AlignCenter);
+	}
+
+	m_pLabel_NanoSec = new QLabel(" nsec  ", this);
+	m_pLabel_NanoSec->setFixedWidth(30);
+
+	m_pPushButton_Update = new QPushButton(this);
+	m_pPushButton_Update->setText("Update");
+	m_pPushButton_Update->setFixedWidth(55);
+
+	// Create table widget for FLIm parameters of current pixel (or roi) 
 	m_pTableWidget_CurrentResult = new QTableWidget(this);
 	m_pTableWidget_CurrentResult->setFixedSize(419, 114);
 	m_pTableWidget_CurrentResult->clearContents();
@@ -258,6 +277,19 @@ void PulseReviewTab::createPulseView()
 	pGridLayout_PulseView->addWidget(m_pLabel_CurrentAline, 2, 0, 1, 2);
 	pGridLayout_PulseView->addWidget(m_pSlider_CurrentAline, 2, 2, 1, 2);
 
+	QHBoxLayout *pHBoxLayout_DelayOffset = new QHBoxLayout;
+	pHBoxLayout_DelayOffset->setSpacing(2);
+	
+	pHBoxLayout_DelayOffset->addWidget(m_pLabel_DelayTimeOffset);
+	pHBoxLayout_DelayOffset->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed));
+	for (int i = 0; i < 3; i++)
+		pHBoxLayout_DelayOffset->addWidget(m_pLineEdit_DelayTimeOffset[i]);	
+	pHBoxLayout_DelayOffset->addWidget(m_pLabel_NanoSec);
+	pHBoxLayout_DelayOffset->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed));
+	pHBoxLayout_DelayOffset->addWidget(m_pPushButton_Update);
+
+	pGridLayout_PulseView->addItem(pHBoxLayout_DelayOffset, 3, 0, 1, 4);
+
 	QVBoxLayout *pVBoxLayout_Roi = new QVBoxLayout;
 	pVBoxLayout_Roi->setSpacing(2);
 
@@ -293,7 +325,9 @@ void PulseReviewTab::createPulseView()
 	connect(m_pCheckBox_ShowMeanDelay, SIGNAL(toggled(bool)), this, SLOT(showMeanDelay(bool)));
 	connect(m_pSlider_CurrentAline, SIGNAL(valueChanged(int)), this, SLOT(drawPulse(int)));
 	connect(m_pComboBox_PulseType, SIGNAL(currentIndexChanged(int)), this, SLOT(changePulseType()));
-
+	for (int i = 0; i < 3; i++)	
+		connect(m_pLineEdit_DelayTimeOffset[i], SIGNAL(editingFinished()), this, SLOT(restoreOffsetValues()));
+	connect(m_pPushButton_Update, SIGNAL(clicked(bool)), this, SLOT(updateDelayOffset()));
 	connect(m_pToggleButton_AddRoi, SIGNAL(toggled(bool)), this, SLOT(addRoi(bool)));
 	connect(m_pToggleButton_ModifyRoi, SIGNAL(toggled(bool)), this, SLOT(modifyRoi(bool)));
 	connect(m_pPushButton_DeleteRoi, SIGNAL(clicked(bool)), this, SLOT(deleteRoi()));
@@ -625,37 +659,61 @@ void PulseReviewTab::drawPulse(int aline)
 		}
 	}	
 		
-	// Histogram
-	for (int i = 0; i < 3; i++)
-	{
-		float* scanIntensity = &intensity.at(i)(0, frame);
-		float* scanLifetime = &lifetime.at(i)(0, frame);
+	//// Histogram
+	//for (int i = 0; i < 3; i++)
+	//{
+	//	float* scanIntensity = &intensity.at(i)(0, frame);
+	//	float* scanLifetime = &lifetime.at(i)(0, frame);
 
-		(*m_pHistogramIntensity)(scanIntensity, m_pRenderArea_FluIntensity->m_pData[i],
-			m_pConfig->flimIntensityRange[i].min, m_pConfig->flimIntensityRange[i].max);
-		(*m_pHistogramLifetime)(scanLifetime, m_pRenderArea_FluLifetime->m_pData[i],
-			m_pConfig->flimLifetimeRange[i].min, m_pConfig->flimLifetimeRange[i].max);
+	//	(*m_pHistogramIntensity)(scanIntensity, m_pRenderArea_FluIntensity->m_pData[i],
+	//		m_pConfig->flimIntensityRange[i].min, m_pConfig->flimIntensityRange[i].max);
+	//	(*m_pHistogramLifetime)(scanLifetime, m_pRenderArea_FluLifetime->m_pData[i],
+	//		m_pConfig->flimLifetimeRange[i].min, m_pConfig->flimLifetimeRange[i].max);
 
-		Ipp32f mean, stdev;
-		auto res = ippsMeanStdDev_32f(scanIntensity, m_pConfig->flimAlines, &mean, &stdev, ippAlgHintFast);
-		m_pLabel_FluIntensityVal[i]->setText(QString::fromLocal8Bit("Ch%1: %2 ¡¾ %3").arg(i + 1).arg(mean, 4, 'f', 3).arg(stdev, 4, 'f', 3));
-		res = ippsMeanStdDev_32f(scanLifetime, m_pConfig->flimAlines, &mean, &stdev, ippAlgHintFast);
-		m_pLabel_FluLifetimeVal[i]->setText(QString::fromLocal8Bit("Ch%1: %2 ¡¾ %3").arg(i + 1).arg(mean, 4, 'f', 3).arg(stdev, 4, 'f', 3));
-	}
-	m_pRenderArea_FluIntensity->update();
-	m_pRenderArea_FluLifetime->update();
+	//	Ipp32f mean, stdev;
+	//	auto res = ippsMeanStdDev_32f(scanIntensity, m_pConfig->flimAlines, &mean, &stdev, ippAlgHintFast);
+	//	m_pLabel_FluIntensityVal[i]->setText(QString::fromLocal8Bit("Ch%1: %2 ¡¾ %3").arg(i + 1).arg(mean, 4, 'f', 3).arg(stdev, 4, 'f', 3));
+	//	res = ippsMeanStdDev_32f(scanLifetime, m_pConfig->flimAlines, &mean, &stdev, ippAlgHintFast);
+	//	m_pLabel_FluLifetimeVal[i]->setText(QString::fromLocal8Bit("Ch%1: %2 ¡¾ %3").arg(i + 1).arg(mean, 4, 'f', 3).arg(stdev, 4, 'f', 3));
+	//}
+	//m_pRenderArea_FluIntensity->update();
+	//m_pRenderArea_FluLifetime->update();
 
-	m_pLabel_FluIntensityMin->setText(QString::number(std::min(m_pConfig->flimIntensityRange[0].min, std::min(m_pConfig->flimIntensityRange[1].min, m_pConfig->flimIntensityRange[2].min)), 'f', 1));
-	m_pLabel_FluIntensityMax->setText(QString::number(std::max(m_pConfig->flimIntensityRange[0].max, std::max(m_pConfig->flimIntensityRange[1].max, m_pConfig->flimIntensityRange[2].max)), 'f', 1));
-	m_pLabel_FluLifetimeMin->setText(QString::number(std::min(m_pConfig->flimLifetimeRange[0].min, std::min(m_pConfig->flimLifetimeRange[1].min, m_pConfig->flimLifetimeRange[2].min)), 'f', 1));
-	m_pLabel_FluLifetimeMax->setText(QString::number(std::max(m_pConfig->flimLifetimeRange[0].max, std::max(m_pConfig->flimLifetimeRange[1].max, m_pConfig->flimLifetimeRange[2].max)), 'f', 1));
+	//m_pLabel_FluIntensityMin->setText(QString::number(std::min(m_pConfig->flimIntensityRange[0].min, std::min(m_pConfig->flimIntensityRange[1].min, m_pConfig->flimIntensityRange[2].min)), 'f', 1));
+	//m_pLabel_FluIntensityMax->setText(QString::number(std::max(m_pConfig->flimIntensityRange[0].max, std::max(m_pConfig->flimIntensityRange[1].max, m_pConfig->flimIntensityRange[2].max)), 'f', 1));
+	//m_pLabel_FluLifetimeMin->setText(QString::number(std::min(m_pConfig->flimLifetimeRange[0].min, std::min(m_pConfig->flimLifetimeRange[1].min, m_pConfig->flimLifetimeRange[2].min)), 'f', 1));
+	//m_pLabel_FluLifetimeMax->setText(QString::number(std::max(m_pConfig->flimLifetimeRange[0].max, std::max(m_pConfig->flimLifetimeRange[1].max, m_pConfig->flimLifetimeRange[2].max)), 'f', 1));
 
-	m_pColorbar_FluLifetime->resetColormap(ColorTable::colortable(LIFETIME_COLORTABLE));
+	//m_pColorbar_FluLifetime->resetColormap(ColorTable::colortable(LIFETIME_COLORTABLE));
 }
 
 void PulseReviewTab::changePulseType()
 {
 	drawPulse(m_pSlider_CurrentAline->value());
+}
+
+void PulseReviewTab::restoreOffsetValues()
+{
+	for (int i = 0; i < 3; i++)
+		if (m_pLineEdit_DelayTimeOffset[i]->text() == "")
+			m_pLineEdit_DelayTimeOffset[i]->setText(QString::number(m_pConfigTemp->flimDelayOffset[i], 'f', 3));
+}
+
+void PulseReviewTab::updateDelayOffset()
+{
+	for (int i = 0; i < 3; i++)
+	{
+		float delayOffset = m_pLineEdit_DelayTimeOffset[i]->text().toFloat();
+		if (m_pConfigTemp->flimDelayOffset0[i] == 0.0f) // only record the original value
+			m_pConfigTemp->flimDelayOffset0[i] = m_pConfigTemp->flimDelayOffset[i];
+
+		ippsAddC_32f_I(m_pConfigTemp->flimDelayOffset[i], m_pViewTab->m_lifetimeMap.at(i).raw_ptr(), m_pViewTab->m_lifetimeMap.at(i).length());
+		ippsSubC_32f_I(delayOffset, m_pViewTab->m_lifetimeMap.at(i).raw_ptr(), m_pViewTab->m_lifetimeMap.at(i).length());
+		
+		m_pConfigTemp->flimDelayOffset[i] = delayOffset;			
+	}
+	m_pViewTab->invalidate();
+	m_pConfigTemp->setConfigFile(m_pResultTab->getDataProcessing()->getIniName());
 }
 
 void PulseReviewTab::addRoi(bool toggled)

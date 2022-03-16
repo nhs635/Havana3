@@ -54,6 +54,7 @@ private slots:
 	void catheterConnect(bool);
     void newRecord();
 	void exportRawData(bool);
+	void showHiddenData(bool);
 	void import();
     void editPatient();
     void deleteEditPatientDlg();
@@ -91,6 +92,7 @@ private:
 
 	QPushButton *m_pToggleButton_CatheterConnect;
     QPushButton *m_pPushButton_NewRecord;
+	QPushButton *m_pToggleButton_ShowHiddenData;
 
 	QPushButton *m_pToggleButton_Export;
 	QPushButton *m_pPushButton_Import;

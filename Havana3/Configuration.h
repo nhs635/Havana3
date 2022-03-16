@@ -1,7 +1,7 @@
 #ifndef CONFIGURATION_H
 #define CONFIGURATION_H
 
-#define VERSION						"0.0.0" ///"2.1.1"
+#define VERSION						"2.1.3"
 
 #define POWER_2(x)					(1 << x)
 #define NEAR_2_POWER(x)				(int)(1 << (int)ceil(log2(x)))
@@ -12,8 +12,8 @@
 ///#define NEXT_GEN_SYSTEM
 ///#define ENABLE_FPGA_FFT
 #define ENABLE_DATABASE_ENCRYPTION
-#define AXSUN_ENABLE
-#define NI_ENABLE
+//#define AXSUN_ENABLE
+//#define NI_ENABLE
 
 //////////////////////// Size Setup /////////////////////////
 #define FLIM_SCANS                  512
@@ -78,6 +78,7 @@
 #define INTENSITY_PROP_COLORTABLE	6 // fire
 #define INTENSITY_RATIO_COLORTABLE	12 // bwr
 #define LIFETIME_COLORTABLE         13 // hsv2 ==> Viewer/QImageView.cpp
+#define IVUS_COLORTABLE				0 // gray
 
 #define INTER_FRAME_SYNC			0 // Frames adjustment
 #define INTRA_FRAME_SYNC			0 // A-lines adjustment
@@ -110,7 +111,10 @@ struct ContrastRange
 class Configuration
 {
 public:
-	explicit Configuration() {}
+	explicit Configuration() : ivusPath("")
+	{
+		memset(flimDelayOffset0, 0, sizeof(float) * 3);
+	}
 	~Configuration() {}
 
 public:
@@ -197,6 +201,7 @@ public:
 
         // Database
         dbPath = settings.value("dbPath").toString();
+		ivusPath = settings.value("ivusPath").toString();;
 
 		settings.endGroup();
 
@@ -224,7 +229,10 @@ public:
 		{
 			settings.setValue(QString("flimChStartInd_%1").arg(i), flimChStartInd[i]);
 			if (i != 0)
+			{
 				settings.setValue(QString("flimDelayOffset_%1").arg(i), QString::number(flimDelayOffset[i - 1], 'f', 3));
+				settings.setValue(QString("flimDelayOffset0_%1").arg(i), QString::number(flimDelayOffset0[i - 1], 'f', 3));
+			}
 		}
 
 		// Visualization
@@ -273,6 +281,7 @@ public:
 
         // Database
         settings.setValue("dbPath", dbPath);
+		settings.setValue("ivusPath", ivusPath);
 
 		// Current Time
 		QString datetime = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss");
@@ -304,6 +313,7 @@ public:
 	float flimWidthFactor;
 	int flimChStartInd[4];
     float flimDelayOffset[3];
+	float flimDelayOffset0[3];
 
 	// FLIm classification
 	///int clfAnnXNode;
@@ -347,6 +357,7 @@ public:
 
     // Database
     QString dbPath;
+	QString ivusPath;
 	
 	// System log
 	QStringList log;

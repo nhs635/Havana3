@@ -173,22 +173,22 @@ ExportDlg::ExportDlg(QWidget *parent) :
 	m_pGroupBox_CrossSections->setLayout(pGridLayout_CrossSections);
 	
 
-	QGridLayout *pGridLayout_EnFaceMapping = new QGridLayout;
-	pGridLayout_EnFaceMapping->setSpacing(1);
+	QGridLayout *pGridLayout_EnFaceChemogram = new QGridLayout;
+	pGridLayout_EnFaceChemogram->setSpacing(1);
 	
-	pGridLayout_EnFaceMapping->addWidget(m_pCheckBox_RawData, 0, 0);
-	pGridLayout_EnFaceMapping->addWidget(m_pCheckBox_ScaledImage, 0, 1);
+	pGridLayout_EnFaceChemogram->addWidget(m_pCheckBox_RawData, 0, 0);
+	pGridLayout_EnFaceChemogram->addWidget(m_pCheckBox_ScaledImage, 0, 1);
 
-	pGridLayout_EnFaceMapping->addWidget(m_pCheckBox_EnFaceCh1, 1, 0);
-	pGridLayout_EnFaceMapping->addWidget(m_pCheckBox_EnFaceCh2, 1, 1);
-	pGridLayout_EnFaceMapping->addWidget(m_pCheckBox_EnFaceCh3, 1, 2);
+	pGridLayout_EnFaceChemogram->addWidget(m_pCheckBox_EnFaceCh1, 1, 0);
+	pGridLayout_EnFaceChemogram->addWidget(m_pCheckBox_EnFaceCh2, 1, 1);
+	pGridLayout_EnFaceChemogram->addWidget(m_pCheckBox_EnFaceCh3, 1, 2);
 
-	pGridLayout_EnFaceMapping->addWidget(m_pCheckBox_OctMaxProjection, 2, 0, 1, 2);
+	pGridLayout_EnFaceChemogram->addWidget(m_pCheckBox_OctMaxProjection, 2, 0, 1, 2);
 
-	m_pGroupBox_EnFaceMapping = new QGroupBox(this);
-	m_pGroupBox_EnFaceMapping->setTitle("En Face Mapping");
-	m_pGroupBox_EnFaceMapping->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-	m_pGroupBox_EnFaceMapping->setLayout(pGridLayout_EnFaceMapping);
+	m_pGroupBox_EnFaceChemogram = new QGroupBox(this);
+	m_pGroupBox_EnFaceChemogram->setTitle("En Face Chemogram");
+	m_pGroupBox_EnFaceChemogram->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+	m_pGroupBox_EnFaceChemogram->setLayout(pGridLayout_EnFaceChemogram);
 
 	// Set layout
 	pVBoxLayout->addWidget(m_pPushButton_Export);
@@ -196,7 +196,7 @@ ExportDlg::ExportDlg(QWidget *parent) :
 	pVBoxLayout->addItem(pGridLayout_Path);
 	pVBoxLayout->addWidget(pGroupBox_Range);
 	pVBoxLayout->addWidget(m_pGroupBox_CrossSections);
-	pVBoxLayout->addWidget(m_pGroupBox_EnFaceMapping);
+	pVBoxLayout->addWidget(m_pGroupBox_EnFaceChemogram);
 		
     this->setLayout(pVBoxLayout);
 
@@ -680,7 +680,7 @@ void ExportDlg::setWidgetsEnabled(bool enabled, int num_proc)
 	}
 	
 	// Save En Face Maps
-	m_pGroupBox_EnFaceMapping->setEnabled(enabled);
+	m_pGroupBox_EnFaceChemogram->setEnabled(enabled);
 
 	m_pCheckBox_RawData->setEnabled(enabled);
 	m_pCheckBox_ScaledImage->setEnabled(enabled);

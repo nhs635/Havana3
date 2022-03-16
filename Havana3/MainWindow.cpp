@@ -15,6 +15,7 @@
 #include <Havana3/QViewTab.h>
 
 #include <Havana3/Dialog/SettingDlg.h>
+#include <Havana3/Dialog/IvusViewerDlg.h>
 
 #include <DataAcquisition/DataAcquisition.h>
 #include <DataAcquisition/DataProcessing.h>
@@ -163,6 +164,8 @@ void MainWindow::tabCurrentChanged(int index)
 	{
 		if (dynamic_cast<QResultTab*>(previousTab)->getSettingDlg())
 			dynamic_cast<QResultTab*>(previousTab)->getSettingDlg()->close();
+		if (dynamic_cast<QResultTab*>(previousTab)->getIvusViewerDlg())
+			dynamic_cast<QResultTab*>(previousTab)->getIvusViewerDlg()->close();
 		dynamic_cast<QResultTab*>(previousTab)->updatePreviewImage();
 	}
 	else if (previousTab->windowTitle().contains("Summary"))
