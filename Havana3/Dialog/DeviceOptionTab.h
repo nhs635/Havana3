@@ -54,6 +54,7 @@ private slots:
 	void moveAbsolute();
 	void home();
 	void stop();
+	void renewPullbackFlag();
 	void setPullbackWidgets(bool);
 	
     // FLIm Laser Synchronization Control
@@ -123,6 +124,10 @@ private:
 	QPushButton *m_pPushButton_Pullback;
 	QPushButton *m_pPushButton_Home;
 	QPushButton *m_pPushButton_PullbackStop;
+
+	QLabel *m_pLabel_PullbackFlag;
+	QLabel *m_pLabel_PullbackFlagIndicator;
+	QPushButton *m_pPushButton_PullbackFlagStateRenew;
 	
     // FLIm control - Laser sync control widgets
 	QLabel *m_pLabel_AsynchronizedPulsedLaser;

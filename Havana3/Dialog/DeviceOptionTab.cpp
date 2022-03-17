@@ -216,7 +216,17 @@ void DeviceOptionTab::createHelicalScanningControl()
 	m_pPushButton_PullbackStop->setDisabled(true);
 	m_pLabel_PullbackOperation = new QLabel("Pullback Operation", this);
 	m_pLabel_PullbackOperation->setDisabled(true);
-	
+
+	m_pLabel_PullbackFlagIndicator = new QLabel("", this);
+	m_pLabel_PullbackFlagIndicator->setAlignment(Qt::AlignCenter);
+	m_pLabel_PullbackFlagIndicator->setFixedWidth(39);
+	m_pPushButton_PullbackFlagStateRenew = new QPushButton(this);
+	m_pPushButton_PullbackFlagStateRenew->setText("Renew");
+	m_pPushButton_PullbackFlagStateRenew->setFixedWidth(58);
+	m_pPushButton_PullbackFlagStateRenew->setDisabled(true);
+	m_pLabel_PullbackFlag = new QLabel("Pullback Flag", this);
+	m_pLabel_PullbackFlag->setDisabled(true);
+		
 	// Set Layout
 	QGridLayout *pGridLayout_RotaryMotor = new QGridLayout;
 	pGridLayout_RotaryMotor->setSpacing(3);
@@ -255,6 +265,14 @@ void DeviceOptionTab::createHelicalScanningControl()
 	pGridLayout_PullbackMotor->addWidget(m_pPushButton_Home, 3, 4, Qt::AlignRight);
 	pGridLayout_PullbackMotor->addWidget(m_pPushButton_PullbackStop, 3, 5);
 
+	pGridLayout_PullbackMotor->addWidget(m_pLabel_PullbackFlag, 4, 0);
+	pGridLayout_PullbackMotor->addItem(new QSpacerItem(0, 0, QSizePolicy::MinimumExpanding, QSizePolicy::Fixed), 4, 1, 1, 3);
+	QHBoxLayout *pHBoxLayout_PullbackFlag = new QHBoxLayout;
+	pHBoxLayout_PullbackFlag->setSpacing(3);
+	pHBoxLayout_PullbackFlag->addWidget(m_pLabel_PullbackFlagIndicator, Qt::AlignRight);
+	pHBoxLayout_PullbackFlag->addWidget(m_pPushButton_PullbackFlagStateRenew);
+	pGridLayout_PullbackMotor->addItem(pHBoxLayout_PullbackFlag, 4, 4, 1, 2, Qt::AlignRight);
+
 
 	QVBoxLayout *pVBoxLayout_HelicalScanning = new QVBoxLayout;
 	pVBoxLayout_HelicalScanning->setSpacing(10);
@@ -276,6 +294,7 @@ void DeviceOptionTab::createHelicalScanningControl()
 	connect(m_pPushButton_Pullback, SIGNAL(clicked(bool)), this, SLOT(moveAbsolute()));
 	connect(m_pPushButton_Home, SIGNAL(clicked(bool)), this, SLOT(home()));
 	connect(m_pPushButton_PullbackStop, SIGNAL(clicked(bool)), this, SLOT(stop()));
+	connect(m_pPushButton_PullbackFlagStateRenew, SIGNAL(clicked(bool)), this, SLOT(renewPullbackFlag()));
 }
 
 void DeviceOptionTab::createFlimSystemControl()
@@ -689,6 +708,10 @@ bool DeviceOptionTab::connectPullbackMotor(bool toggled)
 			m_pPushButton_Home->setEnabled(true);
 			m_pPushButton_PullbackStop->setEnabled(true);
 			m_pPushButton_Pullback->setStyleSheet("QPushButton { background-color:#ff0000; }");
+			m_pLabel_PullbackFlag->setEnabled(true);
+			m_pPushButton_PullbackFlagStateRenew->setEnabled(true);			
+			m_pLabel_PullbackFlagIndicator->setText(!m_pConfig->pullbackFlag ? "On" : "Off");
+			m_pLabel_PullbackFlagIndicator->setStyleSheet(!m_pConfig->pullbackFlag ? "QLabel { background-color:#00ff00; color:black; }" : "QLabel { background-color:#ff0000; color:white; }");
 
 			connect(this, SIGNAL(stopPullback(bool)), this, SLOT(setPullbackWidgets(bool)));
 		}
@@ -713,6 +736,10 @@ bool DeviceOptionTab::connectPullbackMotor(bool toggled)
 		m_pPushButton_Home->setDisabled(true);
 		m_pPushButton_PullbackStop->setDisabled(true);
 		m_pPushButton_Pullback->setStyleSheet("QPushButton { background-color:#353535; }");
+		m_pLabel_PullbackFlag->setDisabled(true);
+		m_pPushButton_PullbackFlagStateRenew->setEnabled(true);
+		m_pLabel_PullbackFlagIndicator->setText("");
+		m_pLabel_PullbackFlagIndicator->setStyleSheet("QLabel { background-color:#353535; }");
 
 		// Disconnect from rotary motor
 		m_pDeviceControl->connectRotaryMotor(false);
@@ -755,6 +782,7 @@ void DeviceOptionTab::moveAbsolute()
 		m_pConfig->pullbackFlag = true;
 		m_pConfig->setConfigFile("Havana3.ini");
 		m_pDeviceControl->moveAbsolute();
+		renewPullbackFlag();
 		
 		// Set widgets
 		setPullbackWidgets(false);
@@ -772,6 +800,7 @@ void DeviceOptionTab::home()
 		{
 			m_pConfig->pullbackFlag = false;
 			m_pConfig->setConfigFile("Havana3.ini");
+			renewPullbackFlag();
 		}
 	};
 	m_pDeviceControl->home();
@@ -781,6 +810,12 @@ void DeviceOptionTab::stop()
 {
 	m_pDeviceControl->stop();
 	setPullbackWidgets(true);
+}
+
+void DeviceOptionTab::renewPullbackFlag()
+{
+	m_pLabel_PullbackFlagIndicator->setText(!m_pConfig->pullbackFlag ? "On" : "Off");
+	m_pLabel_PullbackFlagIndicator->setStyleSheet(!m_pConfig->pullbackFlag ? "QLabel { background-color:#00ff00; color:black; }" : "QLabel { background-color:#ff0000; color:white; }");
 }
 
 void DeviceOptionTab::setPullbackWidgets(bool enabled)

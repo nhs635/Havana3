@@ -428,7 +428,7 @@ bool AxsunControl::setSubSampling(uint8_t subsampling_factor)
 
 bool AxsunControl::setVDLHome()
 {
-	std::unique_lock<std::mutex> lock(vdl_mutex);
+	//std::unique_lock<std::mutex> lock(vdl_mutex);
 	{
 		AxErr retval = AxErr::NO_AxERROR;
 		const char* pPreamble = "[Axsun Control] Failed to set VDL home: ";
@@ -457,7 +457,7 @@ bool AxsunControl::setVDLHome()
 
 bool AxsunControl::setVDLLength(float position)
 {
-	std::unique_lock<std::mutex> lock(vdl_mutex);
+	//std::unique_lock<std::mutex> lock(vdl_mutex);
 	{
 		AxErr retval = AxErr::NO_AxERROR;
 		const char* pPreamble = "[Axsun Control] Failed to set VDL length: ";

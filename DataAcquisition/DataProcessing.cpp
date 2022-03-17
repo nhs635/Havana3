@@ -220,9 +220,10 @@ void DataProcessing::deinterleaving(Configuration* pConfig)
 					memcpy(pulse_ptr, frame_ptr, sizeof(uint16_t) * pConfig->flimFrameSize);
 					if (frameCount >= 0) //pConfig->interFrameSync)
 					{
+						memset(pVisTab->m_vectorOctImage.at(frameCount).raw_ptr(), 0, pVisTab->m_vectorOctImage.at(frameCount).length());
+						np::Uint8Array2 frame_data(pConfig->octScans, pConfig->octAlines);
 #ifndef NEXT_GEN_SYSTEM
-						memcpy(pVisTab->m_vectorOctImage.at(frameCount).raw_ptr(), //  - pConfig->interFrameSync
-							frame_ptr + sizeof(uint16_t) * pConfig->flimFrameSize, sizeof(uint8_t) * pConfig->octFrameSize);
+						memcpy(frame_data, frame_ptr + sizeof(uint16_t) * pConfig->flimFrameSize, sizeof(uint8_t) * pConfig->octFrameSize);
 #else
 						memcpy(pVisTab->m_vectorOctImage.at(frameCount).raw_ptr(), //  - pConfig->interFrameSync
 							frame_ptr + sizeof(uint16_t) * pConfig->flimFrameSize, sizeof(float) * pConfig->octFrameSize);
@@ -233,9 +234,9 @@ void DataProcessing::deinterleaving(Configuration* pConfig)
 						IppiSize roi_oct = { m_pConfig->octScansFFT / 2, m_pConfig->octAlines };
 #endif
 						if (pConfig->verticalMirroring)
-							ippiMirror_8u_C1IR(pVisTab->m_vectorOctImage.at(frameCount).raw_ptr(), roi_oct.width, roi_oct, ippAxsVertical);  //  - pConfig->interFrameSync
+							ippiMirror_8u_C1IR(frame_data, roi_oct.width, roi_oct, ippAxsVertical);  //  - pConfig->interFrameSync
 
-						ippiCopy_8u_C1R(pVisTab->m_vectorOctImage.at(frameCount).raw_ptr() + pConfig->innerOffsetLength, roi_oct.width,  //  - pConfig->interFrameSync
+						ippiCopy_8u_C1R(frame_data + pConfig->innerOffsetLength, roi_oct.width,  //  - pConfig->interFrameSync
 							pVisTab->m_vectorOctImage.at(frameCount).raw_ptr(), roi_oct.width,  // - pConfig->interFrameSync
 							{ roi_oct.width - pConfig->innerOffsetLength, roi_oct.height });
 					}

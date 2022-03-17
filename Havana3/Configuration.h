@@ -1,7 +1,7 @@
 #ifndef CONFIGURATION_H
 #define CONFIGURATION_H
 
-#define VERSION						"2.1.3"
+#define VERSION						"2.1.3.1"
 
 #define POWER_2(x)					(1 << x)
 #define NEAR_2_POWER(x)				(int)(1 << (int)ceil(log2(x)))
@@ -29,7 +29,7 @@
 
 //////////////////////// System Setup ///////////////////////
 #define ROTARY_MOTOR_COM_PORT		"COM4"
-#define PULLBACK_MOTOR_COM_PORT		"COM7"
+#define PULLBACK_MOTOR_COM_PORT		"COM1"
 
 #define FLIM_LASER_COM_PORT			"COM5"
 
