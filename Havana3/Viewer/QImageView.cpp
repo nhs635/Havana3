@@ -488,7 +488,11 @@ void QRenderImage::paintEvent(QPaintEvent *)
 					span = m_rMax + span;
 
 				span = (int)round((double)span * 360.0 / (double)m_rMax * 16.0);
-				painter.drawArc(QRect(80, 80, w - 160, h - 160), start, span);
+
+				int width = 460 / m_fMagnLevel;
+				int left = center_x - width / 2; int top = center_y - width / 2;
+				QRect arcRectRegion = QRect(left, top, width, width); // QRect(80, 80, w - 160, h - 160)
+				painter.drawArc(arcRectRegion, start, span);
 			}
 		}
 

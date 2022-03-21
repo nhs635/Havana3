@@ -302,6 +302,10 @@ void QPatientSelectionTab::loadPatientDatabase()
 
     m_pTableWidget_PatientInformation->setSortingEnabled(true);
 	m_pTableWidget_PatientInformation->sortItems(4, Qt::DescendingOrder);
-
+	QStringList numbers;
+	for (int i = m_pTableWidget_PatientInformation->rowCount(); i > 0; i--)
+		numbers << QString::number(i);
+	m_pTableWidget_PatientInformation->setVerticalHeaderLabels(numbers);
+	
 	if (currentRow >= 0) m_pTableWidget_PatientInformation->selectRow(currentRow);
 }

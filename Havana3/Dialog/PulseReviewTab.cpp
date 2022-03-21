@@ -50,7 +50,7 @@ uint32_t plaque_type_color[9] = { 0xffffff, // none
 PulseReviewTab::PulseReviewTab(QWidget *parent) :
     QDialog(parent), m_pConfigTemp(nullptr), 
 	m_pResultTab(nullptr), m_pViewTab(nullptr), 
-	m_pFLIm(nullptr), m_totalRois(0)
+	m_pFLIm(nullptr), m_totalRois(0), m_bFromTable(false)
 {
 	// Set configuration objects
 	m_pResultTab = dynamic_cast<QResultTab*>(parent);
@@ -246,6 +246,9 @@ void PulseReviewTab::createPulseView()
 	QStringList rowLabels1;
 	rowLabels1 << "#" << "Frame" << "Start" << "End" << "Type" << "Comments";
 	m_pTableWidget_RoiList->setHorizontalHeaderLabels(rowLabels1);
+	QHeaderView* pVh = new QHeaderView(Qt::Vertical);
+	pVh->hide();
+	m_pTableWidget_RoiList->setVerticalHeader(pVh);
 
 	m_pTableWidget_RoiList->setAlternatingRowColors(true);
 	m_pTableWidget_RoiList->setSelectionMode(QAbstractItemView::SingleSelection);
@@ -918,6 +921,7 @@ void PulseReviewTab::cancel()
 	{
 		m_pToggleButton_AddRoi->setChecked(false);
 		m_pTableWidget_RoiList->clearSelection();
+		m_pTableWidget_RoiList->clearFocus();
 	}
 	else if (m_pToggleButton_ModifyRoi->isChecked())
 	{
@@ -931,6 +935,7 @@ void PulseReviewTab::cancel()
 		m_pPushButton_DeleteRoi->setDisabled(true);
 		m_pPushButton_Cancel->setDisabled(true);
 		m_pTableWidget_RoiList->clearSelection();
+		m_pTableWidget_RoiList->clearFocus();
 	}
 
 	m_pLineEdit_Comments->setText("");
@@ -961,7 +966,9 @@ void PulseReviewTab::selectRow(int row, int, int, int)
 	bool cw = m_pTableWidget_RoiList->item(row, 3)->toolTip() == "CW";
 	int type = m_pTableWidget_RoiList->item(row, 4)->toolTip().toInt();
 
+	m_bFromTable = true;
 	m_pResultTab->getViewTab()->setCurrentFrame(frame);
+	m_bFromTable = false;
 	drawPulse(end / 4);
 
 	pCircView->getRender()->m_bArcRoiShow = true;

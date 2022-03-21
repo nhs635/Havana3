@@ -785,6 +785,10 @@ void QPatientSummaryTab::loadRecordDatabase()
 
     m_pTableWidget_RecordInformation->setSortingEnabled(true);
 	m_pTableWidget_RecordInformation->sortItems(2, Qt::DescendingOrder);
+	QStringList numbers;
+	for (int i = m_pTableWidget_RecordInformation->rowCount(); i > 0; i--)
+		numbers << QString::number(i);
+	m_pTableWidget_RecordInformation->setVerticalHeaderLabels(numbers);
 
 	if (currentRow >= 0) m_pTableWidget_RecordInformation->selectRow(currentRow);
 }

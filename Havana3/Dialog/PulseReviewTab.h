@@ -66,6 +66,7 @@ public:
 	int m_start, m_end;
 	std::vector<QStringList> m_vectorRois;
 	int m_totalRois;
+	bool m_bFromTable;
 
 private:
 	Histogram* m_pHistogramIntensity;

@@ -850,7 +850,11 @@ void QViewTab::visualizeImage(int frame)
 
 		// Pulse review tab
 		if (m_pResultTab->getSettingDlg())
+		{
+			if (!m_pResultTab->getSettingDlg()->getPulseReviewTab()->m_bFromTable)
+				m_pResultTab->getSettingDlg()->getPulseReviewTab()->cancel();
 			m_pResultTab->getSettingDlg()->getPulseReviewTab()->drawPulse(getCurrentAline() / 4);
+		}
 		
 		// Matched IVUS image
 		if (m_pResultTab->getIvusViewerDlg())
@@ -1157,7 +1161,6 @@ void QViewTab::scaleFLImEnFaceMap(ImageObject* pImgObjIntensityMap, ImageObject*
 		pImgObjIntensityMap->arr.raw_ptr(), sizeof(uint8_t) * roi_flimproj4.height, roi_flimproj4);
 	circShift(pImgObjIntensityMap->arr, int(m_pConfigTemp->rotatedAlines / 4));
 	setAxialOffset(pImgObjIntensityMap->arr, m_pConfigTemp->interFrameSync);
-	//(*m_pMedfiltIntensityMap)(pImgObjIntensityMap->arr.raw_ptr());
 
 	if (mode == VisualizationMode::_LIFETIME_)
 	{
@@ -1169,7 +1172,6 @@ void QViewTab::scaleFLImEnFaceMap(ImageObject* pImgObjIntensityMap, ImageObject*
 			pImgObjLifetimeMap->arr.raw_ptr(), sizeof(uint8_t) * roi_flimproj4.height, roi_flimproj);
 		circShift(pImgObjLifetimeMap->arr, int(m_pConfigTemp->rotatedAlines / 4));
 		setAxialOffset(pImgObjLifetimeMap->arr, m_pConfigTemp->interFrameSync);
-		//(*m_pMedfiltLifetimeMap)(pImgObjLifetimeMap->arr.raw_ptr());
 
 		// RGB conversion
 		pImgObjIntensityMap->convertRgb();
@@ -1188,7 +1190,6 @@ void QViewTab::scaleFLImEnFaceMap(ImageObject* pImgObjIntensityMap, ImageObject*
 			pImgObjIntensityPropMap->arr.raw_ptr(), sizeof(uint8_t) * roi_flimproj4.height, roi_flimproj4);
 		circShift(pImgObjIntensityPropMap->arr, int(m_pConfigTemp->rotatedAlines / 4));
 		setAxialOffset(pImgObjIntensityPropMap->arr, m_pConfigTemp->interFrameSync);
-		//(*m_pMedfiltIntensityMap)(pImgObjIntensityPropMap->arr.raw_ptr());
 
 		// RGB conversion
 		pImgObjIntensityMap->convertRgb();
@@ -1199,15 +1200,7 @@ void QViewTab::scaleFLImEnFaceMap(ImageObject* pImgObjIntensityMap, ImageObject*
 	}
 	else if (mode == VisualizationMode::_INTENSITY_RATIO_)
 	{
-		//int ch_num = ch;
-		//int ch_den = (ch == 0) ? 2 : ch - 1;
-
-		//np::FloatArray2 ratio_temp(roi_flimproj4.width, roi_flimproj4.height);
-		//np::FloatArray2 log_ratio_temp(roi_flimproj4.width, roi_flimproj4.height);
-
 		// Intensity ratio map
-		//ippsDiv_32f(m_intensityMap.at(ch_num), m_intensityMap.at(ch_den), ratio_temp.raw_ptr(), m_intensityMap.at(ch_num).length());
-		//ippsLog10_32f_A11(ratio_temp.raw_ptr(), log_ratio_temp.raw_ptr(), log_ratio_temp.length());
 		ippiScale_32f8u_C1R(m_intensityRatioMap.at(ch), sizeof(float) * roi_flimproj.width,
 			scale_temp.raw_ptr(), sizeof(uint8_t) * roi_flimproj4.width, roi_flimproj,
 			m_pConfig->flimIntensityRatioRange[ch].min, m_pConfig->flimIntensityRatioRange[ch].max);
@@ -1215,7 +1208,6 @@ void QViewTab::scaleFLImEnFaceMap(ImageObject* pImgObjIntensityMap, ImageObject*
 			pImgObjIntensityRatioMap->arr.raw_ptr(), sizeof(uint8_t) * roi_flimproj4.height, roi_flimproj4);
 		circShift(pImgObjIntensityRatioMap->arr, int(m_pConfigTemp->rotatedAlines / 4));
 		setAxialOffset(pImgObjIntensityRatioMap->arr, m_pConfigTemp->interFrameSync);
-		//(*m_pMedfiltIntensityMap)(pImgObjIntensityRatioMap->arr.raw_ptr());
 
 		// RGB conversion
 		pImgObjIntensityMap->convertRgb();
