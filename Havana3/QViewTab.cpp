@@ -867,11 +867,12 @@ void QViewTab::visualizeImage(int frame)
 					break;
 				k++;
 			}
-
+					
 			np::Uint8Array2 ivusImage(IVUS_IMG_SIZE, IVUS_IMG_SIZE);
 			if (k != pIvusViewerDlg->m_vectorMatches.size())
 			{
 				QStringList matches = pIvusViewerDlg->m_vectorMatches.at(k);
+				qDebug() << matches;
 
 				int ivus_frame = matches.at(1).toInt() - 1;
 				int ivus_rotation = matches.at(2).toInt();

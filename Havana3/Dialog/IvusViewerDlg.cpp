@@ -64,6 +64,10 @@ IvusViewerDlg::IvusViewerDlg(QWidget *parent) :
 
 	// First execution
 	loadIvusData(true);
+
+	if (QApplication::desktop()->screen()->rect().width() != 1280)
+		this->move(m_pResultTab->getMainWnd()->x() - 500,
+			m_pResultTab->getMainWnd()->y() + m_pResultTab->getMainWnd()->height() - 563);
 }
 
 IvusViewerDlg::~IvusViewerDlg()
@@ -232,6 +236,7 @@ void IvusViewerDlg::loadIvusData(bool status)
 					
 					np::Uint8Array2 ivusImage(frame.cols, frame.rows);
 					ippiCopy_8u_C3C1R(frame.data, 3 * frame.cols, ivusImage, frame.cols, { frame.cols, frame.rows });
+					ippiMirror_8u_C1IR(ivusImage, frame.cols, { frame.cols, frame.rows }, ippAxsVertical);
 					m_vectorIvusImages.push_back(ivusImage);
 				} 
 			}

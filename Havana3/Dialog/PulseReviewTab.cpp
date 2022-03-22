@@ -721,7 +721,7 @@ void PulseReviewTab::updateDelayOffset()
 
 void PulseReviewTab::addRoi(bool toggled)
 {
-	QImageView *pCircView = m_pResultTab->getViewTab()->getCircImageView();
+	QImageView *pCircView = m_pViewTab->getCircImageView();
 	pCircView->getRender()->m_bArcRoiShow = false;
 	pCircView->getRender()->m_bArcRoiSelect = toggled;
 	pCircView->getRender()->m_nClicked = 0;
@@ -748,7 +748,7 @@ void PulseReviewTab::addRoi(bool toggled)
 
 void PulseReviewTab::modifyRoi(bool toggled)
 {
-	QImageView *pCircView = m_pResultTab->getViewTab()->getCircImageView();
+	QImageView *pCircView = m_pViewTab->getCircImageView();
 	pCircView->getRender()->m_bArcRoiShow = false;
 	pCircView->getRender()->m_bArcRoiSelect = toggled;
 
@@ -950,8 +950,11 @@ void PulseReviewTab::changePlaqueType(int type)
 	pCircView->getRender()->update();
 }
 
-void PulseReviewTab::selectRow(int row, int, int, int)
+void PulseReviewTab::selectRow(int row, int, int row0, int)
 {
+	if (row0 == -1)
+		return;
+
 	QImageView *pCircView = m_pResultTab->getViewTab()->getCircImageView();
 
 	// Set widgets
