@@ -1,7 +1,7 @@
 #ifndef CONFIGURATION_H
 #define CONFIGURATION_H
 
-#define VERSION						"2.1.3.1"
+#define VERSION						"2.1.3.2"
 
 #define POWER_2(x)					(1 << x)
 #define NEAR_2_POWER(x)				(int)(1 << (int)ceil(log2(x)))
@@ -12,8 +12,8 @@
 ///#define NEXT_GEN_SYSTEM
 ///#define ENABLE_FPGA_FFT
 #define ENABLE_DATABASE_ENCRYPTION
-//#define AXSUN_ENABLE
-//#define NI_ENABLE
+#define AXSUN_ENABLE
+#define NI_ENABLE
 
 //////////////////////// Size Setup /////////////////////////
 #define FLIM_SCANS                  512
@@ -29,7 +29,7 @@
 
 //////////////////////// System Setup ///////////////////////
 #define ROTARY_MOTOR_COM_PORT		"COM4"
-#define PULLBACK_MOTOR_COM_PORT		"COM1"
+#define PULLBACK_MOTOR_COM_PORT		"COM7"
 
 #define FLIM_LASER_COM_PORT			"COM5"
 
@@ -84,7 +84,7 @@
 #define INTRA_FRAME_SYNC			0 // A-lines adjustment
 
 #define RENEWAL_COUNT				8 
-#define REDUCED_COUNT				8
+#define REDUCED_COUNT				4
 #define PIXEL_RESOLUTION			5.0757 // micrometers
 #define OUTER_SHEATH_POSITION		114 // (int)((150 * 1.45 + 180 * 1 + 150 * 1.33) / PIXEL_RESOLUTION) // 0.034 inch OD
 
@@ -111,7 +111,7 @@ struct ContrastRange
 class Configuration
 {
 public:
-	explicit Configuration() : ivusPath("")
+	explicit Configuration() : dbPath(""), ivusPath("")
 	{
 		memset(flimDelayOffset0, 0, sizeof(float) * 3);
 	}

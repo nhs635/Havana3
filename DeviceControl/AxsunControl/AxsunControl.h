@@ -58,6 +58,7 @@ public:
 	callback2<const char*, bool> SendStatusMessage;
 	np::Uint16Array2 background_frame;
 	std::vector<uint16_t> background_vector;
+	uint32_t last_move_time;
 
 private:
 	AxDevType m_daq_device;

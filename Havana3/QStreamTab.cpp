@@ -357,6 +357,7 @@ void QStreamTab::startLiveImaging(bool start)
 		emit deviceInitialized();
 
 		m_pToggleButton_EnableRotation->setChecked(true);
+		m_pScrollBar_CatheterCalibration->setValue(m_pConfig->axsunVDLLength);
 		
 		m_pConfig->writeToLog(QString("Live streaming started: %1 (ID: %2)").arg(m_recordInfo.patientName).arg(m_recordInfo.patientId));
 	}
@@ -1059,16 +1060,13 @@ void QStreamTab::resetCatheterCalibration()
 void QStreamTab::scrollCatheterCalibration(int value)
 {
 	/* 장치를 껐다 키면 VDL이 영 이상해요. */
-	std::thread calib([&]() {
-		if (m_pDeviceControl->getAxsunControl())
-		{
-			m_pConfig->axsunVDLLength = (float)value / 100.0f;
+	if (m_pDeviceControl->getAxsunControl())
+	{
+		m_pConfig->axsunVDLLength = (float)value / 100.0f;
 #ifdef AXSUN_ENABLE
-			m_pDeviceControl->getAxsunControl()->setVDLLength(m_pConfig->axsunVDLLength);
+		m_pDeviceControl->getAxsunControl()->setVDLLength(m_pConfig->axsunVDLLength);
 #endif
-		}
-	});
-	calib.detach();
+	}
 }
 
 void QStreamTab::scrollInnerOffsetLength(int offset)

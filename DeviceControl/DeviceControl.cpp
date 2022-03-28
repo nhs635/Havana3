@@ -122,7 +122,7 @@ bool DeviceControl::connectRotaryMotor(bool toggled)
 			return false;
 		}
 
-		m_pRotaryMotor->EnableMotor();
+		//m_pRotaryMotor->EnableMotor();
 	}
 	else
 	{
@@ -625,6 +625,8 @@ bool DeviceControl::connectAxsunControl(bool toggled)
 
 		// Default VDL Length		
 		m_pAxsunControl->getVDLStatus();
+		if (m_pAxsunControl->last_move_time == 0)
+			setVDLHome();
 		
 		///setVDLHome();
 		///setVDLLength(m_pConfig->axsunVDLLength);

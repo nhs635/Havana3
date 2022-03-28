@@ -496,7 +496,6 @@ void AxsunControl::getVDLStatus()
 	{
 		float current_pos, target_pos, speed; 
 		int32_t error_from_last_home;
-		uint32_t last_move_time; 
 		uint8_t state, home_switch, limit_switch, VDL_error;
 
 		retval = axGetVDLStatus(&current_pos, &target_pos, &speed, &error_from_last_home,

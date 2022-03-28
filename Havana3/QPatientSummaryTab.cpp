@@ -205,7 +205,7 @@ void QPatientSummaryTab::createPatientSummaryTable()
     m_pTableWidget_RecordInformation->setColumnWidth(7, 60);
 	
     // Connect signal and slot
-	connect(m_pTableWidget_RecordInformation, SIGNAL(cellDoubleClicked(int, int)), this, SLOT(editComment(int, int)));
+	connect(m_pTableWidget_RecordInformation, SIGNAL(cellDoubleClicked(int, int)), this, SLOT(editContents(int, int)));
 	connect(this, SIGNAL(requestDelete(QString)), this, SLOT(deleteRecordData(QString)));
 }
 
@@ -520,7 +520,7 @@ void QPatientSummaryTab::deleteSettingDlg()
 	m_pSettingDlg = nullptr;
 }
 
-void QPatientSummaryTab::editComment(int row, int column)
+void QPatientSummaryTab::editContents(int row, int column)
 {
 	if (column == 5)
 	{
@@ -528,7 +528,7 @@ void QPatientSummaryTab::editComment(int row, int column)
 		{
 			QTextEdit *pTextEdit_Comment = new QTextEdit(this);
 			pTextEdit_Comment->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-			pTextEdit_Comment->setAlignment(Qt::AlignLeft | Qt::AlignTop);			
+			pTextEdit_Comment->setAlignment(Qt::AlignLeft | Qt::AlignTop);
 			pTextEdit_Comment->setPlainText(m_pTableWidget_RecordInformation->item(row, column)->text());
 			connect(pTextEdit_Comment, &QTextEdit::textChanged, [&, pTextEdit_Comment]() { m_pTableWidget_RecordInformation->item(row, column)->setText(pTextEdit_Comment->toPlainText()); });
 			connect(pDialog, &QDialog::finished, [&, pTextEdit_Comment]() {
@@ -547,6 +547,90 @@ void QPatientSummaryTab::editComment(int row, int column)
 		}
 		pDialog->setWindowTitle("Comments");
 		pDialog->setFixedSize(300, 200);
+		pDialog->setModal(true);
+		pDialog->exec();
+	}
+	else if (column == 0)
+	{
+		QDialog *pDialog = new QDialog(this);
+		{
+			QTextEdit *pTextEdit_Title = new QTextEdit(this);
+			pTextEdit_Title->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+			pTextEdit_Title->setAlignment(Qt::AlignLeft | Qt::AlignTop);
+			pTextEdit_Title->setPlainText(m_pTableWidget_RecordInformation->item(row, column)->text());
+			connect(pTextEdit_Title, &QTextEdit::textChanged, [&, pTextEdit_Title]() { m_pTableWidget_RecordInformation->item(row, column)->setText(pTextEdit_Title->toPlainText()); });
+			connect(pDialog, &QDialog::finished, [&, pTextEdit_Title]() {
+				QString comment = pTextEdit_Title->toPlainText();
+				QString command = QString("UPDATE records SET title='%1' WHERE id=%2").arg(comment).arg(m_pTableWidget_RecordInformation->item(row, 0)->toolTip());
+				m_pHvnSqlDataBase->queryDatabase(command);
+				m_pConfig->writeToLog(QString("Record title updated: %1 (ID: %2): %3 : record id: %4")
+					.arg(m_patientInfo.patientName).arg(m_patientInfo.patientId).arg(m_pTableWidget_RecordInformation->item(row, 2)->text()).arg(m_pTableWidget_RecordInformation->item(row, 0)->toolTip()));
+			});
+
+			QVBoxLayout *pVBoxLayout = new QVBoxLayout;
+			pVBoxLayout->addWidget(pTextEdit_Title);
+			pDialog->setLayout(pVBoxLayout);
+		}
+		pDialog->setWindowTitle("Title");
+		pDialog->setFixedSize(200, 100);
+		pDialog->setModal(true);
+		pDialog->exec();
+	}
+	else if (column == 3)
+	{		
+		QDialog *pDialog = new QDialog(this);
+		{
+			QComboBox *pComboBox_Vessel = new QComboBox(this);
+			pComboBox_Vessel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);		
+			QString cur_vessel = m_pTableWidget_RecordInformation->item(row, column)->text();
+			for (int i = 0; i <= 16; i++)
+			{
+				pComboBox_Vessel->insertItem(i, m_pHvnSqlDataBase->getVessel(i));
+				if (m_pHvnSqlDataBase->getVessel(i) == cur_vessel)
+					pComboBox_Vessel->setCurrentIndex(i);
+			}
+			connect(pDialog, &QDialog::finished, [&, pComboBox_Vessel]() {
+				int vessel = pComboBox_Vessel->currentIndex();
+				m_pTableWidget_RecordInformation->item(row, column)->setText(m_pHvnSqlDataBase->getVessel(vessel));
+				QString command = QString("UPDATE records SET vessel_id=%1 WHERE id=%2").arg(vessel).arg(m_pTableWidget_RecordInformation->item(row, 0)->toolTip());
+				m_pHvnSqlDataBase->queryDatabase(command);
+			});
+
+			QVBoxLayout *pVBoxLayout = new QVBoxLayout;
+			pVBoxLayout->addWidget(pComboBox_Vessel);
+			pDialog->setLayout(pVBoxLayout);
+		}
+		pDialog->setWindowTitle("Vessel");
+		pDialog->setFixedSize(180, 80);
+		pDialog->setModal(true);
+		pDialog->exec();
+	}
+	else if (column == 4)
+	{
+		QDialog *pDialog = new QDialog(this);
+		{
+			QComboBox *pComboBox_Procedure = new QComboBox(this);
+			pComboBox_Procedure->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+			QString cur_procedure = m_pTableWidget_RecordInformation->item(row, column)->text();
+			for (int i = 0; i <= 4; i++)
+			{
+				pComboBox_Procedure->insertItem(i, m_pHvnSqlDataBase->getProcedure(i));
+				if (m_pHvnSqlDataBase->getProcedure(i) == cur_procedure)
+					pComboBox_Procedure->setCurrentIndex(i);
+			}
+			connect(pDialog, &QDialog::finished, [&, pComboBox_Procedure]() {
+				int procedure = pComboBox_Procedure->currentIndex();
+				m_pTableWidget_RecordInformation->item(row, column)->setText(m_pHvnSqlDataBase->getProcedure(procedure));
+				QString command = QString("UPDATE records SET procedure_id=%1 WHERE id=%2").arg(procedure).arg(m_pTableWidget_RecordInformation->item(row, 0)->toolTip());
+				m_pHvnSqlDataBase->queryDatabase(command);
+			});
+
+			QVBoxLayout *pVBoxLayout = new QVBoxLayout;
+			pVBoxLayout->addWidget(pComboBox_Procedure);
+			pDialog->setLayout(pVBoxLayout);
+		}
+		pDialog->setWindowTitle("Procedure");
+		pDialog->setFixedSize(180, 80);
 		pDialog->setModal(true);
 		pDialog->exec();
 	}

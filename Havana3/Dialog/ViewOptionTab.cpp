@@ -484,23 +484,25 @@ void ViewOptionTab::changeEmissionChannel(int ch)
 	
 	m_pLabel_NormIntensity->setText(QString("Ch%1 Intensity (AU) ").arg(ch + 1));
 	m_pLabel_Lifetime->setText(QString("Ch%1 Lifetime (nsec) ").arg(ch + 1));
-	m_pLabel_IntensityProp->setText(QString("Ch%1 IntProp (AU) ").arg(ch + 1));
-	m_pLabel_IntensityRatio->setText(QString("Ch%1/%2 IntRatio (AU) ").arg(m_pConfig->flimEmissionChannel).arg((m_pConfig->flimEmissionChannel == 1) ? 3 : m_pConfig->flimEmissionChannel - 1));
 
 	m_pLineEdit_IntensityMin->setText(QString::number(m_pConfig->flimIntensityRange[ch].min, 'f', 1));
 	m_pLineEdit_IntensityMax->setText(QString::number(m_pConfig->flimIntensityRange[ch].max, 'f', 1));
 	m_pLineEdit_LifetimeMin->setText(QString::number(m_pConfig->flimLifetimeRange[ch].min, 'f', 1));
 	m_pLineEdit_LifetimeMax->setText(QString::number(m_pConfig->flimLifetimeRange[ch].max, 'f', 1));
-	m_pLineEdit_IntensityPropMin->setText(QString::number(m_pConfig->flimIntensityPropRange[ch].min, 'f', 1));
-	m_pLineEdit_IntensityPropMax->setText(QString::number(m_pConfig->flimIntensityPropRange[ch].max, 'f', 1));
-	m_pLineEdit_IntensityRatioMin->setText(QString::number(m_pConfig->flimIntensityRatioRange[ch].min, 'f', 1));
-	m_pLineEdit_IntensityRatioMax->setText(QString::number(m_pConfig->flimIntensityRatioRange[ch].max, 'f', 1));
 
 	if (m_pStreamTab)
 	{
 	}
 	else if (m_pResultTab)
 	{
+		m_pLabel_IntensityProp->setText(QString("Ch%1 IntProp (AU) ").arg(ch + 1));
+		m_pLabel_IntensityRatio->setText(QString("Ch%1/%2 IntRatio (AU) ").arg(m_pConfig->flimEmissionChannel).arg((m_pConfig->flimEmissionChannel == 1) ? 3 : m_pConfig->flimEmissionChannel - 1));
+
+		m_pLineEdit_IntensityPropMin->setText(QString::number(m_pConfig->flimIntensityPropRange[ch].min, 'f', 1));
+		m_pLineEdit_IntensityPropMax->setText(QString::number(m_pConfig->flimIntensityPropRange[ch].max, 'f', 1));
+		m_pLineEdit_IntensityRatioMin->setText(QString::number(m_pConfig->flimIntensityRatioRange[ch].min, 'f', 1));
+		m_pLineEdit_IntensityRatioMax->setText(QString::number(m_pConfig->flimIntensityRatioRange[ch].max, 'f', 1));
+
 		if (m_pViewTab)
 		{
 			int mode;

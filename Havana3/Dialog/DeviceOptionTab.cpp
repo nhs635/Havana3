@@ -144,6 +144,11 @@ void DeviceOptionTab::createHelicalScanningControl()
 	m_pLabel_RotaryConnect = new QLabel(this);
 	m_pLabel_RotaryConnect->setText("Rotary Motor");
 
+	m_pCheckBox_AutoApply = new QCheckBox(this);
+	m_pCheckBox_AutoApply->setText("Auto ");
+	m_pCheckBox_AutoApply->setChecked(true);
+	m_pCheckBox_AutoApply->setDisabled(true);
+
 	m_pSpinBox_RPM = new QSpinBox(this);
 	m_pSpinBox_RPM->setFixedWidth(50);
 	m_pSpinBox_RPM->setRange(0, 6000);
@@ -161,10 +166,10 @@ void DeviceOptionTab::createHelicalScanningControl()
 	m_pLabel_RPM->setBuddy(m_pSpinBox_RPM);
 	m_pLabel_RPM->setDisabled(true);
 
-	m_pPushButton_RotateStop = new QPushButton(this);
-	m_pPushButton_RotateStop->setText("Stop");
-	m_pPushButton_RotateStop->setFixedWidth(100);
-	m_pPushButton_RotateStop->setDisabled(true);
+	m_pPushButton_RotateOperation = new QPushButton(this);
+	m_pPushButton_RotateOperation->setText("Stop");
+	m_pPushButton_RotateOperation->setFixedWidth(100);
+	m_pPushButton_RotateOperation->setDisabled(true);
 
 	// Create widgets for pullback stage control
 	m_pToggleButton_PullbackConnect = new QPushButton(this);
@@ -232,14 +237,15 @@ void DeviceOptionTab::createHelicalScanningControl()
 	pGridLayout_RotaryMotor->setSpacing(3);
 
 	pGridLayout_RotaryMotor->addWidget(m_pLabel_RotaryConnect, 0, 0);
-	pGridLayout_RotaryMotor->addItem(new QSpacerItem(0, 0, QSizePolicy::MinimumExpanding, QSizePolicy::Fixed), 0, 1, 1, 3);
-	pGridLayout_RotaryMotor->addWidget(m_pToggleButton_RotaryConnect, 0, 4);
+	pGridLayout_RotaryMotor->addItem(new QSpacerItem(0, 0, QSizePolicy::MinimumExpanding, QSizePolicy::Fixed), 0, 1, 1, 4);
+	pGridLayout_RotaryMotor->addWidget(m_pToggleButton_RotaryConnect, 0, 5);
 
 	pGridLayout_RotaryMotor->addWidget(m_pLabel_RotationSpeed, 1, 0);
-	pGridLayout_RotaryMotor->addItem(new QSpacerItem(0, 0, QSizePolicy::MinimumExpanding, QSizePolicy::Fixed), 1, 0);
-	pGridLayout_RotaryMotor->addWidget(m_pSpinBox_RPM, 1, 2);
-	pGridLayout_RotaryMotor->addWidget(m_pLabel_RPM, 1, 3);
-	pGridLayout_RotaryMotor->addWidget(m_pPushButton_RotateStop, 1, 4);
+	pGridLayout_RotaryMotor->addItem(new QSpacerItem(0, 0, QSizePolicy::MinimumExpanding, QSizePolicy::Fixed), 1, 1);
+	pGridLayout_RotaryMotor->addWidget(m_pCheckBox_AutoApply, 1, 2);
+	pGridLayout_RotaryMotor->addWidget(m_pSpinBox_RPM, 1, 3);
+	pGridLayout_RotaryMotor->addWidget(m_pLabel_RPM, 1, 4);
+	pGridLayout_RotaryMotor->addWidget(m_pPushButton_RotateOperation, 1, 5);
 
 	QGridLayout *pGridLayout_PullbackMotor = new QGridLayout;
 	pGridLayout_PullbackMotor->setSpacing(3);
@@ -286,8 +292,7 @@ void DeviceOptionTab::createHelicalScanningControl()
 	
 	// Connect signal and slot
 	connect(m_pToggleButton_RotaryConnect, SIGNAL(toggled(bool)), this, SLOT(connectRotaryMotor(bool)));
-	connect(m_pSpinBox_RPM, SIGNAL(valueChanged(int)), this, SLOT(changeRotaryRpm(int)));
-	connect(m_pPushButton_RotateStop, SIGNAL(clicked(bool)), this, SLOT(rotateStop()));
+	connect(m_pCheckBox_AutoApply, SIGNAL(toggled(bool)), this, SLOT(changeAutoApply(bool)));
 
 	connect(m_pToggleButton_PullbackConnect, SIGNAL(toggled(bool)), this, SLOT(connectPullbackMotor(bool)));
 	connect(m_pButtonGroup_PullbackMode, SIGNAL(buttonClicked(int)), this, SLOT(setPullbackMode(int)));
@@ -634,10 +639,13 @@ bool DeviceOptionTab::connectRotaryMotor(bool toggled)
 
 			m_pLabel_RotaryConnect->setDisabled(true);
 
+			m_pCheckBox_AutoApply->setEnabled(true);
 			m_pLabel_RotationSpeed->setEnabled(true);
 			m_pSpinBox_RPM->setEnabled(true);
 			m_pLabel_RPM->setEnabled(true);
-			m_pPushButton_RotateStop->setEnabled(true);
+			m_pPushButton_RotateOperation->setEnabled(true);
+
+			changeAutoApply(m_pCheckBox_AutoApply->isChecked());
 		}
 		else
 			m_pToggleButton_RotaryConnect->setChecked(false);
@@ -653,16 +661,35 @@ bool DeviceOptionTab::connectRotaryMotor(bool toggled)
 
 		m_pLabel_RotaryConnect->setEnabled(true);
 
+		m_pCheckBox_AutoApply->setDisabled(true);
 		m_pLabel_RotationSpeed->setDisabled(true);
 		m_pSpinBox_RPM->setDisabled(true);
 		m_pLabel_RPM->setDisabled(true);
-		m_pPushButton_RotateStop->setDisabled(true);
+		m_pPushButton_RotateOperation->setDisabled(true);
 
 		// Disconnect from rotary motor
 		m_pDeviceControl->connectRotaryMotor(false);
 	}
 
 	return true;
+}
+
+void DeviceOptionTab::changeAutoApply(bool toggled)
+{
+	disconnect(m_pSpinBox_RPM, SIGNAL(valueChanged(int)), 0, 0);
+	disconnect(m_pPushButton_RotateOperation, SIGNAL(clicked(bool)), 0, 0);
+
+	if (toggled)
+	{
+		m_pPushButton_RotateOperation->setText("Stop");
+		connect(m_pSpinBox_RPM, SIGNAL(valueChanged(int)), this, SLOT(changeRotaryRpm(int)));
+		connect(m_pPushButton_RotateOperation, SIGNAL(clicked(bool)), this, SLOT(rotateStop()));
+	}
+	else
+	{
+		m_pPushButton_RotateOperation->setText("Rotate");
+		connect(m_pPushButton_RotateOperation, SIGNAL(clicked(bool)), this, SLOT(rotate()));
+	}
 }
 
 void DeviceOptionTab::changeRotaryRpm(int rpm)
@@ -682,6 +709,16 @@ void DeviceOptionTab::rotateStop()
 		m_pStreamTab->enableRotation(false);
 
 	m_pConfig->writeToLog("Rotation stop");
+}
+
+void DeviceOptionTab::rotate()
+{
+	int rpm = m_pSpinBox_RPM->value();
+
+	if (rpm != 0)
+		changeRotaryRpm(rpm);
+	else
+		rotateStop();
 }
 
 
@@ -737,7 +774,7 @@ bool DeviceOptionTab::connectPullbackMotor(bool toggled)
 		m_pPushButton_PullbackStop->setDisabled(true);
 		m_pPushButton_Pullback->setStyleSheet("QPushButton { background-color:#353535; }");
 		m_pLabel_PullbackFlag->setDisabled(true);
-		m_pPushButton_PullbackFlagStateRenew->setEnabled(true);
+		m_pPushButton_PullbackFlagStateRenew->setDisabled(true);
 		m_pLabel_PullbackFlagIndicator->setText("");
 		m_pLabel_PullbackFlagIndicator->setStyleSheet("QLabel { background-color:#353535; }");
 

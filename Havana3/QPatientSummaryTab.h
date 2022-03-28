@@ -60,7 +60,7 @@ private slots:
     void deleteEditPatientDlg();
 	void createSettingDlg();
 	void deleteSettingDlg();
-	void editComment(int, int);
+	void editContents(int, int);
 	void deleteRecordData(const QString &);
 
 public:

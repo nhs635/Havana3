@@ -46,7 +46,9 @@ private:
 private slots:
     // Helical Scanning Control
 	bool connectRotaryMotor(bool);	
+	void changeAutoApply(bool);
 	void changeRotaryRpm(int);
+	void rotate();
 	void rotateStop();
 	
 	bool connectPullbackMotor(bool);
@@ -105,10 +107,11 @@ private:
 	QLabel *m_pLabel_RotaryConnect;
 	QPushButton *m_pToggleButton_RotaryConnect;
 
+	QCheckBox *m_pCheckBox_AutoApply;
 	QLabel *m_pLabel_RotationSpeed;
 	QSpinBox *m_pSpinBox_RPM;
 	QLabel *m_pLabel_RPM;
-	QPushButton *m_pPushButton_RotateStop;
+	QPushButton *m_pPushButton_RotateOperation;
 
     // Faulhaber pullback stage control widgets
 	QLabel *m_pLabel_PullbackConnect;
