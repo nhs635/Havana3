@@ -546,7 +546,7 @@ void QPatientSummaryTab::editContents(int row, int column)
 			pDialog->setLayout(pVBoxLayout);
 		}
 		pDialog->setWindowTitle("Comments");
-		pDialog->setFixedSize(300, 200);
+		pDialog->setFixedSize(350, 200);
 		pDialog->setModal(true);
 		pDialog->exec();
 	}
@@ -577,11 +577,11 @@ void QPatientSummaryTab::editContents(int row, int column)
 		pDialog->exec();
 	}
 	else if (column == 3)
-	{		
+	{
 		QDialog *pDialog = new QDialog(this);
 		{
 			QComboBox *pComboBox_Vessel = new QComboBox(this);
-			pComboBox_Vessel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);		
+			pComboBox_Vessel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 			QString cur_vessel = m_pTableWidget_RecordInformation->item(row, column)->text();
 			for (int i = 0; i <= 16; i++)
 			{
@@ -633,6 +633,34 @@ void QPatientSummaryTab::editContents(int row, int column)
 		pDialog->setFixedSize(180, 80);
 		pDialog->setModal(true);
 		pDialog->exec();
+	}
+	else if (column == 2)
+	{
+		QString recordId = m_pTableWidget_RecordInformation->item(row, 0)->toolTip();
+		QString command = QString("SELECT * FROM records WHERE id=%1").arg(recordId);
+		m_pHvnSqlDataBase->queryDatabase(command, [&](QSqlQuery& _sqlQuery) {
+			while (_sqlQuery.next())
+			{
+				QString filename0 = _sqlQuery.value(9).toString();
+				int idx = filename0.indexOf("record");
+				QString filename = m_pConfig->dbPath + filename0.remove(0, idx - 1);
+
+				QClipboard *pClipBoard = QApplication::clipboard();
+				for (int i = filename.size() - 1; i >= 0; i--)
+				{
+					int slash_pos = i;
+					if (filename.at(i) == '/')
+					{
+						filename = filename.left(slash_pos);
+						break;
+					}
+				}
+				pClipBoard->setText(filename);
+
+				QMessageBox MsgBox(QMessageBox::Information, "Path Copy", QString("Data path was copied to the clipboard: \n%1").arg(filename));
+				MsgBox.exec();
+			}
+		});
 	}
 }
 

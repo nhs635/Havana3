@@ -59,6 +59,7 @@ bool HvnSqlDataBase::openDatabase(const QString& username, const QString& passwo
 
 				closeDatabase();
 				m_pMainWnd->setCursor(Qt::ArrowCursor);
+				m_pConfig->dbPath = "";
 				return false;
 			}
 			else
