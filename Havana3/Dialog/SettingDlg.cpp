@@ -102,7 +102,7 @@ SettingDlg::SettingDlg(QWidget *parent) :
 		{
 			setMinimumHeight(740);
 			this->move(m_pResultTab->getMainWnd()->x() + m_pResultTab->getMainWnd()->width() - 25,
-				m_pResultTab->getMainWnd()->y() + m_pResultTab->getMainWnd()->height() - 765);
+				m_pResultTab->getMainWnd()->y() + m_pResultTab->getMainWnd()->height() - 740);
 		}
 	}
 

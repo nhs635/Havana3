@@ -28,22 +28,20 @@ typedef enum plaque_type {
 	none = 0,
 	normal,
 	fibrous,
+	loose_fibrous,
 	calcification,
-	lipid,
 	focal_mac,
-	ThCFA,
-	TCFA,
+	lipid_mac,
 	other
 } plaque_type;
 
 uint32_t plaque_type_color[9] = { 0xffffff, // none
 								  0x43bfdc, // normal
 								  0x649254, // fibrous
+								  0xbf9000, // loose fibrous
 								  0x808080, // calcification
-								  0xffdb15, // lipid
 								  0xff4746, // focal mac
-								  0xbf9000, // ThCPA
-								  0x780005, // TCPA
+								  0x780005, // lipid + mac
 								  0xfffffe }; // other 
 
 
@@ -219,11 +217,10 @@ void PulseReviewTab::createPulseView()
 	m_pComboBox_PlaqueType->addItem("None");
 	m_pComboBox_PlaqueType->addItem("Normal");
 	m_pComboBox_PlaqueType->addItem("Fibrous");
+	m_pComboBox_PlaqueType->addItem("Loose Fibrous");
 	m_pComboBox_PlaqueType->addItem("Calcification");
-	m_pComboBox_PlaqueType->addItem("Lipid");
 	m_pComboBox_PlaqueType->addItem("Focal mac");
-	m_pComboBox_PlaqueType->addItem("ThCFA");
-	m_pComboBox_PlaqueType->addItem("TCFA");	
+	m_pComboBox_PlaqueType->addItem("Lipid + mac");	
 	m_pComboBox_PlaqueType->addItem("Other");
 	m_pComboBox_PlaqueType->setCurrentIndex(0);
 	m_pComboBox_PlaqueType->setFixedWidth(120);
@@ -1116,12 +1113,13 @@ void PulseReviewTab::loadRois()
 		while (!stream.atEnd())
 		{
 			QStringList rois = stream.readLine().split('\t');
-			if (rois.size() > 1)
-				m_vectorRois.push_back(rois);
-			else
-				m_totalRois = rois.at(0).toInt();
+			m_vectorRois.push_back(rois);
 		}
 		roi_file.close();
+
+		QStringList rois = m_vectorRois.at(m_vectorRois.size() - 1);
+		m_totalRois = rois.at(0).toInt();
+		m_vectorRois.pop_back();
 		
 		for (int i = 0; i < m_vectorRois.size(); i++)
 		{

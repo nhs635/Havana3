@@ -12,8 +12,8 @@
 ///#define NEXT_GEN_SYSTEM
 ///#define ENABLE_FPGA_FFT
 #define ENABLE_DATABASE_ENCRYPTION
-#define AXSUN_ENABLE
-#define NI_ENABLE
+//#define AXSUN_ENABLE
+//#define NI_ENABLE
 
 //////////////////////// Size Setup /////////////////////////
 #define FLIM_SCANS                  512
