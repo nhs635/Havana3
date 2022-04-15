@@ -754,14 +754,14 @@ void QStreamTab::setFlimProcessingCallback()
 
                 (*pFLIm)(intensity, mean_delay, lifetime, pulse);
 
-				if (INTRA_FRAME_SYNC > 0)
-				{
-					for (int i = 0; i < 11; i++)
-					{
-						float* pValue = flim_ptr + i * m_pConfig->flimAlines;
-						std::rotate(pValue, pValue + INTRA_FRAME_SYNC, pValue + m_pConfig->flimAlines);
-					}
-				}
+				///if (INTRA_FRAME_SYNC > 0)
+				///{
+				///	for (int i = 0; i < 11; i++)
+				///	{
+				///		float* pValue = flim_ptr + i * m_pConfig->flimAlines;
+				///		std::rotate(pValue, pValue + INTRA_FRAME_SYNC, pValue + m_pConfig->flimAlines);
+				///	}
+				///}
 
                 // Transfer to FLIm calibration dlg
 				if (m_pSettingDlg)

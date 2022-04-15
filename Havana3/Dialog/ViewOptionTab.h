@@ -14,11 +14,22 @@ class QImageView;
 
 enum VisualizationMode
 {
+	_FLIM_PARAMETERS_ = 0,
+	_RF_PREDICTION_ = 1
+};
+
+enum FLImParameters
+{
 	_LIFETIME_ = 0,
 	_INTENSITY_PROP_ = 1,
 	_INTENSITY_RATIO_ = 2
 };
 
+enum RFPrediction
+{
+	_INFLAMMATION_ = 0,
+	_PLAQUE_COMPOSITION_ = 1
+};
 
 class ViewOptionTab : public QDialog
 {
@@ -37,25 +48,32 @@ public:
     inline QViewTab* getViewTab() const { return m_pViewTab; }
     inline QGroupBox* getLayoutBox() const { return m_pGroupBox_ViewOption; }
 
+	inline QRadioButton* getRadioButtonFLImParameters() const { return m_pRadioButton_FLImParameters; }
+	inline QRadioButton* getRadioButtonRFPrediction() const { return m_pRadioButton_RFPrediction; }
 	inline QComboBox* getEmissionChannelComboBox() const { return m_pComboBox_EmissionChannel; }
 	inline QRadioButton* getRadioButtonLifetime() const { return m_pRadioButton_Lifetime; }
 	inline QRadioButton* getRadioButtonIntensityProp() const { return m_pRadioButton_IntensityProp; }
 	inline QRadioButton* getRadioButtonIntensityRatio() const { return m_pRadioButton_IntensityRatio; }
+	inline QRadioButton* getRadioButtonInflammation() const { return m_pRadioButton_Inflammation; }
+	inline QRadioButton* getRadioButtonPlaqueComposition() const { return m_pRadioButton_PlaqueComposition; }
 	
 	inline int getCurrentRotation() const { return m_pScrollBar_Rotation->value(); }
-	inline bool isClassification() const { return m_pCheckBox_Classification->isChecked(); }
 	
 private:
     void createFlimVisualizationOptionTab();
     void createOctVisualizationOptionTab();
 	void createSyncVisualizationOptionTab();
 
-private slots:
+public slots:
     // FLIm visualization option control
+	void changeVisualizationMode(int);
 	void changeEmissionChannel(int);
-	void setVisualizationMode(int);
-	void enableClassification(bool);
+	void changeFLImParameters(int);
+	void changeRFPrediction(int);
+
+private slots:
     void adjustFlimContrast();
+	void adjustInflammationContrast();
 
 	void rotateImage(int);
 	void verticalMirriong(bool);
@@ -80,16 +98,24 @@ private:
     QVBoxLayout *m_pVBoxLayout_ViewOption;
 
     // FLIm visualization option widgets
+	QLabel *m_pLabel_VisualizationMode;
+	QRadioButton *m_pRadioButton_FLImParameters;
+	QRadioButton *m_pRadioButton_RFPrediction;
+	QButtonGroup *m_pButtonGroup_VisualizationMode;
+	
     QLabel *m_pLabel_EmissionChannel;
     QComboBox *m_pComboBox_EmissionChannel;
 
-	QLabel *m_pLabel_VisualizationMode;
+	QLabel *m_pLabel_FLImParameters;
 	QRadioButton *m_pRadioButton_Lifetime;
 	QRadioButton *m_pRadioButton_IntensityProp;
 	QRadioButton *m_pRadioButton_IntensityRatio;
-	QButtonGroup *m_pButtonGroup_Visualization;
+	QButtonGroup *m_pButtonGroup_FLImParameters;
 
-	QCheckBox *m_pCheckBox_Classification;
+	QLabel *m_pLabel_RFPrediction;
+	QRadioButton *m_pRadioButton_Inflammation;
+	QRadioButton *m_pRadioButton_PlaqueComposition;
+	QButtonGroup *m_pButtonGroup_RFPrediction;
 	
     QLabel *m_pLabel_NormIntensity;
     QLabel *m_pLabel_Lifetime;
@@ -107,6 +133,14 @@ private:
     QImageView *m_pImageView_LifetimeColorbar;
 	QImageView *m_pImageView_IntensityPropColorbar;
 	QImageView *m_pImageView_IntensityRatioColorbar;
+
+	QLabel *m_pLabel_Inflammation;
+	QLineEdit *m_pLineEdit_InflammationMax;
+	QLineEdit *m_pLineEdit_InflammationMin;
+	QImageView *m_pImageView_InflammationColorbar;
+
+	QLabel *m_pLabel_PlaqueComposition;
+	QImageView *m_pImageView_PlaqueCompositionColorbar;
 
     // OCT visualization option widgets
 	QLabel *m_pLabel_Rotation;

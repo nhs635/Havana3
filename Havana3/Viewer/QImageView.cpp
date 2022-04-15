@@ -20,6 +20,7 @@ ColorTable::ColorTable()
 	m_cNameVector.push_back("viridis"); // 11
 	m_cNameVector.push_back("bwr"); // 12
 	m_cNameVector.push_back("hsv2"); // 13
+	m_cNameVector.push_back("compo"); // 14
 	// 새로운 파일 이름 추가 하기
 
 	for (int i = 0; i < m_cNameVector.size(); i++)

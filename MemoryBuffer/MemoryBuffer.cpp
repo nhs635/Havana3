@@ -330,47 +330,47 @@ void MemoryBuffer::write()
 		m_queueWritingOctBuffer.push(buffer_oct);
 	}
 
-	// Buffer rotation for inter-frame synchronization
-	for (int i = 0; i < INTER_FRAME_SYNC; i++)
-	{
-		buffer_oct = m_queueWritingOctBuffer.front();
-		m_queueWritingOctBuffer.pop();
-		m_queueWritingOctBuffer.push(buffer_oct);
-	}
+	//// Buffer rotation for inter-frame synchronization
+	///for (int i = 0; i < INTER_FRAME_SYNC; i++)
+	///{
+	///	buffer_oct = m_queueWritingOctBuffer.front();
+	///	m_queueWritingOctBuffer.pop();
+	///	m_queueWritingOctBuffer.push(buffer_oct);
+	///}
 		
-	// Make progress dialog
-	//QProgressDialog progress("Writing...", "Cancel", 0, m_nRecordedFrames - INTER_FRAME_SYNC, m_pStreamTab);
-	//progress.setCancelButton(0);
-	//progress.setWindowModality(Qt::WindowModal);
-	//progress.setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::CustomizeWindowHint);
-	//progress.move((m_pStreamTab->getMainWnd()->width() - progress.width()) / 2, (m_pStreamTab->getMainWnd()->height() - progress.height()) / 2);
-	//progress.setFixedSize(progress.width(), progress.height());
+	/// Make progress dialog
+	///QProgressDialog progress("Writing...", "Cancel", 0, m_nRecordedFrames - INTER_FRAME_SYNC, m_pStreamTab);
+	///progress.setCancelButton(0);
+	///progress.setWindowModality(Qt::WindowModal);
+	///progress.setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::CustomizeWindowHint);
+	///progress.move((m_pStreamTab->getMainWnd()->width() - progress.width()) / 2, (m_pStreamTab->getMainWnd()->height() - progress.height()) / 2);
+	///progress.setFixedSize(progress.width(), progress.height());
 
 	// Writing
 	QFile file(m_fileName);
 	if (file.open(QIODevice::WriteOnly))
 	{
-		for (int i = 0; i < m_nRecordedFrames - INTER_FRAME_SYNC; i++)
+		for (int i = 0; i < m_nRecordedFrames; i++) ///  - INTER_FRAME_SYNC
 		{
 			// FLIm pulse writing
 			buffer_flim = m_queueWritingFlimBuffer.front();
 			m_queueWritingFlimBuffer.pop();			
-			flimSamplesToWrite = m_pConfig->flimScans * (m_pConfig->flimAlines - INTRA_FRAME_SYNC);
-			res = file.write(reinterpret_cast<char*>(buffer_flim + m_pConfig->flimScans * INTRA_FRAME_SYNC), sizeof(uint16_t) * flimSamplesToWrite);
+			flimSamplesToWrite = m_pConfig->flimScans * (m_pConfig->flimAlines); ///  - INTRA_FRAME_SYNC
+			res = file.write(reinterpret_cast<char*>(buffer_flim), sizeof(uint16_t) * flimSamplesToWrite); ///  + m_pConfig->flimScans * INTRA_FRAME_SYNC
 			if (!(res == sizeof(uint16_t) * flimSamplesToWrite))
 			{
 				SendStatusMessage("Error occurred while writing1...", true);
 				//emit errorWhileWriting();
 				return;
 			}	
-			flimSamplesToWrite = m_pConfig->flimScans * INTRA_FRAME_SYNC;
-			res = file.write(reinterpret_cast<char*>(buffer_flim), sizeof(uint16_t) * flimSamplesToWrite);
-			if (!(res == sizeof(uint16_t) * flimSamplesToWrite))
-			{
-				SendStatusMessage("Error occurred while writing2...", true);
-				//emit errorWhileWriting();
-				return;
-			}
+			///flimSamplesToWrite = m_pConfig->flimScans * INTRA_FRAME_SYNC;
+			///res = file.write(reinterpret_cast<char*>(buffer_flim), sizeof(uint16_t) * flimSamplesToWrite);
+			///if (!(res == sizeof(uint16_t) * flimSamplesToWrite))
+			///{
+			///	SendStatusMessage("Error occurred while writing2...", true);
+			///	//emit errorWhileWriting();
+			///	return;
+			///}
 			m_queueWritingFlimBuffer.push(buffer_flim);
 
 			// OCT image writing
@@ -393,7 +393,7 @@ void MemoryBuffer::write()
 			//progress.setValue(i);
 			///printf("\r%dth frame is wrote... [%3.2f%%]", i + 1, 100 * (double)(i + 1) / (double)m_nRecordedFrames);
 		}
-	//	progress.setValue(m_nRecordedFrames - INTER_FRAME_SYNC);
+	///	progress.setValue(m_nRecordedFrames - INTER_FRAME_SYNC);
 		file.close();
 	}
 	else
@@ -403,13 +403,13 @@ void MemoryBuffer::write()
 	}
 	m_bIsSaved = true;
 
-	// Buffer rotation for inter-frame synchronization
-	for (int i = 0; i < INTER_FRAME_SYNC; i++)
-	{
-		buffer_flim = m_queueWritingFlimBuffer.front();
-		m_queueWritingFlimBuffer.pop();
-		m_queueWritingFlimBuffer.push(buffer_flim);
-	}
+	/// // Buffer rotation for inter-frame synchronization
+	///for (int i = 0; i < INTER_FRAME_SYNC; i++)
+	///{
+	///	buffer_flim = m_queueWritingFlimBuffer.front();
+	///	m_queueWritingFlimBuffer.pop();
+	///	m_queueWritingFlimBuffer.push(buffer_flim);
+	///}
 
 	// Move files
 	QString fileTitle, filePath;
@@ -418,6 +418,9 @@ void MemoryBuffer::write()
 		if (m_fileName.at(i) == QChar('.')) fileTitle = m_fileName.left(i);
 		if (m_fileName.at(i) == QChar('/')) filePath = m_fileName.left(i);
 	}
+
+	m_pConfig->interFrameSync = INTER_FRAME_SYNC;
+	m_pConfig->intraFrameSync = INTRA_FRAME_SYNC;
 
 	m_pConfig->setConfigFile("Havana3.ini");
 	if (false == QFile::copy("Havana3.ini", fileTitle + ".ini"))

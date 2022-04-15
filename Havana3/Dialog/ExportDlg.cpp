@@ -323,7 +323,7 @@ void ExportDlg::saveCrossSections()
 			for (int i = 0; i < 3; i++)
 			{
 				ImageObject* pImgObjLifetimeMap = new ImageObject(frames4, alines, temp_ctable.m_colorTableVector.at(LIFETIME_COLORTABLE));
-				m_pViewTab->scaleFLImEnFaceMap(pImgObjIntensityMap, pImgObjLifetimeMap, nullptr, nullptr, i, 0);
+				m_pViewTab->scaleFLImEnFaceMap(pImgObjIntensityMap, pImgObjLifetimeMap, nullptr, nullptr, nullptr, nullptr, i, 0);
 
 				// Push to the vector
 				vectorLifetimeMap.push_back(pImgObjLifetimeMap);
@@ -492,7 +492,7 @@ void ExportDlg::saveEnFaceMaps()
 				{
 					// Intensity-weight lifetime map
 					ImageObject* pImgObjLifetimeMap = new ImageObject(frame4, alines, temp_ctable.m_colorTableVector.at(LIFETIME_COLORTABLE));
-					m_pViewTab->scaleFLImEnFaceMap(pImgObjIntensityMap, pImgObjLifetimeMap, nullptr, nullptr, i, 0 );
+					m_pViewTab->scaleFLImEnFaceMap(pImgObjIntensityMap, pImgObjLifetimeMap, nullptr, nullptr, nullptr, nullptr, i, 0 );
 
 					pImgObjLifetimeMap->qrgbimg.copy(start, 0, end - start + 1, roi_flimproj.width)
 						.save(enFacePath + QString("flim_map_range[%1 %2]_ch%3_i[%4 %5]_t[%6 %7].bmp").arg(start).arg(end).arg(i + 1)

@@ -13,7 +13,7 @@
 #include <Common/medfilt.h>
 #include <Common/ImageObject.h>
 #include <Common/basic_functions.h>
-///#include <Common/ann.h>
+#include <Common/random_forest.h>
 
 #include <iostream>
 #include <vector>
@@ -39,9 +39,7 @@ public:
 	inline QStreamTab* getStreamTab() const { return m_pStreamTab; }
 	inline QResultTab* getResultTab() const { return m_pResultTab; }
 	inline QImageView* getCircImageView() const { return m_pImageView_CircImage; }
-#ifdef ALTERNATIVE_VIEW
 	inline QWidget* getVisWidget(int i) const { return m_pWidget[i]; }
-#endif
     inline QImageView* getEnFaceImageView() const { return m_pImageView_EnFace; }
     inline QImageView* getLongiImageView() const { return m_pImageView_Longi; }
 	inline QImageView* getIvusImageView() const { return m_pImageView_Ivus; }
@@ -50,10 +48,17 @@ public:
 	inline medfilt* getMedfiltIntensityMap() const { return m_pMedfiltIntensityMap; }
 	inline medfilt* getMedfiltLifetimeMap() const { return m_pMedfiltLifetimeMap; }
 	inline medfilt* getMedfiltLongi() const { return m_pMedfiltLongi; }
+	inline RandomForest* getForestInfl() const { return m_pForestInfl; }
+	inline RandomForest* getForestPlqCompo() const { return m_pForestPlqCompo; }
 	inline QPushButton* getPlayButton() const { return m_pToggleButton_Play; }
     inline QSlider* getSliderSelectFrame() const { return m_pSlider_SelectFrame; }
-	inline void setViewMode(int ch) { m_pComboBox_ViewMode->setCurrentIndex(ch); }
-	inline int getViewMode() { return m_pComboBox_ViewMode->currentIndex(); }
+	inline void setVisualizationMode(int mode) { if (!mode) m_pRadioButton_FLImParameters->setChecked(true); 
+	else m_pRadioButton_RFPrediction->setChecked(true); changeVisualizationMode(mode);	}
+	inline bool getVisualizationMode() { return m_pRadioButton_RFPrediction->isChecked(); }
+	inline void setFLImParameters(int ch) { m_pComboBox_FLImParameters->setCurrentIndex(ch); }
+	inline int getFLImparameters() { return m_pComboBox_FLImParameters->currentIndex(); }
+	inline void setRFPrediction(int mode) { return m_pComboBox_RFPrediction->setCurrentIndex(mode); }
+	inline int getRFPrediction() { return m_pComboBox_RFPrediction->currentIndex(); }
 	inline void setCurrentFrame(int frame) { m_pSlider_SelectFrame->setValue(frame); }
     inline int getCurrentFrame() { return m_pSlider_SelectFrame->value(); }
 	inline int getCurrentAline() { return m_pImageView_CircImage->getRender()->m_pVLineInd[0]; }
@@ -86,11 +91,15 @@ private slots:
 	void play(bool);
 	void measureDistance(bool);
 	void measureArea(bool);
+	void changeVisualizationMode(int);
 	void changeEmissionChannel(int);
+	void changeRFPrediction(int);
 
 public:
 	void scaleFLImEnFaceMap(ImageObject* pImgObjIntensityMap, ImageObject* pImgObjLifetimeMap, 
-		ImageObject* pImgObjIntensityPropMap, ImageObject* pImgObjIntensityRatioMap, int ch, int mode);
+		ImageObject* pImgObjIntensityPropMap, ImageObject* pImgObjIntensityRatioMap, 
+		ImageObject* pImgObjInflammationMap, ImageObject* pImgObjPlaqueCompositionMap,
+		int ch, int mode);
 	void circShift(np::Uint8Array2& image, int shift);
 	void setAxialOffset(np::Uint8Array2& image, int offset);
 
@@ -132,6 +141,9 @@ public: // for post processing
 	std::vector<np::FloatArray2> m_lifetimeMap; // (256 x N) x 3
 	std::vector<np::FloatArray2> m_intensityProportionMap; // (256 x N) x 3
 	std::vector<np::FloatArray2> m_intensityRatioMap; // (256 x N) x 3
+	np::FloatArray2 m_featVectors;
+	np::FloatArray2 m_inflammationMap;
+	np::FloatArray2 m_plaqueCompositionMap;
 
 	std::vector<np::FloatArray2> m_vectorPulseCrop;
 	std::vector<np::FloatArray2> m_vectorPulseBgSub;
@@ -152,6 +164,8 @@ private:
 	ImageObject *m_pImgObjLifetimeMap;
 	ImageObject *m_pImgObjIntensityPropMap;
 	ImageObject *m_pImgObjIntensityRatioMap;
+	ImageObject *m_pImgObjInflammationMap;
+	ImageObject *m_pImgObjPlaqueCompositionMap;
 
     // Image visualization buffers - longitudinal
     ImageObject *m_pImgObjLongiImage;
@@ -162,7 +176,8 @@ private:
 	medfilt* m_pMedfiltIntensityMap;
 	medfilt* m_pMedfiltLifetimeMap;
     medfilt* m_pMedfiltLongi;
-	//ann* m_pAnn;
+	RandomForest* m_pForestInfl;
+	RandomForest* m_pForestPlqCompo;
 	
 private:
 	std::thread playing;
@@ -174,9 +189,7 @@ private:
 
     // Image viewer widgets
     QImageView *m_pImageView_CircImage;
-#ifdef ALTERNATIVE_VIEW
 	QWidget *m_pWidget[4];
-#endif
     QImageView *m_pImageView_EnFace;
     QImageView *m_pImageView_Longi;
 	QImageView *m_pImageView_Ivus;
@@ -192,8 +205,12 @@ private:
     QPushButton *m_pToggleButton_MeasureDistance;
 	QPushButton *m_pToggleButton_MeasureArea;
 
-    QComboBox *m_pComboBox_ViewMode;
-    QLabel *m_pLabel_ViewMode;
+    QComboBox *m_pComboBox_FLImParameters;
+	QComboBox *m_pComboBox_RFPrediction;
+    
+	QButtonGroup *m_pButtonGroup_VisualizationMode;
+	QRadioButton *m_pRadioButton_FLImParameters;
+	QRadioButton *m_pRadioButton_RFPrediction;
 };
 
 #endif // QVIEWTAB_H
