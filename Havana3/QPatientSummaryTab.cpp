@@ -522,145 +522,148 @@ void QPatientSummaryTab::deleteSettingDlg()
 
 void QPatientSummaryTab::editContents(int row, int column)
 {
-	if (column == 5)
+	if (!m_pToggleButton_Export->isChecked())
 	{
-		QDialog *pDialog = new QDialog(this);
+		if (column == 5)
 		{
-			QTextEdit *pTextEdit_Comment = new QTextEdit(this);
-			pTextEdit_Comment->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-			pTextEdit_Comment->setAlignment(Qt::AlignLeft | Qt::AlignTop);
-			pTextEdit_Comment->setPlainText(m_pTableWidget_RecordInformation->item(row, column)->text());
-			connect(pTextEdit_Comment, &QTextEdit::textChanged, [&, pTextEdit_Comment]() { m_pTableWidget_RecordInformation->item(row, column)->setText(pTextEdit_Comment->toPlainText()); });
-			connect(pDialog, &QDialog::finished, [&, pTextEdit_Comment]() {
-				QString comment = pTextEdit_Comment->toPlainText();
-				QString command = QString("UPDATE records SET comment='%1' WHERE id=%2").arg(comment).arg(m_pTableWidget_RecordInformation->item(row, 0)->toolTip());
-				m_pHvnSqlDataBase->queryDatabase(command);
-				m_pConfig->writeToLog(QString("Record comment updated: %1 (ID: %2): %3 : record id: %4")
-					.arg(m_patientInfo.patientName).arg(m_patientInfo.patientId).arg(m_pTableWidget_RecordInformation->item(row, 2)->text()).arg(m_pTableWidget_RecordInformation->item(row, 0)->toolTip()));
-				if (command.contains("[HIDDEN]"))
-					loadRecordDatabase();
-			});
-
-			QVBoxLayout *pVBoxLayout = new QVBoxLayout;
-			pVBoxLayout->addWidget(pTextEdit_Comment);
-			pDialog->setLayout(pVBoxLayout);
-		}
-		pDialog->setWindowTitle("Comments");
-		pDialog->setFixedSize(350, 200);
-		pDialog->setModal(true);
-		pDialog->exec();
-	}
-	else if (column == 0)
-	{
-		QDialog *pDialog = new QDialog(this);
-		{
-			QTextEdit *pTextEdit_Title = new QTextEdit(this);
-			pTextEdit_Title->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-			pTextEdit_Title->setAlignment(Qt::AlignLeft | Qt::AlignTop);
-			pTextEdit_Title->setPlainText(m_pTableWidget_RecordInformation->item(row, column)->text());
-			connect(pTextEdit_Title, &QTextEdit::textChanged, [&, pTextEdit_Title]() { m_pTableWidget_RecordInformation->item(row, column)->setText(pTextEdit_Title->toPlainText()); });
-			connect(pDialog, &QDialog::finished, [&, pTextEdit_Title]() {
-				QString comment = pTextEdit_Title->toPlainText();
-				QString command = QString("UPDATE records SET title='%1' WHERE id=%2").arg(comment).arg(m_pTableWidget_RecordInformation->item(row, 0)->toolTip());
-				m_pHvnSqlDataBase->queryDatabase(command);
-				m_pConfig->writeToLog(QString("Record title updated: %1 (ID: %2): %3 : record id: %4")
-					.arg(m_patientInfo.patientName).arg(m_patientInfo.patientId).arg(m_pTableWidget_RecordInformation->item(row, 2)->text()).arg(m_pTableWidget_RecordInformation->item(row, 0)->toolTip()));
-			});
-
-			QVBoxLayout *pVBoxLayout = new QVBoxLayout;
-			pVBoxLayout->addWidget(pTextEdit_Title);
-			pDialog->setLayout(pVBoxLayout);
-		}
-		pDialog->setWindowTitle("Title");
-		pDialog->setFixedSize(200, 100);
-		pDialog->setModal(true);
-		pDialog->exec();
-	}
-	else if (column == 3)
-	{
-		QDialog *pDialog = new QDialog(this);
-		{
-			QComboBox *pComboBox_Vessel = new QComboBox(this);
-			pComboBox_Vessel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-			QString cur_vessel = m_pTableWidget_RecordInformation->item(row, column)->text();
-			for (int i = 0; i <= 16; i++)
+			QDialog *pDialog = new QDialog(this);
 			{
-				pComboBox_Vessel->insertItem(i, m_pHvnSqlDataBase->getVessel(i));
-				if (m_pHvnSqlDataBase->getVessel(i) == cur_vessel)
-					pComboBox_Vessel->setCurrentIndex(i);
+				QTextEdit *pTextEdit_Comment = new QTextEdit(this);
+				pTextEdit_Comment->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+				pTextEdit_Comment->setAlignment(Qt::AlignLeft | Qt::AlignTop);
+				pTextEdit_Comment->setPlainText(m_pTableWidget_RecordInformation->item(row, column)->text());
+				connect(pTextEdit_Comment, &QTextEdit::textChanged, [&, pTextEdit_Comment]() { m_pTableWidget_RecordInformation->item(row, column)->setText(pTextEdit_Comment->toPlainText()); });
+				connect(pDialog, &QDialog::finished, [&, pTextEdit_Comment]() {
+					QString comment = pTextEdit_Comment->toPlainText();
+					QString command = QString("UPDATE records SET comment='%1' WHERE id=%2").arg(comment).arg(m_pTableWidget_RecordInformation->item(row, 0)->toolTip());
+					m_pHvnSqlDataBase->queryDatabase(command);
+					m_pConfig->writeToLog(QString("Record comment updated: %1 (ID: %2): %3 : record id: %4")
+						.arg(m_patientInfo.patientName).arg(m_patientInfo.patientId).arg(m_pTableWidget_RecordInformation->item(row, 2)->text()).arg(m_pTableWidget_RecordInformation->item(row, 0)->toolTip()));
+					if (command.contains("[HIDDEN]"))
+						loadRecordDatabase();
+				});
+
+				QVBoxLayout *pVBoxLayout = new QVBoxLayout;
+				pVBoxLayout->addWidget(pTextEdit_Comment);
+				pDialog->setLayout(pVBoxLayout);
 			}
-			connect(pDialog, &QDialog::finished, [&, pComboBox_Vessel]() {
-				int vessel = pComboBox_Vessel->currentIndex();
-				m_pTableWidget_RecordInformation->item(row, column)->setText(m_pHvnSqlDataBase->getVessel(vessel));
-				QString command = QString("UPDATE records SET vessel_id=%1 WHERE id=%2").arg(vessel).arg(m_pTableWidget_RecordInformation->item(row, 0)->toolTip());
-				m_pHvnSqlDataBase->queryDatabase(command);
-			});
-
-			QVBoxLayout *pVBoxLayout = new QVBoxLayout;
-			pVBoxLayout->addWidget(pComboBox_Vessel);
-			pDialog->setLayout(pVBoxLayout);
+			pDialog->setWindowTitle("Comments");
+			pDialog->setFixedSize(350, 200);
+			pDialog->setModal(true);
+			pDialog->exec();
 		}
-		pDialog->setWindowTitle("Vessel");
-		pDialog->setFixedSize(180, 80);
-		pDialog->setModal(true);
-		pDialog->exec();
-	}
-	else if (column == 4)
-	{
-		QDialog *pDialog = new QDialog(this);
+		else if (column == 0)
 		{
-			QComboBox *pComboBox_Procedure = new QComboBox(this);
-			pComboBox_Procedure->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-			QString cur_procedure = m_pTableWidget_RecordInformation->item(row, column)->text();
-			for (int i = 0; i <= 4; i++)
+			QDialog *pDialog = new QDialog(this);
 			{
-				pComboBox_Procedure->insertItem(i, m_pHvnSqlDataBase->getProcedure(i));
-				if (m_pHvnSqlDataBase->getProcedure(i) == cur_procedure)
-					pComboBox_Procedure->setCurrentIndex(i);
+				QTextEdit *pTextEdit_Title = new QTextEdit(this);
+				pTextEdit_Title->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+				pTextEdit_Title->setAlignment(Qt::AlignLeft | Qt::AlignTop);
+				pTextEdit_Title->setPlainText(m_pTableWidget_RecordInformation->item(row, column)->text());
+				connect(pTextEdit_Title, &QTextEdit::textChanged, [&, pTextEdit_Title]() { m_pTableWidget_RecordInformation->item(row, column)->setText(pTextEdit_Title->toPlainText()); });
+				connect(pDialog, &QDialog::finished, [&, pTextEdit_Title]() {
+					QString comment = pTextEdit_Title->toPlainText();
+					QString command = QString("UPDATE records SET title='%1' WHERE id=%2").arg(comment).arg(m_pTableWidget_RecordInformation->item(row, 0)->toolTip());
+					m_pHvnSqlDataBase->queryDatabase(command);
+					m_pConfig->writeToLog(QString("Record title updated: %1 (ID: %2): %3 : record id: %4")
+						.arg(m_patientInfo.patientName).arg(m_patientInfo.patientId).arg(m_pTableWidget_RecordInformation->item(row, 2)->text()).arg(m_pTableWidget_RecordInformation->item(row, 0)->toolTip()));
+				});
+
+				QVBoxLayout *pVBoxLayout = new QVBoxLayout;
+				pVBoxLayout->addWidget(pTextEdit_Title);
+				pDialog->setLayout(pVBoxLayout);
 			}
-			connect(pDialog, &QDialog::finished, [&, pComboBox_Procedure]() {
-				int procedure = pComboBox_Procedure->currentIndex();
-				m_pTableWidget_RecordInformation->item(row, column)->setText(m_pHvnSqlDataBase->getProcedure(procedure));
-				QString command = QString("UPDATE records SET procedure_id=%1 WHERE id=%2").arg(procedure).arg(m_pTableWidget_RecordInformation->item(row, 0)->toolTip());
-				m_pHvnSqlDataBase->queryDatabase(command);
-			});
-
-			QVBoxLayout *pVBoxLayout = new QVBoxLayout;
-			pVBoxLayout->addWidget(pComboBox_Procedure);
-			pDialog->setLayout(pVBoxLayout);
+			pDialog->setWindowTitle("Title");
+			pDialog->setFixedSize(200, 100);
+			pDialog->setModal(true);
+			pDialog->exec();
 		}
-		pDialog->setWindowTitle("Procedure");
-		pDialog->setFixedSize(180, 80);
-		pDialog->setModal(true);
-		pDialog->exec();
-	}
-	else if (column == 2)
-	{
-		QString recordId = m_pTableWidget_RecordInformation->item(row, 0)->toolTip();
-		QString command = QString("SELECT * FROM records WHERE id=%1").arg(recordId);
-		m_pHvnSqlDataBase->queryDatabase(command, [&](QSqlQuery& _sqlQuery) {
-			while (_sqlQuery.next())
+		else if (column == 3)
+		{
+			QDialog *pDialog = new QDialog(this);
 			{
-				QString filename0 = _sqlQuery.value(9).toString();
-				int idx = filename0.indexOf("record");
-				QString filename = m_pConfig->dbPath + filename0.remove(0, idx - 1);
-
-				QClipboard *pClipBoard = QApplication::clipboard();
-				for (int i = filename.size() - 1; i >= 0; i--)
+				QComboBox *pComboBox_Vessel = new QComboBox(this);
+				pComboBox_Vessel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+				QString cur_vessel = m_pTableWidget_RecordInformation->item(row, column)->text();
+				for (int i = 0; i <= 16; i++)
 				{
-					int slash_pos = i;
-					if (filename.at(i) == '/')
-					{
-						filename = filename.left(slash_pos);
-						break;
-					}
+					pComboBox_Vessel->insertItem(i, m_pHvnSqlDataBase->getVessel(i));
+					if (m_pHvnSqlDataBase->getVessel(i) == cur_vessel)
+						pComboBox_Vessel->setCurrentIndex(i);
 				}
-				pClipBoard->setText(filename);
+				connect(pDialog, &QDialog::finished, [&, pComboBox_Vessel]() {
+					int vessel = pComboBox_Vessel->currentIndex();
+					m_pTableWidget_RecordInformation->item(row, column)->setText(m_pHvnSqlDataBase->getVessel(vessel));
+					QString command = QString("UPDATE records SET vessel_id=%1 WHERE id=%2").arg(vessel).arg(m_pTableWidget_RecordInformation->item(row, 0)->toolTip());
+					m_pHvnSqlDataBase->queryDatabase(command);
+				});
 
-				QMessageBox MsgBox(QMessageBox::Information, "Path Copy", QString("Data path was copied to the clipboard: \n%1").arg(filename));
-				MsgBox.exec();
+				QVBoxLayout *pVBoxLayout = new QVBoxLayout;
+				pVBoxLayout->addWidget(pComboBox_Vessel);
+				pDialog->setLayout(pVBoxLayout);
 			}
-		});
+			pDialog->setWindowTitle("Vessel");
+			pDialog->setFixedSize(180, 80);
+			pDialog->setModal(true);
+			pDialog->exec();
+		}
+		else if (column == 4)
+		{
+			QDialog *pDialog = new QDialog(this);
+			{
+				QComboBox *pComboBox_Procedure = new QComboBox(this);
+				pComboBox_Procedure->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+				QString cur_procedure = m_pTableWidget_RecordInformation->item(row, column)->text();
+				for (int i = 0; i <= 4; i++)
+				{
+					pComboBox_Procedure->insertItem(i, m_pHvnSqlDataBase->getProcedure(i));
+					if (m_pHvnSqlDataBase->getProcedure(i) == cur_procedure)
+						pComboBox_Procedure->setCurrentIndex(i);
+				}
+				connect(pDialog, &QDialog::finished, [&, pComboBox_Procedure]() {
+					int procedure = pComboBox_Procedure->currentIndex();
+					m_pTableWidget_RecordInformation->item(row, column)->setText(m_pHvnSqlDataBase->getProcedure(procedure));
+					QString command = QString("UPDATE records SET procedure_id=%1 WHERE id=%2").arg(procedure).arg(m_pTableWidget_RecordInformation->item(row, 0)->toolTip());
+					m_pHvnSqlDataBase->queryDatabase(command);
+				});
+
+				QVBoxLayout *pVBoxLayout = new QVBoxLayout;
+				pVBoxLayout->addWidget(pComboBox_Procedure);
+				pDialog->setLayout(pVBoxLayout);
+			}
+			pDialog->setWindowTitle("Procedure");
+			pDialog->setFixedSize(180, 80);
+			pDialog->setModal(true);
+			pDialog->exec();
+		}
+		else if (column == 2)
+		{
+			QString recordId = m_pTableWidget_RecordInformation->item(row, 0)->toolTip();
+			QString command = QString("SELECT * FROM records WHERE id=%1").arg(recordId);
+			m_pHvnSqlDataBase->queryDatabase(command, [&](QSqlQuery& _sqlQuery) {
+				while (_sqlQuery.next())
+				{
+					QString filename0 = _sqlQuery.value(9).toString();
+					int idx = filename0.indexOf("record");
+					QString filename = m_pConfig->dbPath + filename0.remove(0, idx - 1);
+
+					QClipboard *pClipBoard = QApplication::clipboard();
+					for (int i = filename.size() - 1; i >= 0; i--)
+					{
+						int slash_pos = i;
+						if (filename.at(i) == '/')
+						{
+							filename = filename.left(slash_pos);
+							break;
+						}
+					}
+					pClipBoard->setText(filename);
+
+					QMessageBox MsgBox(QMessageBox::Information, "Path Copy", QString("Data path was copied to the clipboard: \n%1").arg(filename));
+					MsgBox.exec();
+				}
+			});
+		}
 	}
 }
 
@@ -818,20 +821,6 @@ void QPatientSummaryTab::loadRecordDatabase()
             pHBoxLayout_Delete->addWidget(pPushButton_Delete);
             pWidget_Delete->setLayout(pHBoxLayout_Delete);
 
-            QByteArray previewByteArray = _sqlQuery.value(4).toByteArray();
-			if (previewByteArray.size() > 0)
-			{
-				QPixmap previewImage = QPixmap();
-				previewImage.loadFromData(previewByteArray, "bmp", Qt::ColorOnly);
-				pPreviewItem->setData(Qt::DecorationRole, previewImage);
-			}
-			else
-			{
-				pPreviewItem->setText("No Preview Image"); 
-				pPreviewItem->setTextAlignment(Qt::AlignCenter);
-				pPreviewItem->setTextColor(QColor(128, 128, 128));
-			}
-
 			QString comment = _sqlQuery.value(8).toString();
 			if (comment.contains("[HIDDEN]"))
 			{
@@ -848,6 +837,29 @@ void QPatientSummaryTab::loadRecordDatabase()
 					pProcedureItem->setTextColor(QColor(128, 128, 128));
 					pCommentItem->setTextColor(QColor(128, 128, 128));
 				}
+			}
+
+			QByteArray previewByteArray = _sqlQuery.value(4).toByteArray();
+			if (previewByteArray.size() > 0)
+			{
+				QPixmap previewImage = QPixmap();
+				previewImage.loadFromData(previewByteArray, "bmp", Qt::ColorOnly);
+				if (comment.contains("[HIDDEN]"))
+				{
+					QImage previewImage0 = previewImage.toImage();
+					QImage previewImage1 = previewImage0.convertToFormat(QImage::Format_Grayscale8);
+					previewImage = QPixmap::fromImage(previewImage1);
+				}
+				pPreviewItem->setData(Qt::DecorationRole, previewImage);
+			}
+			else
+			{
+				pPreviewItem->setText("No Preview Image");
+				pPreviewItem->setTextAlignment(Qt::AlignCenter);
+				if (comment.contains("[HIDDEN]"))
+					pPreviewItem->setTextColor(QColor(128, 128, 128));
+				else
+					pPreviewItem->setTextColor(QColor(192, 192, 192));
 			}
 
             pTitleItem->setText(_sqlQuery.value(7).toString()); pTitleItem->setTextAlignment(Qt::AlignCenter);            

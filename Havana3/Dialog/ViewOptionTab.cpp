@@ -82,18 +82,21 @@ void ViewOptionTab::createFlimVisualizationOptionTab()
 	m_pLabel_VisualizationMode = new QLabel("Visualization Mode    ", this);
 	m_pLabel_VisualizationMode->setAlignment(Qt::AlignVCenter | Qt::AlignRight);
 
-	m_pRadioButton_FLImParameters = new QRadioButton(this);
-	m_pRadioButton_FLImParameters->setText("FLIm Parameters");
-	m_pRadioButton_RFPrediction = new QRadioButton(this);
-	m_pRadioButton_RFPrediction->setText("RF Prediction");
-	if (m_pViewTab->getVisualizationMode() == _FLIM_PARAMETERS_)
-		m_pRadioButton_FLImParameters->setChecked(true);
-	else if (m_pViewTab->getVisualizationMode() == _RF_PREDICTION_)
-		m_pRadioButton_RFPrediction->setChecked(true);
+	if (!m_pStreamTab)
+	{
+		m_pRadioButton_FLImParameters = new QRadioButton(this);
+		m_pRadioButton_FLImParameters->setText("FLIm Parameters");
+		m_pRadioButton_RFPrediction = new QRadioButton(this);
+		m_pRadioButton_RFPrediction->setText("RF Prediction");
+		if (m_pViewTab->getVisualizationMode() == _FLIM_PARAMETERS_)
+			m_pRadioButton_FLImParameters->setChecked(true);
+		else if (m_pViewTab->getVisualizationMode() == _RF_PREDICTION_)
+			m_pRadioButton_RFPrediction->setChecked(true);
 
-	m_pButtonGroup_VisualizationMode = new QButtonGroup(this);
-	m_pButtonGroup_VisualizationMode->addButton(m_pRadioButton_FLImParameters, _FLIM_PARAMETERS_);
-	m_pButtonGroup_VisualizationMode->addButton(m_pRadioButton_RFPrediction, _RF_PREDICTION_);
+		m_pButtonGroup_VisualizationMode = new QButtonGroup(this);
+		m_pButtonGroup_VisualizationMode->addButton(m_pRadioButton_FLImParameters, _FLIM_PARAMETERS_);
+		m_pButtonGroup_VisualizationMode->addButton(m_pRadioButton_RFPrediction, _RF_PREDICTION_);
+	}
 
     // Create widgets for FLIm emission control
     m_pComboBox_EmissionChannel = new QComboBox(this);
@@ -250,11 +253,14 @@ void ViewOptionTab::createFlimVisualizationOptionTab()
 		
     // Set layout
 	QHBoxLayout *pHBoxLayout_FlimVisualization0 = new QHBoxLayout;
-	pHBoxLayout_FlimVisualization0->setSpacing(3);
-	pHBoxLayout_FlimVisualization0->addWidget(m_pLabel_VisualizationMode);
-	pHBoxLayout_FlimVisualization0->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed));
-	pHBoxLayout_FlimVisualization0->addWidget(m_pRadioButton_FLImParameters);
-	pHBoxLayout_FlimVisualization0->addWidget(m_pRadioButton_RFPrediction);
+	if (!m_pStreamTab)
+	{
+		pHBoxLayout_FlimVisualization0->setSpacing(3);
+		pHBoxLayout_FlimVisualization0->addWidget(m_pLabel_VisualizationMode);
+		pHBoxLayout_FlimVisualization0->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed));
+		pHBoxLayout_FlimVisualization0->addWidget(m_pRadioButton_FLImParameters);
+		pHBoxLayout_FlimVisualization0->addWidget(m_pRadioButton_RFPrediction);
+	}
 
     QHBoxLayout *pHBoxLayout_FlimVisualization1 = new QHBoxLayout;
 	pHBoxLayout_FlimVisualization1->setSpacing(3);
@@ -541,7 +547,7 @@ void ViewOptionTab::createSyncVisualizationOptionTab()
 		m_pScrollBar_InterFrameSync->setRange(-m_pConfigTemp->frames + 1, m_pConfigTemp->frames - 1);
 		m_pScrollBar_InterFrameSync->setValue(m_pConfigTemp->interFrameSync);
 		m_pScrollBar_InterFrameSync->setSingleStep(1);
-		m_pScrollBar_InterFrameSync->setPageStep(m_pScrollBar_Rotation->maximum() / 10);
+		m_pScrollBar_InterFrameSync->setPageStep(1); // m_pScrollBar_Rotation->maximum() / 10);
 		m_pScrollBar_InterFrameSync->setFocusPolicy(Qt::StrongFocus);
 		m_pScrollBar_InterFrameSync->setFixedSize(200, 18);
 

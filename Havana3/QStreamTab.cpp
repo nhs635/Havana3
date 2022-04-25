@@ -197,8 +197,8 @@ void QStreamTab::createLiveStreamingViewWidgets()
 	m_pScrollBar_CatheterCalibration->setFixedSize(180, 16);
 	m_pScrollBar_CatheterCalibration->setOrientation(Qt::Horizontal);
 	m_pScrollBar_CatheterCalibration->setRange(0, 1500);
-	m_pScrollBar_CatheterCalibration->setSingleStep(5);
-	m_pScrollBar_CatheterCalibration->setPageStep(50);
+	m_pScrollBar_CatheterCalibration->setSingleStep(1);
+	m_pScrollBar_CatheterCalibration->setPageStep(10);
 	m_pScrollBar_CatheterCalibration->setValue((int)(m_pConfig->axsunVDLLength * 100.0f));
 
 	m_pScrollBar_InnerOffset = new QScrollBar(this);

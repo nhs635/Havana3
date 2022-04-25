@@ -55,7 +55,7 @@ void QHomeTab::createSignInViewWidgets()
     m_pGroupBox_SignIn->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Fixed);
 
     m_pLabel_Title = new QLabel(this);
-    m_pLabel_Title->setText("Clinical FLIm-OCT");
+    m_pLabel_Title->setText("Clinical OCT-FLIm");
     m_pLabel_Title->setAlignment(Qt::AlignCenter);
     m_pLabel_Title->setStyleSheet("QLabel{font-size:25pt; font-weight:bold}");
 
@@ -130,7 +130,6 @@ void QHomeTab::signIn()
 			m_pConfig->writeToLog("Permission error: Authentication failed. Please try again.");
             QMessageBox MsgBox(QMessageBox::Critical, "Permission error", "Authentication failed. Please try again.");
             MsgBox.exec();
-			m_pConfig->dbPath = "";
         }
     }
     else

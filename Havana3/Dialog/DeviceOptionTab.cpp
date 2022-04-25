@@ -908,7 +908,7 @@ void DeviceOptionTab::startFlimSynchronization(bool toggled)
 	if (toggled)
 	{
 #ifdef NI_ENABLE
-		// Start synchronous FLIm-OCT operation
+		// Start synchronous OCT-FLIm operation
 		if (m_pDeviceControl->startSynchronization(true))
 		{
 			// Set widgets		
@@ -935,7 +935,7 @@ void DeviceOptionTab::startFlimSynchronization(bool toggled)
 		m_pToggleButton_AsynchronizedPulsedLaser->setEnabled(true);
 		m_pToggleButton_AsynchronizedPulsedLaser->setStyleSheet("QPushButton { background-color:#ff0000; }");
 
-		// Stop synchronous FLIm-OCT operation
+		// Stop synchronous OCT-FLIm operation
 		m_pDeviceControl->startSynchronization(false);
 	}
 }

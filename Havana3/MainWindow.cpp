@@ -31,7 +31,7 @@ MainWindow::MainWindow(QWidget *parent) :
 
     // Initialize user interface
     QString windowTitle("Havana3 [%1] v%2");
-    this->setWindowTitle(windowTitle.arg("Clinical FLIm-OCT").arg(VERSION));
+    this->setWindowTitle(windowTitle.arg("Clinical OCT-FLIm").arg(VERSION));
 
     // Create configuration object
     m_pConfiguration = new Configuration;
@@ -170,7 +170,7 @@ void MainWindow::tabCurrentChanged(int index)
 	}
 	else if (previousTab->windowTitle().contains("Summary"))
 	{
-		if (dynamic_cast<QPatientSummaryTab*>(previousTab)->getCatheterConnectionMode())
+		if (dynamic_cast<QPatientSummaryTab*>(previousTab)->getCatheterConnectionMode() || dynamic_cast<QPatientSummaryTab*>(previousTab)->getExportMode())
 		{
 			m_pTabWidget->setCurrentIndex(prev_index);
 			return;

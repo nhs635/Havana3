@@ -1191,7 +1191,7 @@ void QViewTab::play(bool enabled)
 			for (int i = cur_frame; i < end_frame; i++)
 			{
 				m_pSlider_SelectFrame->setValue(i);
-				std::this_thread::sleep_for(std::chrono::milliseconds(100));
+				std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
 				if (!_running) break;
 			}

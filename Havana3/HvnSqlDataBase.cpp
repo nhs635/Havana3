@@ -59,7 +59,7 @@ bool HvnSqlDataBase::openDatabase(const QString& username, const QString& passwo
 
 				closeDatabase();
 				m_pMainWnd->setCursor(Qt::ArrowCursor);
-				m_pConfig->dbPath = "";
+				m_pConfig->dbPath = QDir().homePath() + "/Documents/Havana3";
 				return false;
 			}
 			else

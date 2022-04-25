@@ -44,6 +44,7 @@ public:
     inline MainWindow* getMainWnd() const { return m_pMainWnd; }
     inline RecordInfo getPatientInfo() { return m_patientInfo; }
 	inline bool getCatheterConnectionMode() { return m_pToggleButton_CatheterConnect->isChecked(); }
+	inline bool getExportMode() { return m_pToggleButton_Export->isChecked(); }
     inline QTableWidget* getTableWidgetRecordInformation() const { return m_pTableWidget_RecordInformation; }
 
 private:
