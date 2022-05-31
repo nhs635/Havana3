@@ -1,7 +1,7 @@
 #ifndef CONFIGURATION_H
 #define CONFIGURATION_H
 
-#define VERSION						"2.1.3.5"
+#define VERSION						"2.1.3.6"
 
 #define POWER_2(x)					(1 << x)
 #define NEAR_2_POWER(x)				(int)(1 << (int)ceil(log2(x)))
@@ -88,8 +88,8 @@
 #define RF_COMPO_DATA_NAME			"compo_forest.csv"
 #define RF_COMPO_MODEL_NAME			"compo_forest.xml"
 
-#define INTER_FRAME_SYNC			2 // Frames adjustment
-#define INTRA_FRAME_SYNC			1015 // A-lines adjustment
+#define INTER_FRAME_SYNC			1 // Frames adjustment
+#define INTRA_FRAME_SYNC			1010 // A-lines adjustment
 
 #define RENEWAL_COUNT				8 
 #define REDUCED_COUNT				4

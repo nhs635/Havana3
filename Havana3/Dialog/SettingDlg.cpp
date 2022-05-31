@@ -12,6 +12,7 @@
 #include <Havana3/Dialog/FlimCalibTab.h>
 #include <Havana3/Dialog/PulseReviewTab.h>
 
+#include <DataAcquisition/DataProcessing.h>
 #include <DeviceControl/DeviceControl.h>
 
 

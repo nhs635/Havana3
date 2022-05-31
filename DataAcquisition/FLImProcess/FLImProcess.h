@@ -158,13 +158,13 @@ public:
 				float max_val; int max_ind; 
 
 				// 3. Jitter compensation
-				int cpos = 10, rpos = 10;
-				int irf_wlen = pParams.ch_start_ind[1] - pParams.ch_start_ind[0];
-				ippsMaxIndx_32f(&crop_src(0, (int)i), irf_wlen, &max_val, &cpos);
+				//int cpos = 10, rpos = 10;
+				//int irf_wlen = pParams.ch_start_ind[1] - pParams.ch_start_ind[0];
+				//ippsMaxIndx_32f(&crop_src(0, (int)i), irf_wlen, &max_val, &cpos);
 
-				int offset = cpos - rpos;
-				if (offset < 0) offset += crop_src.size(0);
-				std::rotate(&crop_src(0, (int)i), &crop_src(offset, (int)i), &crop_src(crop_src.size(0) - 1, (int)i));
+				//int offset = cpos - rpos;
+				//if (offset < 0) offset += crop_src.size(0);
+				//std::rotate(&crop_src(0, (int)i), &crop_src(offset, (int)i), &crop_src(crop_src.size(0) - 1, (int)i));
 
 				// 4. BG subtraction (region-wise fine-tuning)
 				if (start_ind[0])

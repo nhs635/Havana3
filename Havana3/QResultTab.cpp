@@ -95,7 +95,7 @@ void QResultTab::createResultReviewWidgets()
 
     m_pLabel_PatientInformation->setStyleSheet("QLabel{font-size:11pt}");
     m_pLabel_PatientInformation->setAlignment(Qt::AlignBottom);
-    m_pLabel_RecordInformation->setAlignment(Qt::AlignCenter);
+    m_pLabel_RecordInformation->setAlignment(Qt::AlignLeft);
 
     m_pViewTab = new QViewTab(false, this);
 
@@ -124,6 +124,12 @@ void QResultTab::createResultReviewWidgets()
 	m_pPushButton_IvusViewer->setIcon(style()->standardIcon(QStyle::SP_ComputerIcon));
 	m_pPushButton_IvusViewer->setFixedSize(125, 25);
 
+	m_pToggleButton_Vibration = new QPushButton(this);
+	m_pToggleButton_Vibration->setCheckable(true);
+	m_pToggleButton_Vibration->setText("  Vib Correct");
+	m_pToggleButton_Vibration->setIcon(style()->standardIcon(QStyle::SP_BrowserReload));
+	m_pToggleButton_Vibration->setFixedSize(125, 25);
+
     // Set layout: result review
     QVBoxLayout *pVBoxLayout_ResultReview = new QVBoxLayout;
     pVBoxLayout_ResultReview->setSpacing(0);
@@ -145,6 +151,7 @@ void QResultTab::createResultReviewWidgets()
     pGridLayout_Buttons->addWidget(m_pPushButton_Export, 1, 0);
     pGridLayout_Buttons->addWidget(m_pPushButton_Setting, 1, 1);
 	pGridLayout_Buttons->addWidget(m_pPushButton_IvusViewer, 2, 0);
+	pGridLayout_Buttons->addWidget(m_pToggleButton_Vibration, 2, 1);
 	pGridLayout_Buttons->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Expanding), 3, 0, 1, 2);
 	
     pVBoxLayout_ResultReview->addWidget(m_pViewTab->getViewWidget());
@@ -174,6 +181,7 @@ void QResultTab::createResultReviewWidgets()
     connect(m_pPushButton_Export, SIGNAL(clicked(bool)), this, SLOT(createExportDlg()));
 	connect(m_pPushButton_Setting, SIGNAL(clicked(bool)), this, SLOT(createSettingDlg()));
 	connect(m_pPushButton_IvusViewer, SIGNAL(clicked(bool)), this, SLOT(createIvusViewerDlg()));
+	connect(m_pToggleButton_Vibration, SIGNAL(toggled(bool)), this, SLOT(enableVibrationCorrection(bool)));
 }
 
 
@@ -251,8 +259,8 @@ void QResultTab::loadRecordInfo()
 			m_recordInfo.filename = m_pConfig->dbPath + m_recordInfo.filename0.remove(0, idx - 1);;
 			m_recordInfo.comment = _sqlQuery.value(8).toString();
 
-			m_pLabel_RecordInformation->setText(QString("<b><font size=6>%1</font></b>"
-				"&nbsp;&nbsp;&nbsp;<font size=4>%2</font>")
+			m_pLabel_RecordInformation->setText(QString("<b><font size=6>%1</font></b><br>"
+				"<font size=4>%2</font>") // &nbsp;&nbsp;&nbsp;
 				.arg(m_recordInfo.title).arg(m_recordInfo.date));
 			m_pComboBox_Vessel->setCurrentIndex(m_recordInfo.vessel);
 			m_pComboBox_Procedure->setCurrentIndex(m_recordInfo.procedure);
@@ -356,7 +364,7 @@ void QResultTab::createCommentDlg()
 		pDialog->setLayout(pVBoxLayout);
 	}
 	pDialog->setWindowTitle("Comment");
-	pDialog->setFixedSize(300, 200);
+	pDialog->setFixedSize(350, 200);
 	pDialog->setModal(true);
 	pDialog->exec();
 }
@@ -443,4 +451,25 @@ void QResultTab::deleteIvusViewerDlg()
 	m_pIvusViewerDlg = nullptr;
 
 	m_pViewTab->getIvusImageView()->setVisible(false);
+}
+
+void QResultTab::enableVibrationCorrection(bool enabled)
+{
+	if (enabled)
+	{
+		QMessageBox msg_box(QMessageBox::NoIcon, "Vibration Correction...", "", QMessageBox::NoButton, this);
+		msg_box.setStandardButtons(0);
+		msg_box.setWindowModality(Qt::WindowModal);
+		msg_box.setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::CustomizeWindowHint);
+		msg_box.move(QApplication::desktop()->screen()->rect().center() - msg_box.rect().center());
+		msg_box.setFixedSize(msg_box.width(), msg_box.height());
+		msg_box.show();
+
+		// Vib Corr
+		getViewTab()->vibrationCorrection();
+		getDataProcessing()->calculateFlimParameters();
+		getViewTab()->invalidate();
+
+		m_pToggleButton_Vibration->setDisabled(true);
+	}
 }

@@ -62,6 +62,7 @@ private slots:
     void deleteExportDlg();
 	void createIvusViewerDlg();
 	void deleteIvusViewerDlg();
+	void enableVibrationCorrection(bool);
 
 signals:
 	void getCapture(QByteArray &);
@@ -92,6 +93,7 @@ private:
     QPushButton *m_pPushButton_Export;
 	QPushButton *m_pPushButton_Setting;
 	QPushButton *m_pPushButton_IvusViewer;
+	QPushButton *m_pToggleButton_Vibration;
 
     QViewTab* m_pViewTab;
 

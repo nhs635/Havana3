@@ -102,6 +102,7 @@ public:
 		int ch, int mode);
 	void circShift(np::Uint8Array2& image, int shift);
 	void setAxialOffset(np::Uint8Array2& image, int offset);
+	void vibrationCorrection();
 
 public slots:
 	void getCapture(QByteArray &);
@@ -150,6 +151,8 @@ public: // for post processing
 	std::vector<np::FloatArray2> m_vectorPulseMask;
 	std::vector<np::FloatArray2> m_vectorPulseSpline;
 	std::vector<np::FloatArray2> m_vectorPulseFilter;
+
+	np::Uint16Array m_vibCorrIdx;
 
 private:
     // Image visualization buffers - cross-section

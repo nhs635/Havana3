@@ -287,7 +287,7 @@ void IvusViewerDlg::loadIvusData(bool status)
 
 		QString str; str.sprintf("   Frames : %4d / %4d", 1, m_vectorIvusImages.size());
 		m_pLabel_SelectFrame->setText(str);
-		m_pSlider_SelectFrame->setRange(0, m_vectorIvusImages.size() - 1);
+		m_pSlider_SelectFrame->setRange(0, (int)m_vectorIvusImages.size() - 1);
 
 		// Play IVUS movie
 		m_pToggleButton_Play->setChecked(true);

@@ -17,6 +17,9 @@
 #include <tbb/parallel_for.h>
 #include <tbb/blocked_range.h>
 
+#include <mkl_service.h>
+#include <mkl_df.h>
+
 
 QViewTab::QViewTab(bool is_streaming, QWidget *parent) :
 	QDialog(parent), m_pStreamTab(nullptr), m_pResultTab(nullptr), m_pConfigTemp(nullptr),
@@ -1191,7 +1194,7 @@ void QViewTab::play(bool enabled)
 			for (int i = cur_frame; i < end_frame; i++)
 			{
 				m_pSlider_SelectFrame->setValue(i);
-				std::this_thread::sleep_for(std::chrono::milliseconds(50));
+				std::this_thread::sleep_for(std::chrono::milliseconds(75));
 
 				if (!_running) break;
 			}
@@ -1523,4 +1526,123 @@ void QViewTab::getCapture(QByteArray & arr)
 
 		m_pConfig->writeToLog("Preview image is captured.");
 	}
+}
+
+
+void QViewTab::vibrationCorrection()
+{
+	// Data size specification
+	IppiSize img_size = { m_vectorOctImage.at(0).size(0), m_vectorOctImage.at(0).size(1) };
+	IppiSize img_size16 = { m_vectorOctImage.at(0).size(0) / 16, m_vectorOctImage.at(0).size(1) };
+
+	// Spline parameters
+	int d_smp_factor = 16;
+	MKL_INT dorder = 1;
+	MKL_INT nx = (int)m_vectorOctImage.at(0).size(1) / d_smp_factor + 1; // original data length
+	MKL_INT nsite = (int)m_vectorOctImage.at(0).size(1) + 1; // interpolated data length		
+	float x[2] = { 0.0f, (float)nx - 1.0f }; // data range
+	float* scoeff = new float[(nx - 1) * DF_PP_CUBIC];
+	
+	// Find vibration correction index
+	m_vibCorrIdx = np::Uint16Array((int)m_vectorOctImage.size());
+	for (int i = 0; i < (int)m_vectorOctImage.size() - 1; i++)
+	{
+		// Fixed
+		np::Uint8Array2 fixed_8u(img_size16.width, img_size16.height);
+		np::FloatArray2 fixed_32f(img_size16.width, img_size16.height);
+		ippiCopy_8u_C1R(m_vectorOctImage.at(i).raw_ptr(), sizeof(uint8_t) * 16,
+			fixed_8u.raw_ptr(), sizeof(uint8_t) * 1, { 1, img_size16.width * img_size16.height });
+		ippsConvert_8u32f(fixed_8u, fixed_32f, fixed_8u.length());
+
+		Ipp32f x_mean, x_std;
+		ippsMeanStdDev_32f(fixed_32f, fixed_32f.length(), &x_mean, &x_std, ippAlgHintFast);
+
+		np::FloatArray fixed_vector(fixed_32f.length());
+		ippsSubC_32f(fixed_32f, x_mean, fixed_vector, fixed_vector.length());
+
+		// Moving
+		np::Uint8Array2 moving_8u(img_size16.width, img_size16.height);
+		ippiCopy_8u_C1R(m_vectorOctImage.at(i + 1).raw_ptr(), sizeof(uint8_t) * 16,
+			moving_8u.raw_ptr(), sizeof(uint8_t) * 1, { 1, img_size16.width * img_size16.height });
+		
+		// Correlation buffers
+		np::FloatArray corr_coefs0(nx);
+		np::FloatArray corr_coefs(nsite);
+
+		// Shifting along A-line dimension
+		for (int j = 0; j < corr_coefs0.length(); j++)
+		{			
+			circShift(moving_8u, d_smp_factor);
+			np::FloatArray2 moving_32f(img_size16.width, img_size16.height);
+			ippsConvert_8u32f(moving_8u, moving_32f, moving_8u.length());
+
+			Ipp32f y_mean, y_std;
+			ippsMeanStdDev_32f(moving_32f, moving_32f.length(), &y_mean, &y_std, ippAlgHintFast);
+
+			// Correlation coefficient
+			np::FloatArray moving_vector(moving_32f.length());
+			ippsSubC_32f(moving_32f, y_mean, moving_vector, moving_vector.length());
+			ippsMul_32f_I(fixed_vector, moving_vector, moving_vector.length());
+
+			Ipp32f cov;
+			ippsSum_32f(moving_vector, moving_vector.length(), &cov, ippAlgHintFast);
+			cov = cov / (moving_vector.length() - 1);
+
+			int j1 = (j + 1) % corr_coefs0.length();
+			corr_coefs0(j1) = cov / x_std / y_std;
+		} 
+
+		// Spline interpolation		
+		DFTaskPtr task1;
+		dfsNewTask1D(&task1, nx, x, DF_UNIFORM_PARTITION, 1, corr_coefs0.raw_ptr(), DF_MATRIX_STORAGE_ROWS);
+		dfsEditPPSpline1D(task1, DF_PP_CUBIC, DF_PP_NATURAL, DF_BC_NOT_A_KNOT, 0, DF_NO_IC, 0, scoeff, DF_NO_HINT);
+		dfsConstruct1D(task1, DF_PP_SPLINE, DF_METHOD_STD);
+		dfsInterpolate1D(task1, DF_INTERP, DF_METHOD_PP, nsite, x, DF_UNIFORM_PARTITION, 1, &dorder,
+		  	DF_NO_APRIORI_INFO, corr_coefs.raw_ptr(), DF_MATRIX_STORAGE_ROWS, NULL);
+		dfDeleteTask(&task1);		
+		mkl_free_buffers();
+		
+		// Find correction index
+		Ipp32f cmax; int cidx;
+		ippsMaxIndx_32f(corr_coefs.raw_ptr(), corr_coefs.length() - 1, &cmax, &cidx);
+
+		// OCT correction
+		circShift(m_vectorOctImage.at(i + 1), cidx);
+
+		// FLIm correction
+		int i1 = i + 1 - m_pConfigTemp->interFrameSync;
+		if ((i1 > 0) && (i1 < (int)m_vectorOctImage.size()))
+		{
+			int cidx0 = (cidx + m_pConfigTemp->intraFrameSync) % m_vectorOctImage.at(i + 1).size(1);
+			int shift = cidx0 / 4;
+			float weight = (float)cidx0 / 4.0f - (float)shift;
+
+			np::FloatArray2 intensity_temp(m_intensityMap.at(0).size(0), 2);
+			np::FloatArray2 lifetime_temp(m_lifetimeMap.at(0).size(0), 2);
+			for (int ch = 0; ch < 3; ch++)
+			{
+				memcpy(&intensity_temp(0, 0), &m_intensityMap.at(ch)(0, i1), sizeof(float) * m_intensityMap.at(ch).size(0));
+				memcpy(&intensity_temp(0, 1), &m_intensityMap.at(ch)(0, i1), sizeof(float) * m_intensityMap.at(ch).size(0));
+				std::rotate(&intensity_temp(0, 0), &intensity_temp(shift, 0), &intensity_temp(intensity_temp.size(0), 0));
+				std::rotate(&intensity_temp(0, 1), &intensity_temp((shift + 1) % intensity_temp.size(0), 1), &intensity_temp(intensity_temp.size(0), 1));
+				ippsMulC_32f_I(1.0f - weight, &intensity_temp(0, 0), intensity_temp.size(0));
+				ippsMulC_32f_I(weight, &intensity_temp(0, 1), intensity_temp.size(0));
+				ippsAdd_32f(&intensity_temp(0, 1), &intensity_temp(0, 0), &m_intensityMap.at(ch)(0, i1), intensity_temp.size(0));
+
+				memcpy(&lifetime_temp(0, 0), &m_lifetimeMap.at(ch)(0, i1), sizeof(float) * m_lifetimeMap.at(ch).size(0));
+				memcpy(&lifetime_temp(0, 1), &m_lifetimeMap.at(ch)(0, i1), sizeof(float) * m_lifetimeMap.at(ch).size(0));
+				std::rotate(&lifetime_temp(0, 0), &lifetime_temp(shift, 0), &lifetime_temp(lifetime_temp.size(0), 0));
+				std::rotate(&lifetime_temp(0, 1), &lifetime_temp((shift + 1) % lifetime_temp.size(0), 1), &lifetime_temp(lifetime_temp.size(0), 1));
+				ippsMulC_32f_I(1.0f - weight, &lifetime_temp(0, 0), lifetime_temp.size(0));
+				ippsMulC_32f_I(weight, &lifetime_temp(0, 1), lifetime_temp.size(0));
+				ippsAdd_32f(&lifetime_temp(0, 1), &lifetime_temp(0, 0), &m_lifetimeMap.at(ch)(0, i1), lifetime_temp.size(0));
+			}
+		}
+
+		m_vibCorrIdx(i) = cidx;
+
+		//printf("%d %.4f\n", i, cmax);
+	}
+
+	delete[] scoeff;
 }

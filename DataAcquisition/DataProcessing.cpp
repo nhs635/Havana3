@@ -122,13 +122,11 @@ void DataProcessing::startProcessing(QString fileName)
 				load_data.join();
 				deinterleave.join();
 				flim_proc.join();
-				
+												
 				// Generate en face maps ////////////////////////////////////////////////////////////////////
-                getOctProjection(m_pResultTab->getViewTab()->m_vectorOctImage, m_pResultTab->getViewTab()->m_octProjection);
+                //getOctProjection(m_pResultTab->getViewTab()->m_vectorOctImage, m_pResultTab->getViewTab()->m_octProjection);
 
-				// Delete OCT FLIM Object & threading sync buffers //////////////////////////////////////////
-				//if (m_pFLIm) delete m_pFLIm;
-
+				// Delete OCT FLIM Object & threading sync buffers //////////////////////////////////////////				
 				m_syncDeinterleaving.deallocate_queue_buffer();
 				m_syncFlimProcessing.deallocate_queue_buffer();
 				
@@ -356,33 +354,8 @@ void DataProcessing::flimProcessing(FLImProcess* pFLIm, Configuration* pConfig)
 		(*pViewTab->getMedfiltLifetimeMap())(pViewTab->m_lifetimeMap.at(i));
 	}
 	
-	// Intensity ratio
-	for (int i = 0; i < 3; i++)
-	{
-		int ch_num = i;
-		int ch_den = (i == 0) ? 2 : i - 1;
-
-		FloatArray2 ratio_temp(pViewTab->m_intensityMap.at(i).size(0), pViewTab->m_intensityMap.at(i).size(1));
-		ippsDiv_32f(pViewTab->m_intensityMap.at(ch_den), pViewTab->m_intensityMap.at(ch_num), ratio_temp.raw_ptr(), ratio_temp.length());
-		ippsLog10_32f_A11(ratio_temp.raw_ptr(), pViewTab->m_intensityRatioMap.at(ch_num).raw_ptr(), pViewTab->m_intensityRatioMap.at(ch_num).length());
-	}
-
-	// Intensity proportion
-	FloatArray2 sum(pViewTab->m_intensityMap.at(0).size(0), pViewTab->m_intensityMap.at(0).size(1));
-	ippsAdd_32f(pViewTab->m_intensityMap.at(0), pViewTab->m_intensityMap.at(1), sum, sum.length());
-	ippsAdd_32f_I(pViewTab->m_intensityMap.at(2), sum, sum.length());
-	for (int i = 0; i < 3; i++)
-		ippsDiv_32f(sum, pViewTab->m_intensityMap.at(i), pViewTab->m_intensityProportionMap.at(i), sum.length());
-	
-	// Random forest feature aggregation
-	FloatArray2 features(pViewTab->m_lifetimeMap.at(0).length(), 9);
-	for (int i = 0; i < 3; i++)
-	{
-		memcpy(&features(0, 0 + i), pViewTab->m_lifetimeMap.at(i).raw_ptr(), sizeof(float) * pViewTab->m_lifetimeMap.at(i).length());
-		memcpy(&features(0, 3 + i), pViewTab->m_intensityRatioMap.at(i).raw_ptr(), sizeof(float) * pViewTab->m_intensityRatioMap.at(i).length());
-		memcpy(&features(0, 6 + i), pViewTab->m_intensityProportionMap.at(i).raw_ptr(), sizeof(float) * pViewTab->m_intensityProportionMap.at(i).length());
-	}
-	ippiTranspose_32f_C1R(features, sizeof(float) * features.size(0), pViewTab->m_featVectors, sizeof(float) * pViewTab->m_featVectors.size(0), { features.size(0), features.size(1) });
+	// Calculate other FLIm parameters
+	calculateFlimParameters();
 }
 
 
@@ -413,4 +386,38 @@ void DataProcessing::getOctProjection(std::vector<np::FloatArray2>& vecImg, np::
 			}
 		}
 	});
+}
+
+
+void DataProcessing::calculateFlimParameters()
+{
+	QViewTab* pViewTab = m_pResultTab->getViewTab();
+
+	// Intensity ratio
+	for (int i = 0; i < 3; i++)
+	{
+		int ch_num = i;
+		int ch_den = (i == 0) ? 2 : i - 1;
+
+		FloatArray2 ratio_temp(pViewTab->m_intensityMap.at(i).size(0), pViewTab->m_intensityMap.at(i).size(1));
+		ippsDiv_32f(pViewTab->m_intensityMap.at(ch_den), pViewTab->m_intensityMap.at(ch_num), ratio_temp.raw_ptr(), ratio_temp.length());
+		ippsLog10_32f_A11(ratio_temp.raw_ptr(), pViewTab->m_intensityRatioMap.at(ch_num).raw_ptr(), pViewTab->m_intensityRatioMap.at(ch_num).length());
+	}
+
+	// Intensity proportion
+	FloatArray2 sum(pViewTab->m_intensityMap.at(0).size(0), pViewTab->m_intensityMap.at(0).size(1));
+	ippsAdd_32f(pViewTab->m_intensityMap.at(0), pViewTab->m_intensityMap.at(1), sum, sum.length());
+	ippsAdd_32f_I(pViewTab->m_intensityMap.at(2), sum, sum.length());
+	for (int i = 0; i < 3; i++)
+		ippsDiv_32f(sum, pViewTab->m_intensityMap.at(i), pViewTab->m_intensityProportionMap.at(i), sum.length());
+
+	// Random forest feature aggregation
+	FloatArray2 features(pViewTab->m_lifetimeMap.at(0).length(), 9);
+	for (int i = 0; i < 3; i++)
+	{
+		memcpy(&features(0, 0 + i), pViewTab->m_lifetimeMap.at(i).raw_ptr(), sizeof(float) * pViewTab->m_lifetimeMap.at(i).length());
+		memcpy(&features(0, 3 + i), pViewTab->m_intensityRatioMap.at(i).raw_ptr(), sizeof(float) * pViewTab->m_intensityRatioMap.at(i).length());
+		memcpy(&features(0, 6 + i), pViewTab->m_intensityProportionMap.at(i).raw_ptr(), sizeof(float) * pViewTab->m_intensityProportionMap.at(i).length());
+	}
+	ippiTranspose_32f_C1R(features, sizeof(float) * features.size(0), pViewTab->m_featVectors, sizeof(float) * pViewTab->m_featVectors.size(0), { features.size(0), features.size(1) });
 }

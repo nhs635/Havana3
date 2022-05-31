@@ -39,6 +39,9 @@ private:
 	void loadingRawData(QFile*, Configuration*);
 	void deinterleaving(Configuration*);
 	void flimProcessing(FLImProcess*, Configuration*);
+	
+public:
+	void calculateFlimParameters();
 
 private:
 #ifndef NEXT_GEN_SYSTEM

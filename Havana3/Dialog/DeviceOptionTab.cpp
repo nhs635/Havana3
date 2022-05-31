@@ -460,7 +460,7 @@ void DeviceOptionTab::createFlimSystemControl()
 #ifndef NEXT_GEN_SYSTEM
 	connect(m_pPushButton_FlimLaserPowerIncrease, SIGNAL(clicked(bool)), this, SLOT(increaseLaserPower()));
 	connect(m_pPushButton_FlimLaserPowerDecrease, SIGNAL(clicked(bool)), this, SLOT(decreaseLaserPower()));
-	connect(this, &DeviceOptionTab::showCurrentUVPower, [&](int level) { m_pLineEdit_FlimLaserPowerMonitor->setText(QString::number(level)); });
+	connect(this, &DeviceOptionTab::showCurrentUVPower, [&](int level) { m_pLineEdit_FlimLaserPowerMonitor->setText(QString::number(level)); }); // crash occurred
 #else
 	connect(m_pLineEdit_FlimLaserPowerControl, SIGNAL(textChanged(const QString &)), this, SLOT(changeFlimLaserPower(const QString &)));
 	connect(m_pPushButton_FlimLaserPowerControl, SIGNAL(clicked(bool)), this, SLOT(applyFlimLaserPower()));

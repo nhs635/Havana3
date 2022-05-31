@@ -141,14 +141,15 @@ void QPatientSelectionTab::createPatientSelectionTable()
 
     // Header properties
     m_pTableWidget_PatientInformation->verticalHeader()->setSectionResizeMode(QHeaderView::Fixed);
-    m_pTableWidget_PatientInformation->horizontalHeader()->setMinimumSectionSize(100);
+	m_pTableWidget_PatientInformation->horizontalHeader()->setDefaultAlignment(Qt::AlignCenter);
+    m_pTableWidget_PatientInformation->horizontalHeader()->setMinimumSectionSize(60);
     m_pTableWidget_PatientInformation->horizontalHeader()->setStretchLastSection(true);
-    m_pTableWidget_PatientInformation->setColumnWidth(0, 200);
-    m_pTableWidget_PatientInformation->setColumnWidth(1, 100);
-    m_pTableWidget_PatientInformation->setColumnWidth(2, 80);
-    m_pTableWidget_PatientInformation->setColumnWidth(3, 150);
-    m_pTableWidget_PatientInformation->setColumnWidth(4, 150);
-    m_pTableWidget_PatientInformation->setColumnWidth(5, 150);
+    m_pTableWidget_PatientInformation->setColumnWidth(0, 190);
+    m_pTableWidget_PatientInformation->setColumnWidth(1, 90);
+    m_pTableWidget_PatientInformation->setColumnWidth(2, 60);
+    m_pTableWidget_PatientInformation->setColumnWidth(3, 140);
+    m_pTableWidget_PatientInformation->setColumnWidth(4, 140);
+    m_pTableWidget_PatientInformation->setColumnWidth(5, 140);
 }
 
 

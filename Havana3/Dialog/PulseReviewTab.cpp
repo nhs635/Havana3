@@ -613,6 +613,7 @@ void PulseReviewTab::drawPulse(int aline)
 					ippsSum_32f(&lifetime.at(i)(0, frame), end4, &temp2, ippAlgHintFast);
 					ml = (temp1 + temp2) / (m_pConfigTemp->flimAlines - start4 + end4);
 
+
 					ippsSum_32f(&int_prop.at(i)(start4, frame), m_pConfigTemp->flimAlines - start4, &temp1, ippAlgHintFast);
 					ippsSum_32f(&int_prop.at(i)(0, frame), end4, &temp2, ippAlgHintFast);
 					mp = (temp1 + temp2) / (m_pConfigTemp->flimAlines - start4 + end4);
