@@ -146,7 +146,7 @@ void DeviceOptionTab::createHelicalScanningControl()
 
 	m_pCheckBox_AutoApply = new QCheckBox(this);
 	m_pCheckBox_AutoApply->setText("Auto ");
-	m_pCheckBox_AutoApply->setChecked(true);
+	//m_pCheckBox_AutoApply->setChecked(true);
 	m_pCheckBox_AutoApply->setDisabled(true);
 
 	m_pSpinBox_RPM = new QSpinBox(this);
@@ -170,6 +170,16 @@ void DeviceOptionTab::createHelicalScanningControl()
 	m_pPushButton_RotateOperation->setText("Stop");
 	m_pPushButton_RotateOperation->setFixedWidth(100);
 	m_pPushButton_RotateOperation->setDisabled(true);
+
+	m_pLabel_AutoVibCorrection = new QLabel(this); 
+	m_pLabel_AutoVibCorrection->setText("Automatic Vib Correction");
+
+	m_pToggleButton_AutoVibCorrection = new QPushButton(this);
+	m_pToggleButton_AutoVibCorrection->setCheckable(true);
+	m_pToggleButton_AutoVibCorrection->setText(!m_pConfig->autoVibCorrectionMode ? "Enable" : "Disable");
+	m_pToggleButton_AutoVibCorrection->setFixedWidth(100);
+	m_pToggleButton_AutoVibCorrection->setStyleSheet(!m_pConfig->autoVibCorrectionMode ? "QPushButton { background-color:#ff0000; }" : "QPushButton { background-color:#00ff00; }");
+	m_pToggleButton_AutoVibCorrection->setChecked(m_pConfig->autoVibCorrectionMode);
 
 	// Create widgets for pullback stage control
 	m_pToggleButton_PullbackConnect = new QPushButton(this);
@@ -231,6 +241,29 @@ void DeviceOptionTab::createHelicalScanningControl()
 	m_pPushButton_PullbackFlagStateRenew->setDisabled(true);
 	m_pLabel_PullbackFlag = new QLabel("Pullback Flag", this);
 	m_pLabel_PullbackFlag->setDisabled(true);
+
+	m_pLabel_AutoPullback = new QLabel(this);
+	m_pLabel_AutoPullback->setText("Automatic Pullback");
+	m_pLabel_AutoPullback->setDisabled(true);
+	
+	m_pLineEdit_AutoPullbackTime = new QLineEdit(this);
+	m_pLineEdit_AutoPullbackTime->setFixedWidth(30);		
+	m_pLineEdit_AutoPullbackTime->setText(QString::number(m_pConfig->autoPullbackTime));
+	m_pLineEdit_AutoPullbackTime->setAlignment(Qt::AlignCenter);
+	m_pLineEdit_AutoPullbackTime->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+	m_pLineEdit_AutoPullbackTime->setDisabled(true);
+	
+	m_pLabel_AutoPullbackSecond = new QLabel(this);
+	m_pLabel_AutoPullbackSecond->setText("Sec ");
+	m_pLabel_AutoPullbackSecond->setFixedWidth(25);
+	m_pLabel_AutoPullbackSecond->setDisabled(true);
+
+	m_pToggleButton_AutoPullback = new QPushButton(this);
+	m_pToggleButton_AutoPullback->setCheckable(true);
+	m_pToggleButton_AutoPullback->setText(!m_pConfig->autoPullbackMode ? "Enable" : "Disable");
+	m_pToggleButton_AutoPullback->setChecked(m_pConfig->autoPullbackMode);
+	m_pToggleButton_AutoPullback->setFixedWidth(100);
+	m_pToggleButton_AutoPullback->setDisabled(true);
 		
 	// Set Layout
 	QGridLayout *pGridLayout_RotaryMotor = new QGridLayout;
@@ -246,6 +279,10 @@ void DeviceOptionTab::createHelicalScanningControl()
 	pGridLayout_RotaryMotor->addWidget(m_pSpinBox_RPM, 1, 3);
 	pGridLayout_RotaryMotor->addWidget(m_pLabel_RPM, 1, 4);
 	pGridLayout_RotaryMotor->addWidget(m_pPushButton_RotateOperation, 1, 5);
+
+	pGridLayout_RotaryMotor->addWidget(m_pLabel_AutoVibCorrection, 2, 0);
+	pGridLayout_RotaryMotor->addItem(new QSpacerItem(0, 0, QSizePolicy::MinimumExpanding, QSizePolicy::Fixed), 2, 1, 1, 4);
+	pGridLayout_RotaryMotor->addWidget(m_pToggleButton_AutoVibCorrection, 2, 5);
 
 	QGridLayout *pGridLayout_PullbackMotor = new QGridLayout;
 	pGridLayout_PullbackMotor->setSpacing(3);
@@ -279,6 +316,15 @@ void DeviceOptionTab::createHelicalScanningControl()
 	pHBoxLayout_PullbackFlag->addWidget(m_pPushButton_PullbackFlagStateRenew);
 	pGridLayout_PullbackMotor->addItem(pHBoxLayout_PullbackFlag, 4, 4, 1, 2, Qt::AlignRight);
 
+	pGridLayout_PullbackMotor->addWidget(m_pLabel_AutoPullback, 5, 0);
+	pGridLayout_PullbackMotor->addItem(new QSpacerItem(0, 0, QSizePolicy::MinimumExpanding, QSizePolicy::Fixed), 5, 1);
+	QHBoxLayout *pHBoxLayout_AutoPullbackTime = new QHBoxLayout;
+	pHBoxLayout_AutoPullbackTime->setSpacing(3);
+	pHBoxLayout_AutoPullbackTime->addWidget(m_pLineEdit_AutoPullbackTime);
+	pHBoxLayout_AutoPullbackTime->addWidget(m_pLabel_AutoPullbackSecond);
+	pGridLayout_PullbackMotor->addItem(pHBoxLayout_AutoPullbackTime, 5, 2, 1, 2, Qt::AlignRight);	
+	pGridLayout_PullbackMotor->addWidget(m_pToggleButton_AutoPullback, 5, 4, 1, 2, Qt::AlignRight);
+
 
 	QVBoxLayout *pVBoxLayout_HelicalScanning = new QVBoxLayout;
 	pVBoxLayout_HelicalScanning->setSpacing(10);
@@ -293,6 +339,7 @@ void DeviceOptionTab::createHelicalScanningControl()
 	// Connect signal and slot
 	connect(m_pToggleButton_RotaryConnect, SIGNAL(toggled(bool)), this, SLOT(connectRotaryMotor(bool)));
 	connect(m_pCheckBox_AutoApply, SIGNAL(toggled(bool)), this, SLOT(changeAutoApply(bool)));
+	connect(m_pToggleButton_AutoVibCorrection, SIGNAL(toggled(bool)), this, SLOT(enableAutoVibCorrectionMode(bool)));
 
 	connect(m_pToggleButton_PullbackConnect, SIGNAL(toggled(bool)), this, SLOT(connectPullbackMotor(bool)));
 	connect(m_pButtonGroup_PullbackMode, SIGNAL(buttonClicked(int)), this, SLOT(setPullbackMode(int)));
@@ -300,6 +347,8 @@ void DeviceOptionTab::createHelicalScanningControl()
 	connect(m_pPushButton_Home, SIGNAL(clicked(bool)), this, SLOT(home()));
 	connect(m_pPushButton_PullbackStop, SIGNAL(clicked(bool)), this, SLOT(stop()));
 	connect(m_pPushButton_PullbackFlagStateRenew, SIGNAL(clicked(bool)), this, SLOT(renewPullbackFlag()));
+	connect(m_pLineEdit_AutoPullbackTime, SIGNAL(textChanged(const QString &)), this, SLOT(changeAutoPullbackTime(const QString &)));
+	connect(m_pToggleButton_AutoPullback, SIGNAL(toggled(bool)), this, SLOT(enableAutoPullbackMode(bool)));
 }
 
 void DeviceOptionTab::createFlimSystemControl()
@@ -721,6 +770,21 @@ void DeviceOptionTab::rotate()
 		rotateStop();
 }
 
+void DeviceOptionTab::enableAutoVibCorrectionMode(bool toggled)
+{
+	m_pConfig->autoVibCorrectionMode = toggled;
+	if (toggled)
+	{
+		m_pToggleButton_AutoVibCorrection->setText("Disable");
+		m_pToggleButton_AutoVibCorrection->setStyleSheet("QPushButton { background-color:#00ff00; }");
+	}
+	else
+	{
+		m_pToggleButton_AutoVibCorrection->setText("Enable");
+		m_pToggleButton_AutoVibCorrection->setStyleSheet("QPushButton { background-color:#ff0000; }");
+	}
+}
+
 
 bool DeviceOptionTab::connectPullbackMotor(bool toggled)
 {
@@ -749,6 +813,14 @@ bool DeviceOptionTab::connectPullbackMotor(bool toggled)
 			m_pPushButton_PullbackFlagStateRenew->setEnabled(true);			
 			m_pLabel_PullbackFlagIndicator->setText(!m_pConfig->pullbackFlag ? "On" : "Off");
 			m_pLabel_PullbackFlagIndicator->setStyleSheet(!m_pConfig->pullbackFlag ? "QLabel { background-color:#00ff00; color:black; }" : "QLabel { background-color:#ff0000; color:white; }");
+			m_pLabel_AutoPullback->setEnabled(true);
+			if (m_pConfig->autoPullbackMode)
+			{
+				m_pLineEdit_AutoPullbackTime->setEnabled(true);
+				m_pLabel_AutoPullbackSecond->setEnabled(true);
+			}
+			m_pToggleButton_AutoPullback->setEnabled(true);
+			m_pToggleButton_AutoPullback->setStyleSheet(!m_pConfig->autoPullbackMode ? "QPushButton { background-color:#ff0000; }" : "QPushButton { background-color:#00ff00; }");
 
 			connect(this, SIGNAL(stopPullback(bool)), this, SLOT(setPullbackWidgets(bool)));
 		}
@@ -777,6 +849,11 @@ bool DeviceOptionTab::connectPullbackMotor(bool toggled)
 		m_pPushButton_PullbackFlagStateRenew->setDisabled(true);
 		m_pLabel_PullbackFlagIndicator->setText("");
 		m_pLabel_PullbackFlagIndicator->setStyleSheet("QLabel { background-color:#353535; }");
+		m_pLabel_AutoPullback->setDisabled(true);
+		m_pLineEdit_AutoPullbackTime->setDisabled(true);
+		m_pLabel_AutoPullbackSecond->setDisabled(true);
+		m_pToggleButton_AutoPullback->setDisabled(true);
+		m_pToggleButton_AutoPullback->setStyleSheet("QPushButton { background-color:#353535; }");
 
 		// Disconnect from rotary motor
 		m_pDeviceControl->connectRotaryMotor(false);
@@ -863,6 +940,32 @@ void DeviceOptionTab::setPullbackWidgets(bool enabled)
 		m_pPushButton_Pullback->setStyleSheet("QPushButton { background-color:#ff0000; }");
 	else
 		m_pPushButton_Pullback->setStyleSheet("QPushButton { background-color:#00ff00; }");
+}
+
+void DeviceOptionTab::changeAutoPullbackTime(const QString &str)
+{
+	m_pConfig->autoPullbackTime = str.toInt();
+
+	m_pConfig->writeToLog(QString("Auto pullback time set: %1 sec").arg(m_pConfig->autoPullbackTime));
+}
+
+void DeviceOptionTab::enableAutoPullbackMode(bool toggled)
+{
+	m_pConfig->autoPullbackMode = toggled;
+	if (toggled)
+	{
+		m_pToggleButton_AutoPullback->setText("Disable");
+		m_pToggleButton_AutoPullback->setStyleSheet("QPushButton { background-color:#00ff00; }");
+		m_pLineEdit_AutoPullbackTime->setEnabled(true);
+		m_pLabel_AutoPullbackSecond->setEnabled(true);
+	}
+	else
+	{
+		m_pToggleButton_AutoPullback->setText("Enable");
+		m_pToggleButton_AutoPullback->setStyleSheet("QPushButton { background-color:#ff0000; }");
+		m_pLineEdit_AutoPullbackTime->setDisabled(true);
+		m_pLabel_AutoPullbackSecond->setDisabled(true);
+	}
 }
 
 

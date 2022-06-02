@@ -50,6 +50,7 @@ private slots:
 	void changeRotaryRpm(int);
 	void rotate();
 	void rotateStop();
+	void enableAutoVibCorrectionMode(bool);
 	
 	bool connectPullbackMotor(bool);
 	void setPullbackMode(int);
@@ -58,6 +59,8 @@ private slots:
 	void stop();
 	void renewPullbackFlag();
 	void setPullbackWidgets(bool);
+	void changeAutoPullbackTime(const QString &);
+	void enableAutoPullbackMode(bool);
 	
     // FLIm Laser Synchronization Control
 	void startFlimAsynchronization(bool);
@@ -113,6 +116,9 @@ private:
 	QLabel *m_pLabel_RPM;
 	QPushButton *m_pPushButton_RotateOperation;
 
+	QLabel *m_pLabel_AutoVibCorrection;
+	QPushButton *m_pToggleButton_AutoVibCorrection;
+
     // Faulhaber pullback stage control widgets
 	QLabel *m_pLabel_PullbackConnect;
 	QPushButton *m_pToggleButton_PullbackConnect;
@@ -131,6 +137,11 @@ private:
 	QLabel *m_pLabel_PullbackFlag;
 	QLabel *m_pLabel_PullbackFlagIndicator;
 	QPushButton *m_pPushButton_PullbackFlagStateRenew;
+
+	QLabel *m_pLabel_AutoPullback;
+	QLineEdit *m_pLineEdit_AutoPullbackTime;
+	QLabel *m_pLabel_AutoPullbackSecond;
+	QPushButton *m_pToggleButton_AutoPullback;
 	
     // FLIm control - Laser sync control widgets
 	QLabel *m_pLabel_AsynchronizedPulsedLaser;

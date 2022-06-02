@@ -39,6 +39,7 @@ public:
     inline QViewTab* getViewTab() const { return m_pViewTab; }
 	inline SettingDlg* getSettingDlg() const { return m_pSettingDlg; }
 	inline IvusViewerDlg* getIvusViewerDlg() const { return m_pIvusViewerDlg; }
+	inline QPushButton* getVibCorrectionButton() const { return m_pToggleButton_Vibration; }
 
 private:
     void createResultReviewWidgets();

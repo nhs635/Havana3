@@ -1,7 +1,7 @@
 #ifndef CONFIGURATION_H
 #define CONFIGURATION_H
 
-#define VERSION						"2.1.3.6"
+#define VERSION						"2.1.3.7"
 
 #define POWER_2(x)					(1 << x)
 #define NEAR_2_POWER(x)				(int)(1 << (int)ceil(log2(x)))
@@ -187,6 +187,7 @@ public:
 		rotatedAlines = settings.value("rotatedAlines").toInt();
 		innerOffsetLength = settings.value("innerOffsetLength").toInt();
 		verticalMirroring = settings.value("verticalMirroring").toBool();
+		autoVibCorrectionMode = settings.value("autoVibCorrectionMode").toBool();
 		
 		// Additional synchronization parameters
 		intraFrameSync = settings.value("intraFrameSync").toInt();
@@ -197,6 +198,8 @@ public:
 		pullbackSpeed = settings.value("pullbackSpeed").toFloat();
 		pullbackLength = settings.value("pullbackLength").toFloat();	
 		pullbackFlag = settings.value("pullbackFlag").toBool();
+		autoPullbackMode = settings.value("autoPullbackMode").toBool();
+		autoPullbackTime = settings.value("autoPullbackTime").toInt();
 		pmtGainVoltage = settings.value("pmtGainVoltage").toFloat(); 
 #ifndef NEXT_GEN_SYSTEM
         px14DcOffset = settings.value("px14DcOffset").toInt();
@@ -268,6 +271,7 @@ public:
 		settings.setValue("rotatedAlines", rotatedAlines);
 		settings.setValue("innerOffsetLength", innerOffsetLength);
 		settings.setValue("verticalMirroring", verticalMirroring);
+		settings.setValue("autoVibCorrectionMode", autoVibCorrectionMode);
 
 		// Additional synchronization parameters
 		settings.setValue("intraFrameSync", intraFrameSync);
@@ -278,6 +282,8 @@ public:
 		settings.setValue("pullbackSpeed", QString::number(pullbackSpeed, 'f', 2));
 		settings.setValue("pullbackLength", QString::number(pullbackLength, 'f', 2));
 		settings.setValue("pullbackFlag", pullbackFlag);
+		settings.setValue("autoPullbackMode", autoPullbackMode);
+		settings.setValue("autoPullbackTime", autoPullbackTime);
 		settings.setValue("laserPowerLevel", laserPowerLevel);
 		settings.setValue("pmtGainVoltage", QString::number(pmtGainVoltage, 'f', 3));
 #ifndef NEXT_GEN_SYSTEM
@@ -347,6 +353,7 @@ public:
 	int rotatedAlines;
 	int innerOffsetLength;
 	bool verticalMirroring;
+	bool autoVibCorrectionMode;
 
 	// Additional synchronization parameters
 	int intraFrameSync;
@@ -357,6 +364,8 @@ public:
 	float pullbackSpeed;
 	float pullbackLength;
 	bool pullbackFlag;
+	bool autoPullbackMode;
+	int autoPullbackTime;
 	float pmtGainVoltage;
 	int laserPowerLevel;
 #ifndef NEXT_GEN_SYSTEM

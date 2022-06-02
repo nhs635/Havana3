@@ -132,6 +132,8 @@ void DataProcessing::startProcessing(QString fileName)
 				
 				// Visualization /////////////////////////////////////////////////////////////////////////////
 				m_pResultTab->getViewTab()->invalidate();	
+				if (m_pConfig->autoVibCorrectionMode)
+					m_pResultTab->getVibCorrectionButton()->setChecked(true);
 				m_pResultTab->getViewTab()->getPlayButton()->setChecked(true);
 			}
 
