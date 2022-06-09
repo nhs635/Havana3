@@ -51,6 +51,7 @@ public:
 	inline RandomForest* getForestInfl() const { return m_pForestInfl; }
 	inline RandomForest* getForestPlqCompo() const { return m_pForestPlqCompo; }
 	inline QPushButton* getPlayButton() const { return m_pToggleButton_Play; }
+	inline QPushButton* getPickButton() const { return m_pPushButton_Pick; }
     inline QSlider* getSliderSelectFrame() const { return m_pSlider_SelectFrame; }
 	inline void setVisualizationMode(int mode) { if (!mode) m_pRadioButton_FLImParameters->setChecked(true); 
 	else m_pRadioButton_RFPrediction->setChecked(true); changeVisualizationMode(mode);	}
@@ -103,6 +104,9 @@ public:
 	void circShift(np::Uint8Array2& image, int shift);
 	void setAxialOffset(np::Uint8Array2& image, int offset);
 	void vibrationCorrection();
+	void pickFrame(std::vector<QStringList>& _vector, int oct_frame, int ivus_frame = 0, int rotation = 0, bool allow_delete = false);
+	void loadPickFrames(std::vector<QStringList>& _vector);
+	void seekPickFrame(bool is_right);
 
 public slots:
 	void getCapture(QByteArray &);
@@ -137,6 +141,7 @@ public: // for post processing
 	std::vector<np::FloatArray2> m_vectorOctImage;
 	np::FloatArray2 m_octProjection;
 #endif
+	std::vector<np::FloatArray2> m_pulsepowerMap; // (256 x N) x 4
 	std::vector<np::FloatArray2> m_intensityMap; // (256 x N) x 3
 	std::vector<np::FloatArray2> m_meandelayMap; // (256 X N) x 4
 	std::vector<np::FloatArray2> m_lifetimeMap; // (256 x N) x 3
@@ -151,6 +156,8 @@ public: // for post processing
 	std::vector<np::FloatArray2> m_vectorPulseMask;
 	std::vector<np::FloatArray2> m_vectorPulseSpline;
 	std::vector<np::FloatArray2> m_vectorPulseFilter;
+
+	std::vector<QStringList> m_vectorPickFrames;
 
 	np::Uint16Array m_vibCorrIdx;
 
@@ -202,6 +209,9 @@ private:
     QPushButton *m_pToggleButton_Play;
     QPushButton *m_pPushButton_Decrement;
     QPushButton *m_pPushButton_Increment;
+	QPushButton *m_pPushButton_Pick;
+	QPushButton *m_pPushButton_Backward;
+	QPushButton *m_pPushButton_Forward;	
 	QSlider *m_pSlider_SelectFrame;
 
     // View option widgets

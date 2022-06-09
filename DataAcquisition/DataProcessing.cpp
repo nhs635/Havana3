@@ -130,10 +130,11 @@ void DataProcessing::startProcessing(QString fileName)
 				m_syncDeinterleaving.deallocate_queue_buffer();
 				m_syncFlimProcessing.deallocate_queue_buffer();
 				
-				// Visualization /////////////////////////////////////////////////////////////////////////////
+				// Visualization ////////////////////////////////////////////////////////////////////////////
 				m_pResultTab->getViewTab()->invalidate();	
 				if (m_pConfig->autoVibCorrectionMode)
 					m_pResultTab->getVibCorrectionButton()->setChecked(true);
+				m_pResultTab->getViewTab()->loadPickFrames(m_pResultTab->getViewTab()->m_vectorPickFrames);
 				m_pResultTab->getViewTab()->getPlayButton()->setChecked(true);
 			}
 
@@ -268,6 +269,7 @@ void DataProcessing::flimProcessing(FLImProcess* pFLIm, Configuration* pConfig)
 {
     QViewTab* pViewTab = m_pResultTab->getViewTab();
 
+	np::Array<float, 2> pp(pConfig->flimAlines, 4); // temp pulse power
 	np::Array<float, 2> itn(pConfig->flimAlines, 4); // temp intensity
 	np::Array<float, 2> md(pConfig->flimAlines, 4); // temp mean delay
 	np::Array<float, 2> ltm(pConfig->flimAlines, 3); // temp lifetime
@@ -320,7 +322,14 @@ void DataProcessing::flimProcessing(FLImProcess* pFLIm, Configuration* pConfig)
 			///file.open(QIODevice::WriteOnly);
 			///file.write(reinterpret_cast<const char*>(pFLIm->_resize.filt_src.raw_ptr()), sizeof(float) * pFLIm->_resize.nsite);
 
-			// Copy for Intensity & Lifetime			
+			// Copy for Intensity & Lifetime	
+			memcpy(pp, pFLIm->_resize.pulse_power, sizeof(float) * pp.length());
+
+			memcpy(&pViewTab->m_pulsepowerMap.at(0)(0, frameCount), &pp(0, 0), sizeof(float) * pConfig->flimAlines);
+			memcpy(&pViewTab->m_pulsepowerMap.at(1)(0, frameCount), &pp(0, 1), sizeof(float) * pConfig->flimAlines);
+			memcpy(&pViewTab->m_pulsepowerMap.at(2)(0, frameCount), &pp(0, 2), sizeof(float) * pConfig->flimAlines);
+			memcpy(&pViewTab->m_pulsepowerMap.at(3)(0, frameCount), &pp(0, 3), sizeof(float) * pConfig->flimAlines);
+
             memcpy(&pViewTab->m_intensityMap.at(0)(0, frameCount), &itn(0, 1), sizeof(float) * pConfig->flimAlines);
             memcpy(&pViewTab->m_intensityMap.at(1)(0, frameCount), &itn(0, 2), sizeof(float) * pConfig->flimAlines);
             memcpy(&pViewTab->m_intensityMap.at(2)(0, frameCount), &itn(0, 3), sizeof(float) * pConfig->flimAlines);

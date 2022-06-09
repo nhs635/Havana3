@@ -62,7 +62,7 @@ public:
 	void setVerticalLine(int len, ...);
 	void setCircle(int len, ...);
     void setContour(int len, uint16_t* pContour);
-	void setText(QPoint pos, const QString& str, bool is_vertical = false);
+	void setText(QPoint pos, const QString& str, bool is_vertical = false, QColor color = Qt::white);
 	void setScaleBar(int len);
 	void setMagnDefault();
 
@@ -140,6 +140,7 @@ public:
 	bool m_bIsClicking;
 	int m_nClicked;
 	std::vector<QPointF> m_vecPoint;
+	std::vector<int> m_vecPickFrames;
 
 	bool m_bCenterGrid;
 	int m_nPullbackLength;
@@ -147,6 +148,7 @@ public:
 	QPoint m_textPos;
 	QString m_str;
 	bool m_bVertical;
+	QColor m_titleColor;
 
 	int m_nScaleLen;
 

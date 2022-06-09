@@ -198,11 +198,12 @@ void QImageView::setContour(int len, uint16_t* pContour)
         memcpy(m_pRenderImage->m_contour.raw_ptr(), pContour, sizeof(uint16_t) * len);
 }
 
-void QImageView::setText(QPoint pos, const QString & str, bool is_vertical)
+void QImageView::setText(QPoint pos, const QString & str, bool is_vertical, QColor color)
 {
 	m_pRenderImage->m_textPos = pos;
 	m_pRenderImage->m_str = str;
 	m_pRenderImage->m_bVertical = is_vertical;
+	m_pRenderImage->m_titleColor = !is_vertical ? color : Qt::black;
 }
 
 void QImageView::setScaleBar(int len)
@@ -304,7 +305,7 @@ QRenderImage::QRenderImage(QWidget *parent) :
 	m_bRadial(false), m_bDiametric(false),
 	m_bCanBeMagnified(false), m_rectMagnified(0, 0, 0, 0), m_fMagnLevel(1.0),
 	m_bCenterGrid(false), m_nPullbackLength(0),
-	m_str(""), m_bVertical(false), m_nScaleLen(0)
+	m_str(""), m_bVertical(false), m_nScaleLen(0), m_titleColor(Qt::white)
 {
 	m_pHLineInd = new int[10];
     m_pVLineInd = new int[10];
@@ -630,15 +631,33 @@ void QRenderImage::paintEvent(QPaintEvent *)
 			int x = (i != 0) ? i * w / nHMajorGrid - 9 : 0;
 			x = (i != nHMajorGrid) ? x : x - 30;
 			painter.drawText(x, h / 2 - 15 + offset, QString(i != nHMajorGrid ? "%1" : "%1mm").arg(i * 10));
+			//painter.drawText(x, h / 2 - 15 + offset, QString(i != nHMajorGrid ? "%1" : QString::fromLocal8Bit("%1¡Ú").arg(i * 10)));
 		}
-
 		painter.drawLine(0, 0.5 * h + offset, w, 0.5 * h + offset);
+	}
+
+	// Draw pick frames
+	if (m_vecPickFrames.size() > 0)
+	{
+		QPen pen; pen.setColor(Qt::magenta); pen.setWidth(2);
+		painter.setPen(pen);
+
+		int offset = 0.4 * h;
+		for (int i = 0; i < m_vecPickFrames.size(); i++)
+		{
+			int frame = m_vecPickFrames.at(i);			
+			int x = w * frame / m_pImage->width() - 9;
+			
+			QFont font; font.setBold(true); font.setPointSizeF(11.5);
+			painter.setFont(font);
+			painter.drawText(x, h / 2 - 15 + offset, QString::fromLocal8Bit("¡å"));
+		}
 	}
 	
 	// Set text
 	if (m_str != "")
 	{
-		QPen pen; pen.setColor(!m_bVertical ? Qt::white : Qt::black); pen.setWidth(1);
+		QPen pen; pen.setColor(m_titleColor); pen.setWidth(1);
 		painter.setPen(pen);
 		QFont font; font.setBold(true); font.setPointSize(!m_bVertical ? 11 : 9);
 		painter.setFont(font);

@@ -250,25 +250,7 @@ void IvusViewerDlg::loadIvusData(bool status)
 		}
 
 		// Load matching data
-		m_vectorMatches.clear();
-
-		QString match_path = m_pResultTab->getRecordInfo().filename;
-		match_path.replace("pullback.data", "ivus_match.csv");
-
-		QFile match_file(match_path);
-		if (match_file.open(QFile::ReadOnly))
-		{
-			QTextStream stream(&match_file);
-
-			stream.readLine();
-			while (!stream.atEnd())
-			{
-				QStringList matches = stream.readLine().split('\t');
-				if (matches.size() > 1)
-					m_vectorMatches.push_back(matches);
-			}
-			match_file.close();
-		}
+		m_pResultTab->getViewTab()->loadPickFrames(m_vectorMatches);
 
 		// Memorize IVUS file path
 		m_pConfigTemp->setConfigFile(m_pResultTab->getDataProcessing()->getIniName());
@@ -285,6 +267,8 @@ void IvusViewerDlg::loadIvusData(bool status)
 		m_pLabel_Rotation->setEnabled(true);
 		m_pSlider_Rotation->setEnabled(true);
 
+		m_pResultTab->getViewTab()->getPickButton()->setDisabled(true);
+
 		QString str; str.sprintf("   Frames : %4d / %4d", 1, m_vectorIvusImages.size());
 		m_pLabel_SelectFrame->setText(str);
 		m_pSlider_SelectFrame->setRange(0, (int)m_vectorIvusImages.size() - 1);
@@ -298,53 +282,58 @@ void IvusViewerDlg::loadIvusData(bool status)
 }
 
 void IvusViewerDlg::pickAsMatchedFrame()
-{
-	// Add matching data to vector
+{	
 	int oct_frame = m_pResultTab->getViewTab()->getCurrentFrame() + 1;
+	int ivus_frame = m_pSlider_SelectFrame->value() + 1;
+	int rotation = m_pSlider_Rotation->value();
 
-	int k = 0;
-	foreach(QStringList _matches, m_vectorMatches)
-	{
-		if (_matches.at(0).toInt() == oct_frame)
-			break;
-		k++;
-	}
+	// Add matching data to vector
+	m_pResultTab->getViewTab()->pickFrame(m_vectorMatches, oct_frame, ivus_frame, rotation);
+	m_pResultTab->getViewTab()->pickFrame(m_pResultTab->getViewTab()->m_vectorPickFrames, oct_frame, ivus_frame, rotation);
 
-	QStringList matches;
-	matches << QString::number(oct_frame) // OCT frame
-		<< QString::number(m_pSlider_SelectFrame->value() + 1) // IVUS frame
-		<< QString::number(m_pSlider_Rotation->value()); // IVUS rotation
-	
-	if (k == m_vectorMatches.size())
-		m_vectorMatches.push_back(matches);
-	else
-		m_vectorMatches.at(k) = matches;
+	//int k = 0;
+	//foreach(QStringList _matches, m_vectorMatches)
+	//{
+	//	if (_matches.at(0).toInt() == oct_frame)
+	//		break;
+	//	k++;
+	//}
 
-	// Save matching data
-	QString match_path = m_pResultTab->getRecordInfo().filename;
-	match_path.replace("pullback.data", "ivus_match.csv");
+	//QStringList matches;
+	//matches << QString::number(oct_frame) // OCT frame
+	//	<< QString::number(m_pSlider_SelectFrame->value() + 1) // IVUS frame
+	//	<< QString::number(m_pSlider_Rotation->value()); // IVUS rotation
+	//
+	//if (k == m_vectorMatches.size())
+	//	m_vectorMatches.push_back(matches);
+	//else
+	//	m_vectorMatches.at(k) = matches;
 
-	QFile match_file(match_path);
-	if (match_file.open(QFile::WriteOnly))
-	{
-		QTextStream stream(&match_file);
-		stream << "OCT Frame" << "\t"
-			<< "IVUS Frame" << "\t"
-			<< "Rotation" << "\n";
+	//// Save matching data
+	//QString match_path = m_pResultTab->getRecordInfo().filename;
+	//match_path.replace("pullback.data", "ivus_match.csv");
 
-		for (int i = 0; i < m_vectorMatches.size(); i++)
-		{
-			QStringList _matches = m_vectorMatches.at(i);
+	//QFile match_file(match_path);
+	//if (match_file.open(QFile::WriteOnly))
+	//{
+	//	QTextStream stream(&match_file);
+	//	stream << "OCT Frame" << "\t"
+	//		<< "IVUS Frame" << "\t"
+	//		<< "Rotation" << "\n";
 
-			stream << _matches.at(0) << "\t" // OCT frame
-				<< _matches.at(1) << "\t" // IVUS frame
-				<< _matches.at(2) << "\n"; // IVUS rotation
-		}
-		match_file.close();
-	}
+	//	for (int i = 0; i < m_vectorMatches.size(); i++)
+	//	{
+	//		QStringList _matches = m_vectorMatches.at(i);
 
-	// Invalidate parent dialog
-	m_pResultTab->getViewTab()->invalidate();
+	//		stream << _matches.at(0) << "\t" // OCT frame
+	//			<< _matches.at(1) << "\t" // IVUS frame
+	//			<< _matches.at(2) << "\n"; // IVUS rotation
+	//	}
+	//	match_file.close();
+	//}
+
+	//// Invalidate parent dialog
+	//m_pResultTab->getViewTab()->invalidate();
 }
 
 void IvusViewerDlg::play(bool enabled)

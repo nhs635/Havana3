@@ -450,6 +450,39 @@ void ExportDlg::saveEnFaceMaps()
 				}
 			}
 
+			for (int i = 0; i < 4; i++)
+			{
+				if ((i == 0) || (checkList.bCh[i - 1]))
+				{
+					IppiSize roi_flim = { flimAlines, frames };
+
+					QFile filePulsePower(enFacePath + QString("pulse_power_range[%1 %2]_ch%3.enface").arg(start).arg(end).arg(i));
+					if (false != filePulsePower.open(QIODevice::WriteOnly))
+					{
+						np::FloatArray2 pulsepower_map(flimAlines, frames);
+						memset(pulsepower_map, 0, sizeof(float) * pulsepower_map.length());
+						if (m_pConfigTemp->interFrameSync >= 0)
+							ippiCopy_32f_C1R(m_pViewTab->m_pulsepowerMap.at(i).raw_ptr(), sizeof(float) * roi_flim.width,
+								&pulsepower_map(0, m_pConfigTemp->interFrameSync), sizeof(float) * roi_flim.width, { roi_flim.width, roi_flim.height - m_pConfigTemp->interFrameSync });
+						else
+							ippiCopy_32f_C1R(&m_pViewTab->m_pulsepowerMap.at(i)(0, -m_pConfigTemp->interFrameSync), sizeof(float) * roi_flim.width,
+								&pulsepower_map(0, 0), sizeof(float) * roi_flim.width, { roi_flim.width, roi_flim.height + m_pConfigTemp->interFrameSync });
+
+						if (m_pConfigTemp->rotatedAlines > 0)
+						{
+							for (int i = 0; i < roi_flim.height; i++)
+							{
+								float* pImg = pulsepower_map.raw_ptr() + i * roi_flim.width;
+								std::rotate(pImg, pImg + m_pConfigTemp->rotatedAlines / 4, pImg + roi_flim.width);
+							}
+						}
+
+						filePulsePower.write(reinterpret_cast<char*>(&pulsepower_map(0, start - 1)), sizeof(float) * pulsepower_map.size(0) * (end - start + 1));
+						filePulsePower.close();
+					}
+				}
+			}
+
 			if (checkList.bOctProj)
 			{
 				///QFile fileOctMaxProj(enFacePath + QString("oct_max_projection_range[%1 %2].enface").arg(start).arg(end));

@@ -491,12 +491,18 @@ void PulseReviewTab::showMeanDelay(bool checked)
 
 void PulseReviewTab::drawPulse(int aline)
 {
+	int frame0 = m_pViewTab->getCurrentFrame();
+
 	int aline0 = aline + m_pConfigTemp->rotatedAlines / 4;
 	while (aline0 >= m_pConfig->flimAlines)
 		aline0 -= m_pConfig->flimAlines;
 
+	int aline1 = aline0 + m_pViewTab->m_vibCorrIdx(frame0) / 4;
+	while (aline1 >= m_pConfig->flimAlines)
+		aline1 -= m_pConfig->flimAlines;
+
 	// Select pulse type	
-	int frame = m_pViewTab->getCurrentFrame() - m_pConfigTemp->interFrameSync;
+	int frame = frame0 - m_pConfigTemp->interFrameSync;
 	frame = (frame < 0) ? 0 : frame;
 	frame = (frame >= m_pConfigTemp->frames) ? m_pConfigTemp->frames - 1 : frame;
 
@@ -531,6 +537,7 @@ void PulseReviewTab::drawPulse(int aline)
 	}
 
 	// Data
+	//auto pulse_power = m_pViewTab->m_pulsepowerMap;
 	auto intensity = m_pViewTab->m_intensityMap;
 	auto mean_delay = m_pViewTab->m_meandelayMap;
 	auto lifetime = m_pViewTab->m_lifetimeMap;
@@ -563,7 +570,7 @@ void PulseReviewTab::drawPulse(int aline)
 	m_pLabel_CurrentAline->setText(str);
 
 	// Draw data
-    m_pScope_PulseView->drawData(&pulse(0, aline0));
+    m_pScope_PulseView->drawData(&pulse(0, aline1));
 
     m_pViewTab->getCircImageView()->setVerticalLine(1, 4 * aline);
     m_pViewTab->getCircImageView()->getRender()->update();

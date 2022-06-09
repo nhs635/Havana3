@@ -67,6 +67,12 @@ void QResultTab::keyPressEvent(QKeyEvent *e)
 		m_pViewTab->getSliderSelectFrame()->setValue(m_pViewTab->getSliderSelectFrame()->value() + 1);
 	else if (e->key() == Qt::Key_Backslash)
 		m_pViewTab->getPlayButton()->setChecked(!m_pViewTab->getPlayButton()->isChecked());
+	else if (e->key() == Qt::Key_P)
+		m_pViewTab->pickFrame(m_pViewTab->m_vectorPickFrames, m_pViewTab->getCurrentFrame() + 1, 0, 0, true);
+	else if (e->key() == Qt::Key_9)
+		m_pViewTab->seekPickFrame(false);
+	else if (e->key() == Qt::Key_0)
+		m_pViewTab->seekPickFrame(true);
 }
 
 
@@ -259,9 +265,17 @@ void QResultTab::loadRecordInfo()
 			m_recordInfo.filename = m_pConfig->dbPath + m_recordInfo.filename0.remove(0, idx - 1);;
 			m_recordInfo.comment = _sqlQuery.value(8).toString();
 
-			m_pLabel_RecordInformation->setText(QString("<b><font size=6>%1</font></b><br>"
-				"<font size=4>%2</font>") // &nbsp;&nbsp;&nbsp;
-				.arg(m_recordInfo.title).arg(m_recordInfo.date));
+			QString title_color;
+			if (m_recordInfo.title.contains(QString::fromLocal8Bit("¡Ú")))
+				title_color = "red";
+			else if (m_recordInfo.title.contains(QString::fromLocal8Bit("¡Ù")))
+				title_color = "cyan";
+			else
+				title_color = "white";
+
+			m_pLabel_RecordInformation->setText(QString("<b><font size=6><font color=%1>%2</font></font></b><br>"
+				"<font size=4>%3</font>") // &nbsp;&nbsp;&nbsp;
+				.arg(title_color).arg(m_recordInfo.title).arg(m_recordInfo.date));
 			m_pComboBox_Vessel->setCurrentIndex(m_recordInfo.vessel);
 			m_pComboBox_Procedure->setCurrentIndex(m_recordInfo.procedure);
 		}
@@ -451,11 +465,12 @@ void QResultTab::deleteIvusViewerDlg()
 	m_pIvusViewerDlg = nullptr;
 
 	m_pViewTab->getIvusImageView()->setVisible(false);
+	m_pViewTab->getPickButton()->setEnabled(true);
 }
 
 void QResultTab::enableVibrationCorrection(bool enabled)
 {
-	if (enabled)
+	//if (enabled)
 	{
 		QMessageBox msg_box(QMessageBox::NoIcon, "Vibration Correction...", "", QMessageBox::NoButton, this);
 		msg_box.setStandardButtons(0);

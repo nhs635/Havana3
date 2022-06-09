@@ -156,6 +156,18 @@ void QViewTab::createViewTabWidgets(bool is_streaming)
         m_pPushButton_Decrement->setIcon(style()->standardIcon(QStyle::SP_MediaSeekBackward));
         m_pPushButton_Decrement->setFixedSize(40, 25);
 
+		m_pPushButton_Pick = new QPushButton(this);
+		m_pPushButton_Pick->setIcon(style()->standardIcon(QStyle::SP_DialogApplyButton));
+		m_pPushButton_Pick->setFixedSize(40, 25);
+
+		m_pPushButton_Backward = new QPushButton(this);
+		m_pPushButton_Backward->setIcon(style()->standardIcon(QStyle::SP_MediaSkipBackward));
+		m_pPushButton_Backward->setFixedSize(40, 25);
+
+		m_pPushButton_Forward = new QPushButton(this);
+		m_pPushButton_Forward->setIcon(style()->standardIcon(QStyle::SP_MediaSkipForward));
+		m_pPushButton_Forward->setFixedSize(40, 25);
+
         // Create slider for exploring frames
         m_pSlider_SelectFrame = new QSlider(this);
         ///m_pSlider_SelectFrame->setTickPosition(QSlider::TicksBothSides);
@@ -228,10 +240,14 @@ void QViewTab::createViewTabWidgets(bool is_streaming)
 
 		pGridLayout1->addWidget(m_pImageView_Ivus, 0, 0, 1, 4);
 		pGridLayout1->addWidget(pLabel_Dummy, 1, 0, 1, 4);
-		pGridLayout1->addWidget(m_pPushButton_Decrement, 2, 0);
-		pGridLayout1->addWidget(m_pToggleButton_Play, 2, 1);
-		pGridLayout1->addWidget(m_pPushButton_Increment, 2, 2);
-		pGridLayout1->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed), 2, 3);
+		pGridLayout1->addWidget(m_pPushButton_Backward, 2, 0);
+		pGridLayout1->addWidget(m_pPushButton_Pick, 2, 1);
+		pGridLayout1->addWidget(m_pPushButton_Forward, 2, 2);
+		pGridLayout1->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed), 2, 4);
+		pGridLayout1->addWidget(m_pPushButton_Decrement, 3, 0);
+		pGridLayout1->addWidget(m_pToggleButton_Play, 3, 1);
+		pGridLayout1->addWidget(m_pPushButton_Increment, 3, 2);
+		pGridLayout1->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed), 2, 4);		
 
 		m_pWidget[1]->setLayout(pGridLayout1);
 		
@@ -296,7 +312,10 @@ void QViewTab::createViewTabWidgets(bool is_streaming)
 		connect(this, &QViewTab::playingDone, [&]() { m_pToggleButton_Play->setChecked(false); });
         connect(m_pPushButton_Increment, &QPushButton::clicked, [&]() { m_pSlider_SelectFrame->setValue(m_pSlider_SelectFrame->value() + 1); });
         connect(m_pPushButton_Decrement, &QPushButton::clicked, [&]() { m_pSlider_SelectFrame->setValue(m_pSlider_SelectFrame->value() - 1); });
-
+		connect(m_pPushButton_Pick, &QPushButton::clicked, [&]() { pickFrame(m_vectorPickFrames, getCurrentFrame() + 1, 0, 0, true); }); 
+		connect(m_pPushButton_Forward, &QPushButton::clicked, [&]() { seekPickFrame(true); });
+		connect(m_pPushButton_Backward, &QPushButton::clicked, [&]() { seekPickFrame(false); });
+		
         connect(m_pSlider_SelectFrame, SIGNAL(valueChanged(int)), this, SLOT(visualizeImage(int)));
         connect(m_pToggleButton_MeasureDistance, SIGNAL(toggled(bool)), this, SLOT(measureDistance(bool)));
 		connect(m_pToggleButton_MeasureArea, SIGNAL(toggled(bool)), this, SLOT(measureArea(bool)));
@@ -535,6 +554,8 @@ void QViewTab::setBuffers(Configuration* pConfig)
 	clear_vector.swap(m_vectorOctImage)};
 #endif
 	{std::vector<np::FloatArray2> clear_vector;
+	clear_vector.swap(m_pulsepowerMap); }
+	{std::vector<np::FloatArray2> clear_vector;
 	clear_vector.swap(m_intensityMap); }
 	{std::vector<np::FloatArray2> clear_vector;
 	clear_vector.swap(m_meandelayMap); }
@@ -587,11 +608,16 @@ void QViewTab::setBuffers(Configuration* pConfig)
 	}
 	for (int i = 0; i < 4; i++)
 	{
+		np::FloatArray2 pulsepower = np::FloatArray2(pConfig->flimAlines, pConfig->frames);
+		m_pulsepowerMap.push_back(pulsepower);
 		np::FloatArray2 meandelay = np::FloatArray2(pConfig->flimAlines, pConfig->frames);
 		m_meandelayMap.push_back(meandelay);
 	}
 
 	m_featVectors = np::FloatArray2(9, pConfig->flimAlines * pConfig->frames);
+
+	m_vibCorrIdx = np::Uint16Array((int)m_vectorOctImage.size());
+	memset(m_vibCorrIdx, 0, sizeof(uint16_t) * m_vibCorrIdx.length());
 
 	m_pConfig->writeToLog("Reviewing buffers are initialized.");
 }
@@ -975,6 +1001,10 @@ void QViewTab::visualizeImage(int frame)
 				
         // Longitudinval Lines
         m_pImageView_Longi->setVerticalLine(1, frame);
+		m_pImageView_Longi->getRender()->m_vecPickFrames.clear();
+		if (m_vectorPickFrames.size() > 0)
+			for (int i = 0; i < m_vectorPickFrames.size(); i++)
+				m_pImageView_Longi->getRender()->m_vecPickFrames.push_back(m_vectorPickFrames.at(i).at(0).toInt());
 		m_pImageView_Longi->getRender()->update();
 
 		// Pulse review tab
@@ -1004,12 +1034,20 @@ void QViewTab::visualizeImage(int frame)
 				qDebug() << matches;
 
 				int ivus_frame = matches.at(1).toInt() - 1;
-				int ivus_rotation = matches.at(2).toInt();
-				pIvusViewerDlg->getIvusImage(ivus_frame, ivus_rotation, ivusImage);
+				if (ivus_frame != -1)
+				{
+					int ivus_rotation = matches.at(2).toInt();
+					pIvusViewerDlg->getIvusImage(ivus_frame, ivus_rotation, ivusImage);
 
-				m_pImageView_Ivus->setEnterCallback([&, pIvusViewerDlg, ivus_frame, ivus_rotation]() { m_pImageView_Ivus->setText(QPoint(8, 230),
-					QString("%1 / %2 (CCW %3 deg)").arg(ivus_frame + 1).arg((int)pIvusViewerDlg->m_vectorIvusImages.size()).arg(ivus_rotation)); });	
-				m_pImageView_Ivus->setLeaveCallback([&]() { m_pImageView_Ivus->setText(QPoint(8, 230), ""); });
+					m_pImageView_Ivus->setEnterCallback([&, pIvusViewerDlg, ivus_frame, ivus_rotation]() { m_pImageView_Ivus->setText(QPoint(8, 230),
+						QString("%1 / %2 (CCW %3 deg)").arg(ivus_frame + 1).arg((int)pIvusViewerDlg->m_vectorIvusImages.size()).arg(ivus_rotation)); });
+					m_pImageView_Ivus->setLeaveCallback([&]() { m_pImageView_Ivus->setText(QPoint(8, 230), ""); });
+				}
+				else
+				{
+					ippsSet_8u(52, ivusImage, ivusImage.length());
+					m_pImageView_Ivus->setEnterCallback([&]() { m_pImageView_Ivus->setText(QPoint(8, 230), ""); });
+				}
 			}
 			else
 			{
@@ -1021,8 +1059,25 @@ void QViewTab::visualizeImage(int frame)
 		}
 
         // Status Update
+		bool is_pick_frame = false;
+		if (m_vectorPickFrames.size() > 0)
+		{
+			for (int i = 0; i < m_vectorPickFrames.size(); i++)
+			{
+				if (m_vectorPickFrames.at(i).at(0).toInt() == frame + 1)
+				{
+					is_pick_frame = true;
+					break;
+				}
+			}	
+		}
 		QString str; str.sprintf("Frame : %3d / %3d", frame + 1, (int)m_vectorOctImage.size());
-		m_pImageView_CircImage->setText(QPoint(15, 590), str);
+		m_pImageView_CircImage->setText(QPoint(15, 590), str, false, is_pick_frame ? Qt::magenta : Qt::white);
+
+		if (!is_pick_frame)
+			m_pPushButton_Pick->setIcon(style()->standardIcon(QStyle::SP_DialogApplyButton));
+		else
+			m_pPushButton_Pick->setIcon(style()->standardIcon(QStyle::SP_DialogCancelButton));
     }
 }
 
@@ -1544,7 +1599,7 @@ void QViewTab::vibrationCorrection()
 	float* scoeff = new float[(nx - 1) * DF_PP_CUBIC];
 	
 	// Find vibration correction index
-	m_vibCorrIdx = np::Uint16Array((int)m_vectorOctImage.size());
+	memset(m_vibCorrIdx, 0, sizeof(uint16_t) * m_vibCorrIdx.length());	
 	for (int i = 0; i < (int)m_vectorOctImage.size() - 1; i++)
 	{
 		// Fixed
@@ -1645,4 +1700,172 @@ void QViewTab::vibrationCorrection()
 	}
 
 	delete[] scoeff;
+
+	//QFile file("vib_corr.data");
+	//file.open(QIODevice::WriteOnly);
+	//file.write(reinterpret_cast<const char*>(m_vibCorrIdx.raw_ptr()), sizeof(uint16_t) * m_vibCorrIdx.length());
+	//file.close();	
+}
+
+
+void QViewTab::pickFrame(std::vector<QStringList>& _vector, int oct_frame, int ivus_frame, int rotation, bool allow_delete)
+{
+	// Add matching data to vector
+	int k = 0;
+	foreach(QStringList _matches, _vector)
+	{
+		if (_matches.at(0).toInt() == oct_frame)
+			break;
+		k++;
+	}
+
+	QStringList matches;
+	matches << QString::number(oct_frame) // OCT frame
+		<< QString::number(ivus_frame) // IVUS frame
+		<< QString::number(rotation); // IVUS rotation
+
+	if (k == _vector.size())
+		_vector.push_back(matches);
+	else
+		if (!allow_delete)
+			_vector.at(k) = matches;
+		else
+			if (k != 0)
+				_vector.erase(_vector.begin() + k, _vector.begin() + k + 1);
+			else
+				_vector.clear();
+
+	// Save matching data
+	QString match_path = m_pResultTab->getRecordInfo().filename;
+	match_path.replace("pullback.data", "ivus_match.csv");
+
+	QFile match_file(match_path);
+	if (match_file.open(QFile::WriteOnly))
+	{
+		QTextStream stream(&match_file);
+		stream << "OCT Frame" << "\t"
+			<< "IVUS Frame" << "\t"
+			<< "Rotation" << "\n";
+
+		for (int i = 0; i < _vector.size(); i++)
+		{
+			QStringList _matches = _vector.at(i);
+
+			stream << _matches.at(0) << "\t" // OCT frame
+				<< _matches.at(1) << "\t" // IVUS frame
+				<< _matches.at(2) << "\n"; // IVUS rotation
+		}
+		match_file.close();
+	}
+
+	// Invalidate parent dialog
+	invalidate();
+
+
+	//// Add matching data to vector
+	//int oct_frame = getCurrentFrame() + 1;
+
+	//int k = 0;
+	//foreach(QStringList _matches, m_vectorPickFrames)
+	//{
+	//	if (_matches.at(0).toInt() == oct_frame)
+	//		break;
+	//	k++;
+	//}
+
+	//QStringList matches;
+	//matches << QString::number(oct_frame) // OCT frame
+	//	<< 0 // IVUS frame
+	//	<< 0; // IVUS rotation
+
+	//if (k == m_vectorPickFrames.size())
+	//	m_vectorPickFrames.push_back(matches);
+	//else
+	//	m_vectorPickFrames.at(k) = matches;
+
+	//// Save matching data
+	//QString match_path = m_pResultTab->getRecordInfo().filename;
+	//match_path.replace("pullback.data", "ivus_match.csv");
+
+	//QFile match_file(match_path);
+	//if (match_file.open(QFile::WriteOnly))
+	//{
+	//	QTextStream stream(&match_file);
+	//	stream << "OCT Frame" << "\t"
+	//		<< "IVUS Frame" << "\t"
+	//		<< "Rotation" << "\n";
+
+	//	for (int i = 0; i < m_vectorPickFrames.size(); i++)
+	//	{
+	//		QStringList _matches = m_vectorPickFrames.at(i);
+
+	//		stream << _matches.at(0) << "\t" // OCT frame
+	//			<< _matches.at(1) << "\t" // IVUS frame
+	//			<< _matches.at(2) << "\n"; // IVUS rotation
+	//	}
+	//	match_file.close();
+	//}
+
+	//// Invalidate parent dialog
+	//invalidate();
+}
+
+void QViewTab::loadPickFrames(std::vector<QStringList>& _vector)
+{
+	_vector.clear();
+
+	QString match_path = m_pResultTab->getRecordInfo().filename;
+	match_path.replace("pullback.data", "ivus_match.csv");
+
+	QFile match_file(match_path);
+	if (match_file.open(QFile::ReadOnly))
+	{
+		QTextStream stream(&match_file);
+
+		stream.readLine();
+		while (!stream.atEnd())
+		{
+			QStringList matches = stream.readLine().split('\t');
+			if (matches.size() > 1)
+				_vector.push_back(matches);
+		}
+		match_file.close();
+	}
+}
+
+void QViewTab::seekPickFrame(bool is_right)
+{
+	int cur_frame = getCurrentFrame();
+
+	np::Array<int, 2> diff((int)m_vectorPickFrames.size() + 2, 2);
+	diff(0, 0) = 0; 
+	for (int i = 0; i < m_vectorPickFrames.size(); i++)
+		diff(i + 1, 0) = m_vectorPickFrames.at(i).at(0).toInt() - 1;
+	diff(diff.size(0) - 1, 0) = (int)m_vectorOctImage.size() - 1;
+	memcpy(&diff(0, 1), &diff(0, 0), sizeof(int) * diff.size(0));
+	ippsSubC_32s_ISfs(cur_frame, &diff(0, 1), diff.size(0), 0);
+
+	if (is_right)
+	{
+		if (cur_frame == m_vectorOctImage.size() - 1)
+			return;
+
+		for (int i = 0; i < diff.size(0); i++)
+			if (diff(i, 1) <= 0)
+				diff(i, 1) = (int)m_vectorOctImage.size();
+		
+		Ipp32s min_val, min_idx;
+		ippsMinIndx_32s(&diff(0, 1), diff.size(0), &min_val, &min_idx);
+		m_pSlider_SelectFrame->setValue(diff(min_idx, 0));
+	}
+	else
+	{
+		for (int i = 0; i < diff.size(0); i++)
+			if (diff(i, 1) >= 0)
+				diff(i, 1) = -(int)m_vectorOctImage.size();
+
+		Ipp32s max_val, max_idx;
+		ippsMaxIndx_32s(&diff(0, 1), diff.size(0), &max_val, &max_idx);
+		m_pSlider_SelectFrame->setValue(diff(max_idx, 0));
+	}
 }

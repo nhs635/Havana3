@@ -143,6 +143,10 @@ public:
 				saturated(j, i) = 0;
 				offset = pParams.ch_start_ind[i] - pParams.ch_start_ind[0];
 				ippsSum_32f(&sat_src(offset, j), roi_len, &saturated(j, i), ippAlgHintFast);
+
+				Ipp32f pulse_max;				
+				ippsMax_32f(&crop_src(offset, j), roi_len, &pulse_max);
+				pulse_power(j, i) = pulse_max;
 			}
 		}
 
@@ -262,7 +266,9 @@ public:
         filt_src = std::move(FloatArray2((int)nsite, (int)ny));
 
         saturated = std::move(FloatArray2((int)ny, 4));
+		pulse_power = std::move(FloatArray2((int)ny, 4));
         memset(saturated, 0, sizeof(float) * saturated.length());
+		memset(pulse_power, 0, sizeof(float) * pulse_power.length());
 
         /* filter coefficient allocation */
         _filter.initialize(GAUSSIAN_FILTER_WIDTH, nsite, ny);
@@ -291,6 +297,7 @@ public:
     FILTER _filter;
 
     FloatArray2 saturated;
+	FloatArray2 pulse_power;
 
     Ipp32f* pSeq;
     Ipp32f* pMask;
@@ -328,7 +335,7 @@ public:
             for (int j = 0; j < intensity.size(0); j++)
             {
                 intensity(j, i) = 0;
-                if (resize.saturated(j, i) <= 2)
+                if (resize.saturated(j, i) <= 3)
                     ippsSum_32f(&resize.ext_src(offset, j), resize.pulse_roi_length, &intensity(j, i), ippAlgHintFast);
             }
         }

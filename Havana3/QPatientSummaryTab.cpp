@@ -560,7 +560,16 @@ void QPatientSummaryTab::editContents(int row, int column)
 				pTextEdit_Title->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 				pTextEdit_Title->setAlignment(Qt::AlignLeft | Qt::AlignTop);
 				pTextEdit_Title->setPlainText(m_pTableWidget_RecordInformation->item(row, column)->text());
-				connect(pTextEdit_Title, &QTextEdit::textChanged, [&, pTextEdit_Title]() { m_pTableWidget_RecordInformation->item(row, column)->setText(pTextEdit_Title->toPlainText()); });
+				connect(pTextEdit_Title, &QTextEdit::textChanged, [&, pTextEdit_Title]() { 					
+					QString title = pTextEdit_Title->toPlainText();
+					if (title.contains(QString::fromLocal8Bit("¡Ú")))
+						m_pTableWidget_RecordInformation->item(row, column)->setTextColor(QColor(255, 0, 0));
+					else if (title.contains(QString::fromLocal8Bit("¡Ù")))
+						m_pTableWidget_RecordInformation->item(row, column)->setTextColor(QColor(0, 255, 255));
+					else
+						m_pTableWidget_RecordInformation->item(row, column)->setTextColor(QColor(255, 255, 255));
+					m_pTableWidget_RecordInformation->item(row, column)->setText(pTextEdit_Title->toPlainText()); 
+				});
 				connect(pDialog, &QDialog::finished, [&, pTextEdit_Title]() {
 					QString comment = pTextEdit_Title->toPlainText();
 					QString command = QString("UPDATE records SET title='%1' WHERE id=%2").arg(comment).arg(m_pTableWidget_RecordInformation->item(row, 0)->toolTip());
@@ -821,6 +830,12 @@ void QPatientSummaryTab::loadRecordDatabase()
             pHBoxLayout_Delete->addWidget(pPushButton_Delete);
             pWidget_Delete->setLayout(pHBoxLayout_Delete);
 
+			QString title = _sqlQuery.value(7).toString();			
+			if (title.contains(QString::fromLocal8Bit("¡Ú")))			
+				pTitleItem->setTextColor(QColor(255, 0, 0));
+			else if (title.contains(QString::fromLocal8Bit("¡Ù")))
+				pTitleItem->setTextColor(QColor(0, 255, 255));
+
 			QString comment = _sqlQuery.value(8).toString();
 			if (comment.contains("[HIDDEN]"))
 			{
@@ -862,7 +877,7 @@ void QPatientSummaryTab::loadRecordDatabase()
 					pPreviewItem->setTextColor(QColor(192, 192, 192));
 			}
 
-            pTitleItem->setText(_sqlQuery.value(7).toString()); pTitleItem->setTextAlignment(Qt::AlignCenter);            
+            pTitleItem->setText(title); pTitleItem->setTextAlignment(Qt::AlignCenter);            
             pDateTimeItem->setText(_sqlQuery.value(3).toString()); pDateTimeItem->setTextAlignment(Qt::AlignCenter);
             pVesselItem->setText(m_pHvnSqlDataBase->getVessel(_sqlQuery.value(12).toInt())); pVesselItem->setTextAlignment(Qt::AlignCenter);
             pProcedureItem->setText(m_pHvnSqlDataBase->getProcedure(_sqlQuery.value(11).toInt())); pProcedureItem->setTextAlignment(Qt::AlignCenter);            

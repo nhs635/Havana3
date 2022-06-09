@@ -1137,14 +1137,34 @@ void QStreamTab::startPullback(bool enabled)
 			startPullback(false);
 			return;
 		}
-
+		
 		// Check pullback proceeding
 		QMessageBox MsgBox(QMessageBox::Information, "OCT-FLIm", QString("Please push 'pullback' button to proceed...\n(pullback: %1 mm/s, %2 mm)")
 			.arg(m_pConfig->pullbackSpeed, 2, 'f', 1).arg(m_pConfig->pullbackLength, 2, 'f', 1), QMessageBox::NoButton, 0);
 		MsgBox.setStandardButtons(QMessageBox::Ok | QMessageBox::Cancel);
 		MsgBox.setDefaultButton(QMessageBox::Ok);
-		MsgBox.setButtonText(QMessageBox::Ok, "Pullback");
-		MsgBox.move(446, 650);
+		
+		if (!m_pConfig->autoPullbackMode)
+			MsgBox.setButtonText(QMessageBox::Ok, "Pullback");
+		else
+			MsgBox.setButtonText(QMessageBox::Ok, QString("Pullback (%1)").arg(m_pConfig->autoPullbackTime));
+		MsgBox.move(446, 800);
+		
+		QTimer* pPullbackTimer = nullptr;
+		if (m_pConfig->autoPullbackMode)
+		{
+			pPullbackTimer = new QTimer(this);
+			pPullbackTimer->start(1000);
+			int autoPullbackTime = m_pConfig->autoPullbackTime;
+			connect(pPullbackTimer, &QTimer::timeout, [&]() {
+				MsgBox.setButtonText(QMessageBox::Ok, QString("Pullback (%1)").arg(--autoPullbackTime));
+				if (autoPullbackTime == 0)
+				{
+					MsgBox.done(QMessageBox::Ok);
+					pPullbackTimer->stop();
+				}
+			});
+		}
 		int ret = MsgBox.exec();
 
 		switch (ret)
@@ -1183,7 +1203,11 @@ void QStreamTab::startPullback(bool enabled)
 
 			break;
 
-		case QMessageBox::Cancel:			
+		case QMessageBox::Cancel:
+			if (m_pConfig->autoPullbackMode)
+				if (pPullbackTimer)
+					pPullbackTimer->stop();
+
 			disconnect(m_pToggleButton_StartPullback, SIGNAL(toggled(bool)), 0, 0);	
 			enableRotation(true);
 			m_pToggleButton_StartPullback->setChecked(false);
