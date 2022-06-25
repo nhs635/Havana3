@@ -1159,10 +1159,7 @@ void QStreamTab::startPullback(bool enabled)
 			connect(pPullbackTimer, &QTimer::timeout, [&]() {
 				MsgBox.setButtonText(QMessageBox::Ok, QString("Pullback (%1)").arg(--autoPullbackTime));
 				if (autoPullbackTime == 0)
-				{
 					MsgBox.done(QMessageBox::Ok);
-					pPullbackTimer->stop();
-				}
 			});
 		}
 		int ret = MsgBox.exec();
@@ -1170,6 +1167,11 @@ void QStreamTab::startPullback(bool enabled)
 		switch (ret)
 		{
 		case QMessageBox::Ok:
+
+			// Kill timer first if needed
+			if (m_pConfig->autoPullbackMode)
+				if (pPullbackTimer)
+					pPullbackTimer->stop();
 
 			// Start recording (+ automatical pullback)
 			if (!m_pDeviceControl->getPullbackMotor())

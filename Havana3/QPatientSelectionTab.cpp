@@ -140,6 +140,7 @@ void QPatientSelectionTab::createPatientSelectionTable()
     m_pTableWidget_PatientInformation->setCornerButtonEnabled(true);
 
     // Header properties
+	m_pTableWidget_PatientInformation->verticalHeader()->setDefaultAlignment(Qt::AlignCenter);
     m_pTableWidget_PatientInformation->verticalHeader()->setSectionResizeMode(QHeaderView::Fixed);
 	m_pTableWidget_PatientInformation->horizontalHeader()->setDefaultAlignment(Qt::AlignCenter);
     m_pTableWidget_PatientInformation->horizontalHeader()->setMinimumSectionSize(60);
@@ -254,16 +255,24 @@ void QPatientSelectionTab::loadPatientDatabase()
             QTableWidgetItem *pPhysicianItem = new QTableWidgetItem;
             QTableWidgetItem *pKeywordsItem = new QTableWidgetItem;
 
-            QDate last_date(1, 1, 1); int total = 0;
+			QDate last_date(1, 1, 1); QTime last_time(0, 0, 0);  int total = 0;
             QString command = QString("SELECT * FROM records WHERE patient_id=%1").arg(_sqlQuery.value(3).toString());
             m_pHvnSqlDataBase->queryDatabase(command, [&](QSqlQuery& __sqlQuery) {
                 while (__sqlQuery.next())
                 {
-                    QDate date = QDateTime::fromString(__sqlQuery.value(3).toString(), "yyyy-MM-dd hh:mm:ss").date();
+					QString comment = __sqlQuery.value(8).toString();
+					if (!comment.contains("[HIDDEN]"))
+					{
+						QTime time = QDateTime::fromString(__sqlQuery.value(3).toString(), "yyyy-MM-dd hh:mm:ss").time();
+						QDate date = QDateTime::fromString(__sqlQuery.value(3).toString(), "yyyy-MM-dd hh:mm:ss").date();
 
-                    if (date > last_date)
-                        last_date = date;
-                    total++;
+						if (date > last_date)
+							last_date = date;
+						if (time > last_time)
+							last_time = time;
+
+						total++;
+					}
                 }
             }, true);
 
@@ -276,6 +285,7 @@ void QPatientSelectionTab::loadPatientDatabase()
             pGenderItem->setText(m_pHvnSqlDataBase->getGender(_sqlQuery.value(5).toInt()));
             pDobItem->setText(QString("%1 (%2)").arg(_sqlQuery.value(4).toString()).arg(age));
             pLastCaseItem->setText((total != 0 ? last_date.toString("yyyy-MM-dd") : "N/A") + QString(" (%1)").arg(total));
+			pLastCaseItem->setToolTip(last_date.toString("yyyy-MM-dd") + " " + last_time.toString("hh:mm:ss"));
             pPhysicianItem->setText(_sqlQuery.value(8).toString());
             pKeywordsItem->setText(_sqlQuery.value(7).toString());
 
@@ -302,7 +312,7 @@ void QPatientSelectionTab::loadPatientDatabase()
     });
 
     m_pTableWidget_PatientInformation->setSortingEnabled(true);
-	m_pTableWidget_PatientInformation->sortItems(4, Qt::DescendingOrder);
+	m_pTableWidget_PatientInformation->sortItems(6, Qt::DescendingOrder);
 	QStringList numbers;
 	for (int i = m_pTableWidget_PatientInformation->rowCount(); i > 0; i--)
 		numbers << QString::number(i);

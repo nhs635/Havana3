@@ -900,12 +900,16 @@ void QPatientSummaryTab::loadRecordDatabase()
 
 			QString filepath0 = _sqlQuery.value(9).toString();			
 			int idx = filepath0.indexOf("record");
-			QString filepath = m_pConfig->dbPath + filepath0.remove(0, idx - 1);;
+			QString filepath = m_pConfig->dbPath + filepath0.remove(0, idx - 1);
 
 			QFileInfo check_file(filepath);
 
 			if (!(check_file.exists() && check_file.isFile()))
 				pWidget_Review->setDisabled(true);
+
+			QFileInfo check_ini(filepath.replace("pullback.data", "roi.csv"));
+			if (check_ini.exists())
+				pDateTimeItem->setTextColor(QColor(244, 177, 131));
 
             m_pTableWidget_RecordInformation->setItem(rowCount, 0, pTitleItem);
             m_pTableWidget_RecordInformation->setItem(rowCount, 1, pPreviewItem);
