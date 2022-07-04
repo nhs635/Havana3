@@ -229,12 +229,13 @@ ExportDlg::ExportDlg(QWidget *parent) :
 	connect(this, SIGNAL(setWidgets(bool, int)), this, SLOT(setWidgetsEnabled(bool, int)));
 
 	// Initialize
-	m_pCheckBox_CircImage->setChecked(true);
-	m_pCheckBox_LongiImage->setChecked(true);
-	m_pCheckBox_CrossSectionCh1->setChecked(true);
-	m_pCheckBox_CrossSectionCh2->setChecked(true);
-	m_pCheckBox_CrossSectionCh3->setChecked(true);
+	m_pCheckBox_CircImage->setChecked(false);
+	m_pCheckBox_LongiImage->setChecked(false);
+	//m_pCheckBox_CrossSectionCh1->setChecked(true);
+	//m_pCheckBox_CrossSectionCh2->setChecked(true);
+	//m_pCheckBox_CrossSectionCh3->setChecked(true);
 
+	m_pCheckBox_RawData->setChecked(true);
 	m_pCheckBox_ScaledImage->setChecked(true);
 	m_pCheckBox_EnFaceCh1->setChecked(true);
 	m_pCheckBox_EnFaceCh2->setChecked(true);
@@ -253,6 +254,8 @@ ExportDlg::ExportDlg(QWidget *parent) :
 
 	m_pLineEdit_ExportPath->setText(m_exportPath);
 	m_pLineEdit_ExportPath->setCursorPosition(0);
+
+	//exportResults();
 }
 
 ExportDlg::~ExportDlg()

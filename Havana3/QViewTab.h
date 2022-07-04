@@ -47,8 +47,7 @@ public:
 	inline medfilt* getMedfiltRect() const { return m_pMedfiltRect; }
 	inline medfilt* getMedfiltIntensityMap() const { return m_pMedfiltIntensityMap; }
 	inline medfilt* getMedfiltLifetimeMap() const { return m_pMedfiltLifetimeMap; }
-	inline medfilt* getMedfiltLongi() const { return m_pMedfiltLongi; }
-	inline RandomForest* getForestInfl() const { return m_pForestInfl; }
+	inline medfilt* getMedfiltLongi() const { return m_pMedfiltLongi; }	
 	inline RandomForest* getForestPlqCompo() const { return m_pForestPlqCompo; }
 	inline QPushButton* getPlayButton() const { return m_pToggleButton_Play; }
 	inline QPushButton* getPickButton() const { return m_pPushButton_Pick; }
@@ -148,8 +147,9 @@ public: // for post processing
 	std::vector<np::FloatArray2> m_intensityProportionMap; // (256 x N) x 3
 	std::vector<np::FloatArray2> m_intensityRatioMap; // (256 x N) x 3
 	np::FloatArray2 m_featVectors;
-	np::FloatArray2 m_inflammationMap;
+	np::FloatArray2 m_plaqueCompositionProbMap;
 	np::FloatArray2 m_plaqueCompositionMap;
+	np::FloatArray2 m_inflammationMap;
 
 	std::vector<np::FloatArray2> m_vectorPulseCrop;
 	std::vector<np::FloatArray2> m_vectorPulseBgSub;
@@ -186,7 +186,6 @@ private:
 	medfilt* m_pMedfiltIntensityMap;
 	medfilt* m_pMedfiltLifetimeMap;
     medfilt* m_pMedfiltLongi;
-	RandomForest* m_pForestInfl;
 	RandomForest* m_pForestPlqCompo;
 	
 private:

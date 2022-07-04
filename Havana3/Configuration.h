@@ -1,7 +1,7 @@
 #ifndef CONFIGURATION_H
 #define CONFIGURATION_H
 
-#define VERSION						"2.1.3.8"
+#define VERSION						"2.1.3.9"
 
 #define POWER_2(x)					(1 << x)
 #define NEAR_2_POWER(x)				(int)(1 << (int)ceil(log2(x)))
@@ -83,8 +83,6 @@
 #define RF_N_TREES					100
 #define RF_N_FEATURES				9
 #define RF_N_CATS					5
-#define RF_INFL_DATA_NAME			"infl_forest.csv"
-#define RF_INFL_MODEL_NAME			"infl_forest.xml"
 #define RF_COMPO_DATA_NAME			"compo_forest.csv"
 #define RF_COMPO_MODEL_NAME			"compo_forest.xml"
 

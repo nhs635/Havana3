@@ -28,7 +28,7 @@ QViewTab::QViewTab(bool is_streaming, QWidget *parent) :
 	m_pImgObjIntensityPropMap(nullptr), m_pImgObjIntensityRatioMap(nullptr), m_pImgObjLongiImage(nullptr),
 	m_pImgObjInflammationMap(nullptr), m_pImgObjPlaqueCompositionMap(nullptr), 
 	m_pCirc(nullptr), m_pMedfiltRect(nullptr), m_pMedfiltIntensityMap(nullptr), m_pMedfiltLifetimeMap(nullptr), m_pMedfiltLongi(nullptr),
-	m_pForestInfl(nullptr), m_pForestPlqCompo(nullptr), _running(false)
+	m_pForestPlqCompo(nullptr), _running(false)
 {
 	// Set configuration objects
 	if (is_streaming)
@@ -73,7 +73,6 @@ QViewTab::~QViewTab()
 	if (m_pMedfiltIntensityMap) delete m_pMedfiltIntensityMap;
 	if (m_pMedfiltLifetimeMap) delete m_pMedfiltLifetimeMap;
     if (m_pMedfiltLongi) delete m_pMedfiltLongi;
-	if (m_pForestInfl) delete m_pForestInfl;
 	if (m_pForestPlqCompo) delete m_pForestPlqCompo;
 }
 
@@ -211,8 +210,8 @@ void QViewTab::createViewTabWidgets(bool is_streaming)
 		
 		// Create widgets for RF prediction control
 		m_pComboBox_RFPrediction = new QComboBox(this);
-		m_pComboBox_RFPrediction->addItem("Inflammation");
 		m_pComboBox_RFPrediction->addItem("Composition");
+		m_pComboBox_RFPrediction->addItem("Inflammation");
 		m_pComboBox_RFPrediction->setCurrentIndex(0);
 		m_pComboBox_RFPrediction->setFixedWidth(120);
 		m_pComboBox_RFPrediction->setDisabled(true);
@@ -383,61 +382,7 @@ void QViewTab::invalidate()
 	else if (vis_mode == VisualizationMode::_RF_PREDICTION_)
 	{
 		int rf_mode = m_pComboBox_RFPrediction->currentIndex();
-		if (rf_mode == RFPrediction::_INFLAMMATION_)
-		{
-			// Random Forest definition
-			if (!m_pForestInfl)
-			{
-				m_pForestInfl = new RandomForest();
-				m_pForestInfl->createForest(RF_N_TREES, RF_N_FEATURES, 1, REGRESSION); // Create forest model for regression
-
-				if (!m_pForestInfl->load(RF_INFL_MODEL_NAME)) // Load pre-trained model
-				{
-					QMessageBox msg_box(QMessageBox::NoIcon, "RF Model Training...", "", QMessageBox::NoButton, this);
-					msg_box.setStandardButtons(0);
-					msg_box.setWindowModality(Qt::WindowModal);
-					msg_box.setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::CustomizeWindowHint);
-					msg_box.move(QApplication::desktop()->screen()->rect().center() - msg_box.rect().center());
-					msg_box.setFixedSize(msg_box.width(), msg_box.height());
-					msg_box.show();
-
-					if (m_pForestInfl->train(RF_INFL_DATA_NAME)) // If not, new training is initiated.
-						m_pForestInfl->save(RF_INFL_MODEL_NAME); // Then, the trained model is written.
-					else
-					{
-						delete m_pForestInfl; // If failed to train, forest object is deleted.
-						m_pForestInfl = nullptr; // and pointed to null.
-					}
-				}
-			}
-
-			// RF prediction: inflammation estimation
-			if (m_pForestInfl)
-			{
-				if (m_inflammationMap.length() == 0) // Prediction is only made when the buffer is empty.
-				{
-					QMessageBox msg_box(QMessageBox::NoIcon, "RF Model Prediction...", "", QMessageBox::NoButton, this);
-					msg_box.setStandardButtons(0);
-					msg_box.setWindowModality(Qt::WindowModal);
-					msg_box.setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::CustomizeWindowHint);
-					msg_box.move(QApplication::desktop()->screen()->rect().center() - msg_box.rect().center());
-					msg_box.setFixedSize(msg_box.width(), msg_box.height());
-					msg_box.show();
-
-					m_inflammationMap = np::FloatArray2(m_pConfigTemp->flimAlines, m_pConfigTemp->frames);
-					m_pForestInfl->predict(m_featVectors, m_inflammationMap); // RF prediction for inflammation estimation
-				}				
-			}
-			
-			// Colorbar
-			m_pImageView_EnFace->setEnterCallback([&]() { m_pImageView_EnFace->setText(QPoint(8, 4),
-				QString::fromLocal8Bit("2-D Inflammation\nEn Face Chemogram (z-θ)")); });
-			m_pImageView_ColorBar->setText(QPoint(0, 0), QString("%1         Inflammation (AU)         %2")
-				.arg(m_pConfig->rfInflammationRange.max, 2, 'f', 1)
-				.arg(m_pConfig->rfInflammationRange.min, 2, 'f', 1), true);
-			m_pImageView_ColorBar->resetColormap(ColorTable::colortable(INFLAMMATION_COLORTABLE));
-		}
-		else if (rf_mode == RFPrediction::_PLAQUE_COMPOSITION_)
+		if (rf_mode == RFPrediction::_PLAQUE_COMPOSITION_)
 		{
 			// Random Forest definition
 			if (!m_pForestPlqCompo)
@@ -478,22 +423,81 @@ void QViewTab::invalidate()
 					msg_box.setFixedSize(msg_box.width(), msg_box.height());
 					msg_box.show();
 
+					m_plaqueCompositionProbMap = np::FloatArray2(RF_N_CATS * m_pConfig->flimAlines, m_pConfigTemp->frames);
 					m_plaqueCompositionMap = np::FloatArray2(3 * m_pConfigTemp->flimAlines, m_pConfigTemp->frames);
-					m_pForestPlqCompo->predict(m_featVectors, m_plaqueCompositionMap); // RF prediction for plaque composition classification				
-					
+					m_pForestPlqCompo->predict(m_featVectors, m_plaqueCompositionMap, m_plaqueCompositionProbMap); // RF prediction for plaque composition classification				
+
 					//QFile file("compo.data");
 					//file.open(QIODevice::WriteOnly);
 					//file.write(reinterpret_cast<const char*>(m_featVectors.raw_ptr()), sizeof(float) * m_featVectors.length());
 					//file.close();
 				}
 			}
-			
+
 			// Colorbar
 			m_pImageView_EnFace->setEnterCallback([&]() { m_pImageView_EnFace->setText(QPoint(8, 4),
 				QString::fromLocal8Bit("2-D Plaque Composition\nEn Face Chemogram (z-θ)")); });
 			m_pImageView_ColorBar->setText(QPoint(0, 0), "", true);
 			m_pImageView_ColorBar->resetColormap(ColorTable::colortable(COMPOSITION_COLORTABLE));
 		}
+		else if (rf_mode == RFPrediction::_INFLAMMATION_)
+		{
+			//// Random Forest definition
+			//if (!m_pForestInfl)
+			//{
+			//	m_pForestInfl = new RandomForest();
+			//	m_pForestInfl->createForest(RF_N_TREES, RF_N_FEATURES, 1, REGRESSION); // Create forest model for regression
+
+			//	if (!m_pForestInfl->load(RF_INFL_MODEL_NAME)) // Load pre-trained model
+			//	{
+			//		QMessageBox msg_box(QMessageBox::NoIcon, "RF Model Training...", "", QMessageBox::NoButton, this);
+			//		msg_box.setStandardButtons(0);
+			//		msg_box.setWindowModality(Qt::WindowModal);
+			//		msg_box.setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::CustomizeWindowHint);
+			//		msg_box.move(QApplication::desktop()->screen()->rect().center() - msg_box.rect().center());
+			//		msg_box.setFixedSize(msg_box.width(), msg_box.height());
+			//		msg_box.show();
+
+			//		if (m_pForestInfl->train(RF_INFL_DATA_NAME)) // If not, new training is initiated.
+			//			m_pForestInfl->save(RF_INFL_MODEL_NAME); // Then, the trained model is written.
+			//		else
+			//		{
+			//			delete m_pForestInfl; // If failed to train, forest object is deleted.
+			//			m_pForestInfl = nullptr; // and pointed to null.
+			//		}
+			//	}
+			//}
+
+			//// RF prediction: inflammation estimation
+			//if (m_pForestInfl)
+			//{
+			//	if (m_inflammationMap.length() == 0) // Prediction is only made when the buffer is empty.
+			//	{
+			//		QMessageBox msg_box(QMessageBox::NoIcon, "RF Model Prediction...", "", QMessageBox::NoButton, this);
+			//		msg_box.setStandardButtons(0);
+			//		msg_box.setWindowModality(Qt::WindowModal);
+			//		msg_box.setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::CustomizeWindowHint);
+			//		msg_box.move(QApplication::desktop()->screen()->rect().center() - msg_box.rect().center());
+			//		msg_box.setFixedSize(msg_box.width(), msg_box.height());
+			//		msg_box.show();
+
+					m_inflammationMap = np::FloatArray2(m_pConfigTemp->flimAlines, m_pConfigTemp->frames);
+					//ippsAdd_32f(&m_plaqueCompositionProbMap(0, 3), &m_plaqueCompositionProbMap(0, 4), m_inflammationMap, m_inflammationMap.length());
+					ippiAdd_32f_C1R(&m_plaqueCompositionProbMap(3, 0), sizeof(float) * RF_N_CATS, // mac
+						&m_plaqueCompositionProbMap(4, 0), sizeof(float) * RF_N_CATS, // lipid + mac
+						m_inflammationMap.raw_ptr(), sizeof(float) * 1, { 1, m_inflammationMap.length() });
+			//		m_pForestInfl->predict(m_featVectors, m_inflammationMap); // RF prediction for inflammation estimation
+			//	}				
+			//}
+			
+			// Colorbar
+			m_pImageView_EnFace->setEnterCallback([&]() { m_pImageView_EnFace->setText(QPoint(8, 4),
+				QString::fromLocal8Bit("2-D Inflammation\nEn Face Chemogram (z-θ)")); });
+			m_pImageView_ColorBar->setText(QPoint(0, 0), QString("%1         Inflammation (AU)         %2")
+				.arg(m_pConfig->rfInflammationRange.max, 2, 'f', 1)
+				.arg(m_pConfig->rfInflammationRange.min, 2, 'f', 1), true);
+			m_pImageView_ColorBar->resetColormap(ColorTable::colortable(INFLAMMATION_COLORTABLE));
+		}		
 	}
 	m_pImageView_ColorBar->update();
 	
@@ -772,7 +776,14 @@ void QViewTab::setWidgets(Configuration* pConfig)
 	else if (vis_mode == VisualizationMode::_RF_PREDICTION_)
 	{
 		int rf_mode = m_pComboBox_RFPrediction->currentIndex();
-		if (rf_mode == RFPrediction::_INFLAMMATION_)
+		if (rf_mode == RFPrediction::_PLAQUE_COMPOSITION_)
+		{
+			m_pImageView_EnFace->setEnterCallback([&]() { m_pImageView_EnFace->setText(QPoint(8, 4),
+				QString::fromLocal8Bit("2-D Plaque Composition\nEn Face Chemogram (z-θ)")); });
+			m_pImageView_ColorBar->setText(QPoint(0, 0), "", true);
+			m_pImageView_ColorBar->resetColormap(ColorTable::colortable(COMPOSITION_COLORTABLE));
+		}
+		else if (rf_mode == RFPrediction::_INFLAMMATION_)
 		{
 			m_pImageView_EnFace->setEnterCallback([&]() { m_pImageView_EnFace->setText(QPoint(8, 4),
 				QString::fromLocal8Bit("2-D Inflammation\nEn Face Chemogram (z-θ)")); });
@@ -780,13 +791,6 @@ void QViewTab::setWidgets(Configuration* pConfig)
 				.arg(m_pConfig->rfInflammationRange.max, 2, 'f', 1)
 				.arg(m_pConfig->rfInflammationRange.min, 2, 'f', 1), true);
 			m_pImageView_ColorBar->resetColormap(ColorTable::colortable(INFLAMMATION_COLORTABLE));
-		}
-		else if (rf_mode == RFPrediction::_PLAQUE_COMPOSITION_)
-		{
-			m_pImageView_EnFace->setEnterCallback([&]() { m_pImageView_EnFace->setText(QPoint(8, 4),
-				QString::fromLocal8Bit("2-D Plaque Composition\nEn Face Chemogram (z-θ)")); });
-			m_pImageView_ColorBar->setText(QPoint(0, 0), "", true);
-			m_pImageView_ColorBar->resetColormap(ColorTable::colortable(COMPOSITION_COLORTABLE));
 		}
 	}
 
@@ -856,10 +860,10 @@ void QViewTab::visualizeEnFaceMap(bool scaling)
 		else if (vis_mode == VisualizationMode::_RF_PREDICTION_)
 		{
 			int rf_mode = m_pComboBox_RFPrediction->currentIndex();
-			if (rf_mode == RFPrediction::_INFLAMMATION_)
-				emit paintEnFaceMap(m_pImgObjInflammationMap->qrgbimg.bits());
-			else if (rf_mode == RFPrediction::_PLAQUE_COMPOSITION_)
+			if (rf_mode == RFPrediction::_PLAQUE_COMPOSITION_)
 				emit paintEnFaceMap(m_pImgObjPlaqueCompositionMap->qrgbimg.bits());
+			else if (rf_mode == RFPrediction::_INFLAMMATION_)
+				emit paintEnFaceMap(m_pImgObjInflammationMap->qrgbimg.bits());
 		}
 	}
 }
@@ -1177,21 +1181,8 @@ void QViewTab::visualizeLongiImage(int aline)
 	}
 	else if (vis_mode == VisualizationMode::_RF_PREDICTION_)
 	{
-		int rf_mode = m_pComboBox_RFPrediction->currentIndex();
-		if (rf_mode == RFPrediction::_INFLAMMATION_)
-		{
-			tbb::parallel_for(tbb::blocked_range<size_t>(1, (size_t)RING_THICKNESS),
-				[&](const tbb::blocked_range<size_t>& r) {
-				for (size_t i = r.begin(); i != r.end(); ++i)
-				{
-					memcpy(m_pImgObjLongiImage->qrgbimg.bits() + 3 * (int)i * m_pImgObjLongiImage->getWidth(),
-						m_pImgObjInflammationMap->qrgbimg.bits() + 3 * int(aline / 4) * m_pImgObjInflammationMap->getWidth(), sizeof(uint8_t) * 3 * m_pImgObjLongiImage->getWidth());
-					memcpy(m_pImgObjLongiImage->qrgbimg.bits() + 3 * (int)(m_pImgObjLongiImage->getHeight() - i) * m_pImgObjLongiImage->getWidth(),
-						m_pImgObjInflammationMap->qrgbimg.bits() + 3 * int(aline_ / 4) * m_pImgObjInflammationMap->getWidth(), sizeof(uint8_t) * 3 * m_pImgObjLongiImage->getWidth());
-				}
-			});
-		}
-		else if (rf_mode == RFPrediction::_PLAQUE_COMPOSITION_)
+		int rf_mode = m_pComboBox_RFPrediction->currentIndex();		
+		if (rf_mode == RFPrediction::_PLAQUE_COMPOSITION_)
 		{
 			tbb::parallel_for(tbb::blocked_range<size_t>(1, (size_t)RING_THICKNESS),
 				[&](const tbb::blocked_range<size_t>& r) {
@@ -1204,6 +1195,19 @@ void QViewTab::visualizeLongiImage(int aline)
 				}
 			});
 		}
+		else if (rf_mode == RFPrediction::_INFLAMMATION_)
+		{
+			tbb::parallel_for(tbb::blocked_range<size_t>(1, (size_t)RING_THICKNESS),
+				[&](const tbb::blocked_range<size_t>& r) {
+				for (size_t i = r.begin(); i != r.end(); ++i)
+				{
+					memcpy(m_pImgObjLongiImage->qrgbimg.bits() + 3 * (int)i * m_pImgObjLongiImage->getWidth(),
+						m_pImgObjInflammationMap->qrgbimg.bits() + 3 * int(aline / 4) * m_pImgObjInflammationMap->getWidth(), sizeof(uint8_t) * 3 * m_pImgObjLongiImage->getWidth());
+					memcpy(m_pImgObjLongiImage->qrgbimg.bits() + 3 * (int)(m_pImgObjLongiImage->getHeight() - i) * m_pImgObjLongiImage->getWidth(),
+						m_pImgObjInflammationMap->qrgbimg.bits() + 3 * int(aline_ / 4) * m_pImgObjInflammationMap->getWidth(), sizeof(uint8_t) * 3 * m_pImgObjLongiImage->getWidth());
+				}
+			});
+		}			
 	}
 	
 	// Draw longitudinal view
@@ -1488,33 +1492,13 @@ void QViewTab::scaleFLImEnFaceMap(ImageObject* pImgObjIntensityMap, ImageObject*
 	else if (vis_mode == VisualizationMode::_RF_PREDICTION_)
 	{
 		int rf_mode = m_pComboBox_RFPrediction->currentIndex();
-		if (rf_mode == RFPrediction::_INFLAMMATION_)
-		{
-			// Inflammation map
-			if (m_inflammationMap.length() != 0)
-			{
-				ippiScale_32f8u_C1R(m_inflammationMap, sizeof(float) * roi_flimproj.width,
-					scale_temp.raw_ptr(), sizeof(uint8_t) * roi_flimproj4.width, roi_flimproj,
-					m_pConfig->rfInflammationRange.min, m_pConfig->rfInflammationRange.max);
-				ippiTranspose_8u_C1R(scale_temp.raw_ptr(), sizeof(uint8_t) * roi_flimproj4.width,
-					pImgObjInflammationMap->arr.raw_ptr(), sizeof(uint8_t) * roi_flimproj4.height, roi_flimproj);
-				circShift(pImgObjInflammationMap->arr, int(m_pConfigTemp->rotatedAlines / 4));
-				setAxialOffset(pImgObjInflammationMap->arr, m_pConfigTemp->interFrameSync);
-
-				// RGB conversion
-				pImgObjInflammationMap->convertRgb();
-
-				// Intensity-weight lifetime map
-				ippsMul_8u_ISfs(pImgObjIntensityMap->qrgbimg.bits(), pImgObjInflammationMap->qrgbimg.bits(), pImgObjIntensityMap->qrgbimg.byteCount(), 8);
-			}
-		}
-		else if (rf_mode == RFPrediction::_PLAQUE_COMPOSITION_)
+		if (rf_mode == RFPrediction::_PLAQUE_COMPOSITION_)
 		{
 			// Plaque composition map
 			if (m_plaqueCompositionMap.length() != 0)
 			{
 				np::Uint8Array2 scale_temp3(3 * roi_flimproj4.width, roi_flimproj4.height);
-				
+
 				ippsConvert_32f8u_Sfs(m_plaqueCompositionMap, scale_temp3, m_plaqueCompositionMap.length(), ippRndNear, 0);
 				ippiTranspose_8u_C3R(scale_temp3.raw_ptr(), sizeof(uint8_t) * 3 * roi_flimproj4.width,
 					pImgObjPlaqueCompositionMap->qrgbimg.bits(), sizeof(uint8_t) * 3 * roi_flimproj4.height, roi_flimproj);
@@ -1532,6 +1516,26 @@ void QViewTab::scaleFLImEnFaceMap(ImageObject* pImgObjIntensityMap, ImageObject*
 
 				// Intensity-weight lifetime map
 				ippsMul_8u_ISfs(pImgObjIntensityMap->qrgbimg.bits(), pImgObjPlaqueCompositionMap->qrgbimg.bits(), pImgObjIntensityMap->qrgbimg.byteCount(), 8);
+			}
+		}
+		else if (rf_mode == RFPrediction::_INFLAMMATION_)
+		{
+			// Inflammation map
+			if (m_inflammationMap.length() != 0)
+			{
+				ippiScale_32f8u_C1R(m_inflammationMap, sizeof(float) * roi_flimproj.width,
+					scale_temp.raw_ptr(), sizeof(uint8_t) * roi_flimproj4.width, roi_flimproj,
+					m_pConfig->rfInflammationRange.min, m_pConfig->rfInflammationRange.max);
+				ippiTranspose_8u_C1R(scale_temp.raw_ptr(), sizeof(uint8_t) * roi_flimproj4.width,
+					pImgObjInflammationMap->arr.raw_ptr(), sizeof(uint8_t) * roi_flimproj4.height, roi_flimproj);
+				circShift(pImgObjInflammationMap->arr, int(m_pConfigTemp->rotatedAlines / 4));
+				setAxialOffset(pImgObjInflammationMap->arr, m_pConfigTemp->interFrameSync);
+
+				// RGB conversion
+				pImgObjInflammationMap->convertRgb();
+
+				// Intensity-weight lifetime map
+				ippsMul_8u_ISfs(pImgObjIntensityMap->qrgbimg.bits(), pImgObjInflammationMap->qrgbimg.bits(), pImgObjIntensityMap->qrgbimg.byteCount(), 8);
 			}
 		}
 	}
@@ -1586,125 +1590,176 @@ void QViewTab::getCapture(QByteArray & arr)
 
 void QViewTab::vibrationCorrection()
 {
-	// Data size specification
-	IppiSize img_size = { m_vectorOctImage.at(0).size(0), m_vectorOctImage.at(0).size(1) };
-	IppiSize img_size16 = { m_vectorOctImage.at(0).size(0) / 16, m_vectorOctImage.at(0).size(1) };
-
-	// Spline parameters
-	int d_smp_factor = 16;
-	MKL_INT dorder = 1;
-	MKL_INT nx = (int)m_vectorOctImage.at(0).size(1) / d_smp_factor + 1; // original data length
-	MKL_INT nsite = (int)m_vectorOctImage.at(0).size(1) + 1; // interpolated data length		
-	float x[2] = { 0.0f, (float)nx - 1.0f }; // data range
-	float* scoeff = new float[(nx - 1) * DF_PP_CUBIC];
+	// Get vib correction index
+	QString vib_corr_path = m_pResultTab->getRecordInfo().filename;
+	vib_corr_path.replace("pullback.data", "vib_corr.idx");
 	
-	// Find vibration correction index
-	memset(m_vibCorrIdx, 0, sizeof(uint16_t) * m_vibCorrIdx.length());	
-	for (int i = 0; i < (int)m_vectorOctImage.size() - 1; i++)
+	QFileInfo check_file(vib_corr_path);
+
+	if (!(check_file.exists()))
 	{
-		// Fixed
-		np::Uint8Array2 fixed_8u(img_size16.width, img_size16.height);
-		np::FloatArray2 fixed_32f(img_size16.width, img_size16.height);
-		ippiCopy_8u_C1R(m_vectorOctImage.at(i).raw_ptr(), sizeof(uint8_t) * 16,
-			fixed_8u.raw_ptr(), sizeof(uint8_t) * 1, { 1, img_size16.width * img_size16.height });
-		ippsConvert_8u32f(fixed_8u, fixed_32f, fixed_8u.length());
+		// Data size specification
+		IppiSize img_size = { m_vectorOctImage.at(0).size(0), m_vectorOctImage.at(0).size(1) };
+		IppiSize img_size16 = { m_vectorOctImage.at(0).size(0) / 16, m_vectorOctImage.at(0).size(1) };
 
-		Ipp32f x_mean, x_std;
-		ippsMeanStdDev_32f(fixed_32f, fixed_32f.length(), &x_mean, &x_std, ippAlgHintFast);
+		// Spline parameters
+		int d_smp_factor = 16;
+		MKL_INT dorder = 1;
+		MKL_INT nx = (int)m_vectorOctImage.at(0).size(1) / d_smp_factor + 1; // original data length
+		MKL_INT nsite = (int)m_vectorOctImage.at(0).size(1) + 1; // interpolated data length		
+		float x[2] = { 0.0f, (float)nx - 1.0f }; // data range
+		float* scoeff = new float[(nx - 1) * DF_PP_CUBIC];
 
-		np::FloatArray fixed_vector(fixed_32f.length());
-		ippsSubC_32f(fixed_32f, x_mean, fixed_vector, fixed_vector.length());
-
-		// Moving
-		np::Uint8Array2 moving_8u(img_size16.width, img_size16.height);
-		ippiCopy_8u_C1R(m_vectorOctImage.at(i + 1).raw_ptr(), sizeof(uint8_t) * 16,
-			moving_8u.raw_ptr(), sizeof(uint8_t) * 1, { 1, img_size16.width * img_size16.height });
-		
-		// Correlation buffers
-		np::FloatArray corr_coefs0(nx);
-		np::FloatArray corr_coefs(nsite);
-
-		// Shifting along A-line dimension
-		for (int j = 0; j < corr_coefs0.length(); j++)
-		{			
-			circShift(moving_8u, d_smp_factor);
-			np::FloatArray2 moving_32f(img_size16.width, img_size16.height);
-			ippsConvert_8u32f(moving_8u, moving_32f, moving_8u.length());
-
-			Ipp32f y_mean, y_std;
-			ippsMeanStdDev_32f(moving_32f, moving_32f.length(), &y_mean, &y_std, ippAlgHintFast);
-
-			// Correlation coefficient
-			np::FloatArray moving_vector(moving_32f.length());
-			ippsSubC_32f(moving_32f, y_mean, moving_vector, moving_vector.length());
-			ippsMul_32f_I(fixed_vector, moving_vector, moving_vector.length());
-
-			Ipp32f cov;
-			ippsSum_32f(moving_vector, moving_vector.length(), &cov, ippAlgHintFast);
-			cov = cov / (moving_vector.length() - 1);
-
-			int j1 = (j + 1) % corr_coefs0.length();
-			corr_coefs0(j1) = cov / x_std / y_std;
-		} 
-
-		// Spline interpolation		
-		DFTaskPtr task1;
-		dfsNewTask1D(&task1, nx, x, DF_UNIFORM_PARTITION, 1, corr_coefs0.raw_ptr(), DF_MATRIX_STORAGE_ROWS);
-		dfsEditPPSpline1D(task1, DF_PP_CUBIC, DF_PP_NATURAL, DF_BC_NOT_A_KNOT, 0, DF_NO_IC, 0, scoeff, DF_NO_HINT);
-		dfsConstruct1D(task1, DF_PP_SPLINE, DF_METHOD_STD);
-		dfsInterpolate1D(task1, DF_INTERP, DF_METHOD_PP, nsite, x, DF_UNIFORM_PARTITION, 1, &dorder,
-		  	DF_NO_APRIORI_INFO, corr_coefs.raw_ptr(), DF_MATRIX_STORAGE_ROWS, NULL);
-		dfDeleteTask(&task1);		
-		mkl_free_buffers();
-		
-		// Find correction index
-		Ipp32f cmax; int cidx;
-		ippsMaxIndx_32f(corr_coefs.raw_ptr(), corr_coefs.length() - 1, &cmax, &cidx);
-
-		// OCT correction
-		circShift(m_vectorOctImage.at(i + 1), cidx);
-
-		// FLIm correction
-		int i1 = i + 1 - m_pConfigTemp->interFrameSync;
-		if ((i1 > 0) && (i1 < (int)m_vectorOctImage.size()))
+		// Find vibration correction index
+		memset(m_vibCorrIdx, 0, sizeof(uint16_t) * m_vibCorrIdx.length());
+		for (int i = 0; i < (int)m_vectorOctImage.size() - 1; i++)
 		{
-			int cidx0 = (cidx + m_pConfigTemp->intraFrameSync) % m_vectorOctImage.at(i + 1).size(1);
-			int shift = cidx0 / 4;
-			float weight = (float)cidx0 / 4.0f - (float)shift;
+			// Fixed
+			np::Uint8Array2 fixed_8u(img_size16.width, img_size16.height);
+			np::FloatArray2 fixed_32f(img_size16.width, img_size16.height);
+			ippiCopy_8u_C1R(m_vectorOctImage.at(i).raw_ptr(), sizeof(uint8_t) * 16,
+				fixed_8u.raw_ptr(), sizeof(uint8_t) * 1, { 1, img_size16.width * img_size16.height });
+			ippsConvert_8u32f(fixed_8u, fixed_32f, fixed_8u.length());
 
-			np::FloatArray2 intensity_temp(m_intensityMap.at(0).size(0), 2);
-			np::FloatArray2 lifetime_temp(m_lifetimeMap.at(0).size(0), 2);
-			for (int ch = 0; ch < 3; ch++)
+			Ipp32f x_mean, x_std;
+			ippsMeanStdDev_32f(fixed_32f, fixed_32f.length(), &x_mean, &x_std, ippAlgHintFast);
+
+			np::FloatArray fixed_vector(fixed_32f.length());
+			ippsSubC_32f(fixed_32f, x_mean, fixed_vector, fixed_vector.length());
+
+			// Moving
+			np::Uint8Array2 moving_8u(img_size16.width, img_size16.height);
+			ippiCopy_8u_C1R(m_vectorOctImage.at(i + 1).raw_ptr(), sizeof(uint8_t) * 16,
+				moving_8u.raw_ptr(), sizeof(uint8_t) * 1, { 1, img_size16.width * img_size16.height });
+
+			// Correlation buffers
+			np::FloatArray corr_coefs0(nx);
+			np::FloatArray corr_coefs(nsite);
+
+			// Shifting along A-line dimension
+			for (int j = 0; j < corr_coefs0.length(); j++)
 			{
-				memcpy(&intensity_temp(0, 0), &m_intensityMap.at(ch)(0, i1), sizeof(float) * m_intensityMap.at(ch).size(0));
-				memcpy(&intensity_temp(0, 1), &m_intensityMap.at(ch)(0, i1), sizeof(float) * m_intensityMap.at(ch).size(0));
-				std::rotate(&intensity_temp(0, 0), &intensity_temp(shift, 0), &intensity_temp(intensity_temp.size(0), 0));
-				std::rotate(&intensity_temp(0, 1), &intensity_temp((shift + 1) % intensity_temp.size(0), 1), &intensity_temp(intensity_temp.size(0), 1));
-				ippsMulC_32f_I(1.0f - weight, &intensity_temp(0, 0), intensity_temp.size(0));
-				ippsMulC_32f_I(weight, &intensity_temp(0, 1), intensity_temp.size(0));
-				ippsAdd_32f(&intensity_temp(0, 1), &intensity_temp(0, 0), &m_intensityMap.at(ch)(0, i1), intensity_temp.size(0));
+				circShift(moving_8u, d_smp_factor);
+				np::FloatArray2 moving_32f(img_size16.width, img_size16.height);
+				ippsConvert_8u32f(moving_8u, moving_32f, moving_8u.length());
 
-				memcpy(&lifetime_temp(0, 0), &m_lifetimeMap.at(ch)(0, i1), sizeof(float) * m_lifetimeMap.at(ch).size(0));
-				memcpy(&lifetime_temp(0, 1), &m_lifetimeMap.at(ch)(0, i1), sizeof(float) * m_lifetimeMap.at(ch).size(0));
-				std::rotate(&lifetime_temp(0, 0), &lifetime_temp(shift, 0), &lifetime_temp(lifetime_temp.size(0), 0));
-				std::rotate(&lifetime_temp(0, 1), &lifetime_temp((shift + 1) % lifetime_temp.size(0), 1), &lifetime_temp(lifetime_temp.size(0), 1));
-				ippsMulC_32f_I(1.0f - weight, &lifetime_temp(0, 0), lifetime_temp.size(0));
-				ippsMulC_32f_I(weight, &lifetime_temp(0, 1), lifetime_temp.size(0));
-				ippsAdd_32f(&lifetime_temp(0, 1), &lifetime_temp(0, 0), &m_lifetimeMap.at(ch)(0, i1), lifetime_temp.size(0));
+				Ipp32f y_mean, y_std;
+				ippsMeanStdDev_32f(moving_32f, moving_32f.length(), &y_mean, &y_std, ippAlgHintFast);
+
+				// Correlation coefficient
+				np::FloatArray moving_vector(moving_32f.length());
+				ippsSubC_32f(moving_32f, y_mean, moving_vector, moving_vector.length());
+				ippsMul_32f_I(fixed_vector, moving_vector, moving_vector.length());
+
+				Ipp32f cov;
+				ippsSum_32f(moving_vector, moving_vector.length(), &cov, ippAlgHintFast);
+				cov = cov / (moving_vector.length() - 1);
+
+				int j1 = (j + 1) % corr_coefs0.length();
+				corr_coefs0(j1) = cov / x_std / y_std;
 			}
+
+			// Spline interpolation		
+			DFTaskPtr task1;
+			dfsNewTask1D(&task1, nx, x, DF_UNIFORM_PARTITION, 1, corr_coefs0.raw_ptr(), DF_MATRIX_STORAGE_ROWS);
+			dfsEditPPSpline1D(task1, DF_PP_CUBIC, DF_PP_NATURAL, DF_BC_NOT_A_KNOT, 0, DF_NO_IC, 0, scoeff, DF_NO_HINT);
+			dfsConstruct1D(task1, DF_PP_SPLINE, DF_METHOD_STD);
+			dfsInterpolate1D(task1, DF_INTERP, DF_METHOD_PP, nsite, x, DF_UNIFORM_PARTITION, 1, &dorder,
+				DF_NO_APRIORI_INFO, corr_coefs.raw_ptr(), DF_MATRIX_STORAGE_ROWS, NULL);
+			dfDeleteTask(&task1);
+			mkl_free_buffers();
+
+			// Find correction index
+			Ipp32f cmax; int cidx;
+			ippsMaxIndx_32f(corr_coefs.raw_ptr(), corr_coefs.length() - 1, &cmax, &cidx);
+
+			// OCT correction
+			circShift(m_vectorOctImage.at(i + 1), cidx);
+
+			// FLIm correction
+			int i1 = i + 1 - m_pConfigTemp->interFrameSync;
+			if ((i1 > 0) && (i1 < (int)m_vectorOctImage.size()))
+			{
+				int shift = cidx / 4;
+				float weight = (float)cidx / 4.0f - (float)shift;
+
+				np::FloatArray2 intensity_temp(m_intensityMap.at(0).size(0), 2);
+				np::FloatArray2 lifetime_temp(m_lifetimeMap.at(0).size(0), 2);
+				for (int ch = 0; ch < 3; ch++)
+				{
+					memcpy(&intensity_temp(0, 0), &m_intensityMap.at(ch)(0, i1), sizeof(float) * m_intensityMap.at(ch).size(0));
+					memcpy(&intensity_temp(0, 1), &m_intensityMap.at(ch)(0, i1), sizeof(float) * m_intensityMap.at(ch).size(0));
+					std::rotate(&intensity_temp(0, 0), &intensity_temp(shift, 0), &intensity_temp(intensity_temp.size(0), 0));
+					std::rotate(&intensity_temp(0, 1), &intensity_temp((shift + 1) % intensity_temp.size(0), 1), &intensity_temp(intensity_temp.size(0), 1));
+					ippsMulC_32f_I(1.0f - weight, &intensity_temp(0, 0), intensity_temp.size(0));
+					ippsMulC_32f_I(weight, &intensity_temp(0, 1), intensity_temp.size(0));
+					ippsAdd_32f(&intensity_temp(0, 1), &intensity_temp(0, 0), &m_intensityMap.at(ch)(0, i1), intensity_temp.size(0));
+
+					memcpy(&lifetime_temp(0, 0), &m_lifetimeMap.at(ch)(0, i1), sizeof(float) * m_lifetimeMap.at(ch).size(0));
+					memcpy(&lifetime_temp(0, 1), &m_lifetimeMap.at(ch)(0, i1), sizeof(float) * m_lifetimeMap.at(ch).size(0));
+					std::rotate(&lifetime_temp(0, 0), &lifetime_temp(shift, 0), &lifetime_temp(lifetime_temp.size(0), 0));
+					std::rotate(&lifetime_temp(0, 1), &lifetime_temp((shift + 1) % lifetime_temp.size(0), 1), &lifetime_temp(lifetime_temp.size(0), 1));
+					ippsMulC_32f_I(1.0f - weight, &lifetime_temp(0, 0), lifetime_temp.size(0));
+					ippsMulC_32f_I(weight, &lifetime_temp(0, 1), lifetime_temp.size(0));
+					ippsAdd_32f(&lifetime_temp(0, 1), &lifetime_temp(0, 0), &m_lifetimeMap.at(ch)(0, i1), lifetime_temp.size(0));
+				}
+			}
+
+			m_vibCorrIdx(i + 1) = cidx;
 		}
 
-		m_vibCorrIdx(i) = cidx;
+		delete[] scoeff;
 
-		//printf("%d %.4f\n", i, cmax);
+		// Recording
+		QFile file(vib_corr_path);
+		file.open(QIODevice::WriteOnly);
+		file.write(reinterpret_cast<const char*>(m_vibCorrIdx.raw_ptr()), sizeof(uint16_t) * m_vibCorrIdx.length());
+		file.close();
 	}
+	else
+	{
+		// Loading
+		QFile file(vib_corr_path);
+		file.open(QIODevice::ReadOnly);
+		file.read(reinterpret_cast<char*>(m_vibCorrIdx.raw_ptr()), sizeof(uint16_t) * m_vibCorrIdx.length());
+		file.close();
 
-	delete[] scoeff;
+		// Vibration correction		
+		for (int i = 1; i < (int)m_vectorOctImage.size() - 1; i++)
+		{
+			// OCT correction
+			circShift(m_vectorOctImage.at(i), m_vibCorrIdx(i));
 
-	//QFile file("vib_corr.data");
-	//file.open(QIODevice::WriteOnly);
-	//file.write(reinterpret_cast<const char*>(m_vibCorrIdx.raw_ptr()), sizeof(uint16_t) * m_vibCorrIdx.length());
-	//file.close();	
+			// FLIm correction
+			int i1 = i + 1 - m_pConfigTemp->interFrameSync;
+			if ((i1 > 0) && (i1 < (int)m_vectorOctImage.size()))
+			{
+				int shift = m_vibCorrIdx(i) / 4;
+				float weight = (float)m_vibCorrIdx(i) / 4.0f - (float)shift;
+
+				np::FloatArray2 intensity_temp(m_intensityMap.at(0).size(0), 2);
+				np::FloatArray2 lifetime_temp(m_lifetimeMap.at(0).size(0), 2);
+				for (int ch = 0; ch < 3; ch++)
+				{
+					memcpy(&intensity_temp(0, 0), &m_intensityMap.at(ch)(0, i1), sizeof(float) * m_intensityMap.at(ch).size(0));
+					memcpy(&intensity_temp(0, 1), &m_intensityMap.at(ch)(0, i1), sizeof(float) * m_intensityMap.at(ch).size(0));
+					std::rotate(&intensity_temp(0, 0), &intensity_temp(shift, 0), &intensity_temp(intensity_temp.size(0), 0));
+					std::rotate(&intensity_temp(0, 1), &intensity_temp((shift + 1) % intensity_temp.size(0), 1), &intensity_temp(intensity_temp.size(0), 1));
+					ippsMulC_32f_I(1.0f - weight, &intensity_temp(0, 0), intensity_temp.size(0));
+					ippsMulC_32f_I(weight, &intensity_temp(0, 1), intensity_temp.size(0));
+					ippsAdd_32f(&intensity_temp(0, 1), &intensity_temp(0, 0), &m_intensityMap.at(ch)(0, i1), intensity_temp.size(0));
+
+					memcpy(&lifetime_temp(0, 0), &m_lifetimeMap.at(ch)(0, i1), sizeof(float) * m_lifetimeMap.at(ch).size(0));
+					memcpy(&lifetime_temp(0, 1), &m_lifetimeMap.at(ch)(0, i1), sizeof(float) * m_lifetimeMap.at(ch).size(0));
+					std::rotate(&lifetime_temp(0, 0), &lifetime_temp(shift, 0), &lifetime_temp(lifetime_temp.size(0), 0));
+					std::rotate(&lifetime_temp(0, 1), &lifetime_temp((shift + 1) % lifetime_temp.size(0), 1), &lifetime_temp(lifetime_temp.size(0), 1));
+					ippsMulC_32f_I(1.0f - weight, &lifetime_temp(0, 0), lifetime_temp.size(0));
+					ippsMulC_32f_I(weight, &lifetime_temp(0, 1), lifetime_temp.size(0));
+					ippsAdd_32f(&lifetime_temp(0, 1), &lifetime_temp(0, 0), &m_lifetimeMap.at(ch)(0, i1), lifetime_temp.size(0));
+				}
+			}
+		}
+	}
 }
 
 

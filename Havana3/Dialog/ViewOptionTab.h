@@ -27,8 +27,8 @@ enum FLImParameters
 
 enum RFPrediction
 {
-	_INFLAMMATION_ = 0,
-	_PLAQUE_COMPOSITION_ = 1
+	_PLAQUE_COMPOSITION_ = 0,
+	_INFLAMMATION_ = 1
 };
 
 class ViewOptionTab : public QDialog

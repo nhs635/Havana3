@@ -36,8 +36,12 @@ LIBS += $$PWD/lib/PX14_64.lib # \
 LIBS += $$PWD/lib/AxsunOCTControl_LW.lib \
         $$PWD/lib/AxsunOCTCapture.lib
 LIBS += $$PWD/lib/NIDAQmx.lib
-LIBS += $$PWD/lib/opencv_world3416d.lib \
-        $$PWD/lib/opencv_world3416.lib
+debug {
+LIBS += $$PWD/lib/opencv_world3416d.lib
+}
+release {
+LIBS += $$PWD/lib/opencv_world3416.lib
+}
 LIBS += $$PWD/lib/intel64_win/ippcore.lib \
         $$PWD/lib/intel64_win/ippi.lib \
         $$PWD/lib/intel64_win/ipps.lib \

@@ -485,6 +485,12 @@ void QResultTab::enableVibrationCorrection(bool enabled)
 		getDataProcessing()->calculateFlimParameters();
 		getViewTab()->invalidate();
 
+		if (m_pSettingDlg)
+			if (m_pSettingDlg->getPulseReviewTab())
+				m_pSettingDlg->getPulseReviewTab()->loadRois();
+
 		m_pToggleButton_Vibration->setDisabled(true);
+
+		//createExportDlg();
 	}
 }

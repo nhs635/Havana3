@@ -51,11 +51,13 @@ public:
 		if (_method == CLASSIFICATION)
 		{
 			forest->setMaxCategories(_n_cats);						
-			compo_cmap = (Mat_<float>(_n_cats, 3) << 67, 191, 220,
-														100, 146, 84,
-														213, 213, 43,														
-														255, 71, 72,
-													120, 0, 5);
+			compo_cmap = (Mat_<float>(_n_cats, 3) << 67, 191, 220, // normal
+													100, 146, 84, // fibrous
+													// 128, 128, 128, // calcification
+													213, 213, 43, // HLF														
+													255, 71, 72, // focal mac
+													120, 0, 5); // , // TCFA 
+													 //112,  48, 160); // short lifetime
 		}
 
 		/*colorc = [[0 0 255]; % 1 : Normal(0x43bfdc)
@@ -176,41 +178,50 @@ public:
 		return true;
     }
 
-    void predict(np::FloatArray2& input, np::FloatArray2& output)
+    void predict(np::FloatArray2& input, np::FloatArray2& output, np::FloatArray2& posterior = np::FloatArray2())
     {
         Mat input_mat(input.size(1), input.size(0), CV_32F, input.raw_ptr());
 		Mat output_mat;
 		if (method == CLASSIFICATION)
 		{
-			output_mat = Mat(input.size(1), 3, CV_32F);
-			tbb::parallel_for(tbb::blocked_range<size_t>(0, (size_t)input_mat.rows),
-				[&](const tbb::blocked_range<size_t>& r) {
-				for (size_t i = r.begin(); i != r.end(); ++i)
-				{
-					int idx = (int)forest->predict(input_mat.row((int)i))-1;
-					output_mat.at<float>((int)i, 0) = compo_cmap.at<float>(idx, 0);
-					output_mat.at<float>((int)i, 1) = compo_cmap.at<float>(idx, 1);
-					output_mat.at<float>((int)i, 2) = compo_cmap.at<float>(idx, 2);
-				}
-			});
-			memcpy(output.raw_ptr(), output_mat.data, sizeof(float) * output.length());
-
-			//output_mat = Mat(input.size(1), n_cats, CV_32S);
+			//output_mat = Mat(input.size(1), 3, CV_32F);
 			//tbb::parallel_for(tbb::blocked_range<size_t>(0, (size_t)input_mat.rows),
 			//	[&](const tbb::blocked_range<size_t>& r) {
 			//	for (size_t i = r.begin(); i != r.end(); ++i)
 			//	{
-			//		Mat omat;
-			//		forest->getVotes(input_mat.row(i), omat, 0);
-			//		memcpy((int*)output_mat.data + i * output_mat.cols, (int*)omat.data + omat.cols, sizeof(int) * omat.cols);
+			//		int idx = (int)forest->predict(input_mat.row((int)i)) - 1;
+			//		output_mat.at<float>((int)i, 0) = compo_cmap.at<float>(idx, 0);
+			//		output_mat.at<float>((int)i, 1) = compo_cmap.at<float>(idx, 1);
+			//		output_mat.at<float>((int)i, 2) = compo_cmap.at<float>(idx, 2);
 			//	}
-			//});			
-			//Mat output_temp;
-			//output_mat.convertTo(output_temp, CV_32F);
-			//output_mat = output_temp / (float)n_trees;
-			//Mat output_mat1 = output_mat * compo_cmap;
+			//});
+			//memcpy(output.raw_ptr(), output_mat.data, sizeof(float) * output.length());
 
-			//memcpy(output.raw_ptr(), output_mat1.data, sizeof(float) * output.length()); // + output_mat1.cols
+			//for (int i = 0; i < input_mat.rows; i++)
+			//{
+			//	Mat omat;
+			//	forest->getVotes(input_mat.row((int)0), omat, 0);
+			//}
+
+			output_mat = Mat(input.size(1), n_cats, CV_32S);
+			tbb::parallel_for(tbb::blocked_range<size_t>(0, (size_t)input_mat.rows),
+				[&](const tbb::blocked_range<size_t>& r) {
+				for (size_t i = r.begin(); i != r.end(); ++i)
+				{
+					Mat omat;
+					forest->getVotes(input_mat.row(i), omat, 0);
+					memcpy((int*)output_mat.data + i * output_mat.cols, (int*)omat.data + omat.cols, sizeof(int) * omat.cols);
+				}
+			});			
+			Mat output_temp;
+			output_mat.convertTo(output_temp, CV_32F);
+			output_mat = output_temp / (float)n_trees;
+			Mat output_mat1 = output_mat * compo_cmap;
+
+			memcpy(output.raw_ptr(), output_mat1.data, sizeof(float) * output.length()); // + output_mat1.cols
+
+			if (posterior.length() > 0)
+				memcpy(posterior.raw_ptr(), output_mat.data, sizeof(float) * posterior.length());
 		}
 		else if (method == REGRESSION)
 		{

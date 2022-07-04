@@ -135,21 +135,21 @@ void ViewOptionTab::createFlimVisualizationOptionTab()
 		m_pLabel_RFPrediction->setAlignment(Qt::AlignVCenter | Qt::AlignRight);
 		m_pLabel_RFPrediction->setDisabled(true);
 
-		m_pRadioButton_Inflammation = new QRadioButton(this);
-		m_pRadioButton_Inflammation->setText("Inflammation");
-		m_pRadioButton_Inflammation->setDisabled(true);
 		m_pRadioButton_PlaqueComposition = new QRadioButton(this);
 		m_pRadioButton_PlaqueComposition->setText("Plaque Composition");
 		m_pRadioButton_PlaqueComposition->setDisabled(true);
+		m_pRadioButton_Inflammation = new QRadioButton(this);
+		m_pRadioButton_Inflammation->setText("Inflammation");
+		m_pRadioButton_Inflammation->setDisabled(true);
 
-		if (m_pViewTab->getRFPrediction() == _INFLAMMATION_)
-			m_pRadioButton_Inflammation->setChecked(true);
-		else if (m_pViewTab->getRFPrediction() == _PLAQUE_COMPOSITION_)
+		if (m_pViewTab->getRFPrediction() == _PLAQUE_COMPOSITION_)
 			m_pRadioButton_PlaqueComposition->setChecked(true);
+		else if (m_pViewTab->getRFPrediction() == _INFLAMMATION_)
+			m_pRadioButton_Inflammation->setChecked(true);
 		
 		m_pButtonGroup_RFPrediction = new QButtonGroup(this);
-		m_pButtonGroup_RFPrediction->addButton(m_pRadioButton_Inflammation, _INFLAMMATION_);
 		m_pButtonGroup_RFPrediction->addButton(m_pRadioButton_PlaqueComposition, _PLAQUE_COMPOSITION_);
+		m_pButtonGroup_RFPrediction->addButton(m_pRadioButton_Inflammation, _INFLAMMATION_);
 	}
 		
 	// Create line edit widgets for FLIm contrast adjustment
@@ -219,12 +219,12 @@ void ViewOptionTab::createFlimVisualizationOptionTab()
 		m_pImageView_IntensityRatioColorbar = new QImageView(ColorTable::colortable(INTENSITY_RATIO_COLORTABLE), 256, 1, false, this);
 		m_pImageView_IntensityRatioColorbar->setFixedSize(190, 20);
 		m_pImageView_IntensityRatioColorbar->drawImage(color);
-		m_pImageView_InflammationColorbar = new QImageView(ColorTable::colortable(INFLAMMATION_COLORTABLE), 256, 1, false, this);
-		m_pImageView_InflammationColorbar->setFixedSize(190, 20);
-		m_pImageView_InflammationColorbar->drawImage(color);
 		m_pImageView_PlaqueCompositionColorbar = new QImageView(ColorTable::colortable(COMPOSITION_COLORTABLE), 256, 1, false, this);
 		m_pImageView_PlaqueCompositionColorbar->setFixedSize(255, 24);
 		m_pImageView_PlaqueCompositionColorbar->drawImage(color);
+		m_pImageView_InflammationColorbar = new QImageView(ColorTable::colortable(INFLAMMATION_COLORTABLE), 256, 1, false, this);
+		m_pImageView_InflammationColorbar->setFixedSize(190, 20);
+		m_pImageView_InflammationColorbar->drawImage(color);
 	}
 	m_pLabel_NormIntensity = new QLabel(QString("Ch%1 Intensity (AU) ").arg(m_pConfig->flimEmissionChannel), this);
     m_pLabel_NormIntensity->setFixedWidth(140);
@@ -241,14 +241,14 @@ void ViewOptionTab::createFlimVisualizationOptionTab()
 		m_pLabel_IntensityRatio = new QLabel(QString("Ch%1/%2 IntRatio (AU) ").arg(m_pConfig->flimEmissionChannel).arg((m_pConfig->flimEmissionChannel == 1) ? 3 : m_pConfig->flimEmissionChannel - 1), this);
 		m_pLabel_IntensityRatio->setFixedWidth(140);
 		m_pLabel_IntensityRatio->setAlignment(Qt::AlignVCenter | Qt::AlignLeft);
+		
+		m_pLabel_PlaqueComposition = new QLabel("Plaque Composition", this);
+		m_pLabel_PlaqueComposition->setFixedWidth(140);
+		m_pLabel_PlaqueComposition->setAlignment(Qt::AlignVCenter | Qt::AlignLeft);
 
 		m_pLabel_Inflammation = new QLabel("Inflammation", this);
 		m_pLabel_Inflammation->setFixedWidth(140);
 		m_pLabel_Inflammation->setAlignment(Qt::AlignVCenter | Qt::AlignLeft);
-
-		m_pLabel_PlaqueComposition = new QLabel("Plaque Composition", this);
-		m_pLabel_PlaqueComposition->setFixedWidth(140);
-		m_pLabel_PlaqueComposition->setAlignment(Qt::AlignVCenter | Qt::AlignLeft);
 	}
 		
     // Set layout
@@ -272,8 +272,8 @@ void ViewOptionTab::createFlimVisualizationOptionTab()
 	QHBoxLayout *pHBoxLayout_LifetimeColorbar = new QHBoxLayout;
 	QHBoxLayout *pHBoxLayout_IntensityPropColorbar = new QHBoxLayout;
 	QHBoxLayout *pHBoxLayout_IntensityRatioColorbar = new QHBoxLayout;
-	QHBoxLayout *pHBoxLayout_InflammationColorbar = new QHBoxLayout;
 	QHBoxLayout *pHBoxLayout_PlaqueCompositionColorbar = new QHBoxLayout;
+	QHBoxLayout *pHBoxLayout_InflammationColorbar = new QHBoxLayout;
 
 	pHBoxLayout_IntensityColorbar->setSpacing(1);
 	pHBoxLayout_IntensityColorbar->addWidget(m_pLabel_NormIntensity);
@@ -305,17 +305,17 @@ void ViewOptionTab::createFlimVisualizationOptionTab()
 		pHBoxLayout_IntensityRatioColorbar->addWidget(m_pImageView_IntensityRatioColorbar);
 		pHBoxLayout_IntensityRatioColorbar->addWidget(m_pLineEdit_IntensityRatioMax);
 
+		pHBoxLayout_PlaqueCompositionColorbar->setSpacing(1);
+		pHBoxLayout_PlaqueCompositionColorbar->addWidget(m_pLabel_PlaqueComposition);
+		pHBoxLayout_PlaqueCompositionColorbar->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed));
+		pHBoxLayout_PlaqueCompositionColorbar->addWidget(m_pImageView_PlaqueCompositionColorbar);
+
 		pHBoxLayout_InflammationColorbar->setSpacing(1);
 		pHBoxLayout_InflammationColorbar->addWidget(m_pLabel_Inflammation);
 		pHBoxLayout_InflammationColorbar->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed));
 		pHBoxLayout_InflammationColorbar->addWidget(m_pLineEdit_InflammationMin);
 		pHBoxLayout_InflammationColorbar->addWidget(m_pImageView_InflammationColorbar);
 		pHBoxLayout_InflammationColorbar->addWidget(m_pLineEdit_InflammationMax);
-
-		pHBoxLayout_PlaqueCompositionColorbar->setSpacing(1);
-		pHBoxLayout_PlaqueCompositionColorbar->addWidget(m_pLabel_PlaqueComposition);
-		pHBoxLayout_PlaqueCompositionColorbar->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed));
-		pHBoxLayout_PlaqueCompositionColorbar->addWidget(m_pImageView_PlaqueCompositionColorbar);
 	}
   
 	QVBoxLayout *pVBoxLayout_FlimVisualization = new QVBoxLayout;
@@ -339,8 +339,8 @@ void ViewOptionTab::createFlimVisualizationOptionTab()
 
 		pGridLayout_FlimVisualization3->addWidget(m_pLabel_RFPrediction, 0, 0);
 		pGridLayout_FlimVisualization3->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed), 0, 1);
-		pGridLayout_FlimVisualization3->addWidget(m_pRadioButton_Inflammation, 0, 2);
-		pGridLayout_FlimVisualization3->addWidget(m_pRadioButton_PlaqueComposition, 0, 3);
+		pGridLayout_FlimVisualization3->addWidget(m_pRadioButton_PlaqueComposition, 0, 2);
+		pGridLayout_FlimVisualization3->addWidget(m_pRadioButton_Inflammation, 0, 3);
 
 		pVBoxLayout_FlimVisualization->addItem(pGridLayout_FlimVisualization2);
 		pVBoxLayout_FlimVisualization->addItem(pGridLayout_FlimVisualization3);
@@ -349,8 +349,8 @@ void ViewOptionTab::createFlimVisualizationOptionTab()
 	pVBoxLayout_FlimVisualization->addItem(pHBoxLayout_LifetimeColorbar);
 	if (!m_pStreamTab) pVBoxLayout_FlimVisualization->addItem(pHBoxLayout_IntensityPropColorbar);
 	if (!m_pStreamTab) pVBoxLayout_FlimVisualization->addItem(pHBoxLayout_IntensityRatioColorbar);
-	if (!m_pStreamTab) pVBoxLayout_FlimVisualization->addItem(pHBoxLayout_InflammationColorbar);
 	if (!m_pStreamTab) pVBoxLayout_FlimVisualization->addItem(pHBoxLayout_PlaqueCompositionColorbar);
+	if (!m_pStreamTab) pVBoxLayout_FlimVisualization->addItem(pHBoxLayout_InflammationColorbar);
 
 	pGroupBox_FlimVisualization->setLayout(pVBoxLayout_FlimVisualization);
 
@@ -383,7 +383,7 @@ void ViewOptionTab::createFlimVisualizationOptionTab()
 		if (m_pRadioButton_RFPrediction->isChecked() == false)
 			changeFLImParameters(m_pConfig->flimParameterMode);
 		else
-			changeRFPrediction(m_pRadioButton_PlaqueComposition->isChecked());
+			changeRFPrediction(m_pRadioButton_Inflammation->isChecked());
 	}
 }
 
@@ -603,8 +603,8 @@ void ViewOptionTab::changeVisualizationMode(int mode)
 				m_pRadioButton_IntensityRatio->setEnabled(true);
 
 				m_pLabel_RFPrediction->setDisabled(true);
-				m_pRadioButton_Inflammation->setDisabled(true);
 				m_pRadioButton_PlaqueComposition->setDisabled(true);
+				m_pRadioButton_Inflammation->setDisabled(true);
 
 				changeFLImParameters(m_pConfig->flimParameterMode);
 			}
@@ -619,10 +619,10 @@ void ViewOptionTab::changeVisualizationMode(int mode)
 				m_pRadioButton_IntensityRatio->setDisabled(true);
 
 				m_pLabel_RFPrediction->setEnabled(true);
-				m_pRadioButton_Inflammation->setEnabled(true);
 				m_pRadioButton_PlaqueComposition->setEnabled(true);
+				m_pRadioButton_Inflammation->setEnabled(true);
 
-				changeRFPrediction(m_pRadioButton_PlaqueComposition->isChecked());
+				changeRFPrediction(m_pRadioButton_Inflammation->isChecked());
 			}
 
 			if (signaling) m_pViewTab->setVisualizationMode(mode);
@@ -722,14 +722,14 @@ void ViewOptionTab::changeFLImParameters(int mode)
 		m_pLineEdit_IntensityRatioMin->setVisible(false);
 		m_pImageView_IntensityRatioColorbar->setVisible(false);
 		m_pLineEdit_IntensityRatioMax->setVisible(false);
-
+		
+		m_pLabel_PlaqueComposition->setVisible(false);
+		m_pImageView_PlaqueCompositionColorbar->setVisible(false);
+		
 		m_pLabel_Inflammation->setVisible(false);
 		m_pLineEdit_InflammationMin->setVisible(false);
 		m_pImageView_InflammationColorbar->setVisible(false);
 		m_pLineEdit_InflammationMax->setVisible(false);
-
-		m_pLabel_PlaqueComposition->setVisible(false);
-		m_pImageView_PlaqueCompositionColorbar->setVisible(false);
 	}
 	else if (mode == FLImParameters::_INTENSITY_PROP_)
 	{
@@ -747,14 +747,14 @@ void ViewOptionTab::changeFLImParameters(int mode)
 		m_pLineEdit_IntensityRatioMin->setVisible(false);
 		m_pImageView_IntensityRatioColorbar->setVisible(false);
 		m_pLineEdit_IntensityRatioMax->setVisible(false);
-
+		
+		m_pLabel_PlaqueComposition->setVisible(false);
+		m_pImageView_PlaqueCompositionColorbar->setVisible(false);
+		
 		m_pLabel_Inflammation->setVisible(false);
 		m_pLineEdit_InflammationMin->setVisible(false);
 		m_pImageView_InflammationColorbar->setVisible(false);
 		m_pLineEdit_InflammationMax->setVisible(false);
-
-		m_pLabel_PlaqueComposition->setVisible(false);
-		m_pImageView_PlaqueCompositionColorbar->setVisible(false);
 	}
 	else if (mode == FLImParameters::_INTENSITY_RATIO_)
 	{
@@ -772,14 +772,14 @@ void ViewOptionTab::changeFLImParameters(int mode)
 		m_pLineEdit_IntensityRatioMin->setVisible(true);
 		m_pImageView_IntensityRatioColorbar->setVisible(true);
 		m_pLineEdit_IntensityRatioMax->setVisible(true);
+		
+		m_pLabel_PlaqueComposition->setVisible(false);
+		m_pImageView_PlaqueCompositionColorbar->setVisible(false);
 
 		m_pLabel_Inflammation->setVisible(false);
 		m_pLineEdit_InflammationMin->setVisible(false);
 		m_pImageView_InflammationColorbar->setVisible(false);
 		m_pLineEdit_InflammationMax->setVisible(false);
-
-		m_pLabel_PlaqueComposition->setVisible(false);
-		m_pImageView_PlaqueCompositionColorbar->setVisible(false);
 	}
 
 	changeEmissionChannel(m_pConfig->flimEmissionChannel - 1);
@@ -804,7 +804,7 @@ void ViewOptionTab::changeRFPrediction(int mode)
 			int mode0 = mode % 2;
 			int signaling = (mode / 2) == 0;
 
-			if (mode0 == _INFLAMMATION_)
+			if (mode0 == _PLAQUE_COMPOSITION_)
 			{
 				m_pLabel_Lifetime->setVisible(false);
 				m_pLineEdit_LifetimeMin->setVisible(false);
@@ -821,38 +821,38 @@ void ViewOptionTab::changeRFPrediction(int mode)
 				m_pImageView_IntensityRatioColorbar->setVisible(false);
 				m_pLineEdit_IntensityRatioMax->setVisible(false);
 
-				m_pLabel_Inflammation->setVisible(true);
-				m_pLineEdit_InflammationMin->setVisible(true);
-				m_pImageView_InflammationColorbar->setVisible(true);
-				m_pLineEdit_InflammationMax->setVisible(true);
-
-				m_pLabel_PlaqueComposition->setVisible(false);
-				m_pImageView_PlaqueCompositionColorbar->setVisible(false);
-			}
-			else if (mode0 == _PLAQUE_COMPOSITION_)
-			{
-				m_pLabel_Lifetime->setVisible(false);
-				m_pLineEdit_LifetimeMin->setVisible(false);
-				m_pImageView_LifetimeColorbar->setVisible(false);
-				m_pLineEdit_LifetimeMax->setVisible(false);
-
-				m_pLabel_IntensityProp->setVisible(false);
-				m_pLineEdit_IntensityPropMin->setVisible(false);
-				m_pImageView_IntensityPropColorbar->setVisible(false);
-				m_pLineEdit_IntensityPropMax->setVisible(false);
-
-				m_pLabel_IntensityRatio->setVisible(false);
-				m_pLineEdit_IntensityRatioMin->setVisible(false);
-				m_pImageView_IntensityRatioColorbar->setVisible(false);
-				m_pLineEdit_IntensityRatioMax->setVisible(false);
+				m_pLabel_PlaqueComposition->setVisible(true);
+				m_pImageView_PlaqueCompositionColorbar->setVisible(true);
 
 				m_pLabel_Inflammation->setVisible(false);
 				m_pLineEdit_InflammationMin->setVisible(false);
 				m_pImageView_InflammationColorbar->setVisible(false);
 				m_pLineEdit_InflammationMax->setVisible(false);
+			}
+			else if (mode0 == _INFLAMMATION_)
+			{
+				m_pLabel_Lifetime->setVisible(false);
+				m_pLineEdit_LifetimeMin->setVisible(false);
+				m_pImageView_LifetimeColorbar->setVisible(false);
+				m_pLineEdit_LifetimeMax->setVisible(false);
 
-				m_pLabel_PlaqueComposition->setVisible(true);
-				m_pImageView_PlaqueCompositionColorbar->setVisible(true);
+				m_pLabel_IntensityProp->setVisible(false);
+				m_pLineEdit_IntensityPropMin->setVisible(false);
+				m_pImageView_IntensityPropColorbar->setVisible(false);
+				m_pLineEdit_IntensityPropMax->setVisible(false);
+
+				m_pLabel_IntensityRatio->setVisible(false);
+				m_pLineEdit_IntensityRatioMin->setVisible(false);
+				m_pImageView_IntensityRatioColorbar->setVisible(false);
+				m_pLineEdit_IntensityRatioMax->setVisible(false);
+
+				m_pLabel_PlaqueComposition->setVisible(false);
+				m_pImageView_PlaqueCompositionColorbar->setVisible(false);
+
+				m_pLabel_Inflammation->setVisible(true);
+				m_pLineEdit_InflammationMin->setVisible(true);
+				m_pImageView_InflammationColorbar->setVisible(true);
+				m_pLineEdit_InflammationMax->setVisible(true);
 			}
 
 			if (signaling) m_pViewTab->setRFPrediction(mode);

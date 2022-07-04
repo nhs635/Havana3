@@ -492,20 +492,19 @@ void PulseReviewTab::showMeanDelay(bool checked)
 void PulseReviewTab::drawPulse(int aline)
 {
 	int frame0 = m_pViewTab->getCurrentFrame();
-
-	int aline0 = aline + m_pConfigTemp->rotatedAlines / 4;
-	while (aline0 >= m_pConfig->flimAlines)
-		aline0 -= m_pConfig->flimAlines;
-
-	int aline1 = aline0 + m_pViewTab->m_vibCorrIdx(frame0) / 4;
-	while (aline1 >= m_pConfig->flimAlines)
-		aline1 -= m_pConfig->flimAlines;
-
-	// Select pulse type	
 	int frame = frame0 - m_pConfigTemp->interFrameSync;
 	frame = (frame < 0) ? 0 : frame;
 	frame = (frame >= m_pConfigTemp->frames) ? m_pConfigTemp->frames - 1 : frame;
 
+	int aline0 = aline + (m_pConfigTemp->rotatedAlines / 4);
+	while (aline0 >= m_pConfig->flimAlines)
+		aline0 -= m_pConfig->flimAlines;
+
+	int aline1 = aline + (m_pViewTab->m_vibCorrIdx(frame0) / 4);
+	while (aline1 >= m_pConfig->flimAlines)
+		aline1 -= m_pConfig->flimAlines;
+
+	// Select pulse type		
 	np::FloatArray2 pulse;
 	switch (m_pComboBox_PulseType->currentIndex())
 	{
@@ -823,7 +822,8 @@ void PulseReviewTab::set()
 			<< QString::number(m_pComboBox_PlaqueType->currentIndex()) // 4: type
 			<< m_pLineEdit_Comments->text() // 5: comments
 			<< QString::number((int)pCircView->getRender()->m_bCW) // 6: cw or ccw?
-			<< QString::number(m_pConfigTemp->rotatedAlines); // 7: rotated alines
+			<< QString::number(m_pConfigTemp->rotatedAlines) // 7: rotated alines
+			<< QString::number(m_pViewTab->m_vibCorrIdx(m_pViewTab->getCurrentFrame())); // 8: vib corr 
 		
 		m_vectorRois.push_back(rois);
 
@@ -892,7 +892,8 @@ void PulseReviewTab::set()
 			<< QString::number(m_pComboBox_PlaqueType->currentIndex()) // 4: type
 			<< m_pLineEdit_Comments->text() // 5: comments
 			<< QString::number((int)pCircView->getRender()->m_bCW) // 6: cw or ccw?
-			<< QString::number(m_pConfigTemp->rotatedAlines); // 7: rotated alines
+			<< QString::number(m_pConfigTemp->rotatedAlines) // 7: rotated alines
+			<< QString::number(m_pViewTab->m_vibCorrIdx(m_pViewTab->getCurrentFrame())); // 8: vib corr 
 
 		m_vectorRois.at(i) = rois_new;
 
@@ -1068,47 +1069,57 @@ void PulseReviewTab::selectRow(int row, int, int row0, int)
 
 void PulseReviewTab::saveRois()
 {
-	QString roi_path = m_pResultTab->getRecordInfo().filename;
-	roi_path.replace("pullback.data", "roi.csv");
-
-	QFile roi_file(roi_path);
-	if (roi_file.open(QFile::WriteOnly))
+	if (m_vectorRois.size() > 0)
 	{
-		QTextStream stream(&roi_file);
-		stream << "#" << "\t"
-			<< "Frame" << "\t"
-			<< "Start" << "\t"
-			<< "End" << "\t"
-			<< "Type" << "\t"
-			<< "Comments" << "\t"
-			<< "Clockwise" << "\t"
-			<< "Rotated" << "\n";
+		QString roi_path = m_pResultTab->getRecordInfo().filename;
+		roi_path.replace("pullback.data", "roi.csv");
 
-		for (int i = 0; i < m_vectorRois.size(); i++)
+		QFile roi_file(roi_path);
+		if (roi_file.open(QFile::WriteOnly))
 		{
-			QStringList rois = m_vectorRois.at(i);
+			QTextStream stream(&roi_file);
+			stream << "#" << "\t"
+				<< "Frame" << "\t"
+				<< "Start" << "\t"
+				<< "End" << "\t"
+				<< "Type" << "\t"
+				<< "Comments" << "\t"
+				<< "Clockwise" << "\t"
+				<< "Rotated" << "\t"
+				<< "Vib Corr" << "\n";
 
-			stream << rois.at(0) << "\t" // #
-				<< rois.at(1) << "\t" // Frame
-				<< rois.at(2) << "\t" // Start
-				<< rois.at(3) << "\t" // End
-				<< rois.at(4) << "\t" // Type
-				<< rois.at(5) << "\t" // Comments
-				<< rois.at(6) << "\t" // CW or CCW
-				<< rois.at(7) << "\n"; // Rotated allines
-		}		
-		stream << m_totalRois << "\n";
+			for (int i = 0; i < m_vectorRois.size(); i++)
+			{
+				QStringList rois = m_vectorRois.at(i);
 
-		roi_file.close();
+				stream << rois.at(0) << "\t" // #
+					<< rois.at(1) << "\t" // Frame
+					<< rois.at(2) << "\t" // Start
+					<< rois.at(3) << "\t" // End
+					<< rois.at(4) << "\t" // Type
+					<< rois.at(5) << "\t" // Comments
+					<< rois.at(6) << "\t" // CW or CCW
+					<< rois.at(7) << "\t" // Rotated allines
+					//<< m_pViewTab->m_vibCorrIdx(rois.at(1).toInt() - 1) << "\n"; // Vib corr
+					<< rois.at(8) << "\n"; // Vib corr
+			}
+			stream << m_totalRois << "\n";
+
+			roi_file.close();
+		}
 	}
 }
 
 void PulseReviewTab::loadRois()
 {
-	m_vectorRois.clear();
-	m_pTableWidget_RoiList->setRowCount(0);
-	m_pTableWidget_RoiList->clearContents();
+	disconnect(m_pTableWidget_RoiList, SIGNAL(currentCellChanged(int, int, int, int)), 0, 0);
 
+	int currentRow = m_pTableWidget_RoiList->currentRow();
+
+	m_vectorRois.clear();
+	m_pTableWidget_RoiList->clearContents();
+	m_pTableWidget_RoiList->setRowCount(0);
+	
 	QString roi_path = m_pResultTab->getRecordInfo().filename;
 	roi_path.replace("pullback.data", "roi.csv");
 
@@ -1151,9 +1162,15 @@ void PulseReviewTab::loadRois()
 			bool clockwise = rois.at(6).toInt() == 1;
 			int rotated_alines0 = rois.at(7).toInt();
 			int rotated_alines = m_pConfigTemp->rotatedAlines;
+			int vib_corr0 = 0, vib_corr = 0;
+			if (rois.size() > 8)
+			{
+				vib_corr0 = rois.at(8).toInt();
+				vib_corr = m_pViewTab->m_vibCorrIdx(frame - 1);
+			}
 
-			start = start + rotated_alines0 - rotated_alines;
-			end = end + rotated_alines0 - rotated_alines;
+			start = start + rotated_alines0 - rotated_alines + vib_corr0 - vib_corr;
+			end = end + rotated_alines0 - rotated_alines + vib_corr0 - vib_corr;
 
 			if (start < 0) start += m_pConfigTemp->octAlines;
 			if (end < 0) end += m_pConfigTemp->octAlines;
@@ -1189,4 +1206,8 @@ void PulseReviewTab::loadRois()
 		pCircView->getRender()->m_nClicked = 0;
 		pCircView->getRender()->update();
 	}
+
+	connect(m_pTableWidget_RoiList, SIGNAL(currentCellChanged(int, int, int, int)), this, SLOT(selectRow(int, int, int, int)));
+
+	if (currentRow >= 0) m_pTableWidget_RoiList->selectRow(currentRow);
 }
