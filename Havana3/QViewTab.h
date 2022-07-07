@@ -96,10 +96,10 @@ private slots:
 	void changeRFPrediction(int);
 
 public:
-	void scaleFLImEnFaceMap(ImageObject* pImgObjIntensityMap, ImageObject* pImgObjLifetimeMap, 
-		ImageObject* pImgObjIntensityPropMap, ImageObject* pImgObjIntensityRatioMap, 
-		ImageObject* pImgObjInflammationMap, ImageObject* pImgObjPlaqueCompositionMap,
-		int ch, int mode);
+	void scaleFLImEnFaceMap(ImageObject* pImgObjIntensityMap, ImageObject* pImgObjLifetimeMap,
+		ImageObject* pImgObjIntensityPropMap, ImageObject* pImgObjIntensityRatioMap,
+		ImageObject* pImgObjPlaqueCompositionMap, ImageObject* pImgObjInflammationMap,
+		int vis_mode, int ch, int flim_mode, int rf_mode);
 	void circShift(np::Uint8Array2& image, int shift);
 	void setAxialOffset(np::Uint8Array2& image, int offset);
 	void vibrationCorrection();
@@ -174,8 +174,8 @@ private:
 	ImageObject *m_pImgObjLifetimeMap;
 	ImageObject *m_pImgObjIntensityPropMap;
 	ImageObject *m_pImgObjIntensityRatioMap;
-	ImageObject *m_pImgObjInflammationMap;
 	ImageObject *m_pImgObjPlaqueCompositionMap;
+	ImageObject *m_pImgObjInflammationMap;
 
     // Image visualization buffers - longitudinal
     ImageObject *m_pImgObjLongiImage;

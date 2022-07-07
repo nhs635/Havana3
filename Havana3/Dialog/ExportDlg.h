@@ -36,7 +36,7 @@ struct EnFaceCheckList
 	bool bRaw;
 	bool bScaled;
 	bool bCh[3];
-	bool bOctProj;
+	bool bRfPred;
 };
 
 
@@ -141,7 +141,7 @@ private:
 	QCheckBox* m_pCheckBox_EnFaceCh1;
 	QCheckBox* m_pCheckBox_EnFaceCh2;
 	QCheckBox* m_pCheckBox_EnFaceCh3;
-	QCheckBox* m_pCheckBox_OctMaxProjection;
+	QCheckBox* m_pCheckBox_RFPrediction;
 };
 
 #endif // EXPORTDLG_H

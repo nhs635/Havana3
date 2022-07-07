@@ -659,10 +659,10 @@ void QViewTab::setObjects(Configuration* pConfig)
 	m_pImgObjIntensityPropMap = new ImageObject(frames4, pConfig->flimAlines, temp_ctable.m_colorTableVector.at(INTENSITY_PROP_COLORTABLE));
 	if (m_pImgObjIntensityRatioMap) delete m_pImgObjIntensityRatioMap;
 	m_pImgObjIntensityRatioMap = new ImageObject(frames4, pConfig->flimAlines, temp_ctable.m_colorTableVector.at(INTENSITY_RATIO_COLORTABLE));
-	if (m_pImgObjInflammationMap) delete m_pImgObjInflammationMap;
-	m_pImgObjInflammationMap = new ImageObject(frames4, pConfig->flimAlines, temp_ctable.m_colorTableVector.at(INFLAMMATION_COLORTABLE));
 	if (m_pImgObjPlaqueCompositionMap) delete m_pImgObjPlaqueCompositionMap;
 	m_pImgObjPlaqueCompositionMap = new ImageObject(frames4, pConfig->flimAlines, temp_ctable.m_colorTableVector.at(COMPOSITION_COLORTABLE));
+	if (m_pImgObjInflammationMap) delete m_pImgObjInflammationMap;
+	m_pImgObjInflammationMap = new ImageObject(frames4, pConfig->flimAlines, temp_ctable.m_colorTableVector.at(INFLAMMATION_COLORTABLE));
 
 	// Longitudinal image visualization buffers
 	if (m_pImgObjLongiImage) delete m_pImgObjLongiImage;
@@ -817,6 +817,9 @@ void QViewTab::visualizeEnFaceMap(bool scaling)
 {
 	if (m_vectorOctImage.size() != 0)
 	{
+		int vis_mode = m_pRadioButton_RFPrediction->isChecked();
+		int rf_mode = m_pComboBox_RFPrediction->currentIndex();
+
 		if (scaling)
 		{
 			// Scaling OCT projection
@@ -841,13 +844,12 @@ void QViewTab::visualizeEnFaceMap(bool scaling)
 			//else if (vis_mode == VisualizationMode::_RF_PREDICTION_)
 			//	ch = 1;
 
-			scaleFLImEnFaceMap(m_pImgObjIntensityMap, m_pImgObjLifetimeMap, 
-				m_pImgObjIntensityPropMap, m_pImgObjIntensityRatioMap, 
-				m_pImgObjInflammationMap, m_pImgObjPlaqueCompositionMap,
-				m_pConfig->flimEmissionChannel - 1, m_pConfig->flimParameterMode);
-		}
-			
-		int vis_mode = m_pRadioButton_RFPrediction->isChecked();
+			scaleFLImEnFaceMap(m_pImgObjIntensityMap, m_pImgObjLifetimeMap,
+				m_pImgObjIntensityPropMap, m_pImgObjIntensityRatioMap,
+				m_pImgObjPlaqueCompositionMap, m_pImgObjInflammationMap,
+				vis_mode, m_pConfig->flimEmissionChannel - 1, m_pConfig->flimParameterMode, rf_mode);				
+		}			
+		
 		if (vis_mode == VisualizationMode::_FLIM_PARAMETERS_)
 		{
 			if (m_pConfig->flimParameterMode == FLImParameters::_LIFETIME_)
@@ -858,8 +860,7 @@ void QViewTab::visualizeEnFaceMap(bool scaling)
 				emit paintEnFaceMap(m_pImgObjIntensityRatioMap->qrgbimg.bits());
 		}
 		else if (vis_mode == VisualizationMode::_RF_PREDICTION_)
-		{
-			int rf_mode = m_pComboBox_RFPrediction->currentIndex();
+		{			
 			if (rf_mode == RFPrediction::_PLAQUE_COMPOSITION_)
 				emit paintEnFaceMap(m_pImgObjPlaqueCompositionMap->qrgbimg.bits());
 			else if (rf_mode == RFPrediction::_INFLAMMATION_)
@@ -1415,8 +1416,8 @@ void QViewTab::changeRFPrediction(int mode)
 
 void QViewTab::scaleFLImEnFaceMap(ImageObject* pImgObjIntensityMap, ImageObject* pImgObjLifetimeMap, 
 	ImageObject* pImgObjIntensityPropMap, ImageObject* pImgObjIntensityRatioMap, 
-	ImageObject* pImgObjInflammationMap, ImageObject* pImgObjPlaqueCompositionMap,
-	int ch, int mode)
+	ImageObject* pImgObjPlaqueCompositionMap, ImageObject* pImgObjInflammationMap,
+	int vis_mode, int ch, int flim_mode, int rf_mode)
 {
 	IppiSize roi_flimproj = { m_intensityMap.at(0).size(0), m_intensityMap.at(0).size(1) };
 	IppiSize roi_flimproj4 = { roi_flimproj.width, ((roi_flimproj.height + 3) >> 2) << 2 };
@@ -1432,12 +1433,10 @@ void QViewTab::scaleFLImEnFaceMap(ImageObject* pImgObjIntensityMap, ImageObject*
 	circShift(pImgObjIntensityMap->arr, int(m_pConfigTemp->rotatedAlines / 4));
 	setAxialOffset(pImgObjIntensityMap->arr, m_pConfigTemp->interFrameSync);
 	pImgObjIntensityMap->convertRgb();
-
-	int vis_mode = m_pRadioButton_RFPrediction->isChecked();
-
+	
 	if (vis_mode == VisualizationMode::_FLIM_PARAMETERS_)
 	{
-		if (mode == FLImParameters::_LIFETIME_)
+		if (flim_mode == FLImParameters::_LIFETIME_)
 		{
 			// Lifetime map
 			ippiScale_32f8u_C1R(m_lifetimeMap.at(ch), sizeof(float) * roi_flimproj.width,
@@ -1454,7 +1453,7 @@ void QViewTab::scaleFLImEnFaceMap(ImageObject* pImgObjIntensityMap, ImageObject*
 			// Intensity-weight lifetime map
 			ippsMul_8u_ISfs(pImgObjIntensityMap->qrgbimg.bits(), pImgObjLifetimeMap->qrgbimg.bits(), pImgObjIntensityMap->qrgbimg.byteCount(), 8);
 		}
-		else if (mode == FLImParameters::_INTENSITY_PROP_)
+		else if (flim_mode == FLImParameters::_INTENSITY_PROP_)
 		{
 			// Intensity proportion map
 			ippiScale_32f8u_C1R(m_intensityProportionMap.at(ch), sizeof(float) * roi_flimproj.width,
@@ -1471,7 +1470,7 @@ void QViewTab::scaleFLImEnFaceMap(ImageObject* pImgObjIntensityMap, ImageObject*
 			// Intensity-weight intensity proportion map
 			ippsMul_8u_ISfs(pImgObjIntensityMap->qrgbimg.bits(), pImgObjIntensityPropMap->qrgbimg.bits(), pImgObjIntensityMap->qrgbimg.byteCount(), 8);
 		}
-		else if (mode == FLImParameters::_INTENSITY_RATIO_)
+		else if (flim_mode == FLImParameters::_INTENSITY_RATIO_)
 		{
 			// Intensity ratio map
 			ippiScale_32f8u_C1R(m_intensityRatioMap.at(ch), sizeof(float) * roi_flimproj.width,
@@ -1490,8 +1489,7 @@ void QViewTab::scaleFLImEnFaceMap(ImageObject* pImgObjIntensityMap, ImageObject*
 		}
 	}
 	else if (vis_mode == VisualizationMode::_RF_PREDICTION_)
-	{
-		int rf_mode = m_pComboBox_RFPrediction->currentIndex();
+	{		
 		if (rf_mode == RFPrediction::_PLAQUE_COMPOSITION_)
 		{
 			// Plaque composition map

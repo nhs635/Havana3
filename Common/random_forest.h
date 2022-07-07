@@ -51,7 +51,7 @@ public:
 		if (_method == CLASSIFICATION)
 		{
 			forest->setMaxCategories(_n_cats);						
-			compo_cmap = (Mat_<float>(_n_cats, 3) << 67, 191, 220, // normal
+			compo_cmap = (Mat_<float>(_n_cats, 3) << 132, 192, 111, //    67, 191, 220, // normal
 													100, 146, 84, // fibrous
 													// 128, 128, 128, // calcification
 													213, 213, 43, // HLF														
