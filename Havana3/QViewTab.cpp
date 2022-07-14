@@ -442,54 +442,12 @@ void QViewTab::invalidate()
 		}
 		else if (rf_mode == RFPrediction::_INFLAMMATION_)
 		{
-			//// Random Forest definition
-			//if (!m_pForestInfl)
-			//{
-			//	m_pForestInfl = new RandomForest();
-			//	m_pForestInfl->createForest(RF_N_TREES, RF_N_FEATURES, 1, REGRESSION); // Create forest model for regression
-
-			//	if (!m_pForestInfl->load(RF_INFL_MODEL_NAME)) // Load pre-trained model
-			//	{
-			//		QMessageBox msg_box(QMessageBox::NoIcon, "RF Model Training...", "", QMessageBox::NoButton, this);
-			//		msg_box.setStandardButtons(0);
-			//		msg_box.setWindowModality(Qt::WindowModal);
-			//		msg_box.setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::CustomizeWindowHint);
-			//		msg_box.move(QApplication::desktop()->screen()->rect().center() - msg_box.rect().center());
-			//		msg_box.setFixedSize(msg_box.width(), msg_box.height());
-			//		msg_box.show();
-
-			//		if (m_pForestInfl->train(RF_INFL_DATA_NAME)) // If not, new training is initiated.
-			//			m_pForestInfl->save(RF_INFL_MODEL_NAME); // Then, the trained model is written.
-			//		else
-			//		{
-			//			delete m_pForestInfl; // If failed to train, forest object is deleted.
-			//			m_pForestInfl = nullptr; // and pointed to null.
-			//		}
-			//	}
-			//}
-
-			//// RF prediction: inflammation estimation
-			//if (m_pForestInfl)
-			//{
-			//	if (m_inflammationMap.length() == 0) // Prediction is only made when the buffer is empty.
-			//	{
-			//		QMessageBox msg_box(QMessageBox::NoIcon, "RF Model Prediction...", "", QMessageBox::NoButton, this);
-			//		msg_box.setStandardButtons(0);
-			//		msg_box.setWindowModality(Qt::WindowModal);
-			//		msg_box.setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::CustomizeWindowHint);
-			//		msg_box.move(QApplication::desktop()->screen()->rect().center() - msg_box.rect().center());
-			//		msg_box.setFixedSize(msg_box.width(), msg_box.height());
-			//		msg_box.show();
-
-					m_inflammationMap = np::FloatArray2(m_pConfigTemp->flimAlines, m_pConfigTemp->frames);
-					//ippsAdd_32f(&m_plaqueCompositionProbMap(0, 3), &m_plaqueCompositionProbMap(0, 4), m_inflammationMap, m_inflammationMap.length());
-					ippiAdd_32f_C1R(&m_plaqueCompositionProbMap(3, 0), sizeof(float) * RF_N_CATS, // mac
-						&m_plaqueCompositionProbMap(4, 0), sizeof(float) * RF_N_CATS, // lipid + mac
-						m_inflammationMap.raw_ptr(), sizeof(float) * 1, { 1, m_inflammationMap.length() });
-			//		m_pForestInfl->predict(m_featVectors, m_inflammationMap); // RF prediction for inflammation estimation
-			//	}				
-			//}
-			
+			m_inflammationMap = np::FloatArray2(m_pConfigTemp->flimAlines, m_pConfigTemp->frames);
+			//ippsAdd_32f(&m_plaqueCompositionProbMap(0, 3), &m_plaqueCompositionProbMap(0, 4), m_inflammationMap, m_inflammationMap.length());
+			ippiAdd_32f_C1R(&m_plaqueCompositionProbMap(3, 0), sizeof(float) * RF_N_CATS, // mac
+				&m_plaqueCompositionProbMap(4, 0), sizeof(float) * RF_N_CATS, // lipid + mac
+				m_inflammationMap.raw_ptr(), sizeof(float) * 1, { 1, m_inflammationMap.length() });
+						
 			// Colorbar
 			m_pImageView_EnFace->setEnterCallback([&]() { m_pImageView_EnFace->setText(QPoint(8, 4),
 				QString::fromLocal8Bit("2-D Inflammation\nEn Face Chemogram (z-θ)")); });
@@ -676,10 +634,10 @@ void QViewTab::setObjects(Configuration* pConfig)
 	m_pMedfiltRect = new medfilt(diameter / 2, pConfig->octAlines, 3, 3);
 	if (m_pMedfiltIntensityMap) delete m_pMedfiltIntensityMap;
 	//m_pMedfiltIntensityMap = new medfilt(frames4, pConfig->flimAlines, 3, 5);
-	m_pMedfiltIntensityMap = new medfilt(pConfig->flimAlines, pConfig->frames, 5, 3);
+	m_pMedfiltIntensityMap = new medfilt(3 * pConfig->flimAlines, pConfig->frames, 5, 3);
 	if (m_pMedfiltLifetimeMap) delete m_pMedfiltLifetimeMap;
 	//m_pMedfiltLifetimeMap = new medfilt(frames4, pConfig->flimAlines, 5, 7);
-	m_pMedfiltLifetimeMap = new medfilt(pConfig->flimAlines, pConfig->frames, 7, 5);
+	m_pMedfiltLifetimeMap = new medfilt(3 * pConfig->flimAlines, pConfig->frames, 7, 5);
 	if (m_pMedfiltLongi) delete m_pMedfiltLongi;
 	m_pMedfiltLongi = new medfilt(frames4, diameter, 3, 3);
 
@@ -936,7 +894,7 @@ void QViewTab::visualizeImage(int frame)
 		ippiScale_32f8u_C1R(m_vectorOctImage.at(frame).raw_ptr(), roi_oct.width * sizeof(float),
 			m_pImgObjRectImage->arr.raw_ptr(), roi_oct.width * sizeof(uint8_t), roi_oct, (float)m_pConfig->axsunDbRange.min, (float)m_pConfig->axsunDbRange.max);
 #endif
-		circShift(m_pImgObjRectImage->arr, (m_pConfigTemp->rotatedAlines + m_pConfigTemp->intraFrameSync) % m_pConfig->octAlines);
+		circShift(m_pImgObjRectImage->arr, (m_pConfigTemp->rotatedAlines) % m_pConfig->octAlines);  ///  + m_pConfigTemp->intraFrameSync
         (*m_pMedfiltRect)(m_pImgObjRectImage->arr.raw_ptr());
 		
 		// Convert RGB
@@ -1096,7 +1054,7 @@ void QViewTab::visualizeLongiImage(int aline)
     // Specified A line
 	int aline_ = (aline + octAlines / 2) % octAlines; // aline & aline_ paired
 
-	int aline0 = (aline + m_pConfigTemp->rotatedAlines + m_pConfigTemp->intraFrameSync) % octAlines;
+	int aline0 = (aline + m_pConfigTemp->rotatedAlines) % octAlines;  ///  + m_pConfigTemp->intraFrameSync
     int aline1 = (aline0 + octAlines / 2) % octAlines; // aline0 & aline1 paired
 
     // Make longitudinal - OCT
@@ -1402,10 +1360,10 @@ void QViewTab::changeRFPrediction(int mode)
 	{
 		if (m_pResultTab->getSettingDlg()->getViewOptionTab())
 		{
-			if (mode == _INFLAMMATION_)
+			if (mode == _PLAQUE_COMPOSITION_)
+				m_pResultTab->getSettingDlg()->getViewOptionTab()->getRadioButtonPlaqueComposition()->setChecked(true);			
+			else if (mode == _INFLAMMATION_)
 				m_pResultTab->getSettingDlg()->getViewOptionTab()->getRadioButtonInflammation()->setChecked(true);
-			else if (mode == _PLAQUE_COMPOSITION_)
-				m_pResultTab->getSettingDlg()->getViewOptionTab()->getRadioButtonPlaqueComposition()->setChecked(true);
 			m_pResultTab->getSettingDlg()->getViewOptionTab()->changeRFPrediction(mode + 2);
 		}
 	}
@@ -1422,16 +1380,21 @@ void QViewTab::scaleFLImEnFaceMap(ImageObject* pImgObjIntensityMap, ImageObject*
 	IppiSize roi_flimproj = { m_intensityMap.at(0).size(0), m_intensityMap.at(0).size(1) };
 	IppiSize roi_flimproj4 = { roi_flimproj.width, ((roi_flimproj.height + 3) >> 2) << 2 };
 
+	np::FloatArray2 shift_temp(roi_flimproj4.width, roi_flimproj4.height);
 	np::Uint8Array2 scale_temp(roi_flimproj4.width, roi_flimproj4.height);
 
+	bool isVibCorrted = m_pResultTab->getVibCorrectionButton()->isChecked();
+	int delaySync = !isVibCorrted ? m_pConfigTemp->flimDelaySync : 0;
+
 	// Intensity map			
-	ippiScale_32f8u_C1R(m_intensityMap.at(ch), sizeof(float) * roi_flimproj.width,
-		scale_temp.raw_ptr(), sizeof(uint8_t) * roi_flimproj4.width, roi_flimproj,
+	makeDelay(m_intensityMap.at(ch), shift_temp, delaySync);
+	ippiScale_32f8u_C1R(shift_temp, sizeof(float) * roi_flimproj.width,
+		scale_temp, sizeof(uint8_t) * roi_flimproj4.width, roi_flimproj,
 		m_pConfig->flimIntensityRange[ch].min, m_pConfig->flimIntensityRange[ch].max);
 	ippiTranspose_8u_C1R(scale_temp.raw_ptr(), sizeof(uint8_t) * roi_flimproj4.width,
 		pImgObjIntensityMap->arr.raw_ptr(), sizeof(uint8_t) * roi_flimproj4.height, roi_flimproj4);
 	circShift(pImgObjIntensityMap->arr, int(m_pConfigTemp->rotatedAlines / 4));
-	setAxialOffset(pImgObjIntensityMap->arr, m_pConfigTemp->interFrameSync);
+	///setAxialOffset(pImgObjIntensityMap->arr, m_pConfigTemp->interFrameSync);
 	pImgObjIntensityMap->convertRgb();
 	
 	if (vis_mode == VisualizationMode::_FLIM_PARAMETERS_)
@@ -1439,13 +1402,14 @@ void QViewTab::scaleFLImEnFaceMap(ImageObject* pImgObjIntensityMap, ImageObject*
 		if (flim_mode == FLImParameters::_LIFETIME_)
 		{
 			// Lifetime map
-			ippiScale_32f8u_C1R(m_lifetimeMap.at(ch), sizeof(float) * roi_flimproj.width,
-				scale_temp.raw_ptr(), sizeof(uint8_t) * roi_flimproj4.width, roi_flimproj,
+			makeDelay(m_lifetimeMap.at(ch), shift_temp, delaySync);
+			ippiScale_32f8u_C1R(shift_temp, sizeof(float) * roi_flimproj.width,
+				scale_temp, sizeof(uint8_t) * roi_flimproj4.width, roi_flimproj,
 				m_pConfig->flimLifetimeRange[ch].min, m_pConfig->flimLifetimeRange[ch].max);
 			ippiTranspose_8u_C1R(scale_temp.raw_ptr(), sizeof(uint8_t) * roi_flimproj4.width,
 				pImgObjLifetimeMap->arr.raw_ptr(), sizeof(uint8_t) * roi_flimproj4.height, roi_flimproj);
 			circShift(pImgObjLifetimeMap->arr, int(m_pConfigTemp->rotatedAlines / 4));
-			setAxialOffset(pImgObjLifetimeMap->arr, m_pConfigTemp->interFrameSync);
+			///setAxialOffset(pImgObjLifetimeMap->arr, m_pConfigTemp->interFrameSync);
 
 			// RGB conversion			
 			pImgObjLifetimeMap->convertRgb();
@@ -1456,13 +1420,14 @@ void QViewTab::scaleFLImEnFaceMap(ImageObject* pImgObjIntensityMap, ImageObject*
 		else if (flim_mode == FLImParameters::_INTENSITY_PROP_)
 		{
 			// Intensity proportion map
-			ippiScale_32f8u_C1R(m_intensityProportionMap.at(ch), sizeof(float) * roi_flimproj.width,
+			makeDelay(m_intensityProportionMap.at(ch), shift_temp, delaySync);
+			ippiScale_32f8u_C1R(shift_temp, sizeof(float) * roi_flimproj.width,
 				scale_temp.raw_ptr(), sizeof(uint8_t) * roi_flimproj4.width, roi_flimproj,
 				m_pConfig->flimIntensityPropRange[ch].min, m_pConfig->flimIntensityPropRange[ch].max);
 			ippiTranspose_8u_C1R(scale_temp.raw_ptr(), sizeof(uint8_t) * roi_flimproj4.width,
 				pImgObjIntensityPropMap->arr.raw_ptr(), sizeof(uint8_t) * roi_flimproj4.height, roi_flimproj4);
 			circShift(pImgObjIntensityPropMap->arr, int(m_pConfigTemp->rotatedAlines / 4));
-			setAxialOffset(pImgObjIntensityPropMap->arr, m_pConfigTemp->interFrameSync);
+			///setAxialOffset(pImgObjIntensityPropMap->arr, m_pConfigTemp->interFrameSync);
 
 			// RGB conversion
 			pImgObjIntensityPropMap->convertRgb();
@@ -1473,13 +1438,14 @@ void QViewTab::scaleFLImEnFaceMap(ImageObject* pImgObjIntensityMap, ImageObject*
 		else if (flim_mode == FLImParameters::_INTENSITY_RATIO_)
 		{
 			// Intensity ratio map
-			ippiScale_32f8u_C1R(m_intensityRatioMap.at(ch), sizeof(float) * roi_flimproj.width,
+			makeDelay(m_intensityRatioMap.at(ch), shift_temp, delaySync);
+			ippiScale_32f8u_C1R(shift_temp, sizeof(float) * roi_flimproj.width,
 				scale_temp.raw_ptr(), sizeof(uint8_t) * roi_flimproj4.width, roi_flimproj,
 				m_pConfig->flimIntensityRatioRange[ch].min, m_pConfig->flimIntensityRatioRange[ch].max);
 			ippiTranspose_8u_C1R(scale_temp.raw_ptr(), sizeof(uint8_t) * roi_flimproj4.width,
 				pImgObjIntensityRatioMap->arr.raw_ptr(), sizeof(uint8_t) * roi_flimproj4.height, roi_flimproj4);
 			circShift(pImgObjIntensityRatioMap->arr, int(m_pConfigTemp->rotatedAlines / 4));
-			setAxialOffset(pImgObjIntensityRatioMap->arr, m_pConfigTemp->interFrameSync);
+			///setAxialOffset(pImgObjIntensityRatioMap->arr, m_pConfigTemp->interFrameSync);
 
 			// RGB conversion
 			pImgObjIntensityRatioMap->convertRgb();
@@ -1507,7 +1473,7 @@ void QViewTab::scaleFLImEnFaceMap(ImageObject* pImgObjIntensityMap, ImageObject*
 					ippiCopy_8u_C3C1R(pImgObjPlaqueCompositionMap->qrgbimg.bits() + j, sizeof(uint8_t) * 3 * roi_flimproj4.height,
 						temp_arr.raw_ptr(), sizeof(uint8_t) * roi_flimproj4.height, { roi_flimproj4.height, roi_flimproj4.width });
 					circShift(temp_arr, int(m_pConfigTemp->rotatedAlines / 4));
-					setAxialOffset(temp_arr, m_pConfigTemp->interFrameSync);
+					///setAxialOffset(temp_arr, m_pConfigTemp->interFrameSync);
 					ippiCopy_8u_C1C3R(temp_arr.raw_ptr(), sizeof(uint8_t) * roi_flimproj4.height,
 						pImgObjPlaqueCompositionMap->qrgbimg.bits() + j, sizeof(uint8_t) * 3 * roi_flimproj4.height, { roi_flimproj4.height, roi_flimproj4.width });
 				}
@@ -1527,7 +1493,7 @@ void QViewTab::scaleFLImEnFaceMap(ImageObject* pImgObjIntensityMap, ImageObject*
 				ippiTranspose_8u_C1R(scale_temp.raw_ptr(), sizeof(uint8_t) * roi_flimproj4.width,
 					pImgObjInflammationMap->arr.raw_ptr(), sizeof(uint8_t) * roi_flimproj4.height, roi_flimproj);
 				circShift(pImgObjInflammationMap->arr, int(m_pConfigTemp->rotatedAlines / 4));
-				setAxialOffset(pImgObjInflammationMap->arr, m_pConfigTemp->interFrameSync);
+				///setAxialOffset(pImgObjInflammationMap->arr, m_pConfigTemp->interFrameSync);
 
 				// RGB conversion
 				pImgObjInflammationMap->convertRgb();
@@ -1567,6 +1533,32 @@ void QViewTab::setAxialOffset(np::Uint8Array2& image, int offset)
 	}
 }
 
+void QViewTab::makeDelay(np::FloatArray2& input, np::FloatArray2& output, int delay)
+{
+	if (delay != 0)
+	{
+		int delay0 = delay / 4;
+		int delay1 = delay0 + 1;
+		float weight0 = 1.0f - (((float)delay / 4.0f) - delay0);
+		float weight1 = 1.0f - weight0;
+
+		np::FloatArray temp0(output.length()); memset(temp0, 0, sizeof(float) * temp0.length());
+		np::FloatArray temp1(output.length()); memset(temp1, 0, sizeof(float) * temp1.length());
+
+		memcpy(temp0 + delay0, input, sizeof(float) * (input.length() - delay0));
+		memcpy(temp1 + delay1, input, sizeof(float) * (input.length() - delay1));
+
+		ippsMulC_32f_I(weight0, temp0, temp0.length());
+		ippsMulC_32f_I(weight1, temp1, temp1.length());
+
+		ippsAdd_32f(temp0, temp1, output, output.length());
+	}
+	else
+	{
+		memcpy(output, input, sizeof(float) * input.length());
+	}
+}
+
 
 void QViewTab::getCapture(QByteArray & arr)
 {
@@ -1593,6 +1585,22 @@ void QViewTab::vibrationCorrection()
 	vib_corr_path.replace("pullback.data", "vib_corr.idx");
 	
 	QFileInfo check_file(vib_corr_path);
+
+	// Synchronized FLIm map
+	std::vector<np::FloatArray2> syncIntensityMap;
+	std::vector<np::FloatArray2> syncLifetimeMap;
+	for (int i = 0; i < 3; i++)
+	{
+		np::FloatArray2 syncIntensityMap0(m_intensityMap.at(i).size(0), m_intensityMap.at(i).size(1));
+		memset(syncIntensityMap0, 0, sizeof(float) * syncIntensityMap0.length());
+		makeDelay(m_intensityMap.at(i), syncIntensityMap0, m_pConfigTemp->flimDelaySync);
+		syncIntensityMap.push_back(syncIntensityMap0);
+
+		np::FloatArray2 syncLifetimeMap0(m_lifetimeMap.at(i).size(0), m_lifetimeMap.at(i).size(1));
+		memset(syncLifetimeMap0, 0, sizeof(float) * syncLifetimeMap0.length());
+		makeDelay(m_lifetimeMap.at(i), syncLifetimeMap0, m_pConfigTemp->flimDelaySync);
+		syncLifetimeMap.push_back(syncLifetimeMap0);
+	}
 
 	if (!(check_file.exists()))
 	{
@@ -1675,32 +1683,30 @@ void QViewTab::vibrationCorrection()
 			circShift(m_vectorOctImage.at(i + 1), cidx);
 
 			// FLIm correction
-			int i1 = i + 1 - m_pConfigTemp->interFrameSync;
-			if ((i1 > 0) && (i1 < (int)m_vectorOctImage.size()))
+			///int i1 = i + 1 - m_pConfigTemp->interFrameSync;
+			///if ((i1 > 0) && (i1 < (int)m_vectorOctImage.size()))
+			int shift = cidx / 4;
+			float weight = (float)cidx / 4.0f - (float)shift;
+
+			np::FloatArray2 intensity_temp(syncIntensityMap.at(0).size(0), 2);
+			np::FloatArray2 lifetime_temp(syncLifetimeMap.at(0).size(0), 2);
+			for (int ch = 0; ch < 3; ch++)
 			{
-				int shift = cidx / 4;
-				float weight = (float)cidx / 4.0f - (float)shift;
+				memcpy(&intensity_temp(0, 0), &syncIntensityMap.at(ch)(0, i + 1), sizeof(float) * syncIntensityMap.at(ch).size(0));
+				memcpy(&intensity_temp(0, 1), &syncIntensityMap.at(ch)(0, i + 1), sizeof(float) * syncIntensityMap.at(ch).size(0));
+				std::rotate(&intensity_temp(0, 0), &intensity_temp(shift, 0), &intensity_temp(intensity_temp.size(0), 0));
+				std::rotate(&intensity_temp(0, 1), &intensity_temp((shift + 1) % intensity_temp.size(0), 1), &intensity_temp(intensity_temp.size(0), 1));
+				ippsMulC_32f_I(1.0f - weight, &intensity_temp(0, 0), intensity_temp.size(0));
+				ippsMulC_32f_I(weight, &intensity_temp(0, 1), intensity_temp.size(0));
+				ippsAdd_32f(&intensity_temp(0, 1), &intensity_temp(0, 0), &m_intensityMap.at(ch)(0, i + 1), intensity_temp.size(0));
 
-				np::FloatArray2 intensity_temp(m_intensityMap.at(0).size(0), 2);
-				np::FloatArray2 lifetime_temp(m_lifetimeMap.at(0).size(0), 2);
-				for (int ch = 0; ch < 3; ch++)
-				{
-					memcpy(&intensity_temp(0, 0), &m_intensityMap.at(ch)(0, i1), sizeof(float) * m_intensityMap.at(ch).size(0));
-					memcpy(&intensity_temp(0, 1), &m_intensityMap.at(ch)(0, i1), sizeof(float) * m_intensityMap.at(ch).size(0));
-					std::rotate(&intensity_temp(0, 0), &intensity_temp(shift, 0), &intensity_temp(intensity_temp.size(0), 0));
-					std::rotate(&intensity_temp(0, 1), &intensity_temp((shift + 1) % intensity_temp.size(0), 1), &intensity_temp(intensity_temp.size(0), 1));
-					ippsMulC_32f_I(1.0f - weight, &intensity_temp(0, 0), intensity_temp.size(0));
-					ippsMulC_32f_I(weight, &intensity_temp(0, 1), intensity_temp.size(0));
-					ippsAdd_32f(&intensity_temp(0, 1), &intensity_temp(0, 0), &m_intensityMap.at(ch)(0, i1), intensity_temp.size(0));
-
-					memcpy(&lifetime_temp(0, 0), &m_lifetimeMap.at(ch)(0, i1), sizeof(float) * m_lifetimeMap.at(ch).size(0));
-					memcpy(&lifetime_temp(0, 1), &m_lifetimeMap.at(ch)(0, i1), sizeof(float) * m_lifetimeMap.at(ch).size(0));
-					std::rotate(&lifetime_temp(0, 0), &lifetime_temp(shift, 0), &lifetime_temp(lifetime_temp.size(0), 0));
-					std::rotate(&lifetime_temp(0, 1), &lifetime_temp((shift + 1) % lifetime_temp.size(0), 1), &lifetime_temp(lifetime_temp.size(0), 1));
-					ippsMulC_32f_I(1.0f - weight, &lifetime_temp(0, 0), lifetime_temp.size(0));
-					ippsMulC_32f_I(weight, &lifetime_temp(0, 1), lifetime_temp.size(0));
-					ippsAdd_32f(&lifetime_temp(0, 1), &lifetime_temp(0, 0), &m_lifetimeMap.at(ch)(0, i1), lifetime_temp.size(0));
-				}
+				memcpy(&lifetime_temp(0, 0), &syncLifetimeMap.at(ch)(0, i + 1), sizeof(float) * syncLifetimeMap.at(ch).size(0));
+				memcpy(&lifetime_temp(0, 1), &syncLifetimeMap.at(ch)(0, i + 1), sizeof(float) * syncLifetimeMap.at(ch).size(0));
+				std::rotate(&lifetime_temp(0, 0), &lifetime_temp(shift, 0), &lifetime_temp(lifetime_temp.size(0), 0));
+				std::rotate(&lifetime_temp(0, 1), &lifetime_temp((shift + 1) % lifetime_temp.size(0), 1), &lifetime_temp(lifetime_temp.size(0), 1));
+				ippsMulC_32f_I(1.0f - weight, &lifetime_temp(0, 0), lifetime_temp.size(0));
+				ippsMulC_32f_I(weight, &lifetime_temp(0, 1), lifetime_temp.size(0));
+				ippsAdd_32f(&lifetime_temp(0, 1), &lifetime_temp(0, 0), &m_lifetimeMap.at(ch)(0, i + 1), lifetime_temp.size(0));
 			}
 
 			m_vibCorrIdx(i + 1) = cidx;
@@ -1729,32 +1735,28 @@ void QViewTab::vibrationCorrection()
 			circShift(m_vectorOctImage.at(i), m_vibCorrIdx(i));
 
 			// FLIm correction
-			int i1 = i + 1 - m_pConfigTemp->interFrameSync;
-			if ((i1 > 0) && (i1 < (int)m_vectorOctImage.size()))
+			int shift = m_vibCorrIdx(i) / 4;
+			float weight = (float)m_vibCorrIdx(i) / 4.0f - (float)shift;
+
+			np::FloatArray2 intensity_temp(syncIntensityMap.at(0).size(0), 2);
+			np::FloatArray2 lifetime_temp(syncLifetimeMap.at(0).size(0), 2);
+			for (int ch = 0; ch < 3; ch++)
 			{
-				int shift = m_vibCorrIdx(i) / 4;
-				float weight = (float)m_vibCorrIdx(i) / 4.0f - (float)shift;
+				memcpy(&intensity_temp(0, 0), &syncIntensityMap.at(ch)(0, i), sizeof(float) * syncIntensityMap.at(ch).size(0));
+				memcpy(&intensity_temp(0, 1), &syncIntensityMap.at(ch)(0, i), sizeof(float) * syncIntensityMap.at(ch).size(0));
+				std::rotate(&intensity_temp(0, 0), &intensity_temp(shift, 0), &intensity_temp(intensity_temp.size(0), 0));
+				std::rotate(&intensity_temp(0, 1), &intensity_temp((shift + 1) % intensity_temp.size(0), 1), &intensity_temp(intensity_temp.size(0), 1));
+				ippsMulC_32f_I(1.0f - weight, &intensity_temp(0, 0), intensity_temp.size(0));
+				ippsMulC_32f_I(weight, &intensity_temp(0, 1), intensity_temp.size(0));
+				ippsAdd_32f(&intensity_temp(0, 1), &intensity_temp(0, 0), &m_intensityMap.at(ch)(0, i), intensity_temp.size(0));
 
-				np::FloatArray2 intensity_temp(m_intensityMap.at(0).size(0), 2);
-				np::FloatArray2 lifetime_temp(m_lifetimeMap.at(0).size(0), 2);
-				for (int ch = 0; ch < 3; ch++)
-				{
-					memcpy(&intensity_temp(0, 0), &m_intensityMap.at(ch)(0, i1), sizeof(float) * m_intensityMap.at(ch).size(0));
-					memcpy(&intensity_temp(0, 1), &m_intensityMap.at(ch)(0, i1), sizeof(float) * m_intensityMap.at(ch).size(0));
-					std::rotate(&intensity_temp(0, 0), &intensity_temp(shift, 0), &intensity_temp(intensity_temp.size(0), 0));
-					std::rotate(&intensity_temp(0, 1), &intensity_temp((shift + 1) % intensity_temp.size(0), 1), &intensity_temp(intensity_temp.size(0), 1));
-					ippsMulC_32f_I(1.0f - weight, &intensity_temp(0, 0), intensity_temp.size(0));
-					ippsMulC_32f_I(weight, &intensity_temp(0, 1), intensity_temp.size(0));
-					ippsAdd_32f(&intensity_temp(0, 1), &intensity_temp(0, 0), &m_intensityMap.at(ch)(0, i1), intensity_temp.size(0));
-
-					memcpy(&lifetime_temp(0, 0), &m_lifetimeMap.at(ch)(0, i1), sizeof(float) * m_lifetimeMap.at(ch).size(0));
-					memcpy(&lifetime_temp(0, 1), &m_lifetimeMap.at(ch)(0, i1), sizeof(float) * m_lifetimeMap.at(ch).size(0));
-					std::rotate(&lifetime_temp(0, 0), &lifetime_temp(shift, 0), &lifetime_temp(lifetime_temp.size(0), 0));
-					std::rotate(&lifetime_temp(0, 1), &lifetime_temp((shift + 1) % lifetime_temp.size(0), 1), &lifetime_temp(lifetime_temp.size(0), 1));
-					ippsMulC_32f_I(1.0f - weight, &lifetime_temp(0, 0), lifetime_temp.size(0));
-					ippsMulC_32f_I(weight, &lifetime_temp(0, 1), lifetime_temp.size(0));
-					ippsAdd_32f(&lifetime_temp(0, 1), &lifetime_temp(0, 0), &m_lifetimeMap.at(ch)(0, i1), lifetime_temp.size(0));
-				}
+				memcpy(&lifetime_temp(0, 0), &syncLifetimeMap.at(ch)(0, i), sizeof(float) * syncLifetimeMap.at(ch).size(0));
+				memcpy(&lifetime_temp(0, 1), &syncLifetimeMap.at(ch)(0, i), sizeof(float) * syncLifetimeMap.at(ch).size(0));
+				std::rotate(&lifetime_temp(0, 0), &lifetime_temp(shift, 0), &lifetime_temp(lifetime_temp.size(0), 0));
+				std::rotate(&lifetime_temp(0, 1), &lifetime_temp((shift + 1) % lifetime_temp.size(0), 1), &lifetime_temp(lifetime_temp.size(0), 1));
+				ippsMulC_32f_I(1.0f - weight, &lifetime_temp(0, 0), lifetime_temp.size(0));
+				ippsMulC_32f_I(weight, &lifetime_temp(0, 1), lifetime_temp.size(0));
+				ippsAdd_32f(&lifetime_temp(0, 1), &lifetime_temp(0, 0), &m_lifetimeMap.at(ch)(0, i), lifetime_temp.size(0));
 			}
 		}
 	}

@@ -388,6 +388,8 @@ void ExportDlg::saveEnFaceMaps()
 	int flimAlines = m_pViewTab->m_intensityMap.at(0).size(0);
 	int frames = (int)m_pViewTab->m_vectorOctImage.size();
 
+	bool isVibCorrted = m_pResultTab->getVibCorrectionButton()->isChecked();
+
 	if (checkList.bRaw || checkList.bScaled)
 	{
 		// Create directory for saving en face maps /////////////////////////////////////////////////
@@ -408,12 +410,13 @@ void ExportDlg::saveEnFaceMaps()
 					{
 						np::FloatArray2 intensity_map(flimAlines, frames);
 						memset(intensity_map, 0, sizeof(float) * intensity_map.length());
-						if (m_pConfigTemp->interFrameSync >= 0)
-							ippiCopy_32f_C1R(m_pViewTab->m_intensityMap.at(i).raw_ptr(), sizeof(float) * roi_flim.width,
-								&intensity_map(0, m_pConfigTemp->interFrameSync), sizeof(float) * roi_flim.width, { roi_flim.width, roi_flim.height - m_pConfigTemp->interFrameSync });
-						else
-							ippiCopy_32f_C1R(&m_pViewTab->m_intensityMap.at(i)(0, -m_pConfigTemp->interFrameSync), sizeof(float) * roi_flim.width,
-								&intensity_map(0, 0), sizeof(float) * roi_flim.width, { roi_flim.width, roi_flim.height + m_pConfigTemp->interFrameSync });
+						m_pResultTab->getViewTab()->makeDelay(m_pViewTab->m_intensityMap.at(i), intensity_map, !isVibCorrted ? m_pConfigTemp->flimDelaySync : 0);
+						///if (m_pConfigTemp->interFrameSync >= 0)
+						///	ippiCopy_32f_C1R(m_pViewTab->m_intensityMap.at(i).raw_ptr(), sizeof(float) * roi_flim.width,
+						///		&intensity_map(0, m_pConfigTemp->interFrameSync), sizeof(float) * roi_flim.width, { roi_flim.width, roi_flim.height - m_pConfigTemp->interFrameSync });
+						///else
+						///	ippiCopy_32f_C1R(&m_pViewTab->m_intensityMap.at(i)(0, -m_pConfigTemp->interFrameSync), sizeof(float) * roi_flim.width,
+						///		&intensity_map(0, 0), sizeof(float) * roi_flim.width, { roi_flim.width, roi_flim.height + m_pConfigTemp->interFrameSync });
 						
 						if (m_pConfigTemp->rotatedAlines > 0)
 						{
@@ -433,12 +436,13 @@ void ExportDlg::saveEnFaceMaps()
 					{
 						np::FloatArray2 lifetime_map(flimAlines, frames);
 						memset(lifetime_map, 0, sizeof(float) * lifetime_map.length());
-						if (m_pConfigTemp->interFrameSync >= 0)
-							ippiCopy_32f_C1R(m_pViewTab->m_lifetimeMap.at(i).raw_ptr(), sizeof(float) * roi_flim.width,
-								&lifetime_map(0, m_pConfigTemp->interFrameSync), sizeof(float) * roi_flim.width, { roi_flim.width, roi_flim.height - m_pConfigTemp->interFrameSync });
-						else
-							ippiCopy_32f_C1R(&m_pViewTab->m_lifetimeMap.at(i)(0, -m_pConfigTemp->interFrameSync), sizeof(float) * roi_flim.width,
-								&lifetime_map(0, 0), sizeof(float) * roi_flim.width, { roi_flim.width, roi_flim.height + m_pConfigTemp->interFrameSync });
+						m_pResultTab->getViewTab()->makeDelay(m_pViewTab->m_lifetimeMap.at(i), lifetime_map, !isVibCorrted ? m_pConfigTemp->flimDelaySync : 0);
+						///if (m_pConfigTemp->interFrameSync >= 0)
+						///	ippiCopy_32f_C1R(m_pViewTab->m_lifetimeMap.at(i).raw_ptr(), sizeof(float) * roi_flim.width,
+						///		&lifetime_map(0, m_pConfigTemp->interFrameSync), sizeof(float) * roi_flim.width, { roi_flim.width, roi_flim.height - m_pConfigTemp->interFrameSync });
+						///else
+						///	ippiCopy_32f_C1R(&m_pViewTab->m_lifetimeMap.at(i)(0, -m_pConfigTemp->interFrameSync), sizeof(float) * roi_flim.width,
+						///		&lifetime_map(0, 0), sizeof(float) * roi_flim.width, { roi_flim.width, roi_flim.height + m_pConfigTemp->interFrameSync });
 
 						if (m_pConfigTemp->rotatedAlines > 0)
 						{
@@ -455,38 +459,38 @@ void ExportDlg::saveEnFaceMaps()
 				}
 			}
 
-			//for (int i = 0; i < 4; i++)
-			//{
-			//	if ((i == 0) || (checkList.bCh[i - 1]))
-			//	{
-			//		IppiSize roi_flim = { flimAlines, frames };
+			///for (int i = 0; i < 4; i++)
+			///{
+			///	if ((i == 0) || (checkList.bCh[i - 1]))
+			///	{
+			///		IppiSize roi_flim = { flimAlines, frames };
 
-			//		QFile filePulsePower(enFacePath + QString("pulse_power_range[%1 %2]_ch%3.enface").arg(start).arg(end).arg(i));
-			//		if (false != filePulsePower.open(QIODevice::WriteOnly))
-			//		{
-			//			np::FloatArray2 pulsepower_map(flimAlines, frames);
-			//			memset(pulsepower_map, 0, sizeof(float) * pulsepower_map.length());
-			//			if (m_pConfigTemp->interFrameSync >= 0)
-			//				ippiCopy_32f_C1R(m_pViewTab->m_pulsepowerMap.at(i).raw_ptr(), sizeof(float) * roi_flim.width,
-			//					&pulsepower_map(0, m_pConfigTemp->interFrameSync), sizeof(float) * roi_flim.width, { roi_flim.width, roi_flim.height - m_pConfigTemp->interFrameSync });
-			//			else
-			//				ippiCopy_32f_C1R(&m_pViewTab->m_pulsepowerMap.at(i)(0, -m_pConfigTemp->interFrameSync), sizeof(float) * roi_flim.width,
-			//					&pulsepower_map(0, 0), sizeof(float) * roi_flim.width, { roi_flim.width, roi_flim.height + m_pConfigTemp->interFrameSync });
+			///		QFile filePulsePower(enFacePath + QString("pulse_power_range[%1 %2]_ch%3.enface").arg(start).arg(end).arg(i));
+			///		if (false != filePulsePower.open(QIODevice::WriteOnly))
+			///		{
+			///			np::FloatArray2 pulsepower_map(flimAlines, frames);
+			///			memset(pulsepower_map, 0, sizeof(float) * pulsepower_map.length());
+			///			if (m_pConfigTemp->interFrameSync >= 0)
+			///				ippiCopy_32f_C1R(m_pViewTab->m_pulsepowerMap.at(i).raw_ptr(), sizeof(float) * roi_flim.width,
+			///					&pulsepower_map(0, m_pConfigTemp->interFrameSync), sizeof(float) * roi_flim.width, { roi_flim.width, roi_flim.height - m_pConfigTemp->interFrameSync });
+			///			else
+			///				ippiCopy_32f_C1R(&m_pViewTab->m_pulsepowerMap.at(i)(0, -m_pConfigTemp->interFrameSync), sizeof(float) * roi_flim.width,
+			///					&pulsepower_map(0, 0), sizeof(float) * roi_flim.width, { roi_flim.width, roi_flim.height + m_pConfigTemp->interFrameSync });
 
-			//			if (m_pConfigTemp->rotatedAlines > 0)
-			//			{
-			//				for (int i = 0; i < roi_flim.height; i++)
-			//				{
-			//					float* pImg = pulsepower_map.raw_ptr() + i * roi_flim.width;
-			//					std::rotate(pImg, pImg + m_pConfigTemp->rotatedAlines / 4, pImg + roi_flim.width);
-			//				}
-			//			}
+			///			if (m_pConfigTemp->rotatedAlines > 0)
+			///			{
+			///				for (int i = 0; i < roi_flim.height; i++)
+			///				{
+			///					float* pImg = pulsepower_map.raw_ptr() + i * roi_flim.width;
+			///					std::rotate(pImg, pImg + m_pConfigTemp->rotatedAlines / 4, pImg + roi_flim.width);
+			///				}
+			///			}
 
-			//			filePulsePower.write(reinterpret_cast<char*>(&pulsepower_map(0, start - 1)), sizeof(float) * pulsepower_map.size(0) * (end - start + 1));
-			//			filePulsePower.close();
-			//		}
-			//	}
-			//}
+			///			filePulsePower.write(reinterpret_cast<char*>(&pulsepower_map(0, start - 1)), sizeof(float) * pulsepower_map.size(0) * (end - start + 1));
+			///			filePulsePower.close();
+			///		}
+			///	}
+			///}
 
 			if (checkList.bRfPred)
 			{
@@ -499,12 +503,13 @@ void ExportDlg::saveEnFaceMaps()
 					{
 						np::FloatArray2 composition_map(RF_N_CATS * flimAlines, frames);
 						memset(composition_map, 0, sizeof(float) * composition_map.length());
-						if (m_pConfigTemp->interFrameSync >= 0)
-							ippiCopy_32f_C1R(m_pViewTab->m_plaqueCompositionProbMap.raw_ptr(), sizeof(float) * roi_flim.width,
-								&composition_map(0, m_pConfigTemp->interFrameSync), sizeof(float) * roi_flim.width, { roi_flim.width, roi_flim.height - m_pConfigTemp->interFrameSync });
-						else
-							ippiCopy_32f_C1R(&m_pViewTab->m_plaqueCompositionProbMap(0, -m_pConfigTemp->interFrameSync), sizeof(float) * roi_flim.width,
-								&composition_map(0, 0), sizeof(float) * roi_flim.width, { roi_flim.width, roi_flim.height + m_pConfigTemp->interFrameSync });
+						m_pResultTab->getViewTab()->makeDelay(m_pViewTab->m_plaqueCompositionProbMap, composition_map, !isVibCorrted ? RF_N_CATS * m_pConfigTemp->flimDelaySync : 0);
+						///if (m_pConfigTemp->interFrameSync >= 0)
+						///	ippiCopy_32f_C1R(m_pViewTab->m_plaqueCompositionProbMap.raw_ptr(), sizeof(float) * roi_flim.width,
+						///		&composition_map(0, m_pConfigTemp->interFrameSync), sizeof(float) * roi_flim.width, { roi_flim.width, roi_flim.height - m_pConfigTemp->interFrameSync });
+						///else
+						///	ippiCopy_32f_C1R(&m_pViewTab->m_plaqueCompositionProbMap(0, -m_pConfigTemp->interFrameSync), sizeof(float) * roi_flim.width,
+						///		&composition_map(0, 0), sizeof(float) * roi_flim.width, { roi_flim.width, roi_flim.height + m_pConfigTemp->interFrameSync });
 
 						if (m_pConfigTemp->rotatedAlines > 0)
 						{
@@ -554,15 +559,18 @@ void ExportDlg::saveEnFaceMaps()
 			IppiSize roi_flimproj = { flimAlines, frames };
 
 			ImageObject* pImgObjIntensityMap = new ImageObject(frame4, alines, temp_ctable.m_colorTableVector.at(ColorTable::gray));
+			memset(pImgObjIntensityMap->arr, 0, sizeof(uint8_t) * frame4 * alines);
 			for (int i = 0; i < 3; i++)
 			{
 				if (checkList.bCh[i])
 				{
 					// Intensity-weight lifetime map
 					ImageObject* pImgObjLifetimeMap = new ImageObject(frame4, alines, temp_ctable.m_colorTableVector.at(LIFETIME_COLORTABLE));
+					memset(pImgObjLifetimeMap->arr, 0, sizeof(uint8_t) * frame4 * alines);
+
 					m_pViewTab->scaleFLImEnFaceMap(pImgObjIntensityMap, pImgObjLifetimeMap, nullptr, nullptr, nullptr, nullptr, VisualizationMode::_FLIM_PARAMETERS_, i, FLImParameters::_LIFETIME_, 0);
 
-					pImgObjLifetimeMap->qrgbimg.copy(start, 0, end - start + 1, roi_flimproj.width)
+					pImgObjLifetimeMap->qrgbimg.copy(start - 1, 0, end - start + 1, roi_flimproj.width)
 						.save(enFacePath + QString("flim_map_range[%1 %2]_ch%3_i[%4 %5]_t[%6 %7].bmp").arg(start).arg(end).arg(i + 1)
 							.arg(m_pConfig->flimIntensityRange[i].min, 2, 'f', 1).arg(m_pConfig->flimIntensityRange[i].max, 2, 'f', 1)
 							.arg(m_pConfig->flimLifetimeRange[i].min, 2, 'f', 1).arg(m_pConfig->flimLifetimeRange[i].max, 2, 'f', 1), "bmp");
@@ -579,7 +587,7 @@ void ExportDlg::saveEnFaceMaps()
 					ImageObject* pImgObjCompositionMap = new ImageObject(frame4, alines, temp_ctable.m_colorTableVector.at(COMPOSITION_COLORTABLE));
 					m_pViewTab->scaleFLImEnFaceMap(pImgObjIntensityMap, nullptr, nullptr, nullptr, pImgObjCompositionMap, nullptr, VisualizationMode::_RF_PREDICTION_, 0, 0, RFPrediction::_PLAQUE_COMPOSITION_);
 
-					pImgObjCompositionMap->qrgbimg.copy(start, 0, end - start + 1, roi_flimproj.width)
+					pImgObjCompositionMap->qrgbimg.copy(start - 1, 0, end - start + 1, roi_flimproj.width)
 						.save(enFacePath + QString("composition_map_range[%1 %2].bmp").arg(start).arg(end), "bmp");
 
 					delete pImgObjCompositionMap;
@@ -591,7 +599,7 @@ void ExportDlg::saveEnFaceMaps()
 					ImageObject* pImgObjInflammationMap = new ImageObject(frame4, alines, temp_ctable.m_colorTableVector.at(INFLAMMATION_COLORTABLE));
 					m_pViewTab->scaleFLImEnFaceMap(pImgObjIntensityMap, nullptr, nullptr, nullptr, nullptr, pImgObjInflammationMap, VisualizationMode::_RF_PREDICTION_, 0, 0, RFPrediction::_INFLAMMATION_);
 
-					pImgObjInflammationMap->qrgbimg.copy(start, 0, end - start + 1, roi_flimproj.width)
+					pImgObjInflammationMap->qrgbimg.copy(start - 1, 0, end - start + 1, roi_flimproj.width)
 						.save(enFacePath + QString("inflammation_map_range[%1 %2]_i[%3 %4].bmp").arg(start).arg(end)
 							.arg(m_pConfig->rfInflammationRange.min, 2, 'f', 1).arg(m_pConfig->rfInflammationRange.max, 2, 'f', 1), "bmp");
 
@@ -835,7 +843,7 @@ void ExportDlg::scaling(std::vector<np::FloatArray2>& vectorOctImage, std::vecto
 			ippiScale_32f8u_C1R(vectorOctImage.at(frameCount).raw_ptr(), roi_oct.width * sizeof(float),
 				pImgObjVec->at(0)->arr.raw_ptr(), roi_oct.width * sizeof(uint8_t), roi_oct, (float)m_pConfig->axsunDbRange.min, (float)m_pConfig->axsunDbRange.max);
 #endif
-			m_pViewTab->circShift(pImgObjVec->at(0)->arr, (m_pConfigTemp->rotatedAlines + m_pConfigTemp->intraFrameSync) % m_pConfigTemp->octAlines);
+			m_pViewTab->circShift(pImgObjVec->at(0)->arr, (m_pConfigTemp->rotatedAlines) % m_pConfigTemp->octAlines);  ///  + m_pConfigTemp->intraFrameSync
 			(*m_pViewTab->getMedfiltRect())(pImgObjVec->at(0)->arr.raw_ptr());
 
 			// FLIM Visualization		

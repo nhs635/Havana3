@@ -56,6 +56,9 @@ public:
 	inline QRadioButton* getRadioButtonIntensityRatio() const { return m_pRadioButton_IntensityRatio; }
 	inline QRadioButton* getRadioButtonInflammation() const { return m_pRadioButton_Inflammation; }
 	inline QRadioButton* getRadioButtonPlaqueComposition() const { return m_pRadioButton_PlaqueComposition; }
+
+	inline QLabel* getLabelFlimDelaySync() const { return m_pLabel_FlimDelaySync; }
+	inline QScrollBar* getScrollBarFlimDelaySync() const { return m_pScrollBar_FlimDelaySync; }
 	
 	inline int getCurrentRotation() const { return m_pScrollBar_Rotation->value(); }
 	
@@ -82,6 +85,7 @@ private slots:
 
 	void setIntraFrameSync(int);
 	void setInterFrameSync(int);
+	void setFlimDelaySync(int);
 
 // Variables ////////////////////////////////////////////
 private:
@@ -160,6 +164,8 @@ private:
 	QScrollBar *m_pScrollBar_IntraFrameSync;
 	QLabel *m_pLabel_InterFrameSync;
 	QScrollBar *m_pScrollBar_InterFrameSync;
+	QLabel *m_pLabel_FlimDelaySync;
+	QScrollBar *m_pScrollBar_FlimDelaySync;
 };
 
 #endif // VIEWOPTIONTAB_H

@@ -144,7 +144,7 @@ public:
 				offset = pParams.ch_start_ind[i] - pParams.ch_start_ind[0];
 				ippsSum_32f(&sat_src(offset, j), roi_len, &saturated(j, i), ippAlgHintFast);
 
-				Ipp32f pulse_max;				
+				Ipp32f pulse_max;			
 				ippsMax_32f(&crop_src(offset, j), roi_len, &pulse_max);
 				pulse_power(j, i) = pulse_max;
 			}
@@ -161,25 +161,25 @@ public:
 				float bg1 = 0, bg2 = 0;
 				float max_val; int max_ind; 
 
-				// 3. Jitter compensation
-				//int cpos = 10, rpos = 10;
-				//int irf_wlen = pParams.ch_start_ind[1] - pParams.ch_start_ind[0];
-				//ippsMaxIndx_32f(&crop_src(0, (int)i), irf_wlen, &max_val, &cpos);
-
-				//int offset = cpos - rpos;
-				//if (offset < 0) offset += crop_src.size(0);
-				//std::rotate(&crop_src(0, (int)i), &crop_src(offset, (int)i), &crop_src(crop_src.size(0) - 1, (int)i));
-
 				// 4. BG subtraction (region-wise fine-tuning)
 				if (start_ind[0])
 				{
 					ippsMean_32f(&crop_src(start_ind[0], (int)i), end_ind[0] - start_ind[0] + 1, &bg1, ippAlgHintFast); // IRF bg
 					ippsMean_32f(&crop_src(crop_src.size(0) - 10, (int)i), 6, &bg2, ippAlgHintFast); // emission bg
-				}
+				}				
 				ippsSubC_32f(&crop_src(0, (int)i), bg1, &bgsb_src(0, (int)i), end_ind[0]);
 				ippsSubC_32f(&crop_src(end_ind[0], (int)i), bg2, &bgsb_src(end_ind[0], (int)i), bgsb_src.size(0) - end_ind[0]);
 
-				// 4. Remove artifact manually (smart artifact removal method)
+				// 5. Jitter compensation
+				int cpos, rpos = 9;
+				int irf_wlen = pParams.ch_start_ind[1] - pParams.ch_start_ind[0];
+				ippsMaxIndx_32f(&bgsb_src(0, (int)i), irf_wlen, &max_val, &cpos);
+
+				int offset = cpos - rpos;
+				if (offset < 0) offset += bgsb_src.size(0);
+				std::rotate(&bgsb_src(0, (int)i), &bgsb_src(offset, (int)i), &bgsb_src(bgsb_src.size(0) - 1, (int)i));
+
+				// 6. Remove artifact manually (smart artifact removal method)
 				memcpy(&mask_src(0, (int)i), &bgsb_src(0, (int)i), sizeof(float) * bgsb_src.size(0));
                 for (int ch = 0; ch < 4; ch++)
                 {

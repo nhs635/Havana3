@@ -491,8 +491,13 @@ void PulseReviewTab::showMeanDelay(bool checked)
 
 void PulseReviewTab::drawPulse(int aline)
 {
+	bool isVibCorrted = m_pResultTab->getVibCorrectionButton()->isChecked();
+	int delay = !isVibCorrted ? m_pConfigTemp->flimDelaySync : 0;
+	int delay_frame = delay / m_pConfigTemp->octAlines;
+	int delay_aline = (delay % m_pConfigTemp->octAlines) / 4;
+	
 	int frame0 = m_pViewTab->getCurrentFrame();
-	int frame = frame0 - m_pConfigTemp->interFrameSync;
+	int frame = frame0 - delay_frame;
 	frame = (frame < 0) ? 0 : frame;
 	frame = (frame >= m_pConfigTemp->frames) ? m_pConfigTemp->frames - 1 : frame;
 
@@ -500,7 +505,9 @@ void PulseReviewTab::drawPulse(int aline)
 	while (aline0 >= m_pConfig->flimAlines)
 		aline0 -= m_pConfig->flimAlines;
 
-	int aline1 = aline + (m_pViewTab->m_vibCorrIdx(frame0) / 4);
+	int aline1 = aline + (m_pViewTab->m_vibCorrIdx(frame0) / 4) - delay_aline;
+	while (aline1 < 0)
+		aline1 += m_pConfig->flimAlines;
 	while (aline1 >= m_pConfig->flimAlines)
 		aline1 -= m_pConfig->flimAlines;
 
@@ -595,7 +602,7 @@ void PulseReviewTab::drawPulse(int aline)
 		int start4 = m_pViewTab->getCircImageView()->getRender()->m_RLines[0] / 4;
 		int end4 = aline;
 		bool cw = m_pViewTab->getCircImageView()->getRender()->m_bCW;
-
+		
 		for (int i = 0; i < 3; i++)
 		{
 			float mi, ml, mp, mr;
@@ -603,29 +610,29 @@ void PulseReviewTab::drawPulse(int aline)
 			{
 				if (start4 < end4)
 				{
-					ippsMean_32f(&intensity.at(i)(start4, frame), end4 - start4, &mi, ippAlgHintFast);
-					ippsMean_32f(&lifetime.at(i)(start4, frame), end4 - start4, &ml, ippAlgHintFast);
-					ippsMean_32f(&int_prop.at(i)(start4, frame), end4 - start4, &mp, ippAlgHintFast);
-					ippsMean_32f(&int_ratio.at(i)(start4, frame), end4 - start4, &mr, ippAlgHintFast);
+					ippsMean_32f(&intensity.at(i)(start4, frame), end4 - start4 + 1, &mi, ippAlgHintAccurate);
+					ippsMean_32f(&lifetime.at(i)(start4, frame), end4 - start4 + 1, &ml, ippAlgHintAccurate);
+					ippsMean_32f(&int_prop.at(i)(start4, frame), end4 - start4 + 1, &mp, ippAlgHintAccurate);
+					ippsMean_32f(&int_ratio.at(i)(start4, frame), end4 - start4 + 1, &mr, ippAlgHintAccurate);
 				}
 				else
 				{
 					float temp1, temp2;
-					ippsSum_32f(&intensity.at(i)(start4, frame), m_pConfigTemp->flimAlines - start4, &temp1, ippAlgHintFast);
-					ippsSum_32f(&intensity.at(i)(0, frame), end4, &temp2, ippAlgHintFast);
+					ippsSum_32f(&intensity.at(i)(start4, frame), m_pConfigTemp->flimAlines - start4, &temp1, ippAlgHintAccurate);
+					ippsSum_32f(&intensity.at(i)(0, frame), end4, &temp2, ippAlgHintAccurate);
 					mi = (temp1 + temp2) / (m_pConfigTemp->flimAlines - start4 + end4);
 
-					ippsSum_32f(&lifetime.at(i)(start4, frame), m_pConfigTemp->flimAlines - start4, &temp1, ippAlgHintFast);
-					ippsSum_32f(&lifetime.at(i)(0, frame), end4, &temp2, ippAlgHintFast);
+					ippsSum_32f(&lifetime.at(i)(start4, frame), m_pConfigTemp->flimAlines - start4, &temp1, ippAlgHintAccurate);
+					ippsSum_32f(&lifetime.at(i)(0, frame), end4, &temp2, ippAlgHintAccurate);
 					ml = (temp1 + temp2) / (m_pConfigTemp->flimAlines - start4 + end4);
 
 
-					ippsSum_32f(&int_prop.at(i)(start4, frame), m_pConfigTemp->flimAlines - start4, &temp1, ippAlgHintFast);
-					ippsSum_32f(&int_prop.at(i)(0, frame), end4, &temp2, ippAlgHintFast);
+					ippsSum_32f(&int_prop.at(i)(start4, frame), m_pConfigTemp->flimAlines - start4, &temp1, ippAlgHintAccurate);
+					ippsSum_32f(&int_prop.at(i)(0, frame), end4, &temp2, ippAlgHintAccurate);
 					mp = (temp1 + temp2) / (m_pConfigTemp->flimAlines - start4 + end4);
 
-					ippsSum_32f(&int_ratio.at(i)(start4, frame), m_pConfigTemp->flimAlines - start4, &temp1, ippAlgHintFast);
-					ippsSum_32f(&int_ratio.at(i)(0, frame), end4, &temp2, ippAlgHintFast);
+					ippsSum_32f(&int_ratio.at(i)(start4, frame), m_pConfigTemp->flimAlines - start4, &temp1, ippAlgHintAccurate);
+					ippsSum_32f(&int_ratio.at(i)(0, frame), end4, &temp2, ippAlgHintAccurate);
 					mr = (temp1 + temp2) / (m_pConfigTemp->flimAlines - start4 + end4);
 				}
 			}
@@ -633,28 +640,28 @@ void PulseReviewTab::drawPulse(int aline)
 			{
 				if (start4 > end4)
 				{
-					ippsMean_32f(&intensity.at(i)(end4, frame), start4 - end4, &mi, ippAlgHintFast);
-					ippsMean_32f(&lifetime.at(i)(end4, frame), start4 - end4, &ml, ippAlgHintFast);
-					ippsMean_32f(&int_prop.at(i)(end4, frame), start4 - end4, &mp, ippAlgHintFast);
-					ippsMean_32f(&int_ratio.at(i)(end4, frame), start4 - end4, &mr, ippAlgHintFast);
+					ippsMean_32f(&intensity.at(i)(end4, frame), start4 - end4 + 1, &mi, ippAlgHintAccurate);
+					ippsMean_32f(&lifetime.at(i)(end4, frame), start4 - end4 + 1, &ml, ippAlgHintAccurate);
+					ippsMean_32f(&int_prop.at(i)(end4, frame), start4 - end4 + 1, &mp, ippAlgHintAccurate);
+					ippsMean_32f(&int_ratio.at(i)(end4, frame), start4 - end4 + 1, &mr, ippAlgHintAccurate);
 				}
 				else
 				{
 					float temp1, temp2;
-					ippsSum_32f(&intensity.at(i)(0, frame), start4, &temp1, ippAlgHintFast);
-					ippsSum_32f(&intensity.at(i)(end4, frame), m_pConfigTemp->flimAlines - end4, &temp2, ippAlgHintFast);
+					ippsSum_32f(&intensity.at(i)(0, frame), start4, &temp1, ippAlgHintAccurate);
+					ippsSum_32f(&intensity.at(i)(end4, frame), m_pConfigTemp->flimAlines - end4, &temp2, ippAlgHintAccurate);
 					mi = (temp1 + temp2) / (m_pConfigTemp->flimAlines - end4 + start4);
 
-					ippsSum_32f(&lifetime.at(i)(0, frame), start4, &temp1, ippAlgHintFast);
-					ippsSum_32f(&lifetime.at(i)(end4, frame), m_pConfigTemp->flimAlines - end4, &temp2, ippAlgHintFast);
+					ippsSum_32f(&lifetime.at(i)(0, frame), start4, &temp1, ippAlgHintAccurate);
+					ippsSum_32f(&lifetime.at(i)(end4, frame), m_pConfigTemp->flimAlines - end4, &temp2, ippAlgHintAccurate);
 					ml = (temp1 + temp2) / (m_pConfigTemp->flimAlines - end4 + start4);
 
-					ippsSum_32f(&int_prop.at(i)(0, frame), start4, &temp1, ippAlgHintFast);
-					ippsSum_32f(&int_prop.at(i)(end4, frame), m_pConfigTemp->flimAlines - end4, &temp2, ippAlgHintFast);
+					ippsSum_32f(&int_prop.at(i)(0, frame), start4, &temp1, ippAlgHintAccurate);
+					ippsSum_32f(&int_prop.at(i)(end4, frame), m_pConfigTemp->flimAlines - end4, &temp2, ippAlgHintAccurate);
 					mp = (temp1 + temp2) / (m_pConfigTemp->flimAlines - end4 + start4);
 
-					ippsSum_32f(&int_ratio.at(i)(0, frame), start4, &temp1, ippAlgHintFast);
-					ippsSum_32f(&int_ratio.at(i)(end4, frame), m_pConfigTemp->flimAlines - end4, &temp2, ippAlgHintFast);
+					ippsSum_32f(&int_ratio.at(i)(0, frame), start4, &temp1, ippAlgHintAccurate);
+					ippsSum_32f(&int_ratio.at(i)(end4, frame), m_pConfigTemp->flimAlines - end4, &temp2, ippAlgHintAccurate);
 					mr = (temp1 + temp2) / (m_pConfigTemp->flimAlines - end4 + start4);
 				}
 			}
@@ -969,16 +976,24 @@ void PulseReviewTab::selectRow(int row, int, int row0, int)
 	m_pPushButton_Cancel->setEnabled(true);
 
 	// Get roi data & draw
-	int frame = m_pTableWidget_RoiList->item(row, 1)->data(Qt::EditRole).toInt() - 1;
+	bool isVibCorrted = m_pResultTab->getVibCorrectionButton()->isChecked();
+	int delay = !isVibCorrted ? m_pConfigTemp->flimDelaySync : 0;
+	int delay_frame = delay / m_pConfigTemp->octAlines;
+	int delay_aline = (delay % m_pConfigTemp->octAlines) / 4;
+
+	int frame0 = m_pTableWidget_RoiList->item(row, 1)->data(Qt::EditRole).toInt() - 1;
+	int frame = frame0 - delay_frame;
+	frame = (frame < 0) ? 0 : frame;
+	frame = (frame >= m_pConfigTemp->frames) ? m_pConfigTemp->frames - 1 : frame;
+
 	int start = m_pTableWidget_RoiList->item(row, 2)->data(Qt::EditRole).toInt();
 	int end = m_pTableWidget_RoiList->item(row, 3)->data(Qt::EditRole).toInt();
 	bool cw = m_pTableWidget_RoiList->item(row, 3)->toolTip() == "CW";
 	int type = m_pTableWidget_RoiList->item(row, 4)->toolTip().toInt();
 
 	m_bFromTable = true;
-	m_pResultTab->getViewTab()->setCurrentFrame(frame);
+	m_pResultTab->getViewTab()->setCurrentFrame(frame0);
 	m_bFromTable = false;
-	drawPulse(end / 4);
 
 	pCircView->getRender()->m_bArcRoiShow = true;
 	pCircView->getRender()->m_RLines[0] = start;
@@ -987,6 +1002,8 @@ void PulseReviewTab::selectRow(int row, int, int row0, int)
 	pCircView->getRender()->m_bCW = cw;
 	pCircView->getRender()->m_nClicked = 2;
 	pCircView->getRender()->update();
+	
+	drawPulse(end / 4);
 
 	// Update current data 
 	auto intensity = m_pViewTab->m_intensityMap;
@@ -1005,28 +1022,28 @@ void PulseReviewTab::selectRow(int row, int, int row0, int)
 		{
 			if (start4 < end4)
 			{
-				ippsMean_32f(&intensity.at(i)(start4, frame), end4 - start4, &mi, ippAlgHintFast);
-				ippsMean_32f(&lifetime.at(i)(start4, frame), end4 - start4, &ml, ippAlgHintFast);
-				ippsMean_32f(&int_prop.at(i)(start4, frame), end4 - start4, &mp, ippAlgHintFast);
-				ippsMean_32f(&int_ratio.at(i)(start4, frame), end4 - start4, &mr, ippAlgHintFast);
+				ippsMean_32f(&intensity.at(i)(start4, frame), end4 - start4 + 1, &mi, ippAlgHintAccurate);
+				ippsMean_32f(&lifetime.at(i)(start4, frame), end4 - start4 + 1, &ml, ippAlgHintAccurate);
+				ippsMean_32f(&int_prop.at(i)(start4, frame), end4 - start4 + 1, &mp, ippAlgHintAccurate);
+				ippsMean_32f(&int_ratio.at(i)(start4, frame), end4 - start4 + 1, &mr, ippAlgHintAccurate);
 			}
 			else
 			{
 				float temp1, temp2;
-				ippsSum_32f(&intensity.at(i)(start4, frame), m_pConfigTemp->flimAlines - start4, &temp1, ippAlgHintFast);
-				ippsSum_32f(&intensity.at(i)(0, frame), end4, &temp2, ippAlgHintFast);
+				ippsSum_32f(&intensity.at(i)(start4, frame), m_pConfigTemp->flimAlines - start4, &temp1, ippAlgHintAccurate);
+				ippsSum_32f(&intensity.at(i)(0, frame), end4, &temp2, ippAlgHintAccurate);
 				mi = (temp1 + temp2) / (m_pConfigTemp->flimAlines - start4 + end4);
 
-				ippsSum_32f(&lifetime.at(i)(start4, frame), m_pConfigTemp->flimAlines - start4, &temp1, ippAlgHintFast);
-				ippsSum_32f(&lifetime.at(i)(0, frame), end4, &temp2, ippAlgHintFast);
+				ippsSum_32f(&lifetime.at(i)(start4, frame), m_pConfigTemp->flimAlines - start4, &temp1, ippAlgHintAccurate);
+				ippsSum_32f(&lifetime.at(i)(0, frame), end4, &temp2, ippAlgHintAccurate);
 				ml = (temp1 + temp2) / (m_pConfigTemp->flimAlines - start4 + end4);
 
-				ippsSum_32f(&int_prop.at(i)(start4, frame), m_pConfigTemp->flimAlines - start4, &temp1, ippAlgHintFast);
-				ippsSum_32f(&int_prop.at(i)(0, frame), end4, &temp2, ippAlgHintFast);
+				ippsSum_32f(&int_prop.at(i)(start4, frame), m_pConfigTemp->flimAlines - start4, &temp1, ippAlgHintAccurate);
+				ippsSum_32f(&int_prop.at(i)(0, frame), end4, &temp2, ippAlgHintAccurate);
 				mp = (temp1 + temp2) / (m_pConfigTemp->flimAlines - start4 + end4);
 
-				ippsSum_32f(&int_ratio.at(i)(start4, frame), m_pConfigTemp->flimAlines - start4, &temp1, ippAlgHintFast);
-				ippsSum_32f(&int_ratio.at(i)(0, frame), end4, &temp2, ippAlgHintFast);
+				ippsSum_32f(&int_ratio.at(i)(start4, frame), m_pConfigTemp->flimAlines - start4, &temp1, ippAlgHintAccurate);
+				ippsSum_32f(&int_ratio.at(i)(0, frame), end4, &temp2, ippAlgHintAccurate);
 				mr = (temp1 + temp2) / (m_pConfigTemp->flimAlines - start4 + end4);
 			}
 		}
@@ -1034,28 +1051,28 @@ void PulseReviewTab::selectRow(int row, int, int row0, int)
 		{
 			if (start4 > end4)
 			{
-				ippsMean_32f(&intensity.at(i)(end4, frame), start4 - end4, &mi, ippAlgHintFast);
-				ippsMean_32f(&lifetime.at(i)(end4, frame), start4 - end4, &ml, ippAlgHintFast);
-				ippsMean_32f(&int_prop.at(i)(end4, frame), start4 - end4, &mp, ippAlgHintFast);
-				ippsMean_32f(&int_ratio.at(i)(end4, frame), start4 - end4, &mr, ippAlgHintFast);
+				ippsMean_32f(&intensity.at(i)(end4, frame), start4 - end4 + 1, &mi, ippAlgHintAccurate);
+				ippsMean_32f(&lifetime.at(i)(end4, frame), start4 - end4 + 1, &ml, ippAlgHintAccurate);
+				ippsMean_32f(&int_prop.at(i)(end4, frame), start4 - end4 + 1, &mp, ippAlgHintAccurate);
+				ippsMean_32f(&int_ratio.at(i)(end4, frame), start4 - end4 + 1, &mr, ippAlgHintAccurate);
 			}
 			else
 			{
 				float temp1, temp2;
-				ippsSum_32f(&intensity.at(i)(0, frame), start4, &temp1, ippAlgHintFast);
-				ippsSum_32f(&intensity.at(i)(end4, frame), m_pConfigTemp->flimAlines - end4, &temp2, ippAlgHintFast);
+				ippsSum_32f(&intensity.at(i)(0, frame), start4, &temp1, ippAlgHintAccurate);
+				ippsSum_32f(&intensity.at(i)(end4, frame), m_pConfigTemp->flimAlines - end4, &temp2, ippAlgHintAccurate);
 				mi = (temp1 + temp2) / (m_pConfigTemp->flimAlines - end4 + start4);
 
-				ippsSum_32f(&lifetime.at(i)(0, frame), start4, &temp1, ippAlgHintFast);
-				ippsSum_32f(&lifetime.at(i)(end4, frame), m_pConfigTemp->flimAlines - end4, &temp2, ippAlgHintFast);
+				ippsSum_32f(&lifetime.at(i)(0, frame), start4, &temp1, ippAlgHintAccurate);
+				ippsSum_32f(&lifetime.at(i)(end4, frame), m_pConfigTemp->flimAlines - end4, &temp2, ippAlgHintAccurate);
 				ml = (temp1 + temp2) / (m_pConfigTemp->flimAlines - end4 + start4);
 
-				ippsSum_32f(&int_prop.at(i)(0, frame), start4, &temp1, ippAlgHintFast);
-				ippsSum_32f(&int_prop.at(i)(end4, frame), m_pConfigTemp->flimAlines - end4, &temp2, ippAlgHintFast);
+				ippsSum_32f(&int_prop.at(i)(0, frame), start4, &temp1, ippAlgHintAccurate);
+				ippsSum_32f(&int_prop.at(i)(end4, frame), m_pConfigTemp->flimAlines - end4, &temp2, ippAlgHintAccurate);
 				mp = (temp1 + temp2) / (m_pConfigTemp->flimAlines - end4 + start4);
 
-				ippsSum_32f(&int_ratio.at(i)(0, frame), start4, &temp1, ippAlgHintFast);
-				ippsSum_32f(&int_ratio.at(i)(end4, frame), m_pConfigTemp->flimAlines - end4, &temp2, ippAlgHintFast);
+				ippsSum_32f(&int_ratio.at(i)(0, frame), start4, &temp1, ippAlgHintAccurate);
+				ippsSum_32f(&int_ratio.at(i)(end4, frame), m_pConfigTemp->flimAlines - end4, &temp2, ippAlgHintAccurate);
 				mr = (temp1 + temp2) / (m_pConfigTemp->flimAlines - end4 + start4);
 			}
 		}

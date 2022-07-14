@@ -102,6 +102,7 @@ public:
 		int vis_mode, int ch, int flim_mode, int rf_mode);
 	void circShift(np::Uint8Array2& image, int shift);
 	void setAxialOffset(np::Uint8Array2& image, int offset);
+	void makeDelay(np::FloatArray2& input, np::FloatArray2& output, int delay);
 	void vibrationCorrection();
 	void pickFrame(std::vector<QStringList>& _vector, int oct_frame, int ivus_frame = 0, int rotation = 0, bool allow_delete = false);
 	void loadPickFrames(std::vector<QStringList>& _vector);

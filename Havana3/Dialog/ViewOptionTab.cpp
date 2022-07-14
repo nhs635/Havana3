@@ -537,10 +537,12 @@ void ViewOptionTab::createSyncVisualizationOptionTab()
 		m_pScrollBar_IntraFrameSync->setPageStep(m_pScrollBar_Rotation->maximum() / 10);
 		m_pScrollBar_IntraFrameSync->setFocusPolicy(Qt::StrongFocus);
 		m_pScrollBar_IntraFrameSync->setFixedSize(200, 18);
+		m_pScrollBar_IntraFrameSync->setDisabled(true);
 
 		QString str; str.sprintf("Intra Sync %4d / %4d ", m_pConfigTemp->intraFrameSync, m_pConfig->octAlines - 1);
 		m_pLabel_IntraFrameSync = new QLabel(str, this);
-		m_pLabel_IntraFrameSync->setBuddy(m_pScrollBar_Rotation);
+		m_pLabel_IntraFrameSync->setBuddy(m_pScrollBar_IntraFrameSync);
+		m_pLabel_IntraFrameSync->setDisabled(true);
 
 		m_pScrollBar_InterFrameSync = new QScrollBar(this);
 		m_pScrollBar_InterFrameSync->setOrientation(Qt::Horizontal);
@@ -550,10 +552,29 @@ void ViewOptionTab::createSyncVisualizationOptionTab()
 		m_pScrollBar_InterFrameSync->setPageStep(1); // m_pScrollBar_Rotation->maximum() / 10);
 		m_pScrollBar_InterFrameSync->setFocusPolicy(Qt::StrongFocus);
 		m_pScrollBar_InterFrameSync->setFixedSize(200, 18);
+		m_pScrollBar_InterFrameSync->setDisabled(true);
 
 		str.sprintf("Inter Sync %4d /|%3d| ", m_pConfigTemp->interFrameSync, m_pConfigTemp->frames - 1);
 		m_pLabel_InterFrameSync = new QLabel(str, this);
-		m_pLabel_InterFrameSync->setBuddy(m_pScrollBar_Rotation);
+		m_pLabel_InterFrameSync->setBuddy(m_pScrollBar_InterFrameSync);
+		m_pLabel_InterFrameSync->setDisabled(true);
+
+		bool isVibCorrted = m_pResultTab->getVibCorrectionButton()->isChecked();
+
+		m_pScrollBar_FlimDelaySync = new QScrollBar(this);
+		m_pScrollBar_FlimDelaySync->setOrientation(Qt::Horizontal);
+		m_pScrollBar_FlimDelaySync->setRange(0, 3 * m_pConfig->octAlines - 1);
+		m_pScrollBar_FlimDelaySync->setValue(m_pConfigTemp->flimDelaySync);
+		m_pScrollBar_FlimDelaySync->setSingleStep(1);
+		m_pScrollBar_FlimDelaySync->setPageStep(10);
+		m_pScrollBar_FlimDelaySync->setFocusPolicy(Qt::StrongFocus);
+		m_pScrollBar_FlimDelaySync->setFixedSize(200, 18);
+		m_pScrollBar_FlimDelaySync->setDisabled(isVibCorrted);
+
+		str.sprintf("FLIm Sync %4d / %4d ", m_pConfigTemp->flimDelaySync, 3 * m_pConfig->octAlines - 1);
+		m_pLabel_FlimDelaySync = new QLabel(str, this);
+		m_pLabel_FlimDelaySync->setBuddy(m_pScrollBar_FlimDelaySync);
+		m_pLabel_FlimDelaySync->setDisabled(isVibCorrted);
 	}
 
 
@@ -569,6 +590,9 @@ void ViewOptionTab::createSyncVisualizationOptionTab()
 		pGridLayout_FrameSync->addWidget(m_pLabel_InterFrameSync, 1, 0);
 		pGridLayout_FrameSync->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed), 1, 1);
 		pGridLayout_FrameSync->addWidget(m_pScrollBar_InterFrameSync, 1, 2);
+		pGridLayout_FrameSync->addWidget(m_pLabel_FlimDelaySync, 2, 0);
+		pGridLayout_FrameSync->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed), 2, 1);
+		pGridLayout_FrameSync->addWidget(m_pScrollBar_FlimDelaySync, 2, 2);
 		
 		pGroupBox_SyncVisualization->setLayout(pGridLayout_FrameSync);
 		m_pVBoxLayout_ViewOption->addWidget(pGroupBox_SyncVisualization);
@@ -576,6 +600,7 @@ void ViewOptionTab::createSyncVisualizationOptionTab()
 		// Connect signal and slot
 		connect(m_pScrollBar_IntraFrameSync, SIGNAL(valueChanged(int)), this, SLOT(setIntraFrameSync(int)));
 		connect(m_pScrollBar_InterFrameSync, SIGNAL(valueChanged(int)), this, SLOT(setInterFrameSync(int)));
+		connect(m_pScrollBar_FlimDelaySync, SIGNAL(valueChanged(int)), this, SLOT(setFlimDelaySync(int)));
 	}
 }
 
@@ -1018,4 +1043,17 @@ void ViewOptionTab::setInterFrameSync(int sync)
 	if (m_pViewTab) m_pViewTab->invalidate();
 
 	m_pConfig->writeToLog(QString("Inter frame sync set: %1").arg(sync));
+}
+
+void ViewOptionTab::setFlimDelaySync(int sync)
+{
+	// Only result tab function
+	m_pConfigTemp->flimDelaySync = sync;
+
+	QString str; str.sprintf("FLIm Sync %4d / %4d ", m_pConfigTemp->flimDelaySync, m_pScrollBar_FlimDelaySync->maximum());
+	m_pLabel_FlimDelaySync->setText(str);
+
+	if (m_pViewTab) m_pViewTab->invalidate();
+
+	m_pConfig->writeToLog(QString("FLIm delay sync set: %1").arg(sync));
 }

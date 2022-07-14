@@ -421,6 +421,7 @@ void MemoryBuffer::write()
 
 	m_pConfig->interFrameSync = INTER_FRAME_SYNC;
 	m_pConfig->intraFrameSync = INTRA_FRAME_SYNC;
+	m_pConfig->flimDelaySync = FLIM_DELAY_SYNC;
 
 	m_pConfig->setConfigFile("Havana3.ini");
 	if (false == QFile::copy("Havana3.ini", fileTitle + ".ini"))

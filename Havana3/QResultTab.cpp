@@ -9,6 +9,7 @@
 #include <Havana3/QViewTab.h>
 
 #include <Havana3/Dialog/SettingDlg.h>
+#include <Havana3/Dialog/ViewOptionTab.h>
 #include <Havana3/Dialog/PulseReviewTab.h>
 #include <Havana3/Dialog/ExportDlg.h>
 #include <Havana3/Dialog/IvusViewerDlg.h>
@@ -486,8 +487,15 @@ void QResultTab::enableVibrationCorrection(bool enabled)
 		getViewTab()->invalidate();
 
 		if (m_pSettingDlg)
+		{
 			if (m_pSettingDlg->getPulseReviewTab())
 				m_pSettingDlg->getPulseReviewTab()->loadRois();
+			if (m_pSettingDlg->getViewOptionTab())
+			{
+				m_pSettingDlg->getViewOptionTab()->getLabelFlimDelaySync()->setDisabled(true);
+				m_pSettingDlg->getViewOptionTab()->getLabelFlimDelaySync()->setDisabled(true);
+			}
+		}
 
 		m_pToggleButton_Vibration->setDisabled(true);
 

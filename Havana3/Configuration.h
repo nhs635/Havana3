@@ -88,6 +88,7 @@
 
 #define INTER_FRAME_SYNC			1 // Frames adjustment
 #define INTRA_FRAME_SYNC			1010 // A-lines adjustment
+#define FLIM_DELAY_SYNC				1000
 
 #define RENEWAL_COUNT				8 
 #define REDUCED_COUNT				4
@@ -190,6 +191,7 @@ public:
 		// Additional synchronization parameters
 		intraFrameSync = settings.value("intraFrameSync").toInt();
 		interFrameSync = settings.value("interFrameSync").toInt();
+		flimDelaySync = settings.value("flimDelaySync").toInt();
 
 		// Device control
 		rotaryRpm = settings.value("rotaryRpm").toInt();
@@ -274,6 +276,7 @@ public:
 		// Additional synchronization parameters
 		settings.setValue("intraFrameSync", intraFrameSync);
 		settings.setValue("interFrameSync", interFrameSync);
+		settings.setValue("flimDelaySync", flimDelaySync);
 
 		// Device control
 		settings.setValue("rotaryRpm", rotaryRpm);
@@ -356,6 +359,7 @@ public:
 	// Additional synchronization parameters
 	int intraFrameSync;
 	int interFrameSync;
+	int flimDelaySync;
 
 	// Device control
 	int rotaryRpm;
