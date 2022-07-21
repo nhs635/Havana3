@@ -36,10 +36,9 @@ LIBS += $$PWD/lib/PX14_64.lib # \
 LIBS += $$PWD/lib/AxsunOCTControl_LW.lib \
         $$PWD/lib/AxsunOCTCapture.lib
 LIBS += $$PWD/lib/NIDAQmx.lib
-debug {
+CONFIG(debug, debug|release) {
 LIBS += $$PWD/lib/opencv_world3416d.lib
-}
-release {
+} else {
 LIBS += $$PWD/lib/opencv_world3416.lib
 }
 LIBS += $$PWD/lib/intel64_win/ippcore.lib \
@@ -54,6 +53,8 @@ LIBS += $$PWD/lib/intel64_win/mkl_core.lib \
 #debug {
 #    LIBS += $$PWD/lib/vld.lib
 #}
+
+
 
 
 SOURCES += Havana3/Havana3.cpp \

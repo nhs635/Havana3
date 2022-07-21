@@ -189,6 +189,11 @@ void QViewTab::createViewTabWidgets(bool is_streaming)
 		m_pToggleButton_MeasureArea->setText("Measure Area");
 		m_pToggleButton_MeasureArea->setFixedWidth(120);
 
+		m_pToggleButton_AutoContour = new QPushButton(this);
+		m_pToggleButton_AutoContour->setCheckable(true);
+		m_pToggleButton_AutoContour->setText("Auto Contour");
+		m_pToggleButton_AutoContour->setFixedWidth(120);
+
         // Create widgets for FLIm parameters control
         m_pComboBox_FLImParameters = new QComboBox(this);
 		m_pComboBox_FLImParameters->addItem("Ch 1 Lifetime");
@@ -250,12 +255,14 @@ void QViewTab::createViewTabWidgets(bool is_streaming)
 
 		m_pWidget[1]->setLayout(pGridLayout1);
 		
-		QHBoxLayout *pHBoxLayout2 = new QHBoxLayout;
-		pHBoxLayout2->setSpacing(4);
+		QGridLayout *pGridLayout2 = new QGridLayout;
+		pGridLayout2->setSpacing(2);
 		
-		pHBoxLayout2->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed));
-		pHBoxLayout2->addWidget(m_pToggleButton_MeasureDistance);
-		pHBoxLayout2->addWidget(m_pToggleButton_MeasureArea);
+		pGridLayout2->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed), 0, 0);
+		pGridLayout2->addWidget(m_pToggleButton_MeasureDistance, 0, 1);
+		pGridLayout2->addWidget(m_pToggleButton_MeasureArea, 0, 2);
+		pGridLayout2->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed), 1, 0, 1, 2);
+		pGridLayout2->addWidget(m_pToggleButton_AutoContour, 1, 2);
 		
 		QGridLayout *pGridLayout3 = new QGridLayout;
 		pGridLayout3->setSpacing(4);
@@ -272,7 +279,7 @@ void QViewTab::createViewTabWidgets(bool is_streaming)
 
 		pVBoxLayout23->addWidget(m_pImageView_EnFace);
 		pVBoxLayout23->addItem(new QSpacerItem(0, 0, QSizePolicy::Fixed, QSizePolicy::Maximum));
-		pVBoxLayout23->addItem(pHBoxLayout2);
+		pVBoxLayout23->addItem(pGridLayout2);
 		pVBoxLayout23->addItem(pGridLayout3);
 
 		m_pWidget[3]->setLayout(pVBoxLayout23);
@@ -880,6 +887,7 @@ void QViewTab::visualizeImage(int frame)
 		// Measure state uncheck
 		if (m_pToggleButton_MeasureDistance->isChecked()) m_pToggleButton_MeasureDistance->setChecked(false);
 		if (m_pToggleButton_MeasureArea->isChecked()) m_pToggleButton_MeasureArea->setChecked(false);
+		if (m_pToggleButton_AutoContour->isChecked()) m_pToggleButton_AutoContour->setChecked(false);
 
         // OCT Visualization
 		IppiSize roi_oct = { m_pImgObjRectImage->getWidth(), m_pImgObjRectImage->getHeight() };
@@ -887,9 +895,22 @@ void QViewTab::visualizeImage(int frame)
 #ifndef NEXT_GEN_SYSTEM
         np::FloatArray2 scale_temp(roi_oct.width, roi_oct.height);
         ippsConvert_8u32f(m_vectorOctImage.at(frame).raw_ptr(), scale_temp.raw_ptr(), scale_temp.length());
-        ippiScale_32f8u_C1R(scale_temp.raw_ptr(), roi_oct.width * sizeof(float),
-            m_pImgObjRectImage->arr.raw_ptr(), roi_oct.width * sizeof(uint8_t), roi_oct, 
-			(float)m_pConfigTemp->octGrayRange.min, (float)m_pConfigTemp->octGrayRange.max);
+		if (m_pConfigTemp->reflectionRemoval)
+		{
+			np::FloatArray2 reflection_temp(roi_oct.width, roi_oct.height);
+			ippiCopy_32f_C1R(&scale_temp(m_pConfigTemp->reflectionDistance, 0), sizeof(float) * scale_temp.size(0),
+				&reflection_temp(0, 0), sizeof(float) * reflection_temp.size(0),
+				{ roi_oct.width - m_pConfigTemp->reflectionDistance, roi_oct.height });
+			ippsMulC_32f_I(m_pConfigTemp->reflectionLevel, reflection_temp, reflection_temp.length());
+			ippsSub_32f_I(reflection_temp, scale_temp, scale_temp.length());
+			ippiScale_32f8u_C1R(scale_temp.raw_ptr(), roi_oct.width * sizeof(float),
+				m_pImgObjRectImage->arr.raw_ptr(), roi_oct.width * sizeof(uint8_t), roi_oct,
+				(float)m_pConfigTemp->octGrayRange.min, (float)m_pConfigTemp->octGrayRange.max * 0.9f);
+		}
+		else
+			ippiScale_32f8u_C1R(scale_temp.raw_ptr(), roi_oct.width * sizeof(float),
+				m_pImgObjRectImage->arr.raw_ptr(), roi_oct.width * sizeof(uint8_t), roi_oct, 
+				(float)m_pConfigTemp->octGrayRange.min, (float)m_pConfigTemp->octGrayRange.max);
 #else
 		ippiScale_32f8u_C1R(m_vectorOctImage.at(frame).raw_ptr(), roi_oct.width * sizeof(float),
 			m_pImgObjRectImage->arr.raw_ptr(), roi_oct.width * sizeof(uint8_t), roi_oct, (float)m_pConfig->axsunDbRange.min, (float)m_pConfig->axsunDbRange.max);
@@ -1060,7 +1081,6 @@ void QViewTab::visualizeLongiImage(int aline)
     // Make longitudinal - OCT
 	IppiSize roi_longi = { m_pImgObjLongiImage->getHeight(), m_pImgObjLongiImage->getWidth() };
 
-	np::FloatArray2 longi_temp(roi_longi.width, roi_longi.height);
 	np::Uint8Array2 scale_temp(roi_longi.width, roi_longi.height);
 	tbb::parallel_for(tbb::blocked_range<size_t>(0, (size_t)frames),
 		[&](const tbb::blocked_range<size_t>& r) {
@@ -1079,9 +1099,29 @@ void QViewTab::visualizeLongiImage(int aline)
 	});
 
 #ifndef NEXT_GEN_SYSTEM
-    ippsConvert_8u32f(scale_temp.raw_ptr(), longi_temp.raw_ptr(), scale_temp.length());
-    ippiScale_32f8u_C1R(longi_temp.raw_ptr(), roi_longi.width * sizeof(float),
-        scale_temp.raw_ptr(), roi_longi.width * sizeof(uint8_t), roi_longi, m_pConfigTemp->octGrayRange.min, m_pConfigTemp->octGrayRange.max);
+	np::FloatArray2 longi_temp(roi_longi.width, roi_longi.height);
+	ippsConvert_8u32f(scale_temp.raw_ptr(), longi_temp.raw_ptr(), scale_temp.length());
+	if (m_pConfigTemp->reflectionRemoval)
+	{
+		np::FloatArray2 reflection_temp(roi_longi.width, roi_longi.height);
+		ippiCopy_32f_C1R(&longi_temp(0, 0), sizeof(float) * longi_temp.size(0),
+			&reflection_temp(m_pConfigTemp->reflectionDistance, 0), sizeof(float) * reflection_temp.size(0),
+			{ roi_longi.width / 2 - m_pConfigTemp->reflectionDistance, roi_longi.height });
+		ippiCopy_32f_C1R(&longi_temp(roi_longi.width / 2 + m_pConfigTemp->reflectionDistance, 0), sizeof(float) * longi_temp.size(0),
+			&reflection_temp(roi_longi.width / 2, 0), sizeof(float) * reflection_temp.size(0),
+			{ roi_longi.width / 2 - m_pConfigTemp->reflectionDistance, roi_longi.height });
+		ippsMulC_32f_I(m_pConfigTemp->reflectionLevel, reflection_temp, reflection_temp.length());
+		ippsSub_32f_I(reflection_temp, longi_temp, longi_temp.length());
+		ippiScale_32f8u_C1R(longi_temp.raw_ptr(), roi_longi.width * sizeof(float),
+			scale_temp.raw_ptr(), roi_longi.width * sizeof(uint8_t), roi_longi, (float)m_pConfigTemp->octGrayRange.min, 0.9f * (float)m_pConfigTemp->octGrayRange.max);
+	}
+	else
+		ippiScale_32f8u_C1R(longi_temp.raw_ptr(), roi_longi.width * sizeof(float),
+			scale_temp.raw_ptr(), roi_longi.width * sizeof(uint8_t), roi_longi, m_pConfigTemp->octGrayRange.min, m_pConfigTemp->octGrayRange.max);
+
+    //ippsConvert_8u32f(scale_temp.raw_ptr(), longi_temp.raw_ptr(), scale_temp.length());
+    //ippiScale_32f8u_C1R(longi_temp.raw_ptr(), roi_longi.width * sizeof(float),
+    //    scale_temp.raw_ptr(), roi_longi.width * sizeof(uint8_t), roi_longi, m_pConfigTemp->octGrayRange.min, m_pConfigTemp->octGrayRange.max);
 #else
 	ippiScale_32f8u_C1R(longi_temp.raw_ptr(), roi_longi.width * sizeof(float),
 		scale_temp.raw_ptr(), roi_longi.width * sizeof(uint8_t), roi_longi, m_pConfig->axsunDbRange.min, m_pConfig->axsunDbRange.max);
@@ -1200,6 +1240,7 @@ void QViewTab::play(bool enabled)
 		m_pToggleButton_Play->setIcon(style()->standardIcon(QStyle::SP_MediaStop));
 		m_pToggleButton_MeasureDistance->setDisabled(true);
 		m_pToggleButton_MeasureArea->setDisabled(true);
+		m_pToggleButton_AutoContour->setDisabled(true);
 		
 		int cur_frame = m_pSlider_SelectFrame->value();
 		int end_frame = (int)m_vectorOctImage.size();
@@ -1232,6 +1273,7 @@ void QViewTab::play(bool enabled)
 		m_pToggleButton_Play->setIcon(style()->standardIcon(QStyle::SP_MediaPlay));
 		m_pToggleButton_MeasureDistance->setDisabled(false);
 		m_pToggleButton_MeasureArea->setDisabled(false);
+		m_pToggleButton_AutoContour->setDisabled(false);
 
 		m_pConfig->writeToLog("Stop playing mode.");
 	}
@@ -1263,6 +1305,7 @@ void QViewTab::measureDistance(bool toggled)
 	else
 	{
 		if (m_pToggleButton_MeasureArea->isChecked()) m_pToggleButton_MeasureArea->setChecked(false);
+		if (m_pToggleButton_AutoContour->isChecked()) m_pToggleButton_AutoContour->setChecked(false);
 
 		m_pImageView_CircImage->setRLineChangeCallback([&](int aline) { (void)aline; });
 		m_pImageView_Longi->setVLineChangeCallback([&](int frame) { (void)frame; });

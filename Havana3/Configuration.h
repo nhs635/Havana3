@@ -1,7 +1,7 @@
 #ifndef CONFIGURATION_H
 #define CONFIGURATION_H
 
-#define VERSION						"2.1.3.9"
+#define VERSION						"2.1.4.0"
 
 #define POWER_2(x)					(1 << x)
 #define NEAR_2_POWER(x)				(int)(1 << (int)ceil(log2(x)))
@@ -86,8 +86,11 @@
 #define RF_COMPO_DATA_NAME			"compo_forest.csv"
 #define RF_COMPO_MODEL_NAME			"compo_forest.xml"
 
-#define INTER_FRAME_SYNC			1 // Frames adjustment
-#define INTRA_FRAME_SYNC			1010 // A-lines adjustment
+#define REFLECTION_DISTANCE			35
+#define REFLECTION_LEVEL			0.30
+
+#define INTER_FRAME_SYNC			0 // Frames adjustment
+#define INTRA_FRAME_SYNC			0 // A-lines adjustment
 #define FLIM_DELAY_SYNC				1000
 
 #define RENEWAL_COUNT				8 
@@ -118,7 +121,8 @@ struct ContrastRange
 class Configuration
 {
 public:
-	explicit Configuration() : dbPath(""), ivusPath("")
+	explicit Configuration() : dbPath(""), ivusPath(""), 
+		reflectionRemoval(false), reflectionDistance(REFLECTION_DISTANCE), reflectionLevel(REFLECTION_LEVEL)
 	{
 		memset(flimDelayOffset0, 0, sizeof(float) * 3);
 	}
@@ -186,6 +190,9 @@ public:
 		rotatedAlines = settings.value("rotatedAlines").toInt();
 		innerOffsetLength = settings.value("innerOffsetLength").toInt();
 		verticalMirroring = settings.value("verticalMirroring").toBool();
+		reflectionRemoval = settings.value("reflectionRemoval").toBool();
+		reflectionDistance = settings.value("reflectionDistance").toInt();
+		reflectionLevel = settings.value("reflectionLevel").toFloat();
 		autoVibCorrectionMode = settings.value("autoVibCorrectionMode").toBool();
 		
 		// Additional synchronization parameters
@@ -266,11 +273,14 @@ public:
 		settings.setValue("octGrayRangeMax", octGrayRange.max);
 		settings.setValue("octGrayRangeMin", octGrayRange.min);
 #endif
-		settings.setValue("rfInflammationRangeMax", QString::number(rfInflammationRange.max, 'f', 1));
+		settings.setValue("rfInflammationRangeMax", QString::number(rfInflammationRange.max, 'f', 2));
 		settings.setValue("rfInflammationRangeMin", QString::number(rfInflammationRange.min, 'f', 2));
 		settings.setValue("rotatedAlines", rotatedAlines);
 		settings.setValue("innerOffsetLength", innerOffsetLength);
 		settings.setValue("verticalMirroring", verticalMirroring);
+		settings.setValue("reflectionRemoval", reflectionRemoval);
+		settings.setValue("reflectionDistance", reflectionDistance);
+		settings.setValue("reflectionLevel", QString::number(reflectionLevel, 'f', 2));
 		settings.setValue("autoVibCorrectionMode", autoVibCorrectionMode);
 
 		// Additional synchronization parameters
@@ -354,6 +364,9 @@ public:
 	int rotatedAlines;
 	int innerOffsetLength;
 	bool verticalMirroring;
+	bool reflectionRemoval;
+	int reflectionDistance;
+	float reflectionLevel;
 	bool autoVibCorrectionMode;
 
 	// Additional synchronization parameters

@@ -307,6 +307,8 @@ QRenderImage::QRenderImage(QWidget *parent) :
 	m_bCenterGrid(false), m_nPullbackLength(0),
 	m_str(""), m_bVertical(false), m_nScaleLen(0), m_titleColor(Qt::white)
 {
+	m_colorCLine.setAlpha(128);
+
 	m_pHLineInd = new int[10];
     m_pVLineInd = new int[10];
 }
@@ -437,7 +439,7 @@ void QRenderImage::paintEvent(QPaintEvent *)
 		QPointF center; center.setX(center_x); center.setY(center_y);
 		double radius = (double)(m_pHLineInd[i] * h) / (double)m_rectMagnified.height();
 
-		QPen pen; pen.setColor(m_colorCLine); pen.setWidth(1);
+		QPen pen; pen.setColor(m_colorCLine); pen.setWidth(1); 
 		painter.setPen(pen);
 		painter.drawEllipse(center, radius, radius);
 	}

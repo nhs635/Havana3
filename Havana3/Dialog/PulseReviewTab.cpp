@@ -606,70 +606,107 @@ void PulseReviewTab::drawPulse(int aline)
 		for (int i = 0; i < 3; i++)
 		{
 			float mi, ml, mp, mr;
+			float si, sl, sp, sr;
 			if (!cw)
 			{
 				if (start4 < end4)
-				{
-					ippsMean_32f(&intensity.at(i)(start4, frame), end4 - start4 + 1, &mi, ippAlgHintAccurate);
-					ippsMean_32f(&lifetime.at(i)(start4, frame), end4 - start4 + 1, &ml, ippAlgHintAccurate);
-					ippsMean_32f(&int_prop.at(i)(start4, frame), end4 - start4 + 1, &mp, ippAlgHintAccurate);
-					ippsMean_32f(&int_ratio.at(i)(start4, frame), end4 - start4 + 1, &mr, ippAlgHintAccurate);
+				{					
+					ippsMeanStdDev_32f(&intensity.at(i)(start4, frame), end4 - start4 + 1, &mi, &si, ippAlgHintAccurate);
+					ippsMeanStdDev_32f(&lifetime.at(i)(start4, frame), end4 - start4 + 1, &ml, &sl, ippAlgHintAccurate);
+					ippsMeanStdDev_32f(&int_prop.at(i)(start4, frame), end4 - start4 + 1, &mp, &sp, ippAlgHintAccurate);
+					ippsMeanStdDev_32f(&int_ratio.at(i)(start4, frame), end4 - start4 + 1, &mr, &sr, ippAlgHintAccurate);
 				}
 				else
 				{
-					float temp1, temp2;
-					ippsSum_32f(&intensity.at(i)(start4, frame), m_pConfigTemp->flimAlines - start4, &temp1, ippAlgHintAccurate);
-					ippsSum_32f(&intensity.at(i)(0, frame), end4, &temp2, ippAlgHintAccurate);
-					mi = (temp1 + temp2) / (m_pConfigTemp->flimAlines - start4 + end4);
+					FloatArray temp_arr(m_pConfigTemp->flimAlines - start4 + end4);
+					
+					memcpy(&temp_arr(0), &intensity.at(i)(start4, frame), sizeof(float) * (m_pConfigTemp->flimAlines - start4));
+					memcpy(&temp_arr(m_pConfigTemp->flimAlines - start4), &intensity.at(i)(0, frame), sizeof(float) * end4);
+					ippsMeanStdDev_32f(&temp_arr(0), temp_arr.length(), &mi, &si, ippAlgHintAccurate);
 
-					ippsSum_32f(&lifetime.at(i)(start4, frame), m_pConfigTemp->flimAlines - start4, &temp1, ippAlgHintAccurate);
-					ippsSum_32f(&lifetime.at(i)(0, frame), end4, &temp2, ippAlgHintAccurate);
-					ml = (temp1 + temp2) / (m_pConfigTemp->flimAlines - start4 + end4);
+					memcpy(&temp_arr(0), &lifetime.at(i)(start4, frame), sizeof(float) * (m_pConfigTemp->flimAlines - start4));
+					memcpy(&temp_arr(m_pConfigTemp->flimAlines - start4), &lifetime.at(i)(0, frame), sizeof(float) * end4);
+					ippsMeanStdDev_32f(&temp_arr(0), temp_arr.length(), &ml, &sl, ippAlgHintAccurate);
+					
+					memcpy(&temp_arr(0), &int_prop.at(i)(start4, frame), sizeof(float) * (m_pConfigTemp->flimAlines - start4));
+					memcpy(&temp_arr(m_pConfigTemp->flimAlines - start4), &int_prop.at(i)(0, frame), sizeof(float) * end4);
+					ippsMeanStdDev_32f(&temp_arr(0), temp_arr.length(), &mp, &sp, ippAlgHintAccurate);
 
+					memcpy(&temp_arr(0), &int_ratio.at(i)(start4, frame), sizeof(float) * (m_pConfigTemp->flimAlines - start4));
+					memcpy(&temp_arr(m_pConfigTemp->flimAlines - start4), &int_ratio.at(i)(0, frame), sizeof(float) * end4);
+					ippsMeanStdDev_32f(&temp_arr(0), temp_arr.length(), &mr, &sr, ippAlgHintAccurate);
 
-					ippsSum_32f(&int_prop.at(i)(start4, frame), m_pConfigTemp->flimAlines - start4, &temp1, ippAlgHintAccurate);
-					ippsSum_32f(&int_prop.at(i)(0, frame), end4, &temp2, ippAlgHintAccurate);
-					mp = (temp1 + temp2) / (m_pConfigTemp->flimAlines - start4 + end4);
+					//float temp1, temp2;
 
-					ippsSum_32f(&int_ratio.at(i)(start4, frame), m_pConfigTemp->flimAlines - start4, &temp1, ippAlgHintAccurate);
-					ippsSum_32f(&int_ratio.at(i)(0, frame), end4, &temp2, ippAlgHintAccurate);
-					mr = (temp1 + temp2) / (m_pConfigTemp->flimAlines - start4 + end4);
+					//ippsSum_32f(&intensity.at(i)(start4, frame), m_pConfigTemp->flimAlines - start4, &temp1, ippAlgHintAccurate);
+					//ippsSum_32f(&intensity.at(i)(0, frame), end4, &temp2, ippAlgHintAccurate);
+					//mi = (temp1 + temp2) / (m_pConfigTemp->flimAlines - start4 + end4);
+
+					//ippsSum_32f(&lifetime.at(i)(start4, frame), m_pConfigTemp->flimAlines - start4, &temp1, ippAlgHintAccurate);
+					//ippsSum_32f(&lifetime.at(i)(0, frame), end4, &temp2, ippAlgHintAccurate);
+					//ml = (temp1 + temp2) / (m_pConfigTemp->flimAlines - start4 + end4);
+
+					//ippsSum_32f(&int_prop.at(i)(start4, frame), m_pConfigTemp->flimAlines - start4, &temp1, ippAlgHintAccurate);
+					//ippsSum_32f(&int_prop.at(i)(0, frame), end4, &temp2, ippAlgHintAccurate);
+					//mp = (temp1 + temp2) / (m_pConfigTemp->flimAlines - start4 + end4);
+
+					//ippsSum_32f(&int_ratio.at(i)(start4, frame), m_pConfigTemp->flimAlines - start4, &temp1, ippAlgHintAccurate);
+					//ippsSum_32f(&int_ratio.at(i)(0, frame), end4, &temp2, ippAlgHintAccurate);
+					//mr = (temp1 + temp2) / (m_pConfigTemp->flimAlines - start4 + end4);
 				}
 			}
 			else
 			{
 				if (start4 > end4)
 				{
-					ippsMean_32f(&intensity.at(i)(end4, frame), start4 - end4 + 1, &mi, ippAlgHintAccurate);
-					ippsMean_32f(&lifetime.at(i)(end4, frame), start4 - end4 + 1, &ml, ippAlgHintAccurate);
-					ippsMean_32f(&int_prop.at(i)(end4, frame), start4 - end4 + 1, &mp, ippAlgHintAccurate);
-					ippsMean_32f(&int_ratio.at(i)(end4, frame), start4 - end4 + 1, &mr, ippAlgHintAccurate);
+					ippsMeanStdDev_32f(&intensity.at(i)(end4, frame), start4 - end4 + 1, &mi, &si, ippAlgHintAccurate);
+					ippsMeanStdDev_32f(&lifetime.at(i)(end4, frame), start4 - end4 + 1, &ml, &sl, ippAlgHintAccurate);
+					ippsMeanStdDev_32f(&int_prop.at(i)(end4, frame), start4 - end4 + 1, &mp, &sp, ippAlgHintAccurate);
+					ippsMeanStdDev_32f(&int_ratio.at(i)(end4, frame), start4 - end4 + 1, &mr, &sr, ippAlgHintAccurate);
 				}
 				else
 				{
-					float temp1, temp2;
-					ippsSum_32f(&intensity.at(i)(0, frame), start4, &temp1, ippAlgHintAccurate);
-					ippsSum_32f(&intensity.at(i)(end4, frame), m_pConfigTemp->flimAlines - end4, &temp2, ippAlgHintAccurate);
-					mi = (temp1 + temp2) / (m_pConfigTemp->flimAlines - end4 + start4);
+					FloatArray temp_arr(m_pConfigTemp->flimAlines - end4 + start4);
+					
+					memcpy(&temp_arr(0), &intensity.at(i)(0, frame), sizeof(float) * start4);
+					memcpy(&temp_arr(start4), &intensity.at(i)(end4, frame), sizeof(float) * (m_pConfigTemp->flimAlines - end4));
+					ippsMeanStdDev_32f(&temp_arr(0), temp_arr.length(), &mi, &si, ippAlgHintAccurate);
 
-					ippsSum_32f(&lifetime.at(i)(0, frame), start4, &temp1, ippAlgHintAccurate);
-					ippsSum_32f(&lifetime.at(i)(end4, frame), m_pConfigTemp->flimAlines - end4, &temp2, ippAlgHintAccurate);
-					ml = (temp1 + temp2) / (m_pConfigTemp->flimAlines - end4 + start4);
+					memcpy(&temp_arr(0), &lifetime.at(i)(0, frame), sizeof(float) * start4);
+					memcpy(&temp_arr(start4), &lifetime.at(i)(end4, frame), sizeof(float) * (m_pConfigTemp->flimAlines - end4));
+					ippsMeanStdDev_32f(&temp_arr(0), temp_arr.length(), &ml, &sl, ippAlgHintAccurate);
 
-					ippsSum_32f(&int_prop.at(i)(0, frame), start4, &temp1, ippAlgHintAccurate);
-					ippsSum_32f(&int_prop.at(i)(end4, frame), m_pConfigTemp->flimAlines - end4, &temp2, ippAlgHintAccurate);
-					mp = (temp1 + temp2) / (m_pConfigTemp->flimAlines - end4 + start4);
+					memcpy(&temp_arr(0), &int_prop.at(i)(0, frame), sizeof(float) * start4);
+					memcpy(&temp_arr(start4), &int_prop.at(i)(end4, frame), sizeof(float) * (m_pConfigTemp->flimAlines - end4));
+					ippsMeanStdDev_32f(&temp_arr(0), temp_arr.length(), &mp, &sp, ippAlgHintAccurate);
 
-					ippsSum_32f(&int_ratio.at(i)(0, frame), start4, &temp1, ippAlgHintAccurate);
-					ippsSum_32f(&int_ratio.at(i)(end4, frame), m_pConfigTemp->flimAlines - end4, &temp2, ippAlgHintAccurate);
-					mr = (temp1 + temp2) / (m_pConfigTemp->flimAlines - end4 + start4);
+					memcpy(&temp_arr(0), &int_ratio.at(i)(0, frame), sizeof(float) * start4);
+					memcpy(&temp_arr(start4), &int_ratio.at(i)(end4, frame), sizeof(float) * (m_pConfigTemp->flimAlines - end4));
+					ippsMeanStdDev_32f(&temp_arr(0), temp_arr.length(), &mr, &sr, ippAlgHintAccurate);
+
+					//float temp1, temp2;
+					//ippsSum_32f(&intensity.at(i)(0, frame), start4, &temp1, ippAlgHintAccurate);
+					//ippsSum_32f(&intensity.at(i)(end4, frame), m_pConfigTemp->flimAlines - end4, &temp2, ippAlgHintAccurate);
+					//mi = (temp1 + temp2) / (m_pConfigTemp->flimAlines - end4 + start4);
+
+					//ippsSum_32f(&lifetime.at(i)(0, frame), start4, &temp1, ippAlgHintAccurate);
+					//ippsSum_32f(&lifetime.at(i)(end4, frame), m_pConfigTemp->flimAlines - end4, &temp2, ippAlgHintAccurate);
+					//ml = (temp1 + temp2) / (m_pConfigTemp->flimAlines - end4 + start4);
+
+					//ippsSum_32f(&int_prop.at(i)(0, frame), start4, &temp1, ippAlgHintAccurate);
+					//ippsSum_32f(&int_prop.at(i)(end4, frame), m_pConfigTemp->flimAlines - end4, &temp2, ippAlgHintAccurate);
+					//mp = (temp1 + temp2) / (m_pConfigTemp->flimAlines - end4 + start4);
+
+					//ippsSum_32f(&int_ratio.at(i)(0, frame), start4, &temp1, ippAlgHintAccurate);
+					//ippsSum_32f(&int_ratio.at(i)(end4, frame), m_pConfigTemp->flimAlines - end4, &temp2, ippAlgHintAccurate);
+					//mr = (temp1 + temp2) / (m_pConfigTemp->flimAlines - end4 + start4);
 				}
 			}
 			
-			m_pTableWidget_CurrentResult->item(0, i)->setText(QString::number(mi, 'f', 3));
-			m_pTableWidget_CurrentResult->item(1, i)->setText(QString::number(ml, 'f', 3));
-			m_pTableWidget_CurrentResult->item(2, i)->setText(QString::number(mp, 'f', 3));
-			m_pTableWidget_CurrentResult->item(3, i)->setText(QString::number(mr, 'f', 3));
+			m_pTableWidget_CurrentResult->item(0, i)->setText(QString::number(mi, 'f', 3) + " + " + QString::number(si, 'f', 3));
+			m_pTableWidget_CurrentResult->item(1, i)->setText(QString::number(ml, 'f', 3) + " + " + QString::number(sl, 'f', 3));
+			m_pTableWidget_CurrentResult->item(2, i)->setText(QString::number(mp, 'f', 3) + " + " + QString::number(sp, 'f', 3));
+			m_pTableWidget_CurrentResult->item(3, i)->setText(QString::number(mr, 'f', 3) + " + " + QString::number(sr, 'f', 3));
 		}
 	}	
 		
@@ -1017,70 +1054,107 @@ void PulseReviewTab::selectRow(int row, int, int row0, int)
 	for (int i = 0; i < 3; i++)
 	{
 		float mi, ml, mp, mr;
+		float si, sl, sp, sr;
 
 		if (!cw)
 		{
 			if (start4 < end4)
 			{
-				ippsMean_32f(&intensity.at(i)(start4, frame), end4 - start4 + 1, &mi, ippAlgHintAccurate);
-				ippsMean_32f(&lifetime.at(i)(start4, frame), end4 - start4 + 1, &ml, ippAlgHintAccurate);
-				ippsMean_32f(&int_prop.at(i)(start4, frame), end4 - start4 + 1, &mp, ippAlgHintAccurate);
-				ippsMean_32f(&int_ratio.at(i)(start4, frame), end4 - start4 + 1, &mr, ippAlgHintAccurate);
+				ippsMeanStdDev_32f(&intensity.at(i)(start4, frame), end4 - start4 + 1, &mi, &si, ippAlgHintAccurate);
+				ippsMeanStdDev_32f(&lifetime.at(i)(start4, frame), end4 - start4 + 1, &ml, &sl, ippAlgHintAccurate);
+				ippsMeanStdDev_32f(&int_prop.at(i)(start4, frame), end4 - start4 + 1, &mp, &sp, ippAlgHintAccurate);
+				ippsMeanStdDev_32f(&int_ratio.at(i)(start4, frame), end4 - start4 + 1, &mr, &sr, ippAlgHintAccurate);
 			}
 			else
 			{
-				float temp1, temp2;
-				ippsSum_32f(&intensity.at(i)(start4, frame), m_pConfigTemp->flimAlines - start4, &temp1, ippAlgHintAccurate);
-				ippsSum_32f(&intensity.at(i)(0, frame), end4, &temp2, ippAlgHintAccurate);
-				mi = (temp1 + temp2) / (m_pConfigTemp->flimAlines - start4 + end4);
+				FloatArray temp_arr(m_pConfigTemp->flimAlines - start4 + end4);
 
-				ippsSum_32f(&lifetime.at(i)(start4, frame), m_pConfigTemp->flimAlines - start4, &temp1, ippAlgHintAccurate);
-				ippsSum_32f(&lifetime.at(i)(0, frame), end4, &temp2, ippAlgHintAccurate);
-				ml = (temp1 + temp2) / (m_pConfigTemp->flimAlines - start4 + end4);
+				memcpy(&temp_arr(0), &intensity.at(i)(start4, frame), sizeof(float) * (m_pConfigTemp->flimAlines - start4));
+				memcpy(&temp_arr(m_pConfigTemp->flimAlines - start4), &intensity.at(i)(0, frame), sizeof(float) * end4);
+				ippsMeanStdDev_32f(&temp_arr(0), temp_arr.length(), &mi, &si, ippAlgHintAccurate);
 
-				ippsSum_32f(&int_prop.at(i)(start4, frame), m_pConfigTemp->flimAlines - start4, &temp1, ippAlgHintAccurate);
-				ippsSum_32f(&int_prop.at(i)(0, frame), end4, &temp2, ippAlgHintAccurate);
-				mp = (temp1 + temp2) / (m_pConfigTemp->flimAlines - start4 + end4);
+				memcpy(&temp_arr(0), &lifetime.at(i)(start4, frame), sizeof(float) * (m_pConfigTemp->flimAlines - start4));
+				memcpy(&temp_arr(m_pConfigTemp->flimAlines - start4), &lifetime.at(i)(0, frame), sizeof(float) * end4);
+				ippsMeanStdDev_32f(&temp_arr(0), temp_arr.length(), &ml, &sl, ippAlgHintAccurate);
 
-				ippsSum_32f(&int_ratio.at(i)(start4, frame), m_pConfigTemp->flimAlines - start4, &temp1, ippAlgHintAccurate);
-				ippsSum_32f(&int_ratio.at(i)(0, frame), end4, &temp2, ippAlgHintAccurate);
-				mr = (temp1 + temp2) / (m_pConfigTemp->flimAlines - start4 + end4);
+				memcpy(&temp_arr(0), &int_prop.at(i)(start4, frame), sizeof(float) * (m_pConfigTemp->flimAlines - start4));
+				memcpy(&temp_arr(m_pConfigTemp->flimAlines - start4), &int_prop.at(i)(0, frame), sizeof(float) * end4);
+				ippsMeanStdDev_32f(&temp_arr(0), temp_arr.length(), &mp, &sp, ippAlgHintAccurate);
+
+				memcpy(&temp_arr(0), &int_ratio.at(i)(start4, frame), sizeof(float) * (m_pConfigTemp->flimAlines - start4));
+				memcpy(&temp_arr(m_pConfigTemp->flimAlines - start4), &int_ratio.at(i)(0, frame), sizeof(float) * end4);
+				ippsMeanStdDev_32f(&temp_arr(0), temp_arr.length(), &mr, &sr, ippAlgHintAccurate);
+
+				//float temp1, temp2;
+				//ippsSum_32f(&intensity.at(i)(start4, frame), m_pConfigTemp->flimAlines - start4, &temp1, ippAlgHintAccurate);
+				//ippsSum_32f(&intensity.at(i)(0, frame), end4, &temp2, ippAlgHintAccurate);
+				//mi = (temp1 + temp2) / (m_pConfigTemp->flimAlines - start4 + end4);
+
+				//ippsSum_32f(&lifetime.at(i)(start4, frame), m_pConfigTemp->flimAlines - start4, &temp1, ippAlgHintAccurate);
+				//ippsSum_32f(&lifetime.at(i)(0, frame), end4, &temp2, ippAlgHintAccurate);
+				//ml = (temp1 + temp2) / (m_pConfigTemp->flimAlines - start4 + end4);
+
+				//ippsSum_32f(&int_prop.at(i)(start4, frame), m_pConfigTemp->flimAlines - start4, &temp1, ippAlgHintAccurate);
+				//ippsSum_32f(&int_prop.at(i)(0, frame), end4, &temp2, ippAlgHintAccurate);
+				//mp = (temp1 + temp2) / (m_pConfigTemp->flimAlines - start4 + end4);
+
+				//ippsSum_32f(&int_ratio.at(i)(start4, frame), m_pConfigTemp->flimAlines - start4, &temp1, ippAlgHintAccurate);
+				//ippsSum_32f(&int_ratio.at(i)(0, frame), end4, &temp2, ippAlgHintAccurate);
+				//mr = (temp1 + temp2) / (m_pConfigTemp->flimAlines - start4 + end4);
 			}
 		}
 		else
 		{
 			if (start4 > end4)
 			{
-				ippsMean_32f(&intensity.at(i)(end4, frame), start4 - end4 + 1, &mi, ippAlgHintAccurate);
-				ippsMean_32f(&lifetime.at(i)(end4, frame), start4 - end4 + 1, &ml, ippAlgHintAccurate);
-				ippsMean_32f(&int_prop.at(i)(end4, frame), start4 - end4 + 1, &mp, ippAlgHintAccurate);
-				ippsMean_32f(&int_ratio.at(i)(end4, frame), start4 - end4 + 1, &mr, ippAlgHintAccurate);
+				ippsMeanStdDev_32f(&intensity.at(i)(end4, frame), start4 - end4 + 1, &mi, &si, ippAlgHintAccurate);
+				ippsMeanStdDev_32f(&lifetime.at(i)(end4, frame), start4 - end4 + 1, &ml, &sl, ippAlgHintAccurate);
+				ippsMeanStdDev_32f(&int_prop.at(i)(end4, frame), start4 - end4 + 1, &mp, &sp, ippAlgHintAccurate);
+				ippsMeanStdDev_32f(&int_ratio.at(i)(end4, frame), start4 - end4 + 1, &mr, &sr, ippAlgHintAccurate);
 			}
 			else
 			{
-				float temp1, temp2;
-				ippsSum_32f(&intensity.at(i)(0, frame), start4, &temp1, ippAlgHintAccurate);
-				ippsSum_32f(&intensity.at(i)(end4, frame), m_pConfigTemp->flimAlines - end4, &temp2, ippAlgHintAccurate);
-				mi = (temp1 + temp2) / (m_pConfigTemp->flimAlines - end4 + start4);
+				FloatArray temp_arr(m_pConfigTemp->flimAlines - end4 + start4);
 
-				ippsSum_32f(&lifetime.at(i)(0, frame), start4, &temp1, ippAlgHintAccurate);
-				ippsSum_32f(&lifetime.at(i)(end4, frame), m_pConfigTemp->flimAlines - end4, &temp2, ippAlgHintAccurate);
-				ml = (temp1 + temp2) / (m_pConfigTemp->flimAlines - end4 + start4);
+				memcpy(&temp_arr(0), &intensity.at(i)(0, frame), sizeof(float) * start4);
+				memcpy(&temp_arr(start4), &intensity.at(i)(end4, frame), sizeof(float) * (m_pConfigTemp->flimAlines - end4));
+				ippsMeanStdDev_32f(&temp_arr(0), temp_arr.length(), &mi, &si, ippAlgHintAccurate);
 
-				ippsSum_32f(&int_prop.at(i)(0, frame), start4, &temp1, ippAlgHintAccurate);
-				ippsSum_32f(&int_prop.at(i)(end4, frame), m_pConfigTemp->flimAlines - end4, &temp2, ippAlgHintAccurate);
-				mp = (temp1 + temp2) / (m_pConfigTemp->flimAlines - end4 + start4);
+				memcpy(&temp_arr(0), &lifetime.at(i)(0, frame), sizeof(float) * start4);
+				memcpy(&temp_arr(start4), &lifetime.at(i)(end4, frame), sizeof(float) * (m_pConfigTemp->flimAlines - end4));
+				ippsMeanStdDev_32f(&temp_arr(0), temp_arr.length(), &ml, &sl, ippAlgHintAccurate);
 
-				ippsSum_32f(&int_ratio.at(i)(0, frame), start4, &temp1, ippAlgHintAccurate);
-				ippsSum_32f(&int_ratio.at(i)(end4, frame), m_pConfigTemp->flimAlines - end4, &temp2, ippAlgHintAccurate);
-				mr = (temp1 + temp2) / (m_pConfigTemp->flimAlines - end4 + start4);
+				memcpy(&temp_arr(0), &int_prop.at(i)(0, frame), sizeof(float) * start4);
+				memcpy(&temp_arr(start4), &int_prop.at(i)(end4, frame), sizeof(float) * (m_pConfigTemp->flimAlines - end4));
+				ippsMeanStdDev_32f(&temp_arr(0), temp_arr.length(), &mp, &sp, ippAlgHintAccurate);
+
+				memcpy(&temp_arr(0), &int_ratio.at(i)(0, frame), sizeof(float) * start4);
+				memcpy(&temp_arr(start4), &int_ratio.at(i)(end4, frame), sizeof(float) * (m_pConfigTemp->flimAlines - end4));
+				ippsMeanStdDev_32f(&temp_arr(0), temp_arr.length(), &mr, &sr, ippAlgHintAccurate);
+
+				//float temp1, temp2;
+				//ippsSum_32f(&intensity.at(i)(0, frame), start4, &temp1, ippAlgHintAccurate);
+				//ippsSum_32f(&intensity.at(i)(end4, frame), m_pConfigTemp->flimAlines - end4, &temp2, ippAlgHintAccurate);
+				//mi = (temp1 + temp2) / (m_pConfigTemp->flimAlines - end4 + start4);
+
+				//ippsSum_32f(&lifetime.at(i)(0, frame), start4, &temp1, ippAlgHintAccurate);
+				//ippsSum_32f(&lifetime.at(i)(end4, frame), m_pConfigTemp->flimAlines - end4, &temp2, ippAlgHintAccurate);
+				//ml = (temp1 + temp2) / (m_pConfigTemp->flimAlines - end4 + start4);
+
+				//ippsSum_32f(&int_prop.at(i)(0, frame), start4, &temp1, ippAlgHintAccurate);
+				//ippsSum_32f(&int_prop.at(i)(end4, frame), m_pConfigTemp->flimAlines - end4, &temp2, ippAlgHintAccurate);
+				//mp = (temp1 + temp2) / (m_pConfigTemp->flimAlines - end4 + start4);
+
+				//ippsSum_32f(&int_ratio.at(i)(0, frame), start4, &temp1, ippAlgHintAccurate);
+				//ippsSum_32f(&int_ratio.at(i)(end4, frame), m_pConfigTemp->flimAlines - end4, &temp2, ippAlgHintAccurate);
+				//mr = (temp1 + temp2) / (m_pConfigTemp->flimAlines - end4 + start4);
 			}
 		}
 		
-		m_pTableWidget_CurrentResult->item(0, i)->setText(QString::number(mi, 'f', 3));
-		m_pTableWidget_CurrentResult->item(1, i)->setText(QString::number(ml, 'f', 3));
-		m_pTableWidget_CurrentResult->item(2, i)->setText(QString::number(mp, 'f', 3));
-		m_pTableWidget_CurrentResult->item(3, i)->setText(QString::number(mr, 'f', 3));
+		m_pTableWidget_CurrentResult->item(0, i)->setText(QString::number(mi, 'f', 3) + " + " + QString::number(si, 'f', 3));
+		m_pTableWidget_CurrentResult->item(1, i)->setText(QString::number(ml, 'f', 3) + " + " + QString::number(sl, 'f', 3));
+		m_pTableWidget_CurrentResult->item(2, i)->setText(QString::number(mp, 'f', 3) + " + " + QString::number(sp, 'f', 3));
+		m_pTableWidget_CurrentResult->item(3, i)->setText(QString::number(mr, 'f', 3) + " + " + QString::number(sr, 'f', 3));
 	}
 }
 

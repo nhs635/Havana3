@@ -217,6 +217,7 @@ private:
     // View option widgets
     QPushButton *m_pToggleButton_MeasureDistance;
 	QPushButton *m_pToggleButton_MeasureArea;
+	QPushButton *m_pToggleButton_AutoContour;
 
     QComboBox *m_pComboBox_FLImParameters;
 	QComboBox *m_pComboBox_RFPrediction;

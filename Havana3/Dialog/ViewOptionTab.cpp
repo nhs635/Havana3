@@ -467,6 +467,25 @@ void ViewOptionTab::createOctVisualizationOptionTab()
 	m_pLabel_OctContrast->setAlignment(Qt::AlignVCenter | Qt::AlignLeft);
 	m_pLabel_OctContrast->setBuddy(m_pImageView_OctColorbar);
 	
+	// Create other features for OCT visualization
+	if (!m_pStreamTab)
+	{
+		m_pCheckBox_ReflectionRemoval = new QCheckBox(this);
+		m_pCheckBox_ReflectionRemoval->setText(" Remove OCT Reflection Artifact");
+		m_pCheckBox_ReflectionRemoval->setChecked(m_pConfigTemp->reflectionRemoval);
+
+		m_pLineEdit_ReflectionDistance = new QLineEdit(this);
+		m_pLineEdit_ReflectionDistance->setFixedWidth(35);
+		m_pLineEdit_ReflectionDistance->setText(QString::number(m_pConfigTemp->reflectionDistance));
+		m_pLineEdit_ReflectionDistance->setAlignment(Qt::AlignCenter);
+		m_pLineEdit_ReflectionDistance->setEnabled(m_pConfigTemp->reflectionRemoval);
+
+		m_pLineEdit_ReflectionLevel = new QLineEdit(this);
+		m_pLineEdit_ReflectionLevel->setFixedWidth(35);
+		m_pLineEdit_ReflectionLevel->setText(QString::number(m_pConfigTemp->reflectionLevel));
+		m_pLineEdit_ReflectionLevel->setAlignment(Qt::AlignCenter);
+		m_pLineEdit_ReflectionLevel->setEnabled(m_pConfigTemp->reflectionRemoval);
+	}
 
     // Set layout	
 	QHBoxLayout *pHBoxLayout_OctContrast = new QHBoxLayout;
@@ -501,7 +520,20 @@ void ViewOptionTab::createOctVisualizationOptionTab()
 		pVBoxLayout_OctVisualization->addItem(pHBoxLayout_Rotation);
 	}
 	pVBoxLayout_OctVisualization->addItem(pHBoxLayout_OctContrast);
-
+	if (!m_pStreamTab)
+	{
+		QHBoxLayout *pHBoxLayout_Reflection = new QHBoxLayout;
+		pHBoxLayout_Reflection->setSpacing(3);
+		if (!m_pStreamTab)
+		{
+			pHBoxLayout_Reflection->addWidget(m_pCheckBox_ReflectionRemoval);
+			pHBoxLayout_Reflection->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed));
+			pHBoxLayout_Reflection->addWidget(m_pLineEdit_ReflectionDistance);
+			pHBoxLayout_Reflection->addWidget(m_pLineEdit_ReflectionLevel);
+		}
+		pVBoxLayout_OctVisualization->addItem(pHBoxLayout_Reflection);
+	}
+	
 	pGroupBox_OctVisualization->setLayout(pVBoxLayout_OctVisualization);
 
 	m_pVBoxLayout_ViewOption->addWidget(pGroupBox_OctVisualization);
@@ -518,6 +550,9 @@ void ViewOptionTab::createOctVisualizationOptionTab()
 	connect(m_pLineEdit_DecibelMax, SIGNAL(textEdited(const QString &)), this, SLOT(adjustDecibelRange()));
 	connect(m_pLineEdit_DecibelMin, SIGNAL(textEdited(const QString &)), this, SLOT(adjustDecibelRange()));
 #endif
+	if (!m_pStreamTab) connect(m_pCheckBox_ReflectionRemoval, SIGNAL(toggled(bool)), this, SLOT(reflectionRemoval(bool)));
+	if (!m_pStreamTab) connect(m_pLineEdit_ReflectionDistance, SIGNAL(textEdited(const QString &)), this, SLOT(changeReflectionDistance(const QString &)));
+	if (!m_pStreamTab) connect(m_pLineEdit_ReflectionLevel, SIGNAL(textEdited(const QString &)), this, SLOT(changeReflectionLevel(const QString &)));
 }
 
 void ViewOptionTab::createSyncVisualizationOptionTab()
@@ -977,6 +1012,36 @@ void ViewOptionTab::verticalMirriong(bool enabled)
 	m_pConfig->verticalMirroring = enabled;
 
 	m_pConfig->writeToLog(QString("Vertical mirroring set: %1").arg(enabled ? "true" : "false"));
+}
+
+void ViewOptionTab::reflectionRemoval(bool enabled)
+{
+	// Only result tab function
+	m_pLineEdit_ReflectionDistance->setEnabled(enabled);
+	m_pLineEdit_ReflectionLevel->setEnabled(enabled);
+
+	m_pConfigTemp->reflectionRemoval = enabled;
+	m_pResultTab->getViewTab()->invalidate();
+
+	m_pConfig->writeToLog(QString("Reflection removal set: %1").arg(enabled ? "true" : "false"));
+}
+
+void ViewOptionTab::changeReflectionDistance(const QString &str)
+{
+	// Only result tab function
+	m_pConfigTemp->reflectionDistance = str.toInt();
+	m_pResultTab->getViewTab()->invalidate();
+
+	m_pConfig->writeToLog(QString("Reflection distance set: %1").arg(m_pConfigTemp->reflectionDistance));
+}
+
+void ViewOptionTab::changeReflectionLevel(const QString &str)
+{
+	// Only result tab function
+	m_pConfigTemp->reflectionLevel = str.toFloat();
+	m_pResultTab->getViewTab()->invalidate();
+
+	m_pConfig->writeToLog(QString("Reflection level set: %1").arg(m_pConfigTemp->reflectionLevel));
 }
 
 void ViewOptionTab::adjustDecibelRange()

@@ -80,6 +80,9 @@ private slots:
 
 	void rotateImage(int);
 	void verticalMirriong(bool);
+	void reflectionRemoval(bool);
+	void changeReflectionDistance(const QString &);
+	void changeReflectionLevel(const QString &);
 	void adjustDecibelRange();
 	void adjustOctGrayContrast();
 
@@ -158,6 +161,10 @@ private:
     QLineEdit *m_pLineEdit_OctGrayMax;
     QLineEdit *m_pLineEdit_OctGrayMin;
     QImageView *m_pImageView_OctColorbar;
+
+	QCheckBox *m_pCheckBox_ReflectionRemoval;
+	QLineEdit *m_pLineEdit_ReflectionDistance;
+	QLineEdit *m_pLineEdit_ReflectionLevel;
 
 	// Manual synchronization
 	QLabel *m_pLabel_IntraFrameSync;
