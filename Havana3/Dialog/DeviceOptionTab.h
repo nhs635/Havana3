@@ -81,6 +81,7 @@ private slots:
 	void connectAxsunControl(bool);
 	void setLightSource(bool);
 	void setLiveImaging(bool);
+	void setPipelineMode(int);
 	void setBackground();
 	void resetBackground();
 	void setDispersionCompensation();
@@ -178,6 +179,11 @@ private:
 
 	QLabel *m_pLabel_LiveImaging;
 	QPushButton *m_pToggleButton_LiveImaging;
+
+	QLabel *m_pLabel_PipelineMode;
+	QRadioButton *m_pRadioButton_JpegCompressed;
+	QRadioButton *m_pRadioButton_RawAdcData;
+	QButtonGroup *m_pButtonGroup_PipelineMode;
 
 	QLabel *m_pLabel_BackgroundSubtraction;
 	QPushButton *m_pPushButton_BgSet;

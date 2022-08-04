@@ -13,6 +13,7 @@
 #include <Common/medfilt.h>
 #include <Common/ImageObject.h>
 #include <Common/basic_functions.h>
+#include <Common/lumen_detection.h>
 #include <Common/random_forest.h>
 
 #include <iostream>
@@ -91,6 +92,8 @@ private slots:
 	void play(bool);
 	void measureDistance(bool);
 	void measureArea(bool);
+	void autoContouring(bool);
+	void lumenContourDetection();
 	void changeVisualizationMode(int);
 	void changeEmissionChannel(int);
 	void changeRFPrediction(int);
@@ -150,7 +153,10 @@ public: // for post processing
 	np::FloatArray2 m_featVectors;
 	np::FloatArray2 m_plaqueCompositionProbMap;
 	np::FloatArray2 m_plaqueCompositionMap;
+	np::FloatArray m_plaqueCompositionRatio;
 	np::FloatArray2 m_inflammationMap;
+	np::FloatArray2 m_healedPlaqueMap;
+	np::FloatArray2 m_contourMap;
 
 	std::vector<np::FloatArray2> m_vectorPulseCrop;
 	std::vector<np::FloatArray2> m_vectorPulseBgSub;
@@ -187,7 +193,10 @@ private:
 	medfilt* m_pMedfiltIntensityMap;
 	medfilt* m_pMedfiltLifetimeMap;
     medfilt* m_pMedfiltLongi;
+	LumenDetection* m_pLumenDetection;
 	RandomForest* m_pForestPlqCompo;
+	RandomForest* m_pForestInflammation;
+	RandomForest* m_pForestHealedPlaque;
 	
 private:
 	std::thread playing;
@@ -218,6 +227,7 @@ private:
     QPushButton *m_pToggleButton_MeasureDistance;
 	QPushButton *m_pToggleButton_MeasureArea;
 	QPushButton *m_pToggleButton_AutoContour;
+	QPushButton *m_pPushButton_LumenDetection;
 
     QComboBox *m_pComboBox_FLImParameters;
 	QComboBox *m_pComboBox_RFPrediction;

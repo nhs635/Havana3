@@ -359,20 +359,20 @@ bool AxsunControl::setPipelineMode(AxPipelineMode pipeline_mode)
     {
 		uint8_t subsampling_factor = 1;
 		switch (pipeline_mode) {
-		case AxPipelineMode::RAW_ADC: subsampling_factor = 8;
-		case AxPipelineMode::WINDOWED: subsampling_factor = 16;
-		case AxPipelineMode::IFFT: subsampling_factor = 8;
-		case AxPipelineMode::MOD_SQUARED:subsampling_factor = 8;
-		case AxPipelineMode::SQRT: subsampling_factor = 10;
-		case AxPipelineMode::LOG: subsampling_factor = 4;
-		case AxPipelineMode::EIGHT_BIT: subsampling_factor = 4;
+		case AxPipelineMode::RAW_ADC: subsampling_factor = 4;
+		case AxPipelineMode::WINDOWED: subsampling_factor = 8;
+		case AxPipelineMode::IFFT: subsampling_factor = 4;
+		case AxPipelineMode::MOD_SQUARED:subsampling_factor = 4;
+		case AxPipelineMode::SQRT: subsampling_factor = 2;
+		case AxPipelineMode::LOG: subsampling_factor = 2;
+		case AxPipelineMode::EIGHT_BIT: subsampling_factor = 1;
 		case AxPipelineMode::JPEG_COMP: subsampling_factor = 1;
 		default: subsampling_factor = 1;
 		}
 
 		// Set subsampling factor first
-		//if (!setSubSampling(subsampling_factor))
-			//return false;
+		if (!setSubSampling(subsampling_factor))
+			return false;
 
 		// Set pipeline mode next
 		retval = axSetPipelineMode(pipeline_mode, AxChannelMode::CHAN_1, 0);

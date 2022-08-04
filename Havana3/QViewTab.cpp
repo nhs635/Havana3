@@ -28,7 +28,7 @@ QViewTab::QViewTab(bool is_streaming, QWidget *parent) :
 	m_pImgObjIntensityPropMap(nullptr), m_pImgObjIntensityRatioMap(nullptr), m_pImgObjLongiImage(nullptr),
 	m_pImgObjInflammationMap(nullptr), m_pImgObjPlaqueCompositionMap(nullptr), 
 	m_pCirc(nullptr), m_pMedfiltRect(nullptr), m_pMedfiltIntensityMap(nullptr), m_pMedfiltLifetimeMap(nullptr), m_pMedfiltLongi(nullptr),
-	m_pForestPlqCompo(nullptr), _running(false)
+	m_pLumenDetection(nullptr), m_pForestPlqCompo(nullptr), m_pForestInflammation(nullptr), m_pForestHealedPlaque(nullptr), _running(false)
 {
 	// Set configuration objects
 	if (is_streaming)
@@ -41,7 +41,7 @@ QViewTab::QViewTab(bool is_streaming, QWidget *parent) :
     createViewTabWidgets(is_streaming);
 
      // Create visualization buffers
-    if (is_streaming) setStreamingBuffersObjects();		
+    if (is_streaming) setStreamingBuffersObjects();			
 }
 
 QViewTab::~QViewTab()
@@ -74,6 +74,8 @@ QViewTab::~QViewTab()
 	if (m_pMedfiltLifetimeMap) delete m_pMedfiltLifetimeMap;
     if (m_pMedfiltLongi) delete m_pMedfiltLongi;
 	if (m_pForestPlqCompo) delete m_pForestPlqCompo;
+	if (m_pForestInflammation) delete m_pForestInflammation;
+	if (m_pForestHealedPlaque) delete m_pForestHealedPlaque;
 }
 
 
@@ -189,6 +191,10 @@ void QViewTab::createViewTabWidgets(bool is_streaming)
 		m_pToggleButton_MeasureArea->setText("Measure Area");
 		m_pToggleButton_MeasureArea->setFixedWidth(120);
 
+		m_pPushButton_LumenDetection = new QPushButton(this);		
+		m_pPushButton_LumenDetection->setText("Lumen Detection");
+		m_pPushButton_LumenDetection->setFixedWidth(120);
+
 		m_pToggleButton_AutoContour = new QPushButton(this);
 		m_pToggleButton_AutoContour->setCheckable(true);
 		m_pToggleButton_AutoContour->setText("Auto Contour");
@@ -230,6 +236,110 @@ void QViewTab::createViewTabWidgets(bool is_streaming)
 		m_pButtonGroup_VisualizationMode->addButton(m_pRadioButton_RFPrediction, _RF_PREDICTION_);
     }
 
+	// Copy label callback
+	if (!m_pStreamTab)
+	{
+		QString pt_name = m_pResultTab->getRecordInfo().patientName;
+		QString acq_date = m_pResultTab->getRecordInfo().date;
+
+		auto get_flim_info = [&]() -> QString {
+			
+			int vis_mode = m_pRadioButton_RFPrediction->isChecked();
+			int flim_mode = m_pConfig->flimParameterMode;
+			int ch = m_pConfig->flimEmissionChannel;
+			int rf_mode = m_pComboBox_RFPrediction->currentIndex();
+
+			QString flim_type;
+			float min = 0, max = 0;
+			if (vis_mode == VisualizationMode::_FLIM_PARAMETERS_)
+			{
+				if (flim_mode == FLImParameters::_LIFETIME_)
+				{
+					flim_type = QString("Ch%1 Lifetime").arg(ch);
+					min = m_pConfig->flimLifetimeRange[ch - 1].min;
+					max = m_pConfig->flimLifetimeRange[ch - 1].max;
+				}
+				else if (flim_mode == FLImParameters::_INTENSITY_PROP_)
+				{
+					flim_type = QString("Ch%1 IntenProp").arg(ch);
+					min = m_pConfig->flimIntensityPropRange[ch - 1].min;
+					max = m_pConfig->flimIntensityPropRange[ch - 1].max;
+				}
+				else if (flim_mode == FLImParameters::_INTENSITY_RATIO_)
+				{
+					flim_type = QString("Ch%1/%2 IntenRatio").arg(ch).arg((ch + 1) % 3 + 1);
+					min = m_pConfig->flimIntensityRatioRange[ch - 1].min;
+					max = m_pConfig->flimIntensityRatioRange[ch - 1].max;
+				}
+			}
+			else if (vis_mode == VisualizationMode::_RF_PREDICTION_)
+			{
+				if (rf_mode == RFPrediction::_PLAQUE_COMPOSITION_)
+					flim_type = "RF Prediction";
+				else if (rf_mode == RFPrediction::_INFLAMMATION_)
+				{
+					flim_type = "RF Inflammation";
+					min = m_pConfig->rfInflammationRange.min;
+					max = m_pConfig->rfInflammationRange.max;
+				}
+			}
+
+			QString flim_info = QString("%1 [%2 %3]").arg(flim_type).arg(min, 2, 'f', 1).arg(max, 2, 'f', 1);
+			return flim_info;
+		};
+				
+		m_pImageView_CircImage->DidCopyLabel += [&, pt_name, acq_date, get_flim_info]() {
+
+			int frame = getCurrentFrame() + 1;
+			int total_frame = m_vectorOctImage.size();
+
+			QString label = QString("[%1] %2 (%3 %4 / %5) %6").arg(pt_name).arg(acq_date).arg("circ:").arg(frame).arg(total_frame).arg(get_flim_info());
+			QApplication::clipboard()->setText(label);
+		};
+		m_pImageView_Longi->DidCopyLabel += [&, pt_name, acq_date, get_flim_info]() {
+			
+			int aline = getCurrentAline() + 1;
+			int total_aline = m_vectorOctImage.at(0).size(1);
+
+			QString label = QString("[%1] %2 (%3 %4 / %5) %6").arg(pt_name).arg(acq_date).arg("longi:").arg(aline).arg(total_aline).arg(get_flim_info());
+			QApplication::clipboard()->setText(label);
+		};
+		m_pImageView_EnFace->DidCopyLabel += [&, pt_name, acq_date, get_flim_info]() {
+			
+			QString label = QString("[%1] %2 %3").arg(pt_name).arg(acq_date).arg(get_flim_info());
+			QApplication::clipboard()->setText(label);
+		};
+		m_pImageView_Ivus->DidCopyLabel += [&, pt_name, acq_date]() {
+
+			IvusViewerDlg* pIvusViewerDlg = m_pResultTab->getIvusViewerDlg();
+			if (pIvusViewerDlg)
+			{
+				int k = 0;
+				foreach(QStringList _matches, pIvusViewerDlg->m_vectorMatches)
+				{
+					if (_matches.at(0).toInt() == getCurrentFrame() + 1)
+						break;
+					k++;
+				}
+
+				if (k != pIvusViewerDlg->m_vectorMatches.size())
+				{
+					QStringList matches = pIvusViewerDlg->m_vectorMatches.at(k);
+
+					int ivus_frame = matches.at(1).toInt() - 1;
+					if (ivus_frame != -1)
+					{
+						int ivus_total_frame = (int)pIvusViewerDlg->m_vectorIvusImages.size();
+						int ivus_rotation = matches.at(2).toInt();
+
+						QString label = QString("[%1] %2 (%3 %4 / %5) CCW %6 deg (%7)").arg(pt_name).arg(acq_date).arg("ivus:").arg(ivus_frame + 1).arg(ivus_total_frame).arg(ivus_rotation).arg(m_pConfigTemp->ivusPath);
+						QApplication::clipboard()->setText(label);
+					}
+				}
+			}
+		};
+	}
+
     // Set layout
     QGridLayout *pGridLayout = new QGridLayout;
     pGridLayout->setSpacing(4);
@@ -262,6 +372,7 @@ void QViewTab::createViewTabWidgets(bool is_streaming)
 		pGridLayout2->addWidget(m_pToggleButton_MeasureDistance, 0, 1);
 		pGridLayout2->addWidget(m_pToggleButton_MeasureArea, 0, 2);
 		pGridLayout2->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed), 1, 0, 1, 2);
+		pGridLayout2->addWidget(m_pPushButton_LumenDetection, 1, 1);
 		pGridLayout2->addWidget(m_pToggleButton_AutoContour, 1, 2);
 		
 		QGridLayout *pGridLayout3 = new QGridLayout;
@@ -325,6 +436,8 @@ void QViewTab::createViewTabWidgets(bool is_streaming)
         connect(m_pSlider_SelectFrame, SIGNAL(valueChanged(int)), this, SLOT(visualizeImage(int)));
         connect(m_pToggleButton_MeasureDistance, SIGNAL(toggled(bool)), this, SLOT(measureDistance(bool)));
 		connect(m_pToggleButton_MeasureArea, SIGNAL(toggled(bool)), this, SLOT(measureArea(bool)));
+		connect(m_pPushButton_LumenDetection, SIGNAL(clicked(bool)), this, SLOT(lumenContourDetection()));
+		connect(m_pToggleButton_AutoContour, SIGNAL(toggled(bool)), this, SLOT(autoContouring(bool)));
 
 		connect(m_pButtonGroup_VisualizationMode, SIGNAL(buttonClicked(int)), this, SLOT(changeVisualizationMode(int)));
         connect(m_pComboBox_FLImParameters, SIGNAL(currentIndexChanged(int)), this, SLOT(changeEmissionChannel(int)));
@@ -385,6 +498,7 @@ void QViewTab::invalidate()
 				.arg(m_pConfig->flimIntensityRatioRange[m_pConfig->flimEmissionChannel - 1].min, 2, 'f', 1), true);
 			m_pImageView_ColorBar->resetColormap(ColorTable::colortable(INTENSITY_RATIO_COLORTABLE));
 		}
+		m_pImageView_ColorBar->DidCopyLabel.clear();
 	}
 	else if (vis_mode == VisualizationMode::_RF_PREDICTION_)
 	{
@@ -396,6 +510,7 @@ void QViewTab::invalidate()
 			{
 				m_pForestPlqCompo = new RandomForest();
 				m_pForestPlqCompo->createForest(RF_N_TREES, RF_N_FEATURES, RF_N_CATS, CLASSIFICATION); // Create forest model for classification
+				m_pForestPlqCompo->setColormap(RF_N_CATS, RF_NORMAL_COLOR, RF_FIBROUS_COLOR, RF_LOOSE_FIBROUS_COLOR, RF_CALCIFICATION_COLOR, RF_MACROPHAGE_COLOR, RF_LIPID_MAC_COLOR, RF_SHEATH_COLOR);
 
 				if (!m_pForestPlqCompo->load(RF_COMPO_MODEL_NAME)) // Load pre-trained model
 				{
@@ -430,14 +545,44 @@ void QViewTab::invalidate()
 					msg_box.setFixedSize(msg_box.width(), msg_box.height());
 					msg_box.show();
 
+					// Make prediction
 					m_plaqueCompositionProbMap = np::FloatArray2(RF_N_CATS * m_pConfig->flimAlines, m_pConfigTemp->frames);
 					m_plaqueCompositionMap = np::FloatArray2(3 * m_pConfigTemp->flimAlines, m_pConfigTemp->frames);
 					m_pForestPlqCompo->predict(m_featVectors, m_plaqueCompositionMap, m_plaqueCompositionProbMap); // RF prediction for plaque composition classification				
 
-					//QFile file("compo.data");
-					//file.open(QIODevice::WriteOnly);
-					//file.write(reinterpret_cast<const char*>(m_featVectors.raw_ptr()), sizeof(float) * m_featVectors.length());
-					//file.close();
+					// Calculate composition ratio 
+					m_plaqueCompositionRatio = np::FloatArray(RF_N_CATS + 1);
+					m_plaqueCompositionRatio(0) = 0;
+					{
+						// Intensity
+						np::FloatArray overallIntensityVector(m_pConfig->flimAlines * m_pConfigTemp->frames);
+						memset(overallIntensityVector, 0, sizeof(float) * overallIntensityVector.length());
+						for (int i = 0; i < 3; i++)
+							ippsAdd_32f_I(m_intensityMap.at(i), overallIntensityVector, overallIntensityVector.length());
+						Ipp32f denumerator;
+						ippsSum_32f(overallIntensityVector, overallIntensityVector.length(), &denumerator, ippAlgHintAccurate);
+
+						np::FloatArray2 plaqueCompositionProbVector(m_plaqueCompositionProbMap, RF_N_CATS, m_pConfig->flimAlines * m_pConfigTemp->frames);
+						for (int i = 0; i < RF_N_CATS; i++)
+						{
+							np::FloatArray weightMulVector(m_pConfig->flimAlines * m_pConfigTemp->frames);
+							ippiMul_32f_C1R(&plaqueCompositionProbVector(i, 0), sizeof(float) * RF_N_CATS, 
+								overallIntensityVector, sizeof(float) * 1, weightMulVector, sizeof(float) * 1,
+								{ 1, weightMulVector.length() });
+							
+							Ipp32f numerator;
+							ippsSum_32f(weightMulVector, weightMulVector.length(), &numerator, ippAlgHintAccurate);
+							
+							m_plaqueCompositionRatio(i + 1) = m_plaqueCompositionRatio(i) + 255.0f * numerator / denumerator;
+							//printf("%f ", m_plaqueCompositionRatio(i + 1));
+						}
+						//printf("\n");
+					}
+
+					///QFile file("compo.data");
+					///file.open(QIODevice::WriteOnly);
+					///file.write(reinterpret_cast<const char*>(m_featVectors.raw_ptr()), sizeof(float) * m_featVectors.length());
+					///file.close();
 				}
 			}
 
@@ -445,23 +590,137 @@ void QViewTab::invalidate()
 			m_pImageView_EnFace->setEnterCallback([&]() { m_pImageView_EnFace->setText(QPoint(8, 4),
 				QString::fromLocal8Bit("2-D Plaque Composition\nEn Face Chemogram (z-θ)")); });
 			m_pImageView_ColorBar->setText(QPoint(0, 0), "", true);
+			
+			uint32_t colors[RF_N_CATS] = { RF_NORMAL_COLOR, RF_FIBROUS_COLOR, RF_LOOSE_FIBROUS_COLOR, RF_CALCIFICATION_COLOR, RF_MACROPHAGE_COLOR, RF_LIPID_MAC_COLOR, RF_SHEATH_COLOR };
+			np::Uint8Array2 compo_color(3, RF_N_CATS);
+			for (int i = 0; i < RF_N_CATS; i++)
+				for (int j = 0; j < 3; j++)
+					compo_color(j, i) = (colors[i] >> (8 * (2 - j))) & 0xff;
+			
+			QVector<QRgb> temp_vector;
+			for (int i = 0; i < 256; i++)
+			{
+				int j;
+				for (j = 0; j < RF_N_CATS; j++)
+					if (((float)i >= m_plaqueCompositionRatio(j)) && ((float)i < m_plaqueCompositionRatio(j + 1)))
+						break;			
+				QRgb color = qRgb(compo_color(0, j), compo_color(1, j), compo_color(2, j));
+				temp_vector.push_back(color);
+			}			
+			m_pImageView_ColorBar->changeColormap(ColorTable::colortable(COMPOSITION_COLORTABLE), temp_vector);
 			m_pImageView_ColorBar->resetColormap(ColorTable::colortable(COMPOSITION_COLORTABLE));
+
+			QString qval("");
+			for (int i = 0; i < RF_N_CATS; i++)
+				qval += QString(" %1").arg((m_plaqueCompositionRatio(i + 1) - m_plaqueCompositionRatio(i)) / 255.0f, 5, 'f', 4);
+			m_pImageView_ColorBar->setToolTip(qval);
+			m_pImageView_ColorBar->DidCopyLabel += [&, qval]() {
+				QApplication::clipboard()->setText(qval);
+			};
 		}
 		else if (rf_mode == RFPrediction::_INFLAMMATION_)
 		{
-			m_inflammationMap = np::FloatArray2(m_pConfigTemp->flimAlines, m_pConfigTemp->frames);
-			//ippsAdd_32f(&m_plaqueCompositionProbMap(0, 3), &m_plaqueCompositionProbMap(0, 4), m_inflammationMap, m_inflammationMap.length());
-			ippiAdd_32f_C1R(&m_plaqueCompositionProbMap(3, 0), sizeof(float) * RF_N_CATS, // mac
-				&m_plaqueCompositionProbMap(4, 0), sizeof(float) * RF_N_CATS, // lipid + mac
-				m_inflammationMap.raw_ptr(), sizeof(float) * 1, { 1, m_inflammationMap.length() });
-						
+			// Random Forest definition
+			if (!m_pForestInflammation)
+			{
+				m_pForestInflammation = new RandomForest();
+				m_pForestInflammation->createForest(RF_N_TREES, RF_N_FEATURES, 1, REGRESSION); // Create forest model for regression
+
+				if (!m_pForestInflammation->load(RF_INFL_MODEL_NAME)) // Load pre-trained model
+				{
+					QMessageBox msg_box(QMessageBox::NoIcon, "RF Model Training...", "", QMessageBox::NoButton, this);
+					msg_box.setStandardButtons(0);
+					msg_box.setWindowModality(Qt::WindowModal);
+					msg_box.setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::CustomizeWindowHint);
+					msg_box.move(QApplication::desktop()->screen()->rect().center() - msg_box.rect().center());
+					msg_box.setFixedSize(msg_box.width(), msg_box.height());
+					msg_box.show();
+
+					if (m_pForestInflammation->train(RF_INFL_DATA_NAME)) // If not, new training is initiated.
+						m_pForestInflammation->save(RF_INFL_MODEL_NAME); // Then, the trained model is written.
+					else
+					{
+						delete m_pForestInflammation; // If failed to train, forest object is deleted.
+						m_pForestInflammation = nullptr; // and pointed to null.
+					}
+				}
+			}
+
+			if (!m_pForestHealedPlaque)
+			{
+				m_pForestHealedPlaque = new RandomForest();
+				m_pForestHealedPlaque->createForest(RF_N_TREES, RF_N_FEATURES, 1, REGRESSION); // Create forest model for regression
+
+				if (!m_pForestHealedPlaque->load(RF_HEALED_MODEL_NAME)) // Load pre-trained model
+				{
+					QMessageBox msg_box(QMessageBox::NoIcon, "RF Model Training...", "", QMessageBox::NoButton, this);
+					msg_box.setStandardButtons(0);
+					msg_box.setWindowModality(Qt::WindowModal);
+					msg_box.setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::CustomizeWindowHint);
+					msg_box.move(QApplication::desktop()->screen()->rect().center() - msg_box.rect().center());
+					msg_box.setFixedSize(msg_box.width(), msg_box.height());
+					msg_box.show();
+
+					if (m_pForestHealedPlaque->train(RF_HEALED_DATA_NAME)) // If not, new training is initiated.
+						m_pForestHealedPlaque->save(RF_HEALED_MODEL_NAME); // Then, the trained model is written.
+					else
+					{
+						delete m_pForestHealedPlaque; // If failed to train, forest object is deleted.
+						m_pForestHealedPlaque = nullptr; // and pointed to null.
+					}
+				}
+			}
+
+			if (m_pForestInflammation && m_pForestHealedPlaque)
+			{
+				if (m_inflammationMap.length() == 0) // Prediction is only made when the buffer is empty.
+				{
+					m_inflammationMap = np::FloatArray2(3 * m_pConfigTemp->flimAlines, m_pConfigTemp->frames);
+
+					{
+						QMessageBox msg_box(QMessageBox::NoIcon, "RF Model Prediction...", "", QMessageBox::NoButton, this);
+						msg_box.setStandardButtons(0);
+						msg_box.setWindowModality(Qt::WindowModal);
+						msg_box.setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::CustomizeWindowHint);
+						msg_box.move(QApplication::desktop()->screen()->rect().center() - msg_box.rect().center());
+						msg_box.setFixedSize(msg_box.width(), msg_box.height());
+						msg_box.show();
+
+						// Make prediction
+						np::FloatArray2 inflammation(m_pConfigTemp->flimAlines, m_pConfigTemp->frames);
+						m_pForestInflammation->predict(m_featVectors, inflammation); // RF prediction for inflammation estimation
+						ippiCopy_32f_C1C3R(inflammation, sizeof(float) * inflammation.size(0),
+							&m_inflammationMap(0, 0), sizeof(float) * m_inflammationMap.size(0),
+							{ inflammation.size(0), inflammation.size(1) });
+					}
+			
+					{
+						QMessageBox msg_box(QMessageBox::NoIcon, "RF Model Prediction...", "", QMessageBox::NoButton, this);
+						msg_box.setStandardButtons(0);
+						msg_box.setWindowModality(Qt::WindowModal);
+						msg_box.setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::CustomizeWindowHint);
+						msg_box.move(QApplication::desktop()->screen()->rect().center() - msg_box.rect().center());
+						msg_box.setFixedSize(msg_box.width(), msg_box.height());
+						msg_box.show();
+
+						// Make prediction
+						np::FloatArray2 healed_plaque(m_pConfigTemp->flimAlines, m_pConfigTemp->frames);
+						m_pForestHealedPlaque->predict(m_featVectors, healed_plaque); // RF prediction for inflammation estimation
+						ippiCopy_32f_C1C3R(healed_plaque, sizeof(float) * healed_plaque.size(0),
+							&m_inflammationMap(1, 0), sizeof(float) * m_inflammationMap.size(0),
+							{ healed_plaque.size(0), healed_plaque.size(1) });
+					}
+
+					ippsMulC_32f_I(255.0f, m_inflammationMap, m_inflammationMap.length());
+				}
+			}
+									
 			// Colorbar
 			m_pImageView_EnFace->setEnterCallback([&]() { m_pImageView_EnFace->setText(QPoint(8, 4),
 				QString::fromLocal8Bit("2-D Inflammation\nEn Face Chemogram (z-θ)")); });
-			m_pImageView_ColorBar->setText(QPoint(0, 0), QString("%1         Inflammation (AU)         %2")
-				.arg(m_pConfig->rfInflammationRange.max, 2, 'f', 1)
-				.arg(m_pConfig->rfInflammationRange.min, 2, 'f', 1), true);
+			m_pImageView_ColorBar->setText(QPoint(0, 0), QString("Infl                                 Healed"), true);
 			m_pImageView_ColorBar->resetColormap(ColorTable::colortable(INFLAMMATION_COLORTABLE));
+			m_pImageView_ColorBar->DidCopyLabel.clear();
 		}		
 	}
 	m_pImageView_ColorBar->update();
@@ -752,9 +1011,10 @@ void QViewTab::setWidgets(Configuration* pConfig)
 		{
 			m_pImageView_EnFace->setEnterCallback([&]() { m_pImageView_EnFace->setText(QPoint(8, 4),
 				QString::fromLocal8Bit("2-D Inflammation\nEn Face Chemogram (z-θ)")); });
-			m_pImageView_ColorBar->setText(QPoint(0, 0), QString("%1         Inflammation (AU)         %2")
-				.arg(m_pConfig->rfInflammationRange.max, 2, 'f', 1)
-				.arg(m_pConfig->rfInflammationRange.min, 2, 'f', 1), true);
+			m_pImageView_ColorBar->setText(QPoint(0, 0), QString("Infl                                 Healed"), true);
+			//m_pImageView_ColorBar->setText(QPoint(0, 0), QString("%1         Inflammation (AU)         %2")
+			//	.arg(m_pConfig->rfInflammationRange.max, 2, 'f', 1)
+			//	.arg(m_pConfig->rfInflammationRange.min, 2, 'f', 1), true);
 			m_pImageView_ColorBar->resetColormap(ColorTable::colortable(INFLAMMATION_COLORTABLE));
 		}
 	}
@@ -887,7 +1147,7 @@ void QViewTab::visualizeImage(int frame)
 		// Measure state uncheck
 		if (m_pToggleButton_MeasureDistance->isChecked()) m_pToggleButton_MeasureDistance->setChecked(false);
 		if (m_pToggleButton_MeasureArea->isChecked()) m_pToggleButton_MeasureArea->setChecked(false);
-		if (m_pToggleButton_AutoContour->isChecked()) m_pToggleButton_AutoContour->setChecked(false);
+		if (m_contourMap.length() == 0)	if (m_pToggleButton_AutoContour->isChecked()) m_pToggleButton_AutoContour->setChecked(false);
 
         // OCT Visualization
 		IppiSize roi_oct = { m_pImgObjRectImage->getWidth(), m_pImgObjRectImage->getHeight() };
@@ -950,16 +1210,16 @@ void QViewTab::visualizeImage(int frame)
 		else if (vis_mode == VisualizationMode::_RF_PREDICTION_)
 		{
 			int rf_mode = m_pComboBox_RFPrediction->currentIndex();
-			if (rf_mode == RFPrediction::_INFLAMMATION_)
-			{
-				temp_imgobj = new ImageObject(roi_flimring.height, 1, m_pImgObjInflammationMap->getColorTable());
-				ippiCopy_8u_C3R(m_pImgObjInflammationMap->qrgbimg.constBits() + 3 * frame, 3 * m_pImgObjInflammationMap->arr.size(0),
-					temp_imgobj->qrgbimg.bits(), 3, roi_flimring);
-			}
-			else if (rf_mode == RFPrediction::_PLAQUE_COMPOSITION_)
+			if (rf_mode == RFPrediction::_PLAQUE_COMPOSITION_)
 			{
 				temp_imgobj = new ImageObject(roi_flimring.height, 1, m_pImgObjPlaqueCompositionMap->getColorTable());
 				ippiCopy_8u_C3R(m_pImgObjPlaqueCompositionMap->qrgbimg.constBits() + 3 * frame, 3 * m_pImgObjPlaqueCompositionMap->arr.size(0),
+					temp_imgobj->qrgbimg.bits(), 3, roi_flimring);
+			}
+			else if (rf_mode == RFPrediction::_INFLAMMATION_)
+			{
+				temp_imgobj = new ImageObject(roi_flimring.height, 1, m_pImgObjInflammationMap->getColorTable());
+				ippiCopy_8u_C3R(m_pImgObjInflammationMap->qrgbimg.constBits() + 3 * frame, 3 * m_pImgObjInflammationMap->arr.size(0),
 					temp_imgobj->qrgbimg.bits(), 3, roi_flimring);
 			}
 		}
@@ -975,8 +1235,20 @@ void QViewTab::visualizeImage(int frame)
 			}
 		});
 				
-        // Make circularzing
-        emit makeCirc();
+		// Contour Lines
+		if (m_pToggleButton_AutoContour->isChecked())
+		{
+			if (m_contourMap.length() != 0)
+			{
+				np::Uint16Array contour_16u(m_pConfig->octAlines);
+				ippsConvert_32f16u_Sfs(&m_contourMap(0, getCurrentFrame()), contour_16u, contour_16u.length(), ippRndNear, 0);
+				m_pImageView_CircImage->setContour(m_pConfig->octAlines, contour_16u);
+				m_pImageView_CircImage->getRender()->update();
+			}
+		}
+
+		// Make circularzing
+		emit makeCirc();
 
         // En Face Lines
         m_pImageView_EnFace->setVerticalLine(1, frame);
@@ -1209,6 +1481,22 @@ void QViewTab::visualizeLongiImage(int aline)
 		}			
 	}
 	
+	// Draw contours
+	if (m_pToggleButton_AutoContour->isChecked())
+	{
+		if (m_contourMap.length() != 0)
+		{
+			np::Uint16Array lcontour_16u(2 * m_pConfigTemp->frames);
+			ippiConvert_32f16u_C1RSfs(&m_contourMap(aline0, 0), sizeof(float) * m_contourMap.size(0),
+				lcontour_16u, sizeof(uint16_t), { 1, m_pConfigTemp->frames }, ippRndNear, 0);
+			ippiConvert_32f16u_C1RSfs(&m_contourMap(aline1, 0), sizeof(float) * m_contourMap.size(0),
+				lcontour_16u + m_pConfigTemp->frames, sizeof(uint16_t), { 1, m_pConfigTemp->frames }, ippRndNear, 0);
+
+			m_pImageView_Longi->setContour(2 * m_pConfigTemp->frames, lcontour_16u);
+			m_pImageView_Longi->getRender()->update();
+		}
+	}
+	
 	// Draw longitudinal view
     emit paintLongiImage(m_pImgObjLongiImage->qrgbimg.bits());
 
@@ -1334,11 +1622,145 @@ void QViewTab::measureArea(bool toggled)
 	else
 	{
 		if (m_pToggleButton_MeasureDistance->isChecked()) m_pToggleButton_MeasureDistance->setChecked(false);
+		if (m_pToggleButton_AutoContour->isChecked()) m_pToggleButton_AutoContour->setChecked(false);
 
 		m_pImageView_CircImage->setRLineChangeCallback([&](int aline) { (void)aline; });
 
 		m_pConfig->writeToLog("Measure area off.");
 	}
+}
+
+void QViewTab::autoContouring(bool toggled)
+{
+	if (toggled)
+	{		
+		if (m_pToggleButton_MeasureDistance->isChecked()) m_pToggleButton_MeasureDistance->setChecked(false);
+		if (m_pToggleButton_MeasureArea->isChecked()) m_pToggleButton_MeasureArea->setChecked(false);
+
+		// Set lumen contour in circ image
+		np::Uint16Array contour_16u(m_pConfig->octAlines);		
+		if (m_contourMap.length() == 0)
+		{
+			if (!m_pLumenDetection)
+			{
+				np::FloatArray contour;
+				m_pLumenDetection = new LumenDetection(OUTER_SHEATH_POSITION, m_pConfigTemp->innerOffsetLength, true,
+					true, m_pConfigTemp->reflectionDistance, m_pConfigTemp->reflectionLevel);
+
+				(*m_pLumenDetection)(m_vectorOctImage.at(getCurrentFrame()), contour);
+								
+				ippsConvert_32f16u_Sfs(contour, contour_16u, contour.length(), ippRndNear, 0);
+			}
+		}
+		else
+		{
+			ippsConvert_32f16u_Sfs(&m_contourMap(0, getCurrentFrame()), contour_16u, contour_16u.length(), ippRndNear, 0);
+		}
+		m_pImageView_CircImage->setContour(m_pConfig->octAlines, contour_16u);		
+
+		// Set lumen contour in longi image
+		np::Uint16Array lcontour_16u(2 * m_pConfigTemp->frames);
+		if (m_contourMap.length() != 0)
+		{
+			ippiConvert_32f16u_C1RSfs(&m_contourMap(getCurrentAline(), 0), sizeof(float) * m_contourMap.size(0), 
+				lcontour_16u, sizeof(uint16_t), { 1, m_pConfigTemp->frames }, ippRndNear, 0);
+			ippiConvert_32f16u_C1RSfs(&m_contourMap((getCurrentAline() + m_pConfig->octAlines / 2) % m_pConfig->octAlines, 0), sizeof(float) * m_contourMap.size(0), 
+				lcontour_16u + m_pConfigTemp->frames, sizeof(uint16_t), { 1, m_pConfigTemp->frames }, ippRndNear, 0);
+
+			m_pImageView_Longi->setContour(2 * m_pConfigTemp->frames, lcontour_16u);
+		}
+	}
+	else
+	{
+		if (m_contourMap.length() == 0)
+		{
+			if (m_pLumenDetection)
+			{
+				delete m_pLumenDetection;
+				m_pLumenDetection = nullptr;				
+			}
+		}
+		m_pImageView_CircImage->setContour(0, nullptr);
+		m_pImageView_Longi->setContour(0, nullptr);
+	}
+
+	m_pImageView_CircImage->getRender()->update();
+	m_pImageView_Longi->getRender()->update();
+}
+
+void QViewTab::lumenContourDetection()
+{
+	QString lumen_contour_path = m_pResultTab->getRecordInfo().filename;
+	lumen_contour_path.replace("pullback.data", "lumen_contour.map");
+
+	QFileInfo check_file(lumen_contour_path);
+
+	if (!(check_file.exists()))
+	{
+		if (m_contourMap.length() == 0)
+		{			
+			if (!m_pLumenDetection)
+			{
+				QMessageBox msg_box(QMessageBox::NoIcon, "Lumen Contour Detection...", "", QMessageBox::NoButton, this);
+				msg_box.setStandardButtons(0);
+				msg_box.setWindowModality(Qt::WindowModal);
+				msg_box.setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::CustomizeWindowHint);
+				msg_box.move(QApplication::desktop()->screen()->rect().center() - msg_box.rect().center());
+				msg_box.setFixedSize(msg_box.width(), msg_box.height());
+				msg_box.show();
+								
+				m_contourMap = np::FloatArray2(m_pConfig->octAlines, m_pConfigTemp->frames);
+
+				int n_pieces = 10;
+				np::Array<int> pieces(n_pieces + 1);
+				pieces[0] = 0;
+				for (int p = 0; p < n_pieces; p++)
+					pieces[p + 1] = (int)((double)m_vectorOctImage.size() / (double)n_pieces * (double)(p + 1));
+
+				std::thread *plumdet = new std::thread[n_pieces];
+				for (int p = 0; p < n_pieces; p++)
+				{
+					plumdet[p] = std::thread([&, p, pieces]() {
+
+						LumenDetection *pLumenDetection = new LumenDetection(OUTER_SHEATH_POSITION, m_pConfigTemp->innerOffsetLength, false,
+							true, m_pConfigTemp->reflectionDistance, m_pConfigTemp->reflectionLevel);
+
+						for (int i = pieces[p]; i < pieces[p + 1]; i++)
+						{
+							np::FloatArray contour(&m_contourMap(0, i), m_contourMap.size(0));
+							(*pLumenDetection)(m_vectorOctImage.at(i), contour);
+
+							printf("%d\n", i);
+						}
+
+						delete pLumenDetection;
+						pLumenDetection = nullptr;
+					});
+				}
+				for (int p = 0; p < n_pieces; p++)
+					plumdet[p].join();
+			}
+
+			// Recording
+			QFile file(lumen_contour_path);
+			file.open(QIODevice::WriteOnly);
+			file.write(reinterpret_cast<const char*>(m_contourMap.raw_ptr()), sizeof(float) * m_contourMap.length());
+			file.close();
+		}
+	}
+	else
+	{
+		m_contourMap = np::FloatArray2(m_pConfig->octAlines, m_pConfigTemp->frames);
+
+		// Loading
+		QFile file(lumen_contour_path);
+		file.open(QIODevice::ReadOnly);
+		file.read(reinterpret_cast<char*>(m_contourMap.raw_ptr()), sizeof(float) * m_contourMap.length());
+		file.close();
+	}
+
+	m_pToggleButton_AutoContour->setChecked(true);
+	m_pPushButton_LumenDetection->setDisabled(true);
 }
 
 void QViewTab::changeVisualizationMode(int mode)
@@ -1530,19 +1952,39 @@ void QViewTab::scaleFLImEnFaceMap(ImageObject* pImgObjIntensityMap, ImageObject*
 			// Inflammation map
 			if (m_inflammationMap.length() != 0)
 			{
-				ippiScale_32f8u_C1R(m_inflammationMap, sizeof(float) * roi_flimproj.width,
-					scale_temp.raw_ptr(), sizeof(uint8_t) * roi_flimproj4.width, roi_flimproj,
-					m_pConfig->rfInflammationRange.min, m_pConfig->rfInflammationRange.max);
-				ippiTranspose_8u_C1R(scale_temp.raw_ptr(), sizeof(uint8_t) * roi_flimproj4.width,
-					pImgObjInflammationMap->arr.raw_ptr(), sizeof(uint8_t) * roi_flimproj4.height, roi_flimproj);
-				circShift(pImgObjInflammationMap->arr, int(m_pConfigTemp->rotatedAlines / 4));
-				///setAxialOffset(pImgObjInflammationMap->arr, m_pConfigTemp->interFrameSync);
+				np::Uint8Array2 scale_temp3(3 * roi_flimproj4.width, roi_flimproj4.height);
 
-				// RGB conversion
-				pImgObjInflammationMap->convertRgb();
+				ippsConvert_32f8u_Sfs(m_inflammationMap, scale_temp3, m_inflammationMap.length(), ippRndNear, 0);
+				ippiTranspose_8u_C3R(scale_temp3.raw_ptr(), sizeof(uint8_t) * 3 * roi_flimproj4.width,
+					pImgObjInflammationMap->qrgbimg.bits(), sizeof(uint8_t) * 3 * roi_flimproj4.height, roi_flimproj);
+
+				for (int j = 0; j < 3; j++)
+				{
+					np::Uint8Array2 temp_arr(roi_flimproj4.height, roi_flimproj4.width);
+					ippiCopy_8u_C3C1R(pImgObjInflammationMap->qrgbimg.bits() + j, sizeof(uint8_t) * 3 * roi_flimproj4.height,
+						temp_arr.raw_ptr(), sizeof(uint8_t) * roi_flimproj4.height, { roi_flimproj4.height, roi_flimproj4.width });
+					circShift(temp_arr, int(m_pConfigTemp->rotatedAlines / 4));
+					///setAxialOffset(temp_arr, m_pConfigTemp->interFrameSync);
+					ippiCopy_8u_C1C3R(temp_arr.raw_ptr(), sizeof(uint8_t) * roi_flimproj4.height,
+						pImgObjInflammationMap->qrgbimg.bits() + j, sizeof(uint8_t) * 3 * roi_flimproj4.height, { roi_flimproj4.height, roi_flimproj4.width });
+				}
 
 				// Intensity-weight lifetime map
 				ippsMul_8u_ISfs(pImgObjIntensityMap->qrgbimg.bits(), pImgObjInflammationMap->qrgbimg.bits(), pImgObjIntensityMap->qrgbimg.byteCount(), 8);
+
+				//ippiScale_32f8u_C1R(m_inflammationMap, sizeof(float) * roi_flimproj.width,
+				//	scale_temp.raw_ptr(), sizeof(uint8_t) * roi_flimproj4.width, roi_flimproj,
+				//	m_pConfig->rfInflammationRange.min, m_pConfig->rfInflammationRange.max);
+				//ippiTranspose_8u_C1R(scale_temp.raw_ptr(), sizeof(uint8_t) * roi_flimproj4.width,
+				//	pImgObjInflammationMap->arr.raw_ptr(), sizeof(uint8_t) * roi_flimproj4.height, roi_flimproj);
+				//circShift(pImgObjInflammationMap->arr, int(m_pConfigTemp->rotatedAlines / 4));
+				/////setAxialOffset(pImgObjInflammationMap->arr, m_pConfigTemp->interFrameSync);
+
+				//// RGB conversion
+				//pImgObjInflammationMap->convertRgb();
+
+				//// Intensity-weight lifetime map
+				//ippsMul_8u_ISfs(pImgObjIntensityMap->qrgbimg.bits(), pImgObjInflammationMap->qrgbimg.bits(), pImgObjIntensityMap->qrgbimg.byteCount(), 8);
 			}
 		}
 	}

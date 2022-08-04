@@ -77,17 +77,29 @@
 #define INTENSITY_RATIO_COLORTABLE	12 // bwr
 #define LIFETIME_COLORTABLE         13 // hsv2 ==> Viewer/QImageView.cpp
 #define IVUS_COLORTABLE				0 // gray
-#define INFLAMMATION_COLORTABLE		5 // hot
 #define COMPOSITION_COLORTABLE		14 // compo
+#define INFLAMMATION_COLORTABLE		15 // redgreen
 
 #define RF_N_TREES					100
 #define RF_N_FEATURES				9
-#define RF_N_CATS					5
+#define RF_N_CATS					7
 #define RF_COMPO_DATA_NAME			"compo_forest.csv"
 #define RF_COMPO_MODEL_NAME			"compo_forest.xml"
+#define RF_NORMAL_COLOR				0x84c06f
+#define RF_FIBROUS_COLOR			0x649254
+#define RF_LOOSE_FIBROUS_COLOR		0xd5d52b
+#define RF_CALCIFICATION_COLOR		0xffffff
+#define RF_MACROPHAGE_COLOR			0xff4748
+#define RF_LIPID_MAC_COLOR			0x780005
+#define RF_SHEATH_COLOR				0x000000
+
+#define RF_INFL_DATA_NAME			"infl_forest.csv"
+#define RF_INFL_MODEL_NAME			"infl_forest.xml"
+#define RF_HEALED_DATA_NAME			"healed_forest.csv"
+#define RF_HEALED_MODEL_NAME		"healed_forest.xml"
 
 #define REFLECTION_DISTANCE			35
-#define REFLECTION_LEVEL			0.30
+#define REFLECTION_LEVEL			0.30f
 
 #define INTER_FRAME_SYNC			0 // Frames adjustment
 #define INTRA_FRAME_SYNC			0 // A-lines adjustment

@@ -21,6 +21,7 @@ ColorTable::ColorTable()
 	m_cNameVector.push_back("bwr"); // 12
 	m_cNameVector.push_back("hsv2"); // 13
 	m_cNameVector.push_back("compo"); // 14
+	m_cNameVector.push_back("redgreen"); // 15
 	// 새로운 파일 이름 추가 하기
 
 	for (int i = 0; i < m_cNameVector.size(); i++)
@@ -88,6 +89,10 @@ QImageView::QImageView(ColorTable::colortable ctable, int width, int height, boo
 
     // Initialization
     setUpdatesEnabled(true);
+
+	// Pop-up menu
+	setContextMenuPolicy(Qt::CustomContextMenu);
+	connect(this, SIGNAL(customContextMenuRequested(const QPoint &)), this, SLOT(showContextMenu(const QPoint &)));
 }
 
 QImageView::~QImageView()
@@ -145,8 +150,13 @@ void QImageView::resetSize(int width, int height)
 void QImageView::resetColormap(ColorTable::colortable ctable)
 {
 	m_pRenderImage->m_pImage->setColorTable(m_colorTable.m_colorTableVector.at(ctable));
-
+	
 	m_pRenderImage->update();
+}
+
+void QImageView::changeColormap(ColorTable::colortable ctable, QVector<QRgb> rgb_vector)
+{
+	m_colorTable.m_colorTableVector.replace(ctable, rgb_vector);
 }
 
 void QImageView::setHorizontalLine(int len, ...)
@@ -289,6 +299,29 @@ void QImageView::drawRgbImage(uint8_t* pImage)
 	
 	m_pRenderImage->update();
 	delete pImg;
+}
+
+void QImageView::showContextMenu(const QPoint &p)
+{
+	QPoint gp = mapToGlobal(p);
+
+	QMenu menu;
+	menu.addAction("Copy Image");
+	menu.addAction("Copy Label");
+
+	QAction* pSelectionItem = menu.exec(gp);
+	if (pSelectionItem)
+	{
+		if (pSelectionItem->text() == "Copy Image")
+		{
+			QApplication::clipboard()->setImage(*(m_pRenderImage->m_pImage));
+			m_pRenderImage->m_pImage->save("capture.bmp");
+		}
+		else if (pSelectionItem->text() == "Copy Label")
+		{
+			DidCopyLabel();
+		}		
+	}
 }
 
 
@@ -443,21 +476,82 @@ void QRenderImage::paintEvent(QPaintEvent *)
 		painter.setPen(pen);
 		painter.drawEllipse(center, radius, radius);
 	}
-    ///if (m_contour.length() != 0)
-    ///{
-    ///    QPen pen; pen.setColor(Qt::green);
-    ///    painter.setPen(pen);
-    ///    for (int i = 0; i < m_contour.length() - 1; i++)
-    ///    {
-    ///        QPointF x0, x1;
-    ///        x0.setX((float)(i) / (float)m_contour.length() * (float)w);
-    ///        x0.setY((float)(m_contour[i]) / (float)m_pImage->height() * (float)h);
-    ///        x1.setX((float)(i + 1) / (float)m_contour.length() * w);
-    ///        x1.setY((float)(m_contour[i + 1]) / (float)m_pImage->height() * (float)h);
 
-    ///        painter.drawLine(x0, x1);
-    ///    }
-    ///}
+	// Draw assitive lines - contour (circular image)
+	if (!m_bCenterGrid)
+	{
+		if (m_contour.length() != 0)
+		{
+			double perimeter = 0;
+			double area = 0;
+
+			QPen pen; pen.setWidth(1);
+			pen.setColor(Qt::magenta);
+			painter.setPen(pen);
+
+			for (int i = 0; i < m_contour.length() - 1; i++)
+			{
+				QPointF x0, x1;			
+				float t0 = (float)(i) / (float)m_contour.length() * (float)IPP_2PI;
+				float r0 = (float)(m_contour[i] + 0) / (float)m_pImage->height() * (float)h;
+				float t1 = (float)(i + 1) / (float)m_contour.length() * (float)IPP_2PI;
+				float r1 = (float)(m_contour[i + 1] + 0) / (float)m_pImage->height() * (float)h;
+				x0.setX((r0 * cosf(t0) + h / 2) / (double)m_fMagnLevel - double(m_rectMagnified.left() * (float)w / m_fMagnLevel / (float)m_pImage->width()));
+				x0.setY((r0 * sinf(-t0) + h / 2) / (double)m_fMagnLevel - double(m_rectMagnified.top() * (float)h / m_fMagnLevel / (float)m_pImage->height()));
+				x1.setX((r1 * cosf(t1) + h / 2) / (double)m_fMagnLevel - double(m_rectMagnified.left() * (float)w / m_fMagnLevel / (float)m_pImage->width()));
+				x1.setY((r1 * sinf(-t1) + h / 2) / (double)m_fMagnLevel - double(m_rectMagnified.top() * (float)h / m_fMagnLevel / (float)m_pImage->height()));
+			
+				// Arc length to calculate perimter
+				double arc_length = sqrt(m_contour[i] * m_contour[i] + m_contour[i + 1] * m_contour[i + 1] - 2 * m_contour[i] * m_contour[i + 1] * cos(IPP_2PI / m_contour.length()));
+				arc_length *= PIXEL_RESOLUTION / 1000.0;
+				perimeter += arc_length;
+
+				// Arc area to calculate area
+				double arc_area = 0.5 * m_contour[i] * m_contour[i + 1] * sin(IPP_2PI / m_contour.length());
+				arc_area *= PIXEL_RESOLUTION / 1000.0;
+				arc_area *= PIXEL_RESOLUTION / 1000.0;
+				area += arc_area;
+
+				painter.drawLine(x0, x1);
+			}
+
+			QFont font; font.setBold(true); font.setPointSize(11);
+			painter.setFont(font);
+			painter.drawText(QRect(10, 10, 300, 150), Qt::AlignLeft, QString("Perimeter: %1 mm\nArea: %2 mm2\nAvg Dia: %3 mm").arg(perimeter, 0, 'f', 3).arg(area, 0, 'f', 3).arg(area / perimeter * 4, 0, 'f', 3));
+		}
+	}
+
+	// Draw assitive lines - contour (longitudinal image)
+	if (m_bCenterGrid) // -> True center grid means it is for the longitudinal image visualization
+	{
+		if (m_contour.length() != 0)
+		{
+			QPen pen; pen.setWidth(1);
+			pen.setColor(Qt::magenta);
+			painter.setPen(pen);
+
+			for (int i = 0; i < m_contour.length() / 2 - 1; i++)
+			{
+				QPointF x0, x1;
+				x0.setX((double)((i - m_rectMagnified.left()) * w) / (double)m_fMagnLevel / (double)m_pImage->width());
+				x0.setY((double)((m_rectMagnified.height() / 2 - m_contour[i] - m_rectMagnified.top()) * h) / (double)m_fMagnLevel / (double)m_pImage->height());
+				x1.setX((double)((i + 1 - m_rectMagnified.left()) * w) / (double)m_fMagnLevel / (double)m_pImage->width());
+				x1.setY((double)((m_rectMagnified.height() / 2 - m_contour[i + 1] - m_rectMagnified.top()) * h) / (double)m_fMagnLevel / (double)m_pImage->height());
+
+				painter.drawLine(x0, x1);
+			}
+			for (int i = 0; i < m_contour.length() / 2 - 1; i++)			
+			{
+				QPointF x0, x1;
+				x0.setX((double)((i - m_rectMagnified.left()) * w) / (double)m_fMagnLevel / (double)m_pImage->width());
+				x0.setY((double)((m_rectMagnified.height() / 2 + m_contour[i + m_contour.length() / 2] - m_rectMagnified.top()) * h) / (double)m_fMagnLevel / (double)m_pImage->height());
+				x1.setX((double)((i + 1 - m_rectMagnified.left()) * w) / (double)m_fMagnLevel / (double)m_pImage->width());
+				x1.setY((double)((m_rectMagnified.height() / 2 + m_contour[i + 1 + m_contour.length() / 2] - m_rectMagnified.top()) * h) / (double)m_fMagnLevel / (double)m_pImage->height());
+
+				painter.drawLine(x0, x1);
+			}
+		}
+	}
 
 	// Draw ROI arc
 	if (m_bArcRoiSelect || m_bArcRoiShow)
@@ -505,7 +599,7 @@ void QRenderImage::paintEvent(QPaintEvent *)
 	// Measure distance
 	if (m_bMeasureDistance)
 	{
-		QPen pen; pen.setColor(Qt::green); pen.setWidth(5);
+		QPen pen; pen.setColor(Qt::magenta); pen.setWidth(5);
 		painter.setPen(pen);
 
 		QPointF p[2], pc[2];
@@ -519,7 +613,7 @@ void QRenderImage::paintEvent(QPaintEvent *)
 			if (i == 1)
 			{
 				// Connecting line
-				QPen pen; pen.setColor(Qt::green); pen.setWidth(1);
+				QPen pen; pen.setColor(Qt::magenta); pen.setWidth(1);
 				painter.setPen(pen);
 				painter.drawLine(p[0], p[1]);
 				
@@ -574,14 +668,14 @@ void QRenderImage::paintEvent(QPaintEvent *)
 
 			for (int i = 0; i < m_nClicked; i++)
 			{
-				QPen pen; pen.setColor(Qt::green); pen.setWidth(5);
+				QPen pen; pen.setColor(Qt::magenta); pen.setWidth(5);
 				painter.setPen(pen);
 				painter.drawPoint(p[i]);
 
 				// Connecting line
 				int i0 = i;
 				int i1 = (i + 1) % m_nClicked;
-				pen.setColor(Qt::green); pen.setWidth(1);
+				pen.setColor(Qt::magenta); pen.setWidth(1);
 				painter.setPen(pen);
 				painter.drawLine(p[i0], p[i1]);
 
@@ -705,6 +799,9 @@ void QRenderImage::leaveEvent(QEvent *e)
 void QRenderImage::mousePressEvent(QMouseEvent *e)
 {
 	QPoint p = e->pos();
+	if (e->button() == Qt::RightButton)
+		return;;
+
 	m_bIsClicking = true;
 
 	if (m_bMeasureDistance || m_bMeasureArea)

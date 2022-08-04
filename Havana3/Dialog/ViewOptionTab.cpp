@@ -190,14 +190,14 @@ void ViewOptionTab::createFlimVisualizationOptionTab()
 		m_pLineEdit_IntensityRatioMin->setAlignment(Qt::AlignCenter);
 		m_pLineEdit_IntensityRatioMin->setDisabled(true);
 
-		m_pLineEdit_InflammationMax = new QLineEdit(this);
-		m_pLineEdit_InflammationMax->setFixedWidth(35);
-		m_pLineEdit_InflammationMax->setText(QString::number(m_pConfig->rfInflammationRange.max, 'f', 1));
-		m_pLineEdit_InflammationMax->setAlignment(Qt::AlignCenter);
-		m_pLineEdit_InflammationMin = new QLineEdit(this);
-		m_pLineEdit_InflammationMin->setFixedWidth(35);
-		m_pLineEdit_InflammationMin->setText(QString::number(m_pConfig->rfInflammationRange.min, 'f', 1));
-		m_pLineEdit_InflammationMin->setAlignment(Qt::AlignCenter);
+		//m_pLineEdit_InflammationMax = new QLineEdit(this);
+		//m_pLineEdit_InflammationMax->setFixedWidth(35);
+		//m_pLineEdit_InflammationMax->setText(QString::number(m_pConfig->rfInflammationRange.max, 'f', 1));
+		//m_pLineEdit_InflammationMax->setAlignment(Qt::AlignCenter);
+		//m_pLineEdit_InflammationMin = new QLineEdit(this);
+		//m_pLineEdit_InflammationMin->setFixedWidth(35);
+		//m_pLineEdit_InflammationMin->setText(QString::number(m_pConfig->rfInflammationRange.min, 'f', 1));
+		//m_pLineEdit_InflammationMin->setAlignment(Qt::AlignCenter);
 	}
 
 	// Create color bar for FLIM visualization
@@ -223,7 +223,7 @@ void ViewOptionTab::createFlimVisualizationOptionTab()
 		m_pImageView_PlaqueCompositionColorbar->setFixedSize(255, 24);
 		m_pImageView_PlaqueCompositionColorbar->drawImage(color);
 		m_pImageView_InflammationColorbar = new QImageView(ColorTable::colortable(INFLAMMATION_COLORTABLE), 256, 1, false, this);
-		m_pImageView_InflammationColorbar->setFixedSize(190, 20);
+		m_pImageView_InflammationColorbar->setFixedSize(255, 24);
 		m_pImageView_InflammationColorbar->drawImage(color);
 	}
 	m_pLabel_NormIntensity = new QLabel(QString("Ch%1 Intensity (AU) ").arg(m_pConfig->flimEmissionChannel), this);
@@ -313,9 +313,9 @@ void ViewOptionTab::createFlimVisualizationOptionTab()
 		pHBoxLayout_InflammationColorbar->setSpacing(1);
 		pHBoxLayout_InflammationColorbar->addWidget(m_pLabel_Inflammation);
 		pHBoxLayout_InflammationColorbar->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed));
-		pHBoxLayout_InflammationColorbar->addWidget(m_pLineEdit_InflammationMin);
+		//pHBoxLayout_InflammationColorbar->addWidget(m_pLineEdit_InflammationMin);
 		pHBoxLayout_InflammationColorbar->addWidget(m_pImageView_InflammationColorbar);
-		pHBoxLayout_InflammationColorbar->addWidget(m_pLineEdit_InflammationMax);
+		//pHBoxLayout_InflammationColorbar->addWidget(m_pLineEdit_InflammationMax);
 	}
   
 	QVBoxLayout *pVBoxLayout_FlimVisualization = new QVBoxLayout;
@@ -375,8 +375,8 @@ void ViewOptionTab::createFlimVisualizationOptionTab()
 		connect(m_pLineEdit_IntensityRatioMax, SIGNAL(textEdited(const QString &)), this, SLOT(adjustFlimContrast()));
 		connect(m_pLineEdit_IntensityRatioMin, SIGNAL(textEdited(const QString &)), this, SLOT(adjustFlimContrast()));
 
-		connect(m_pLineEdit_InflammationMax, SIGNAL(textEdited(const QString &)), this, SLOT(adjustInflammationContrast()));
-		connect(m_pLineEdit_InflammationMin, SIGNAL(textEdited(const QString &)), this, SLOT(adjustInflammationContrast()));
+		//connect(m_pLineEdit_InflammationMax, SIGNAL(textEdited(const QString &)), this, SLOT(adjustInflammationContrast()));
+		//connect(m_pLineEdit_InflammationMin, SIGNAL(textEdited(const QString &)), this, SLOT(adjustInflammationContrast()));
 		
 		// Initialization
 		changeVisualizationMode(m_pRadioButton_RFPrediction->isChecked());
@@ -787,9 +787,9 @@ void ViewOptionTab::changeFLImParameters(int mode)
 		m_pImageView_PlaqueCompositionColorbar->setVisible(false);
 		
 		m_pLabel_Inflammation->setVisible(false);
-		m_pLineEdit_InflammationMin->setVisible(false);
+		//m_pLineEdit_InflammationMin->setVisible(false);
 		m_pImageView_InflammationColorbar->setVisible(false);
-		m_pLineEdit_InflammationMax->setVisible(false);
+		//m_pLineEdit_InflammationMax->setVisible(false);
 	}
 	else if (mode == FLImParameters::_INTENSITY_PROP_)
 	{
@@ -812,9 +812,9 @@ void ViewOptionTab::changeFLImParameters(int mode)
 		m_pImageView_PlaqueCompositionColorbar->setVisible(false);
 		
 		m_pLabel_Inflammation->setVisible(false);
-		m_pLineEdit_InflammationMin->setVisible(false);
+		//m_pLineEdit_InflammationMin->setVisible(false);
 		m_pImageView_InflammationColorbar->setVisible(false);
-		m_pLineEdit_InflammationMax->setVisible(false);
+		//m_pLineEdit_InflammationMax->setVisible(false);
 	}
 	else if (mode == FLImParameters::_INTENSITY_RATIO_)
 	{
@@ -837,9 +837,9 @@ void ViewOptionTab::changeFLImParameters(int mode)
 		m_pImageView_PlaqueCompositionColorbar->setVisible(false);
 
 		m_pLabel_Inflammation->setVisible(false);
-		m_pLineEdit_InflammationMin->setVisible(false);
+		//m_pLineEdit_InflammationMin->setVisible(false);
 		m_pImageView_InflammationColorbar->setVisible(false);
-		m_pLineEdit_InflammationMax->setVisible(false);
+		//m_pLineEdit_InflammationMax->setVisible(false);
 	}
 
 	changeEmissionChannel(m_pConfig->flimEmissionChannel - 1);
@@ -885,9 +885,9 @@ void ViewOptionTab::changeRFPrediction(int mode)
 				m_pImageView_PlaqueCompositionColorbar->setVisible(true);
 
 				m_pLabel_Inflammation->setVisible(false);
-				m_pLineEdit_InflammationMin->setVisible(false);
+				//m_pLineEdit_InflammationMin->setVisible(false);
 				m_pImageView_InflammationColorbar->setVisible(false);
-				m_pLineEdit_InflammationMax->setVisible(false);
+				//m_pLineEdit_InflammationMax->setVisible(false);
 			}
 			else if (mode0 == _INFLAMMATION_)
 			{
@@ -910,9 +910,9 @@ void ViewOptionTab::changeRFPrediction(int mode)
 				m_pImageView_PlaqueCompositionColorbar->setVisible(false);
 
 				m_pLabel_Inflammation->setVisible(true);
-				m_pLineEdit_InflammationMin->setVisible(true);
+				//m_pLineEdit_InflammationMin->setVisible(true);
 				m_pImageView_InflammationColorbar->setVisible(true);
-				m_pLineEdit_InflammationMax->setVisible(true);
+				//m_pLineEdit_InflammationMax->setVisible(true);
 			}
 
 			if (signaling) m_pViewTab->setRFPrediction(mode);
@@ -980,8 +980,8 @@ void ViewOptionTab::adjustFlimContrast()
 
 void ViewOptionTab::adjustInflammationContrast()
 {
-	m_pConfig->rfInflammationRange.min = m_pLineEdit_InflammationMin->text().toFloat();
-	m_pConfig->rfInflammationRange.max = m_pLineEdit_InflammationMax->text().toFloat();
+	//m_pConfig->rfInflammationRange.min = m_pLineEdit_InflammationMin->text().toFloat();
+	//m_pConfig->rfInflammationRange.max = m_pLineEdit_InflammationMax->text().toFloat();
 	
 	if (m_pViewTab) m_pViewTab->invalidate();
 

@@ -14,3 +14,4 @@ Havana3.vcxproj*
 Havana3.sdf
 Havana3.VC*
 .qmake.stash
+*.data

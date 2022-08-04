@@ -2,14 +2,14 @@
 #define RANDOM_FOREST_H
 
 #include <iostream>
+#include <fstream>
+
+#include <stdarg.h>
 
 #include <opencv2/core.hpp>
 #include <opencv2/ml.hpp>
 
 #include <Common/array.h>
-
-#include <iostream>
-#include <fstream>
 
 #include <tbb/parallel_for.h>
 #include <tbb/blocked_range.h>
@@ -37,7 +37,7 @@ public:
 
 public:
     void createForest(int _n_trees, int _n_features, int _n_cats, forest_method _method)
-    {
+    {		
         // Create a random forest model
         forest = RTrees::create();
         method = _method;
@@ -50,22 +50,10 @@ public:
         forest->setCalculateVarImportance(true);
 		if (_method == CLASSIFICATION)
 		{
-			forest->setMaxCategories(_n_cats);						
-			compo_cmap = (Mat_<float>(_n_cats, 3) << 132, 192, 111, //    67, 191, 220, // normal
-													100, 146, 84, // fibrous
-													// 128, 128, 128, // calcification
-													213, 213, 43, // HLF														
-													255, 71, 72, // focal mac
-													120, 0, 5); // , // TCFA 
-													 //112,  48, 160); // short lifetime
+			forest->setMaxCategories(_n_cats);
+			compo_cmap = Mat_<float>(_n_cats, 3);
 		}
-
-		/*colorc = [[0 0 255]; % 1 : Normal(0x43bfdc)
-			[0 255  0]; % 2 : Fibrous(0x649254)
-			[255 255 0]; % 3 : Loose fibrous(0xbf9000)
-			[255  0  0]; % 5 : Focal mac(0xff4746)
-			[255   0   255]; ]; % 6 : TCFA(0x780005)*/
-
+		
         //forest->setMaxDepth(8);
         //forest->setMinSampleCount(10);
         forest->setRegressionAccuracy(0.0001f);
@@ -78,6 +66,29 @@ public:
 
         forest->setTermCriteria(TermCriteria(TermCriteria::MAX_ITER, _n_trees, 0.0001));
     }
+
+	void setColormap(int len, ...)
+	{
+		va_list ap;
+		va_start(ap, len);
+		for (int i = 0; i < len; i++)
+		{
+			uint32_t rgb = va_arg(ap, uint32_t);
+			for (int j = 0; j < 3; j++)
+				compo_cmap.at<float>(i, j) = (rgb >> (8 * (2 - j))) & 0xff;
+		}
+		va_end(ap);
+
+
+		//compo_cmap = (Mat_<float>(n_cats, 3) << 132, 192, 111, //    67, 191, 220, // normal
+		//	100, 146, 84, // fibrous
+		//	213, 213, 43, // HLF	
+		//	255, 255, 255, // calcification													
+		//	255, 71, 72, // focal mac
+		//	120, 0, 5, // TCFA
+		//	0, 0, 0); // sheath
+		//			  //112,  48, 160); // short lifetime
+	}
 
     bool train(const char* filename)
     {

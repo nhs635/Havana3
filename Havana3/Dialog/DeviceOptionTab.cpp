@@ -43,6 +43,12 @@ enum PullbackMode
 	_10MM_S_40MM_ = 2
 };
 
+enum PipelineMode
+{
+	JPEG_COMPRESSED = 0,
+	RAW_ADC_DATA = 1
+};
+
 
 DeviceOptionTab::DeviceOptionTab(QWidget *parent) :
     QDialog(parent), m_pPatientSummaryTab(nullptr), m_pStreamTab(nullptr), m_pResultTab(nullptr), m_pDeviceControl(nullptr)
@@ -555,6 +561,22 @@ void DeviceOptionTab::createAxsunOctSystemControl()
 	m_pLabel_LiveImaging->setDisabled(true);
 #endif
 
+	m_pLabel_PipelineMode = new QLabel("Pipeline Mode", this);	
+	m_pLabel_PipelineMode->setDisabled(true);
+	
+	m_pRadioButton_JpegCompressed = new QRadioButton(this);
+	m_pRadioButton_JpegCompressed->setText("JPEG ");
+	m_pRadioButton_JpegCompressed->setChecked(true);
+	m_pRadioButton_JpegCompressed->setDisabled(true);	
+
+	m_pRadioButton_RawAdcData = new QRadioButton(this);
+	m_pRadioButton_RawAdcData->setText("Raw ADC Data");
+	m_pRadioButton_RawAdcData->setDisabled(true);
+	
+	m_pButtonGroup_PipelineMode = new QButtonGroup(this);
+	m_pButtonGroup_PipelineMode->addButton(m_pRadioButton_JpegCompressed, JPEG_COMPRESSED);
+	m_pButtonGroup_PipelineMode->addButton(m_pRadioButton_RawAdcData, RAW_ADC_DATA);
+	
 	m_pLabel_BackgroundSubtraction = new QLabel("Background Subtraction", this);
 	m_pLabel_BackgroundSubtraction->setDisabled(true);
 
@@ -626,6 +648,14 @@ void DeviceOptionTab::createAxsunOctSystemControl()
 	pGridLayout_AxsunControl->addWidget(m_pToggleButton_LiveImaging, 2, 3);
 #endif
 
+	QHBoxLayout *pHBoxLayout_Pipeline = new QHBoxLayout;
+	pHBoxLayout_Pipeline->setSpacing(3);
+
+	pHBoxLayout_Pipeline->addWidget(m_pLabel_PipelineMode);
+	pHBoxLayout_Pipeline->addItem(new QSpacerItem(0, 0, QSizePolicy::MinimumExpanding, QSizePolicy::Fixed));
+	pHBoxLayout_Pipeline->addWidget(m_pRadioButton_JpegCompressed);
+	pHBoxLayout_Pipeline->addWidget(m_pRadioButton_RawAdcData);
+	
 	QHBoxLayout *pHBoxLayout_BgSub = new QHBoxLayout;
 	pHBoxLayout_BgSub->setSpacing(3);
 
@@ -643,13 +673,14 @@ void DeviceOptionTab::createAxsunOctSystemControl()
 	pHBoxLayout_DispComp->addWidget(m_pLineEdit_DispComp_a3);
 	pHBoxLayout_DispComp->addWidget(m_pPushButton_Compensate);
 	
-	pGridLayout_AxsunControl->addItem(pHBoxLayout_BgSub, 3, 0, 1, 4);
-	pGridLayout_AxsunControl->addItem(pHBoxLayout_DispComp, 4, 0, 1, 4);
+	pGridLayout_AxsunControl->addItem(pHBoxLayout_Pipeline, 3, 0, 1, 4);
+	pGridLayout_AxsunControl->addItem(pHBoxLayout_BgSub, 4, 0, 1, 4);
+	pGridLayout_AxsunControl->addItem(pHBoxLayout_DispComp, 5, 0, 1, 4);
 
-	pGridLayout_AxsunControl->addWidget(m_pLabel_VDLLength, 5, 0);
-	pGridLayout_AxsunControl->addItem(new QSpacerItem(0, 0, QSizePolicy::MinimumExpanding, QSizePolicy::Fixed), 5, 1);
-	pGridLayout_AxsunControl->addWidget(m_pSpinBox_VDLLength, 5, 2);
-	pGridLayout_AxsunControl->addWidget(m_pPushButton_VDLHome, 5, 3);
+	pGridLayout_AxsunControl->addWidget(m_pLabel_VDLLength, 6, 0);
+	pGridLayout_AxsunControl->addItem(new QSpacerItem(0, 0, QSizePolicy::MinimumExpanding, QSizePolicy::Fixed), 6, 1);
+	pGridLayout_AxsunControl->addWidget(m_pSpinBox_VDLLength, 6, 2);
+	pGridLayout_AxsunControl->addWidget(m_pPushButton_VDLHome, 6, 3);
 
 
 	QVBoxLayout *pVBoxLayout_OctControl = new QVBoxLayout;
@@ -667,6 +698,7 @@ void DeviceOptionTab::createAxsunOctSystemControl()
 #ifndef NEXT_GEN_SYSTEM
 	connect(m_pToggleButton_LiveImaging, SIGNAL(toggled(bool)), this, SLOT(setLiveImaging(bool)));
 #endif
+	connect(m_pButtonGroup_PipelineMode, SIGNAL(buttonClicked(int)), this, SLOT(setPipelineMode(int)));
 	connect(m_pPushButton_BgSet, SIGNAL(clicked(bool)), this, SLOT(setBackground()));
 	connect(m_pPushButton_BgReset, SIGNAL(clicked(bool)), this, SLOT(resetBackground()));
 	connect(m_pPushButton_Compensate, SIGNAL(clicked(bool)), this, SLOT(setDispersionCompensation()));
@@ -1222,6 +1254,9 @@ void DeviceOptionTab::connectAxsunControl(bool toggled)
 			m_pToggleButton_LiveImaging->setEnabled(true);
 			m_pToggleButton_LiveImaging->setStyleSheet("QPushButton { background-color:#ff0000; }");
 #endif
+			m_pLabel_PipelineMode->setEnabled(true);
+			m_pRadioButton_JpegCompressed->setEnabled(true);
+			m_pRadioButton_RawAdcData->setEnabled(true);
 			m_pLabel_BackgroundSubtraction->setEnabled(true);
 			m_pPushButton_BgSet->setEnabled(true);
 			m_pPushButton_BgReset->setEnabled(true);
@@ -1258,6 +1293,9 @@ void DeviceOptionTab::connectAxsunControl(bool toggled)
 		m_pToggleButton_LiveImaging->setDisabled(true);
 		m_pToggleButton_LiveImaging->setStyleSheet("QPushButton { background-color:#353535; }");
 #endif
+		m_pLabel_PipelineMode->setDisabled(true);
+		m_pRadioButton_JpegCompressed->setDisabled(true);
+		m_pRadioButton_RawAdcData->setDisabled(true);
 		m_pLabel_BackgroundSubtraction->setDisabled(true);
 		m_pPushButton_BgSet->setDisabled(true);
 		m_pPushButton_BgReset->setDisabled(true);
@@ -1331,6 +1369,22 @@ void DeviceOptionTab::setLiveImaging(bool toggled)
 #else
 	(void)toggled;
 #endif
+}
+
+void DeviceOptionTab::setPipelineMode(int id)
+{
+	if (id == JPEG_COMPRESSED)
+	{		
+#ifdef AXSUN_ENABLE
+		
+#endif
+	}
+	else if (id == RAW_ADC_DATA)
+	{
+#ifdef AXSUN_ENABLE
+
+#endif
+	}
 }
 
 void DeviceOptionTab::setBackground()

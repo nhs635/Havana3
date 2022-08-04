@@ -79,8 +79,9 @@ public:
     bool connectAxsunControl(bool);
 	void setLightSource(bool);
 	void setLiveImaging(bool);
-	void setClockDelay(double);
+	void setClockDelay(double);	
 	void setSubSampling(int);
+	void setPipelineMode(int);
 	void setVDLLength(double);
 	void setVDLHome();
 	void setBackground();

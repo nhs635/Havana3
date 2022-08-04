@@ -768,6 +768,16 @@ void DeviceControl::setSubSampling(int M)
 #endif
 }
 
+void DeviceControl::setPipelineMode(int mode)
+{	
+#ifdef AXSUN_ENABLE
+	if (m_pAxsunControl)
+		m_pAxsunControl->setPipelineMode(mode;
+#else
+	(void)mode;
+#endif
+}
+
 void DeviceControl::setVDLLength(double length)
 {
 #ifdef AXSUN_ENABLE

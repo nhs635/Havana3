@@ -23,7 +23,7 @@ public:
 	explicit ColorTable();
 
 public:
-	enum colortable { gray = 0, invgray, sepia, jet, parula, hot, fire, hsv, hsv1, clf, graysb, viridis, bwr, hsv2, compo }; // 새로 만든 colortable 이름 추가하기
+	enum colortable { gray = 0, invgray, sepia, jet, parula, hot, fire, hsv, hsv1, clf, graysb, viridis, bwr, hsv2, compo, redgreen }; // 새로 만든 colortable 이름 추가하기
 	QVector<QString> m_cNameVector;
 	ColorTableVector m_colorTableVector;
 };
@@ -52,6 +52,7 @@ protected:
 public:
 	void resetSize(int width, int height);
     void resetColormap(ColorTable::colortable ctable);
+	void changeColormap(ColorTable::colortable ctable, QVector<QRgb> rgb_vector);
 	void setSquare(bool square) { m_bSquareConstraint = square; }
 #ifdef OCT_FLIM
     void setRgbEnable(bool rgb) { m_bRgbUsed = rgb; }
@@ -79,6 +80,7 @@ public:
 public slots:
 	void drawImage(uint8_t* pImage);
 	void drawRgbImage(uint8_t* pImage);
+	void showContextMenu(const QPoint &);
 
 private:
     QHBoxLayout *m_pHBoxLayout;
@@ -93,6 +95,9 @@ private:
 
 	bool m_bSquareConstraint;
     bool m_bRgbUsed;
+
+public:
+	callback<void> DidCopyLabel;
 };
 
 
