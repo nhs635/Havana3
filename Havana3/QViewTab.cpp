@@ -1698,48 +1698,45 @@ void QViewTab::lumenContourDetection()
 	if (!(check_file.exists()))
 	{
 		if (m_contourMap.length() == 0)
-		{			
-			if (!m_pLumenDetection)
-			{
-				QMessageBox msg_box(QMessageBox::NoIcon, "Lumen Contour Detection...", "", QMessageBox::NoButton, this);
-				msg_box.setStandardButtons(0);
-				msg_box.setWindowModality(Qt::WindowModal);
-				msg_box.setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::CustomizeWindowHint);
-				msg_box.move(QApplication::desktop()->screen()->rect().center() - msg_box.rect().center());
-				msg_box.setFixedSize(msg_box.width(), msg_box.height());
-				msg_box.show();
+		{						
+			QMessageBox msg_box(QMessageBox::NoIcon, "Lumen Contour Detection...", "", QMessageBox::NoButton, this);
+			msg_box.setStandardButtons(0);
+			msg_box.setWindowModality(Qt::WindowModal);
+			msg_box.setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::CustomizeWindowHint);
+			msg_box.move(QApplication::desktop()->screen()->rect().center() - msg_box.rect().center());
+			msg_box.setFixedSize(msg_box.width(), msg_box.height());
+			msg_box.show();
 								
-				m_contourMap = np::FloatArray2(m_pConfig->octAlines, m_pConfigTemp->frames);
+			m_contourMap = np::FloatArray2(m_pConfig->octAlines, m_pConfigTemp->frames);
 
-				int n_pieces = 10;
-				np::Array<int> pieces(n_pieces + 1);
-				pieces[0] = 0;
-				for (int p = 0; p < n_pieces; p++)
-					pieces[p + 1] = (int)((double)m_vectorOctImage.size() / (double)n_pieces * (double)(p + 1));
+			int n_pieces = 10;
+			np::Array<int> pieces(n_pieces + 1);
+			pieces[0] = 0;
+			for (int p = 0; p < n_pieces; p++)
+				pieces[p + 1] = (int)((double)m_vectorOctImage.size() / (double)n_pieces * (double)(p + 1));
 
-				std::thread *plumdet = new std::thread[n_pieces];
-				for (int p = 0; p < n_pieces; p++)
-				{
-					plumdet[p] = std::thread([&, p, pieces]() {
+			std::thread *plumdet = new std::thread[n_pieces];
+			for (int p = 0; p < n_pieces; p++)
+			{
+				plumdet[p] = std::thread([&, p, pieces]() {
 
-						LumenDetection *pLumenDetection = new LumenDetection(OUTER_SHEATH_POSITION, m_pConfigTemp->innerOffsetLength, false,
-							true, m_pConfigTemp->reflectionDistance, m_pConfigTemp->reflectionLevel);
+					LumenDetection *pLumenDetection = new LumenDetection(OUTER_SHEATH_POSITION, m_pConfigTemp->innerOffsetLength, false,
+						true, m_pConfigTemp->reflectionDistance, m_pConfigTemp->reflectionLevel);
 
-						for (int i = pieces[p]; i < pieces[p + 1]; i++)
-						{
-							np::FloatArray contour(&m_contourMap(0, i), m_contourMap.size(0));
-							(*pLumenDetection)(m_vectorOctImage.at(i), contour);
+					for (int i = pieces[p]; i < pieces[p + 1]; i++)
+					{
+						np::FloatArray contour(&m_contourMap(0, i), m_contourMap.size(0));
+						(*pLumenDetection)(m_vectorOctImage.at(i), contour);
 
-							printf("%d\n", i);
-						}
+						printf("%d\n", i);
+					}
 
-						delete pLumenDetection;
-						pLumenDetection = nullptr;
-					});
-				}
-				for (int p = 0; p < n_pieces; p++)
-					plumdet[p].join();
+					delete pLumenDetection;
+					pLumenDetection = nullptr;
+				});
 			}
+			for (int p = 0; p < n_pieces; p++)
+				plumdet[p].join();
 
 			// Recording
 			QFile file(lumen_contour_path);
@@ -1761,6 +1758,8 @@ void QViewTab::lumenContourDetection()
 
 	m_pToggleButton_AutoContour->setChecked(true);
 	m_pPushButton_LumenDetection->setDisabled(true);
+
+	invalidate();
 }
 
 void QViewTab::changeVisualizationMode(int mode)

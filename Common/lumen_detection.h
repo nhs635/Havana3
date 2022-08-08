@@ -55,7 +55,7 @@ public:
 		// Gaussian blurring
 		cv::Mat input = cv::Mat(src.size(1), src.size(0), CV_8UC1, src.raw_ptr());
 		cv::Mat output = cv::Mat(src.size(1), src.size(0), CV_8UC1);
-		GaussianBlur(input, output, cv::Size(9, 9), 2.5);
+		GaussianBlur(input, output, cv::Size(5, 5), 2.5);
 		preprop = np::FloatArray2(src.size(0), src.size(1));
 		ippsConvert_8u32f(output.data, preprop, preprop.length());
 
@@ -110,10 +110,10 @@ public:
 		// Moving averaging	
 		np::FloatArray sum_profile1(2 * nalines);
 		memcpy(sum_profile1, sum_profile, sizeof(float) * sum_profile.length());
-		for (int i = 1; i < 2 * nalines - 1; i++)
+		for (int i = 2; i < 2 * nalines - 2; i++)
 		{
-			ippsSum_32f(&sum_profile(i - 1), 3, &sum_profile1(i), ippAlgHintAccurate);
-			sum_profile1(i) = sum_profile1(i) / 3;
+			ippsSum_32f(&sum_profile(i - 1), 5, &sum_profile1(i), ippAlgHintAccurate);
+			sum_profile1(i) = sum_profile1(i) / 5;
 		}
 		
 		/****************************************************************/
@@ -201,19 +201,35 @@ public:
 		int max_ps = (int)(0.9f * max_p);		
 		gw_th = (max_ps > gw_th) ? gw_th : max_ps;
 
+		std::vector<int> fwhms;
 		std::vector<int> gw_peaks;
 		for (int i = 0; i < peaks.size(); i++)
 		{
+			int fwhm = 0;
 			if ((peaks.at(i) >= nalines / 2) && (peaks.at(i) < 3 * nalines / 2))
 			{
-				int fwhm = _find_fwhm(sum_profile1, peaks.at(i));
+				fwhm = _find_fwhm(sum_profile1, peaks.at(i));
 				//sum_profile1(peaks.at(i)) > gw_th
 
 				if ((fwhm < 30) && ((sum_diff2(peaks.at(i)) < gwp_th) || (sum_diff2(peaks.at(i) - 1) < gwp_th) || (sum_diff2(peaks.at(i) - 2) < gwp_th)))
 					gw_peaks.push_back(peaks.at(i));
 			}
+			fwhms.push_back(fwhm);
 		}
 
+		/****************************************************************/
+		if (data_save)
+		{
+			std::ofstream fout;
+			fout.open("fwhm.data", std::ios::out | std::ios::binary);
+
+			if (fout.is_open()) {
+				fout.write((const char*)&fwhms[0], sizeof(int) * fwhms.size());
+				fout.close();
+			}
+		}
+		/****************************************************************/
+		
 		// Find guire-wire valleys	
 		std::vector<int> gw_valleys_left, gw_valleys_right;
 		for (int i = 0; i < gw_peaks.size(); i++)
@@ -257,7 +273,7 @@ public:
 
 		// Find guide-wire region
 		std::vector<int> gw_region_left, gw_region_right;
-		int min_p_th = gw_th / 5;
+		int min_p_th = gw_th / 10;
 
 		// In case of non-bright guide-wire
 		if (gw_peaks.size() == 0)
@@ -289,7 +305,13 @@ public:
 			}
 
 			if (gw_edge_cands.size() > 0)
-				gw_region_left.push_back(gw_edge_cands.back() - nalines / 2);
+			{
+				int gwr_temp = gw_edge_cands.back() - nalines / 2;
+				if (std::find(gw_region_left.begin(), gw_region_left.end(), gwr_temp) == gw_region_left.end())
+					gw_region_left.push_back(gwr_temp);
+			}
+			else
+				gw_region_left.push_back(-nalines);
 		}
 
 		// Right edge
@@ -306,14 +328,21 @@ public:
 			}
 
 			if (gw_edge_cands.size() > 0)
-				gw_region_right.push_back(gw_edge_cands.front() - nalines / 2);
+			{
+				int gwr_temp = gw_edge_cands.front() - nalines / 2;
+				if (std::find(gw_region_right.begin(), gw_region_right.end(), gwr_temp) == gw_region_right.end())
+					gw_region_right.push_back(gwr_temp);
+			}
+			else
+				gw_region_right.push_back(-nalines);
 		}
 
 		// Remove guide-wire regions
 		int gw_width = 0;
-		if (gw_region_left.size() == gw_region_right.size())
-			for (int i = 0; i < gw_region_left.size(); i++)
+		for (int i = 0; i < gw_region_left.size(); i++)
+			if ((gw_region_left.at(i) != -nalines) && (gw_region_right.at(i) != -nalines))
 				gw_width += (gw_region_right.at(i) - gw_region_left.at(i) + 1);
+
 		if (gw_width >= nalines)
 			gw_width = 0;
 
@@ -325,28 +354,44 @@ public:
 		for (int i = 0; i < nalines; i++)
 		{
 			bool is_gw_aline = false;
-			if (gw_region_left.size() == gw_region_right.size())
+			
+			for (int j = 0; j < gw_region_left.size(); j++)
 			{
-				for (int j = 0; j < gw_region_left.size(); j++)
+				if ((gw_region_left.at(j) >= 0) && (gw_region_right.at(j) < nalines))
 				{
-					if ((gw_region_left.at(j) >= 0) && (gw_region_right.at(j) < nalines))
+					if ((gw_region_left.at(j) <= i) && (gw_region_right.at(j) >= i))
 					{
-						if ((gw_region_left.at(j) <= i) && (gw_region_right.at(j) >= i))
+						if ((gw_region_left.at(j) != -nalines) && (gw_region_right.at(j) != -nalines))
+						{
 							is_gw_aline = true;
+							break;
+						}
 					}
-					else if (gw_region_left.at(j) < 0)
+				}
+				else if (gw_region_left.at(j) < 0)
+				{
+					if ((gw_region_left.at(j) + nalines <= i) || (gw_region_right.at(j) >= i))
 					{
-						if ((gw_region_left.at(j) + nalines <= i) || (gw_region_right.at(j) >= i))
+						if ((gw_region_left.at(j) != -nalines) && (gw_region_right.at(j) != -nalines))
+						{
 							is_gw_aline = true;
+							break;
+						}
 					}
-					else if (gw_region_right.at(j) >= nalines)
+				}
+				else if (gw_region_right.at(j) >= nalines)
+				{
+					if ((gw_region_left.at(j) <= i) || (gw_region_right.at(j) - nalines >= i))
 					{
-						if ((gw_region_left.at(j) <= i) || (gw_region_right.at(j) - nalines >= i))
+						if ((gw_region_left.at(j) != -nalines) && (gw_region_right.at(j) != -nalines))
+						{
 							is_gw_aline = true;
+							break;
+						}
 					}
 				}
 			}
-			
+						
 			if (!is_gw_aline)
 			{
 				if (k == gw_removed.size(1))
@@ -401,8 +446,11 @@ public:
 		}
 		/****************************************************************/
 
+		float m;
 		int cath_pos = outer_sheath;
-		for (int i = outer_sheath; i > (int)(outer_sheath * 0.8); i--)
+		ippsMaxIndx_32f(&std_profile((int)(outer_sheath * 0.9)), (int)(outer_sheath * 0.1), &m, &cath_pos);
+		cath_pos += (int)(outer_sheath * 0.9);
+		for (int i = cath_pos; i > (int)(cath_pos * 0.9); i--)
 		{
 			if (std_profile(i) < std_profile(i - 1))
 			{
@@ -468,12 +516,15 @@ public:
 		}
 		/****************************************************************/
 
-		// Guide-wire & catheter artifact masking
-		ippsAnd_8u_I(mask, binary.data, mask.length());
+		// Filling holes
+		//cv::Fill
 
 		// Morphological opening
 		cv::Mat opened;
-		cv::morphologyEx(binary, opened, MORPH_OPEN, getStructuringElement(MORPH_ELLIPSE, cv::Size(9, 9)), cv::Point(-1, -1), 1, BORDER_REFLECT);
+		cv::morphologyEx(binary, opened, MORPH_OPEN, getStructuringElement(MORPH_ELLIPSE, cv::Size(5, 5)), cv::Point(-1, -1), 1, BORDER_REFLECT);
+
+		// Guide-wire & catheter artifact masking
+		ippsAnd_8u_I(mask, opened.data, mask.length());
 
 		/****************************************************************/
 		if (data_save)
@@ -526,11 +577,12 @@ public:
 		/****************************************************************/
 
 		// Delineate lumen contour
+		std::vector<int> small_compos;
 		std::vector<float> cx0, cy0;
 		for (int i = 0; i < nalines; i++)
 		{
 			std::vector<int> surface;
-			for (int j = 0; j < nradius - 1; j++)
+			for (int j = 0; j < nradius - 5; j++)
 				if (gradient(j, i) == -1.0f)
 					surface.push_back(j);
 
@@ -539,8 +591,8 @@ public:
 			{
 				int idx = labeled.at<int>(i, surface.at(0) + 1);
 				int area = stats.at<int>(idx, CC_STAT_AREA);
-
-				if (area > 250)
+				
+				if (area > 1000)
 				{
 					cx0.push_back(i);
 					cy0.push_back((float)surface.at(0));
@@ -553,17 +605,24 @@ public:
 				{
 					int idx = labeled.at<int>(i, surface.at(j) + 1);
 					int area = stats.at<int>(idx, CC_STAT_AREA);
+					
 					if (area > area0)
-					{
+					{						
+						//if (std::find(small_compos.begin(), small_compos.end(), largest_idx) == small_compos.end())
+							//small_compos.push_back(largest_idx);
+
 						largest_idx = j;
 						area0 = area;
 					}
 				}
 
-				if (area0 > 250)
+				if (area0 > 1000)
 				{
-					cx0.push_back(i);
-					cy0.push_back((float)surface.at(largest_idx));
+					//if (std::find(small_compos.begin(), small_compos.end(), largest_idx) == small_compos.end())
+					{
+						cx0.push_back(i);
+						cy0.push_back((float)surface.at(largest_idx));
+					}
 				}
 			}
 		}
@@ -607,19 +666,19 @@ public:
 
 	int _find_fwhm(np::FloatArray& profile, int peak)
 	{
-		float bg0;
-		ippsMin_32f(profile, profile.length(), &bg0);
+		//float bg0;
+		//ippsMin_32f(profile + profile.length() / 4, profile.length() / 2, &bg0);
 
 		int w_r = 0, w_l = 0;
 
 		int i;
 		for (i = peak; i < profile.length(); i++)
-			if (profile(i) < (profile(peak) + bg0) * 0.75)
+			if (profile(i) < (profile(peak)) * 0.66)
 				break;
 		w_r = i;
 
 		for (i = peak; i >= 0; i--)
-			if (profile(i) < (profile(peak) + bg0) * 0.75)
+			if (profile(i) < (profile(peak)) * 0.66)
 				break;
 		w_l = i;
 
