@@ -57,7 +57,8 @@ public:
 		cv::Mat output = cv::Mat(src.size(1), src.size(0), CV_8UC1);
 		GaussianBlur(input, output, cv::Size(5, 5), 2.5);
 		preprop = np::FloatArray2(src.size(0), src.size(1));
-		ippsConvert_8u32f(output.data, preprop, preprop.length());
+		ippsConvert_8u32f(output.data, preprop, preprop.length());	
+		ippiSet_32f_C1R(0.0f, &preprop(nradius - 50, 0), sizeof(float) * preprop.size(0), { 50, nalines });
 
 		// Suppressing reflection artifact (if needed)
 		if (ref_sup)
@@ -69,6 +70,19 @@ public:
 			ippsMulC_32f_I(ref_level, reflection_temp, reflection_temp.length());
 			ippsSub_32f_I(reflection_temp, preprop, preprop.length());
 		}
+
+		/****************************************************************/
+		if (data_save)
+		{
+			std::ofstream fout;
+			fout.open("gblur.data", std::ios::out | std::ios::binary);
+
+			if (fout.is_open()) {
+				fout.write((const char*)preprop.raw_ptr(), sizeof(float) * preprop.length());
+				fout.close();
+			}
+		}
+		/****************************************************************/
 		
 		// Set size
 		nradius = preprop.size(1);
@@ -175,22 +189,28 @@ public:
 		/****************************************************************/
 		if (data_save)
 		{
-			std::ofstream fout;
-			fout.open("peaks.data", std::ios::out | std::ios::binary);
+			if (peaks.size() > 0)
+			{
+				std::ofstream fout;
+				fout.open("peaks.data", std::ios::out | std::ios::binary);
 
-			if (fout.is_open()) {
-				fout.write((const char*)&peaks[0], sizeof(int) * peaks.size());
-				fout.close();
+				if (fout.is_open()) {
+					fout.write((const char*)&peaks[0], sizeof(int) * peaks.size());
+					fout.close();
+				}
 			}
 		}
 		if (data_save)
 		{
-			std::ofstream fout;
-			fout.open("valleys.data", std::ios::out | std::ios::binary);
+			if (valleys.size() > 0)
+			{
+				std::ofstream fout;
+				fout.open("valleys.data", std::ios::out | std::ios::binary);
 
-			if (fout.is_open()) {
-				fout.write((const char*)&valleys[0], sizeof(int) * valleys.size());
-				fout.close();
+				if (fout.is_open()) {
+					fout.write((const char*)&valleys[0], sizeof(int) * valleys.size());
+					fout.close();
+				}
 			}
 		}
 		/****************************************************************/
@@ -220,12 +240,15 @@ public:
 		/****************************************************************/
 		if (data_save)
 		{
-			std::ofstream fout;
-			fout.open("fwhm.data", std::ios::out | std::ios::binary);
+			if (fwhms.size() > 0)
+			{
+				std::ofstream fout;
+				fout.open("fwhm.data", std::ios::out | std::ios::binary);
 
-			if (fout.is_open()) {
-				fout.write((const char*)&fwhms[0], sizeof(int) * fwhms.size());
-				fout.close();
+				if (fout.is_open()) {
+					fout.write((const char*)&fwhms[0], sizeof(int) * fwhms.size());
+					fout.close();
+				}
 			}
 		}
 		/****************************************************************/
@@ -300,7 +323,7 @@ public:
 			for (int j = 0; j < peaks.size(); j++)
 			{
 				int p = peaks.at(j);
-				if ((p < gwv) && (p > gwv - max_w_th) && (sum_profile1(p) > (sum_profile1(gwv) + min_p_th)))
+				if ((p < gwv) && (p > gwv - max_w_th) && (sum_profile1(p) > (sum_profile1(gwv) * 1.05))) /// + min_p_th)))
 					gw_edge_cands.push_back(p);
 			}
 
@@ -309,6 +332,8 @@ public:
 				int gwr_temp = gw_edge_cands.back() - nalines / 2;
 				if (std::find(gw_region_left.begin(), gw_region_left.end(), gwr_temp) == gw_region_left.end())
 					gw_region_left.push_back(gwr_temp);
+				else
+					gw_region_left.push_back(-nalines);
 			}
 			else
 				gw_region_left.push_back(-nalines);
@@ -323,7 +348,7 @@ public:
 			for (int j = 0; j < peaks.size(); j++)
 			{
 				int p = peaks.at(j);
-				if ((p > gwv) && (p < gwv + max_w_th) && (sum_profile1(p) > (sum_profile1(gwv) + min_p_th)))
+				if ((p > gwv) && (p < gwv + max_w_th) && (sum_profile1(p) > (sum_profile1(gwv) * 1.05))) /// + min_p_th)))
 					gw_edge_cands.push_back(p);
 			}
 
@@ -332,6 +357,8 @@ public:
 				int gwr_temp = gw_edge_cands.front() - nalines / 2;
 				if (std::find(gw_region_right.begin(), gw_region_right.end(), gwr_temp) == gw_region_right.end())
 					gw_region_right.push_back(gwr_temp);
+				else
+					gw_region_right.push_back(-nalines);
 			}
 			else
 				gw_region_right.push_back(-nalines);
@@ -394,9 +421,13 @@ public:
 						
 			if (!is_gw_aline)
 			{
-				if (k == gw_removed.size(1))
-					break;
-				memcpy(&gw_removed(0, k++), &preprop(0, i), sizeof(float) * nradius);
+				if (k < gw_removed.size(1))
+				//{
+				//	if (i != nalines - 1)
+				//		ippsSet_8u(0, &mask(0, i + 1), mask.size(0) * (nalines - i));
+				//	break;
+				//}
+					memcpy(&gw_removed(0, k++), &preprop(0, i), sizeof(float) * nradius);
 			}
 			else
 				ippsSet_8u(0, &mask(0, i), mask.size(0));
@@ -447,17 +478,23 @@ public:
 		/****************************************************************/
 
 		float m;
-		int cath_pos = outer_sheath;
-		ippsMaxIndx_32f(&std_profile((int)(outer_sheath * 0.9)), (int)(outer_sheath * 0.1), &m, &cath_pos);
-		cath_pos += (int)(outer_sheath * 0.9);
-		for (int i = cath_pos; i > (int)(cath_pos * 0.9); i--)
-		{
-			if (std_profile(i) < std_profile(i - 1))
-			{
-				cath_pos = i;
-				break;
-			}
-		}
+		int cath_pos, cath_pos0, cath_pos1;
+		ippsMaxIndx_32f(&std_profile((int)(outer_sheath * 0.8)), (int)(outer_sheath * 0.2), &m, &cath_pos0);
+		cath_pos0 += (int)(outer_sheath * 0.8);
+		ippsMaxIndx_32f(&std_profile((int)(outer_sheath * 1.0)), (int)(outer_sheath * 0.2), &m, &cath_pos1);
+		cath_pos1 += (int)(outer_sheath * 1.0);
+
+		ippsMinIndx_32f(&std_profile(cath_pos0), cath_pos1 - cath_pos0 + 1, &m, &cath_pos);
+		cath_pos += cath_pos0;
+			
+		//for (int i = cath_pos; i > (int)(cath_pos * 0.9); i--)
+		//{
+		//	if (std_profile(i) < std_profile(i - 1))
+		//	{
+		//		cath_pos = i;
+		//		break;
+		//	}
+		//}
 
 		cath_removed = np::FloatArray2(nradius - cath_pos - inner_offset, gw_removed.size(1));
 		ippiCopy_32f_C1R(&gw_removed(cath_pos, 0), sizeof(float) * gw_removed.size(0),

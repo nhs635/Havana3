@@ -565,13 +565,17 @@ void DeviceOptionTab::createAxsunOctSystemControl()
 	m_pLabel_PipelineMode->setDisabled(true);
 	
 	m_pRadioButton_JpegCompressed = new QRadioButton(this);
-	m_pRadioButton_JpegCompressed->setText("JPEG ");
-	m_pRadioButton_JpegCompressed->setChecked(true);
+	m_pRadioButton_JpegCompressed->setText("JPEG ");	
 	m_pRadioButton_JpegCompressed->setDisabled(true);	
 
 	m_pRadioButton_RawAdcData = new QRadioButton(this);
 	m_pRadioButton_RawAdcData->setText("Raw ADC Data");
 	m_pRadioButton_RawAdcData->setDisabled(true);
+
+	if (m_pConfig->axsunPipelineMode == 0)
+		m_pRadioButton_JpegCompressed->setChecked(true);
+	else
+		m_pRadioButton_RawAdcData->setChecked(true);
 	
 	m_pButtonGroup_PipelineMode = new QButtonGroup(this);
 	m_pButtonGroup_PipelineMode->addButton(m_pRadioButton_JpegCompressed, JPEG_COMPRESSED);
@@ -1373,18 +1377,9 @@ void DeviceOptionTab::setLiveImaging(bool toggled)
 
 void DeviceOptionTab::setPipelineMode(int id)
 {
-	if (id == JPEG_COMPRESSED)
-	{		
 #ifdef AXSUN_ENABLE
-		
+	m_pDeviceControl->setPipelineMode(id);
 #endif
-	}
-	else if (id == RAW_ADC_DATA)
-	{
-#ifdef AXSUN_ENABLE
-
-#endif
-	}
 }
 
 void DeviceOptionTab::setBackground()

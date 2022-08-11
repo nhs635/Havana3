@@ -12,7 +12,7 @@
 ///#define NEXT_GEN_SYSTEM
 ///#define ENABLE_FPGA_FFT
 #define ENABLE_DATABASE_ENCRYPTION
-//#define AXSUN_ENABLE
+#define AXSUN_ENABLE
 //#define NI_ENABLE
 
 //////////////////////// Size Setup /////////////////////////
@@ -400,6 +400,7 @@ public:
 #else
 	int flimLaserPower;
 #endif
+	int axsunPipelineMode;
 	float axsunVDLLength;
 	float axsunDispComp_a2, axsunDispComp_a3;
     ContrastRange<float> axsunDbRange;	

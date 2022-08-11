@@ -617,7 +617,7 @@ bool DeviceControl::connectAxsunControl(bool toggled)
 		
 #ifndef NEXT_GEN_SYSTEM
 		// Default Bypass Mode
-		m_pAxsunControl->setPipelineMode(AxPipelineMode::JPEG_COMP);
+		setPipelineMode(m_pConfig->axsunPipelineMode);
 #endif
 
 		// Default Clock Delay
@@ -772,7 +772,19 @@ void DeviceControl::setPipelineMode(int mode)
 {	
 #ifdef AXSUN_ENABLE
 	if (m_pAxsunControl)
-		m_pAxsunControl->setPipelineMode(mode;
+	{
+		m_pConfig->axsunPipelineMode = mode;
+		if (mode == 0)
+		{
+			m_pAxsunControl->setPipelineMode(AxPipelineMode::JPEG_COMP);
+			m_pAxsunControl->setSubSampling(1);
+		}
+		else
+		{
+			m_pAxsunControl->setPipelineMode(AxPipelineMode::RAW_ADC);
+			m_pAxsunControl->setSubSampling(16);
+		}
+	}
 #else
 	(void)mode;
 #endif
