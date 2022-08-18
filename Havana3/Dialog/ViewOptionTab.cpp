@@ -105,6 +105,7 @@ void ViewOptionTab::createFlimVisualizationOptionTab()
     m_pComboBox_EmissionChannel->addItem("Ch 3");
     m_pComboBox_EmissionChannel->setCurrentIndex(m_pConfig->flimEmissionChannel - 1);
     m_pComboBox_EmissionChannel->setFixedWidth(60);
+	m_pComboBox_EmissionChannel->setDisabled(m_pConfig->flimParameterMode == FLImParameters::_NONE_);
 
     m_pLabel_EmissionChannel = new QLabel("Emission Channel  ", this);
     m_pLabel_EmissionChannel->setAlignment(Qt::AlignVCenter | Qt::AlignRight);
@@ -125,10 +126,15 @@ void ViewOptionTab::createFlimVisualizationOptionTab()
 		m_pRadioButton_IntensityRatio = new QRadioButton(this);
 		m_pRadioButton_IntensityRatio->setText(QString("Intensity Ratio (%1/%2)").arg(m_pConfig->flimEmissionChannel).arg((m_pConfig->flimEmissionChannel == 1) ? 3 : m_pConfig->flimEmissionChannel - 1));
 		m_pRadioButton_IntensityRatio->setChecked(m_pConfig->flimParameterMode == FLImParameters::_INTENSITY_RATIO_);
+		m_pRadioButton_None = new QRadioButton(this);
+		m_pRadioButton_None->setText("None");
+		m_pRadioButton_None->setChecked(m_pConfig->flimParameterMode == FLImParameters::_NONE_);
+
 		m_pButtonGroup_FLImParameters = new QButtonGroup(this);
 		m_pButtonGroup_FLImParameters->addButton(m_pRadioButton_Lifetime, _LIFETIME_);
 		m_pButtonGroup_FLImParameters->addButton(m_pRadioButton_IntensityProp, _INTENSITY_PROP_);
 		m_pButtonGroup_FLImParameters->addButton(m_pRadioButton_IntensityRatio, _INTENSITY_RATIO_);
+		m_pButtonGroup_FLImParameters->addButton(m_pRadioButton_None, _NONE_);
 		
 		// Create widgets for RF prediction
 		m_pLabel_RFPrediction = new QLabel("RF Prediction   ", this);
@@ -332,6 +338,7 @@ void ViewOptionTab::createFlimVisualizationOptionTab()
 		pGridLayout_FlimVisualization2->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed), 0, 1);
 		pGridLayout_FlimVisualization2->addWidget(m_pRadioButton_Lifetime, 0, 2);
 		pGridLayout_FlimVisualization2->addWidget(m_pRadioButton_IntensityProp, 0, 3);
+		pGridLayout_FlimVisualization2->addWidget(m_pRadioButton_None, 1, 2);
 		pGridLayout_FlimVisualization2->addWidget(m_pRadioButton_IntensityRatio, 1, 3);
 
 		QGridLayout *pGridLayout_FlimVisualization3 = new QGridLayout;
@@ -661,6 +668,7 @@ void ViewOptionTab::changeVisualizationMode(int mode)
 				m_pRadioButton_Lifetime->setEnabled(true);
 				m_pRadioButton_IntensityProp->setEnabled(true);
 				m_pRadioButton_IntensityRatio->setEnabled(true);
+				m_pRadioButton_None->setEnabled(true);
 
 				m_pLabel_RFPrediction->setDisabled(true);
 				m_pRadioButton_PlaqueComposition->setDisabled(true);
@@ -677,6 +685,7 @@ void ViewOptionTab::changeVisualizationMode(int mode)
 				m_pRadioButton_Lifetime->setDisabled(true);
 				m_pRadioButton_IntensityProp->setDisabled(true);
 				m_pRadioButton_IntensityRatio->setDisabled(true);
+				m_pRadioButton_None->setDisabled(true);
 
 				m_pLabel_RFPrediction->setEnabled(true);
 				m_pRadioButton_PlaqueComposition->setEnabled(true);
@@ -730,6 +739,8 @@ void ViewOptionTab::changeEmissionChannel(int ch)
 				mode = _INTENSITY_PROP_;
 			else if (m_pRadioButton_IntensityRatio->isChecked())
 				mode = _INTENSITY_RATIO_;
+			else if (m_pRadioButton_None->isChecked())
+				mode = _NONE_;
 			
 			if (signaling) m_pViewTab->setFLImParameters(ch0 + 3 * mode);
 			m_pViewTab->invalidate();
@@ -765,6 +776,8 @@ void ViewOptionTab::changeFLImParameters(int mode)
 	m_pLineEdit_IntensityMin->setVisible(true);
 	m_pImageView_IntensityColorbar->setVisible(true);
 	m_pLineEdit_IntensityMax->setVisible(true);
+
+	m_pComboBox_EmissionChannel->setEnabled(true);
 
 	if (mode == FLImParameters::_LIFETIME_)
 	{
@@ -840,6 +853,34 @@ void ViewOptionTab::changeFLImParameters(int mode)
 		//m_pLineEdit_InflammationMin->setVisible(false);
 		m_pImageView_InflammationColorbar->setVisible(false);
 		//m_pLineEdit_InflammationMax->setVisible(false);
+	}
+	else if (mode == FLImParameters::_NONE_)
+	{
+		m_pLabel_Lifetime->setVisible(true);
+		m_pLineEdit_LifetimeMin->setVisible(true);
+		m_pImageView_LifetimeColorbar->setVisible(true);
+		m_pLineEdit_LifetimeMax->setVisible(true);
+
+		m_pLabel_IntensityProp->setVisible(false);
+		m_pLineEdit_IntensityPropMin->setVisible(false);
+		m_pImageView_IntensityPropColorbar->setVisible(false);
+		m_pLineEdit_IntensityPropMax->setVisible(false);
+
+		m_pLabel_IntensityRatio->setVisible(false);
+		m_pLineEdit_IntensityRatioMin->setVisible(false);
+		m_pImageView_IntensityRatioColorbar->setVisible(false);
+		m_pLineEdit_IntensityRatioMax->setVisible(false);
+
+		m_pLabel_PlaqueComposition->setVisible(false);
+		m_pImageView_PlaqueCompositionColorbar->setVisible(false);
+
+		m_pLabel_Inflammation->setVisible(false);
+		//m_pLineEdit_InflammationMin->setVisible(false);
+		m_pImageView_InflammationColorbar->setVisible(false);
+		//m_pLineEdit_InflammationMax->setVisible(false);
+
+		m_pConfig->flimEmissionChannel = 1;
+		m_pComboBox_EmissionChannel->setDisabled(true);
 	}
 
 	changeEmissionChannel(m_pConfig->flimEmissionChannel - 1);

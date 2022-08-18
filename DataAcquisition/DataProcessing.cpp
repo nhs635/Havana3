@@ -123,12 +123,12 @@ void DataProcessing::startProcessing(QString fileName)
 				deinterleave.join();
 				flim_proc.join();
 												
-				// Generate en face maps ////////////////////////////////////////////////////////////////////
-                //getOctProjection(m_pResultTab->getViewTab()->m_vectorOctImage, m_pResultTab->getViewTab()->m_octProjection);
-
 				// Delete OCT FLIM Object & threading sync buffers //////////////////////////////////////////				
 				m_syncDeinterleaving.deallocate_queue_buffer();
 				m_syncFlimProcessing.deallocate_queue_buffer();
+				
+				// Generate en face maps ////////////////////////////////////////////////////////////////////
+				getOctProjection(m_pResultTab->getViewTab()->m_vectorOctImage, m_pResultTab->getViewTab()->m_octProjection);
 				
 				// Visualization ////////////////////////////////////////////////////////////////////////////
 				m_pResultTab->getViewTab()->invalidate();	

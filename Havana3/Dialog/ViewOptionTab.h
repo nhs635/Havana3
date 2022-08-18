@@ -22,7 +22,8 @@ enum FLImParameters
 {
 	_LIFETIME_ = 0,
 	_INTENSITY_PROP_ = 1,
-	_INTENSITY_RATIO_ = 2
+	_INTENSITY_RATIO_ = 2,
+	_NONE_ = 3
 };
 
 enum RFPrediction
@@ -117,6 +118,7 @@ private:
 	QRadioButton *m_pRadioButton_Lifetime;
 	QRadioButton *m_pRadioButton_IntensityProp;
 	QRadioButton *m_pRadioButton_IntensityRatio;
+	QRadioButton *m_pRadioButton_None;
 	QButtonGroup *m_pButtonGroup_FLImParameters;
 
 	QLabel *m_pLabel_RFPrediction;

@@ -139,6 +139,8 @@ void QViewTab::createViewTabWidgets(bool is_streaming)
 			m_pImageView_ColorBar = new QImageView(ColorTable::colortable(INTENSITY_PROP_COLORTABLE), 4, 256, false, this);
 		else if (m_pConfig->flimParameterMode == FLImParameters::_INTENSITY_RATIO_)
 			m_pImageView_ColorBar = new QImageView(ColorTable::colortable(INTENSITY_RATIO_COLORTABLE), 4, 256, false, this);
+		else if (m_pConfig->flimParameterMode == FLImParameters::_NONE_)
+			m_pImageView_ColorBar = new QImageView(ColorTable::colortable(OCT_COLORTABLE), 4, 256, false, this);
         m_pImageView_ColorBar->getRender()->setFixedWidth(30);
         m_pImageView_ColorBar->drawImage(color);
         m_pImageView_ColorBar->setFixedWidth(20);
@@ -211,6 +213,7 @@ void QViewTab::createViewTabWidgets(bool is_streaming)
 		m_pComboBox_FLImParameters->addItem("Ch 1/3 IntRatio");
 		m_pComboBox_FLImParameters->addItem("Ch 2/1 IntRatio");
 		m_pComboBox_FLImParameters->addItem("Ch 3/2 IntRatio");
+		m_pComboBox_FLImParameters->addItem("None");
 		m_pComboBox_FLImParameters->setCurrentIndex(3 * m_pConfig->flimParameterMode + m_pConfig->flimEmissionChannel - 1);
 		m_pComboBox_FLImParameters->setFixedWidth(120);
 
@@ -468,6 +471,7 @@ void QViewTab::invalidate()
 		m_pComboBox_FLImParameters->setCurrentIndex(3 * m_pConfig->flimParameterMode + m_pConfig->flimEmissionChannel - 1);
 		connect(m_pComboBox_FLImParameters, SIGNAL(currentIndexChanged(int)), this, SLOT(changeEmissionChannel(int)));
 
+		m_pImageView_EnFace->resetSize(m_pConfigTemp->frames, m_pConfigTemp->flimAlines);
 		if (m_pConfig->flimParameterMode == FLImParameters::_LIFETIME_)
 		{
 			m_pImageView_EnFace->setEnterCallback([&]() { m_pImageView_EnFace->setText(QPoint(8, 4),
@@ -497,6 +501,15 @@ void QViewTab::invalidate()
 				.arg(m_pConfig->flimIntensityRatioRange[m_pConfig->flimEmissionChannel - 1].max, 2, 'f', 1)
 				.arg(m_pConfig->flimIntensityRatioRange[m_pConfig->flimEmissionChannel - 1].min, 2, 'f', 1), true);
 			m_pImageView_ColorBar->resetColormap(ColorTable::colortable(INTENSITY_RATIO_COLORTABLE));
+		}
+		else if (m_pConfig->flimParameterMode == FLImParameters::_NONE_)
+		{
+			m_pImageView_EnFace->resetSize(m_pConfigTemp->frames, m_pConfigTemp->octAlines);
+			m_pImageView_EnFace->setEnterCallback([&]() { m_pImageView_EnFace->setText(QPoint(8, 4),
+				QString::fromLocal8Bit("2-D OCT Max Projection (z-θ)")); });
+
+			m_pImageView_ColorBar->setText(QPoint(0, 0), "", true);
+			m_pImageView_ColorBar->resetColormap(ColorTable::colortable(OCT_COLORTABLE));
 		}
 		m_pImageView_ColorBar->DidCopyLabel.clear();
 	}
@@ -944,7 +957,7 @@ void QViewTab::setWidgets(Configuration* pConfig)
 	m_pImageView_EnFace->resetSize(frames4, pConfig->flimAlines);
 	m_pImageView_EnFace->setVLineChangeCallback([&](int frame) { m_pSlider_SelectFrame->setValue(frame); });
 	m_pImageView_EnFace->setVerticalLine(1, 0);
-	m_pImageView_EnFace->setHLineChangeCallback([&](int aline) { visualizeLongiImage(4 * aline); });
+	m_pImageView_EnFace->setHLineChangeCallback([&](int aline) { visualizeLongiImage(4 * aline / (m_pConfig->flimParameterMode == FLImParameters::_NONE_ ? 4 : 1)); });
 	m_pImageView_EnFace->setHorizontalLine(1, 0);
 	if (m_pConfig->flimParameterMode == FLImParameters::_LIFETIME_)
 	{
@@ -961,6 +974,12 @@ void QViewTab::setWidgets(Configuration* pConfig)
 		m_pImageView_EnFace->setEnterCallback([&]() { m_pImageView_EnFace->setText(QPoint(8, 4),
 			QString::fromLocal8Bit("2-D FLIm En Face Chemogram\n- Ch %1/%2 Intensity Ratio (z-θ)").arg(m_pConfig->flimEmissionChannel).arg((m_pConfig->flimEmissionChannel == 1) ? 3 : m_pConfig->flimEmissionChannel - 1)); });
 	}
+	else if (m_pConfig->flimParameterMode == FLImParameters::_NONE_)
+	{
+		m_pImageView_EnFace->resetSize(frames4, pConfig->octAlines);
+		m_pImageView_EnFace->setEnterCallback([&]() { m_pImageView_EnFace->setText(QPoint(8, 4),
+			QString::fromLocal8Bit("2-D OCT Max Projection (z-θ)")); });
+	}
 	m_pImageView_EnFace->setLeaveCallback([&]() { m_pImageView_EnFace->setText(QPoint(8, 18), ""); });
 
 	m_pImageView_Longi->resetSize(frames4, diameter);
@@ -975,27 +994,32 @@ void QViewTab::setWidgets(Configuration* pConfig)
 	int vis_mode = m_pRadioButton_RFPrediction->isChecked();
 	if (vis_mode == VisualizationMode::_FLIM_PARAMETERS_)
 	{
-	if (m_pConfig->flimParameterMode == FLImParameters::_LIFETIME_)
-	{
-		m_pImageView_ColorBar->setText(QPoint(0, 0), QString("%1            Lifetime (nsec)            %2")
-			.arg(m_pConfig->flimLifetimeRange[m_pConfig->flimEmissionChannel - 1].max, 2, 'f', 1)
-			.arg(m_pConfig->flimLifetimeRange[m_pConfig->flimEmissionChannel - 1].min, 2, 'f', 1), true);
-		m_pImageView_ColorBar->resetColormap(ColorTable::colortable(LIFETIME_COLORTABLE));
-	}
-	else if (m_pConfig->flimParameterMode == FLImParameters::_INTENSITY_PROP_)
-	{
-		m_pImageView_ColorBar->setText(QPoint(0, 0), QString("%1    Intensity Proportion (AU)    %2")
-			.arg(m_pConfig->flimIntensityPropRange[m_pConfig->flimEmissionChannel - 1].max, 2, 'f', 1)
-			.arg(m_pConfig->flimIntensityPropRange[m_pConfig->flimEmissionChannel - 1].min, 2, 'f', 1), true);
-		m_pImageView_ColorBar->resetColormap(ColorTable::colortable(INTENSITY_PROP_COLORTABLE));
-	}
-	else if (m_pConfig->flimParameterMode == FLImParameters::_INTENSITY_RATIO_)
-	{
-		m_pImageView_ColorBar->setText(QPoint(0, 0), QString("%1       Intensity Ratio (AU)       %2")
-			.arg(m_pConfig->flimIntensityRatioRange[m_pConfig->flimEmissionChannel - 1].max, 2, 'f', 1)
-			.arg(m_pConfig->flimIntensityRatioRange[m_pConfig->flimEmissionChannel - 1].min, 2, 'f', 1), true);
-		m_pImageView_ColorBar->resetColormap(ColorTable::colortable(INTENSITY_RATIO_COLORTABLE));
-	}
+		if (m_pConfig->flimParameterMode == FLImParameters::_LIFETIME_)
+		{
+			m_pImageView_ColorBar->setText(QPoint(0, 0), QString("%1            Lifetime (nsec)            %2")
+				.arg(m_pConfig->flimLifetimeRange[m_pConfig->flimEmissionChannel - 1].max, 2, 'f', 1)
+				.arg(m_pConfig->flimLifetimeRange[m_pConfig->flimEmissionChannel - 1].min, 2, 'f', 1), true);
+			m_pImageView_ColorBar->resetColormap(ColorTable::colortable(LIFETIME_COLORTABLE));
+		}
+		else if (m_pConfig->flimParameterMode == FLImParameters::_INTENSITY_PROP_)
+		{
+			m_pImageView_ColorBar->setText(QPoint(0, 0), QString("%1    Intensity Proportion (AU)    %2")
+				.arg(m_pConfig->flimIntensityPropRange[m_pConfig->flimEmissionChannel - 1].max, 2, 'f', 1)
+				.arg(m_pConfig->flimIntensityPropRange[m_pConfig->flimEmissionChannel - 1].min, 2, 'f', 1), true);
+			m_pImageView_ColorBar->resetColormap(ColorTable::colortable(INTENSITY_PROP_COLORTABLE));
+		}
+		else if (m_pConfig->flimParameterMode == FLImParameters::_INTENSITY_RATIO_)
+		{
+			m_pImageView_ColorBar->setText(QPoint(0, 0), QString("%1       Intensity Ratio (AU)       %2")
+				.arg(m_pConfig->flimIntensityRatioRange[m_pConfig->flimEmissionChannel - 1].max, 2, 'f', 1)
+				.arg(m_pConfig->flimIntensityRatioRange[m_pConfig->flimEmissionChannel - 1].min, 2, 'f', 1), true);
+			m_pImageView_ColorBar->resetColormap(ColorTable::colortable(INTENSITY_RATIO_COLORTABLE));
+		}
+		else if (m_pConfig->flimParameterMode == FLImParameters::_NONE_)
+		{
+			m_pImageView_ColorBar->setText(QPoint(0, 0), "", true);
+			m_pImageView_ColorBar->resetColormap(ColorTable::colortable(OCT_COLORTABLE));
+		}
 	}
 	else if (vis_mode == VisualizationMode::_RF_PREDICTION_)
 	{
@@ -1048,27 +1072,22 @@ void QViewTab::visualizeEnFaceMap(bool scaling)
 		if (scaling)
 		{
 			// Scaling OCT projection
-			///IppiSize roi_proj = { m_octProjection.size(0), m_octProjection.size(1) };
-			///IppiSize roi_proj4 = { roi_proj.width, ROUND_UP_4S(roi_proj.height) };
+			IppiSize roi_proj = { m_octProjection.size(0), m_octProjection.size(1) };
+			IppiSize roi_proj4 = { roi_proj.width, ROUND_UP_4S(roi_proj.height) };
 
-			///np::FloatArray2 scale_temp32(roi_proj.width, roi_proj.height);
-			///np::Uint8Array2 scale_temp8(roi_proj4.width, roi_proj4.height);
+			np::FloatArray2 scale_temp32(roi_proj.width, roi_proj.height);
+			np::Uint8Array2 scale_temp8(roi_proj4.width, roi_proj4.height);
 
-			///ippsConvert_8u32f(m_octProjection.raw_ptr(), scale_temp32.raw_ptr(), scale_temp32.length());
-			///ippiScale_32f8u_C1R(scale_temp32.raw_ptr(), sizeof(float) * roi_proj.width,
-			///	scale_temp8.raw_ptr(), sizeof(uint8_t) * roi_proj4.width, roi_proj,
-			///	m_pConfig->octGrayRange.min, m_pConfig->octGrayRange.max);
-			///ippiTranspose_8u_C1R(scale_temp8.raw_ptr(), sizeof(uint8_t) * roi_proj4.width,
-			///	m_pImgObjOctProjection->arr.raw_ptr(), sizeof(uint8_t) * roi_proj4.height, roi_proj4);
-			///circShift(m_pImgObjOctProjection->arr, m_pConfig->rotatedAlines);
+			ippsConvert_8u32f(m_octProjection.raw_ptr(), scale_temp32.raw_ptr(), scale_temp32.length());
+			ippiScale_32f8u_C1R(scale_temp32.raw_ptr(), sizeof(float) * roi_proj.width,
+				scale_temp8.raw_ptr(), sizeof(uint8_t) * roi_proj4.width, roi_proj,
+				m_pConfig->octGrayRange.min, m_pConfig->octGrayRange.max * (m_pConfigTemp->reflectionRemoval ? 1.1f : 1.0f));
+			ippiTranspose_8u_C1R(scale_temp8.raw_ptr(), sizeof(uint8_t) * roi_proj4.width,
+				m_pImgObjOctProjection->arr.raw_ptr(), sizeof(uint8_t) * roi_proj4.height, roi_proj4);
+			circShift(m_pImgObjOctProjection->arr, m_pConfig->rotatedAlines);
+			m_pImgObjOctProjection->convertRgb();
 
 			// Scaling FLIM map
-			//int ch;
-			////if (vis_mode == VisualizationMode::_FLIM_PARAMETERS_)
-			//	;
-			//else if (vis_mode == VisualizationMode::_RF_PREDICTION_)
-			//	ch = 1;
-
 			scaleFLImEnFaceMap(m_pImgObjIntensityMap, m_pImgObjLifetimeMap,
 				m_pImgObjIntensityPropMap, m_pImgObjIntensityRatioMap,
 				m_pImgObjPlaqueCompositionMap, m_pImgObjInflammationMap,
@@ -1083,6 +1102,9 @@ void QViewTab::visualizeEnFaceMap(bool scaling)
 				emit paintEnFaceMap(m_pImgObjIntensityPropMap->qrgbimg.bits());
 			else if (m_pConfig->flimParameterMode == FLImParameters::_INTENSITY_RATIO_)
 				emit paintEnFaceMap(m_pImgObjIntensityRatioMap->qrgbimg.bits());
+			else if (m_pConfig->flimParameterMode == FLImParameters::_NONE_)
+				emit paintEnFaceMap(m_pImgObjOctProjection->qrgbimg.bits());
+				
 		}
 		else if (vis_mode == VisualizationMode::_RF_PREDICTION_)
 		{			
@@ -1206,6 +1228,11 @@ void QViewTab::visualizeImage(int frame)
 				ippiCopy_8u_C3R(m_pImgObjIntensityRatioMap->qrgbimg.constBits() + 3 * frame, 3 * m_pImgObjIntensityRatioMap->arr.size(0),
 					temp_imgobj->qrgbimg.bits(), 3, roi_flimring);
 			}
+			else if (m_pConfig->flimParameterMode == FLImParameters::_NONE_)
+			{
+				temp_imgobj = new ImageObject(roi_flimring.height, 1, m_pImgObjIntensityMap->getColorTable());
+				memset(temp_imgobj->qrgbimg.bits(), 0, sizeof(uint8_t) * 3 * roi_flimring.height);
+			}
 		}
 		else if (vis_mode == VisualizationMode::_RF_PREDICTION_)
 		{
@@ -1230,7 +1257,7 @@ void QViewTab::visualizeImage(int frame)
 			for (size_t i = r.begin(); i != r.end(); ++i)
 			{
 				ippiCopy_8u_C3R(temp_imgobj->qrgbimg.constBits(), 3 * roi_flimring.width,
-					m_pImgObjRectImage->qrgbimg.bits() + 3 * (m_pImgObjRectImage->arr.size(0) - RING_THICKNESS + i), 
+					m_pImgObjRectImage->qrgbimg.bits() + 3 * (m_pImgObjRectImage->arr.size(0) - RING_THICKNESS + i),
 					3 * m_pImgObjRectImage->arr.size(0), { 1, m_pImgObjRectImage->arr.size(1) });
 			}
 		});
@@ -1449,6 +1476,17 @@ void QViewTab::visualizeLongiImage(int aline)
 				}
 			});
 		}
+		else if (m_pConfig->flimParameterMode == FLImParameters::_NONE_)
+		{
+			tbb::parallel_for(tbb::blocked_range<size_t>(1, (size_t)RING_THICKNESS),
+				[&](const tbb::blocked_range<size_t>& r) {
+				for (size_t i = r.begin(); i != r.end(); ++i)
+				{
+					memset(m_pImgObjLongiImage->qrgbimg.bits() + 3 * (int)i * m_pImgObjLongiImage->getWidth(), 0, sizeof(uint8_t) * 3 * m_pImgObjLongiImage->getWidth());
+					memset(m_pImgObjLongiImage->qrgbimg.bits() + 3 * (int)(m_pImgObjLongiImage->getHeight() - i) * m_pImgObjLongiImage->getWidth(),	0, sizeof(uint8_t) * 3 * m_pImgObjLongiImage->getWidth());
+				}
+			});
+		}
 	}
 	else if (vis_mode == VisualizationMode::_RF_PREDICTION_)
 	{
@@ -1505,7 +1543,7 @@ void QViewTab::visualizeLongiImage(int aline)
     m_pImageView_CircImage->getRender()->update();
 
 	// En Face lines
-	m_pImageView_EnFace->setHorizontalLine(1, int(aline / 4));
+	m_pImageView_EnFace->setHorizontalLine(1, int(aline / 4 * (m_pConfig->flimParameterMode == FLImParameters::_NONE_ ? 4 : 1)));
 	m_pImageView_EnFace->getRender()->update();
 }
 
@@ -1810,6 +1848,10 @@ void QViewTab::changeEmissionChannel(int index)
 				m_pResultTab->getSettingDlg()->getViewOptionTab()->getRadioButtonIntensityProp()->setChecked(true);
 			else if (mode == _INTENSITY_RATIO_)
 				m_pResultTab->getSettingDlg()->getViewOptionTab()->getRadioButtonIntensityRatio()->setChecked(true);
+			//else if (mode == _NONE_)
+			//{
+
+			//}
 			m_pResultTab->getSettingDlg()->getViewOptionTab()->getEmissionChannelComboBox()->setCurrentIndex(ch);
 			m_pResultTab->getSettingDlg()->getViewOptionTab()->changeEmissionChannel(ch + 3);
 		}
@@ -2165,6 +2207,7 @@ void QViewTab::vibrationCorrection()
 
 			// OCT correction
 			circShift(m_vectorOctImage.at(i + 1), cidx);
+			std::rotate(&m_octProjection(0, i + 1), &m_octProjection(cidx, i + 1), &m_octProjection(m_octProjection.size(0), i + 1));
 
 			// FLIm correction
 			///int i1 = i + 1 - m_pConfigTemp->interFrameSync;
@@ -2217,6 +2260,7 @@ void QViewTab::vibrationCorrection()
 		{
 			// OCT correction
 			circShift(m_vectorOctImage.at(i), m_vibCorrIdx(i));
+			std::rotate(&m_octProjection(0, i), &m_octProjection(m_vibCorrIdx(i), i), &m_octProjection(m_octProjection.size(0), i));
 
 			// FLIm correction
 			int shift = m_vibCorrIdx(i) / 4;

@@ -320,8 +320,9 @@ void QPatientSummaryTab::exportRawData(bool toggled)
 			m_pTableWidget_RecordInformation->setCellWidget(i, 0, pWidget_Export);
 						
 			// Default state
-			if (m_pTableWidget_RecordInformation->cellWidget(i, 6)->isEnabled())
-				pCheckBox_Export->setChecked(true);
+			if (m_pTableWidget_RecordInformation->cellWidget(i, 6)->isEnabled())				
+				if (!m_pTableWidget_RecordInformation->item(i, 5)->text().contains("[HIDDEN]"))
+					pCheckBox_Export->setChecked(true);
 			else
 				pCheckBox_Export->setDisabled(true);
 
