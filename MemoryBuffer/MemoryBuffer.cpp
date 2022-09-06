@@ -422,6 +422,10 @@ void MemoryBuffer::write()
 	m_pConfig->interFrameSync = INTER_FRAME_SYNC;
 	m_pConfig->intraFrameSync = INTRA_FRAME_SYNC;
 	m_pConfig->flimDelaySync = FLIM_DELAY_SYNC;
+	m_pConfig->reflectionDistance = REFLECTION_DISTANCE;
+	m_pConfig->reflectionLevel = REFLECTION_LEVEL;
+	m_pConfig->quantitationRange.max = m_nRecordedFrames - 1;
+	m_pConfig->quantitationRange.min = 0;
 
 	m_pConfig->setConfigFile("Havana3.ini");
 	if (false == QFile::copy("Havana3.ini", fileTitle + ".ini"))

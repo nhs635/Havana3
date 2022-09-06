@@ -58,7 +58,7 @@ public:
 		GaussianBlur(input, output, cv::Size(5, 5), 2.5);
 		preprop = np::FloatArray2(src.size(0), src.size(1));
 		ippsConvert_8u32f(output.data, preprop, preprop.length());	
-		ippiSet_32f_C1R(0.0f, &preprop(nradius - 50, 0), sizeof(float) * preprop.size(0), { 50, nalines });
+		//ippiSet_32f_C1R(0.0f, &preprop(nradius - 50, 0), sizeof(float) * preprop.size(0), { 50, nalines });
 
 		// Suppressing reflection artifact (if needed)
 		if (ref_sup)

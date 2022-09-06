@@ -53,6 +53,7 @@ public:
 	inline QPushButton* getPlayButton() const { return m_pToggleButton_Play; }
 	inline QPushButton* getPickButton() const { return m_pPushButton_Pick; }
     inline QSlider* getSliderSelectFrame() const { return m_pSlider_SelectFrame; }
+	inline QDialog* getSetRangeDialog() const { return m_pDialog_SetRange; }
 	inline void setVisualizationMode(int mode) { if (!mode) m_pRadioButton_FLImParameters->setChecked(true); 
 	else m_pRadioButton_RFPrediction->setChecked(true); changeVisualizationMode(mode);	}
 	inline bool getVisualizationMode() { return m_pRadioButton_RFPrediction->isChecked(); }
@@ -235,6 +236,9 @@ private:
 	QButtonGroup *m_pButtonGroup_VisualizationMode;
 	QRadioButton *m_pRadioButton_FLImParameters;
 	QRadioButton *m_pRadioButton_RFPrediction;
+
+	// Set range dialog
+	QDialog *m_pDialog_SetRange;
 };
 
 #endif // QVIEWTAB_H

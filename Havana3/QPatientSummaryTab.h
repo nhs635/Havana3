@@ -70,7 +70,7 @@ public:
 
 signals:
     void requestNewRecord(const QString &);
-    void requestReview(const QString &);
+    void requestReview(const QString &, int frame = -1);
 	void requestDelete(const QString &);
 ///    void sendStatusMessage(QString, bool);
 

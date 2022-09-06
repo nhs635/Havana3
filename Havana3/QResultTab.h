@@ -24,7 +24,7 @@ class QResultTab : public QDialog
 
 // Constructer & Destructer /////////////////////////////
 public:
-    explicit QResultTab(QString record_id, QWidget *parent = nullptr);
+    explicit QResultTab(QString record_id, int frame, QWidget *parent = nullptr);
 	virtual ~QResultTab();
 
 // Methods //////////////////////////////////////////////
@@ -77,6 +77,7 @@ private:
     DataProcessing* m_pDataProcessing;
 		
 private:
+	int m_firstFrame;
 	bool m_bIsDataLoaded;
     RecordInfo m_recordInfo;
 

@@ -35,6 +35,7 @@ private slots:
     void addPatient();
     void deleteAddPatientDlg();
     void removePatient();
+	void searchData();
     void editDatabaseLocation(const QString &);
     void findDatabaseLocation();
 	
@@ -53,6 +54,7 @@ private:
 
     QLabel *m_pLabel_PatientSelection;
 
+	QPushButton *m_pPushButton_SearchData;
     QPushButton *m_pPushButton_AddPatient;
     QPushButton *m_pPushButton_RemovePatient;
 

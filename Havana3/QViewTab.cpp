@@ -28,7 +28,8 @@ QViewTab::QViewTab(bool is_streaming, QWidget *parent) :
 	m_pImgObjIntensityPropMap(nullptr), m_pImgObjIntensityRatioMap(nullptr), m_pImgObjLongiImage(nullptr),
 	m_pImgObjInflammationMap(nullptr), m_pImgObjPlaqueCompositionMap(nullptr), 
 	m_pCirc(nullptr), m_pMedfiltRect(nullptr), m_pMedfiltIntensityMap(nullptr), m_pMedfiltLifetimeMap(nullptr), m_pMedfiltLongi(nullptr),
-	m_pLumenDetection(nullptr), m_pForestPlqCompo(nullptr), m_pForestInflammation(nullptr), m_pForestHealedPlaque(nullptr), _running(false)
+	m_pLumenDetection(nullptr), m_pForestPlqCompo(nullptr), m_pForestInflammation(nullptr), m_pForestHealedPlaque(nullptr), _running(false),
+	m_pDialog_SetRange(nullptr)
 {
 	// Set configuration objects
 	if (is_streaming)
@@ -296,7 +297,7 @@ void QViewTab::createViewTabWidgets(bool is_streaming)
 			int frame = getCurrentFrame() + 1;
 			int total_frame = m_vectorOctImage.size();
 
-			QString label = QString("[%1] %2 (%3 %4 / %5) %6").arg(pt_name).arg(acq_date).arg("circ:").arg(frame).arg(total_frame).arg(get_flim_info());
+			QString label = QString("[%1] %2 (%3 %4 / %5)\n%6 (rot: %7)").arg(pt_name).arg(acq_date).arg("circ:").arg(frame).arg(total_frame).arg(get_flim_info()).arg(m_pConfigTemp->rotatedAlines);
 			QApplication::clipboard()->setText(label);
 		};
 		m_pImageView_Longi->DidCopyLabel += [&, pt_name, acq_date, get_flim_info]() {
@@ -304,12 +305,12 @@ void QViewTab::createViewTabWidgets(bool is_streaming)
 			int aline = getCurrentAline() + 1;
 			int total_aline = m_vectorOctImage.at(0).size(1);
 
-			QString label = QString("[%1] %2 (%3 %4 / %5) %6").arg(pt_name).arg(acq_date).arg("longi:").arg(aline).arg(total_aline).arg(get_flim_info());
+			QString label = QString("[%1] %2 (%3 %4 / %5)\n%6 (rot: %7)").arg(pt_name).arg(acq_date).arg("longi:").arg(aline).arg(total_aline).arg(get_flim_info()).arg(m_pConfigTemp->rotatedAlines);
 			QApplication::clipboard()->setText(label);
 		};
 		m_pImageView_EnFace->DidCopyLabel += [&, pt_name, acq_date, get_flim_info]() {
 			
-			QString label = QString("[%1] %2 %3").arg(pt_name).arg(acq_date).arg(get_flim_info());
+			QString label = QString("[%1] %2\n%3 (rot: %4)").arg(pt_name).arg(acq_date).arg(get_flim_info()).arg(m_pConfigTemp->rotatedAlines);;
 			QApplication::clipboard()->setText(label);
 		};
 		m_pImageView_Ivus->DidCopyLabel += [&, pt_name, acq_date]() {
@@ -335,7 +336,7 @@ void QViewTab::createViewTabWidgets(bool is_streaming)
 						int ivus_total_frame = (int)pIvusViewerDlg->m_vectorIvusImages.size();
 						int ivus_rotation = matches.at(2).toInt();
 
-						QString label = QString("[%1] %2 (%3 %4 / %5) CCW %6 deg (%7)").arg(pt_name).arg(acq_date).arg("ivus:").arg(ivus_frame + 1).arg(ivus_total_frame).arg(ivus_rotation).arg(m_pConfigTemp->ivusPath);
+						QString label = QString("[%1] %2 (%3 %4 / %5) CCW %6 deg\n(%7)").arg(pt_name).arg(acq_date).arg("ivus:").arg(ivus_frame + 1).arg(ivus_total_frame).arg(ivus_rotation).arg(m_pConfigTemp->ivusPath);
 						QApplication::clipboard()->setText(label);
 					}
 				}
@@ -464,9 +465,15 @@ void QViewTab::invalidate()
 	}
 		
 	int vis_mode = m_pRadioButton_RFPrediction->isChecked();
-
+	
 	if (vis_mode == VisualizationMode::_FLIM_PARAMETERS_)
 	{
+		m_pImageView_EnFace->setShadingRegion(-1, -1);
+		m_pImageView_Longi->setShadingRegion(-1, -1);
+
+		if (m_pDialog_SetRange) m_pDialog_SetRange->close();
+		m_pImageView_ColorBar->setCustomContextMenu(QString(""), []() {});
+
 		disconnect(m_pComboBox_FLImParameters, SIGNAL(currentIndexChanged(int)), 0, 0);
 		m_pComboBox_FLImParameters->setCurrentIndex(3 * m_pConfig->flimParameterMode + m_pConfig->flimEmissionChannel - 1);
 		connect(m_pComboBox_FLImParameters, SIGNAL(currentIndexChanged(int)), this, SLOT(changeEmissionChannel(int)));
@@ -515,6 +522,111 @@ void QViewTab::invalidate()
 	}
 	else if (vis_mode == VisualizationMode::_RF_PREDICTION_)
 	{
+		m_pImageView_EnFace->setShadingRegion(m_pConfigTemp->quantitationRange.min + 1, m_pConfigTemp->quantitationRange.max + 1);	
+		m_pImageView_Longi->setShadingRegion(m_pConfigTemp->quantitationRange.min + 1, m_pConfigTemp->quantitationRange.max + 1);
+
+		if (!m_pDialog_SetRange)
+		{
+			m_pImageView_ColorBar->setCustomContextMenu(QString("Set Range"), [&]() {
+
+				if (m_pDialog_SetRange == nullptr)
+				{
+					m_pDialog_SetRange = new QDialog(this);
+					{
+						QLineEdit *pLineEdit_Start = new QLineEdit(this);
+						pLineEdit_Start->setAlignment(Qt::AlignCenter);
+						pLineEdit_Start->setFixedWidth(40);
+						pLineEdit_Start->setText(QString::number(m_pConfigTemp->quantitationRange.min + 1));
+
+						QLineEdit *pLineEdit_End = new QLineEdit(this);
+						pLineEdit_End->setAlignment(Qt::AlignCenter);
+						pLineEdit_End->setFixedWidth(40);
+						pLineEdit_End->setText(QString::number(m_pConfigTemp->quantitationRange.max + 1));
+
+						QPushButton *pPushButton_Apply = new QPushButton(this);
+						pPushButton_Apply->setText("Apply");
+						pPushButton_Apply->setFixedWidth(55);
+						
+						QPushButton *pPushButton_Pick = new QPushButton(this);
+						pPushButton_Pick->setText("Pick");
+						pPushButton_Pick->setFixedWidth(55);
+
+						QGridLayout *pGridLayout = new QGridLayout;
+						pGridLayout->addWidget(new QLabel("Start", this), 0, 0);
+						pGridLayout->addWidget(pLineEdit_Start, 0, 1);
+						pGridLayout->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed), 0, 2);
+						pGridLayout->addWidget(pPushButton_Pick, 0, 3);
+
+						pGridLayout->addWidget(new QLabel("End", this), 1, 0);
+						pGridLayout->addWidget(pLineEdit_End, 1, 1);
+						pGridLayout->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed), 1, 2);
+						pGridLayout->addWidget(pPushButton_Apply, 1, 3);
+
+						m_pDialog_SetRange->setLayout(pGridLayout);
+
+						// Connect
+						connect(pLineEdit_Start, &QLineEdit::editingFinished, [&, pLineEdit_Start]()
+						{
+							int val = pLineEdit_Start->text().toInt() - 1;
+							if (val < 1) val = 0;
+							if (val > m_pConfigTemp->quantitationRange.max) val = m_pConfigTemp->quantitationRange.max;
+							m_pConfigTemp->quantitationRange.min = val;
+							if (val + 1 != pLineEdit_Start->text().toInt())
+								pLineEdit_Start->setText(QString::number(val + 1));
+
+							m_pImageView_EnFace->setShadingRegion(m_pConfigTemp->quantitationRange.min + 1, m_pConfigTemp->quantitationRange.max + 1);
+							m_pImageView_EnFace->update();
+							m_pImageView_Longi->setShadingRegion(m_pConfigTemp->quantitationRange.min + 1, m_pConfigTemp->quantitationRange.max + 1);
+							m_pImageView_Longi->update();
+						});
+						connect(pLineEdit_End, &QLineEdit::editingFinished, [&, pLineEdit_End]()
+						{
+							int val = pLineEdit_End->text().toInt() - 1;
+							if (val > m_pConfigTemp->frames) val = m_pConfigTemp->frames - 1;
+							if (val < m_pConfigTemp->quantitationRange.min) val = m_pConfigTemp->quantitationRange.min;
+							m_pConfigTemp->quantitationRange.max = val;
+							if (val + 1 != pLineEdit_End->text().toInt())
+								pLineEdit_End->setText(QString::number(val + 1));
+
+							m_pImageView_EnFace->setShadingRegion(m_pConfigTemp->quantitationRange.min + 1, m_pConfigTemp->quantitationRange.max + 1);
+							m_pImageView_EnFace->update();
+							m_pImageView_Longi->setShadingRegion(m_pConfigTemp->quantitationRange.min + 1, m_pConfigTemp->quantitationRange.max + 1);
+							m_pImageView_Longi->update();
+						});
+
+						connect(pPushButton_Pick, &QPushButton::clicked, [&, pLineEdit_Start, pLineEdit_End]() 
+						{ 
+							static int which = 0;
+							if (!(which++ % 2))
+							{
+								pLineEdit_Start->setText(QString::number(getCurrentFrame() + 1));
+								emit pLineEdit_Start->editingFinished();
+							}
+							else
+							{
+								pLineEdit_End->setText(QString::number(getCurrentFrame() + 1));
+								emit pLineEdit_End->editingFinished();
+							}
+						});
+						connect(pPushButton_Apply, &QPushButton::clicked, [&]() 
+						{ 
+							invalidate(); 						
+						});
+						connect(m_pDialog_SetRange, &QDialog::finished, [&]()
+						{
+							m_pDialog_SetRange->deleteLater();
+							m_pDialog_SetRange = nullptr;
+						});
+					}
+					m_pDialog_SetRange->setWindowTitle("Set Range");
+					m_pDialog_SetRange->setFixedSize(170, 75);
+					m_pDialog_SetRange->show();
+				}
+				m_pDialog_SetRange->raise();
+				m_pDialog_SetRange->activateWindow();
+			});
+		}
+
 		int rf_mode = m_pComboBox_RFPrediction->currentIndex();
 		if (rf_mode == RFPrediction::_PLAQUE_COMPOSITION_)
 		{
@@ -562,41 +674,42 @@ void QViewTab::invalidate()
 					m_plaqueCompositionProbMap = np::FloatArray2(RF_N_CATS * m_pConfig->flimAlines, m_pConfigTemp->frames);
 					m_plaqueCompositionMap = np::FloatArray2(3 * m_pConfigTemp->flimAlines, m_pConfigTemp->frames);
 					m_pForestPlqCompo->predict(m_featVectors, m_plaqueCompositionMap, m_plaqueCompositionProbMap); // RF prediction for plaque composition classification				
-
-					// Calculate composition ratio 
-					m_plaqueCompositionRatio = np::FloatArray(RF_N_CATS + 1);
-					m_plaqueCompositionRatio(0) = 0;
-					{
-						// Intensity
-						np::FloatArray overallIntensityVector(m_pConfig->flimAlines * m_pConfigTemp->frames);
-						memset(overallIntensityVector, 0, sizeof(float) * overallIntensityVector.length());
-						for (int i = 0; i < 3; i++)
-							ippsAdd_32f_I(m_intensityMap.at(i), overallIntensityVector, overallIntensityVector.length());
-						Ipp32f denumerator;
-						ippsSum_32f(overallIntensityVector, overallIntensityVector.length(), &denumerator, ippAlgHintAccurate);
-
-						np::FloatArray2 plaqueCompositionProbVector(m_plaqueCompositionProbMap, RF_N_CATS, m_pConfig->flimAlines * m_pConfigTemp->frames);
-						for (int i = 0; i < RF_N_CATS; i++)
-						{
-							np::FloatArray weightMulVector(m_pConfig->flimAlines * m_pConfigTemp->frames);
-							ippiMul_32f_C1R(&plaqueCompositionProbVector(i, 0), sizeof(float) * RF_N_CATS, 
-								overallIntensityVector, sizeof(float) * 1, weightMulVector, sizeof(float) * 1,
-								{ 1, weightMulVector.length() });
-							
-							Ipp32f numerator;
-							ippsSum_32f(weightMulVector, weightMulVector.length(), &numerator, ippAlgHintAccurate);
-							
-							m_plaqueCompositionRatio(i + 1) = m_plaqueCompositionRatio(i) + 255.0f * numerator / denumerator;
-							//printf("%f ", m_plaqueCompositionRatio(i + 1));
-						}
-						//printf("\n");
-					}
-
-					///QFile file("compo.data");
-					///file.open(QIODevice::WriteOnly);
-					///file.write(reinterpret_cast<const char*>(m_featVectors.raw_ptr()), sizeof(float) * m_featVectors.length());
-					///file.close();
 				}
+
+				// Calculate composition ratio 
+				m_plaqueCompositionRatio = np::FloatArray(RF_N_CATS + 1);
+				m_plaqueCompositionRatio(0) = 0;
+				{
+					// Intensity
+					int range_length = m_pConfigTemp->quantitationRange.max - m_pConfigTemp->quantitationRange.min + 1;
+					np::FloatArray overallIntensityVector(m_pConfig->flimAlines * range_length);
+					memset(overallIntensityVector, 0, sizeof(float) * overallIntensityVector.length());
+					for (int i = 0; i < 3; i++)
+						ippsAdd_32f_I(&m_intensityMap.at(i).at(0, m_pConfigTemp->quantitationRange.min), overallIntensityVector, overallIntensityVector.length());
+					Ipp32f denumerator;
+					ippsSum_32f(overallIntensityVector, overallIntensityVector.length(), &denumerator, ippAlgHintAccurate);
+
+					np::FloatArray2 plaqueCompositionProbVector(&m_plaqueCompositionProbMap(0, m_pConfigTemp->quantitationRange.min), RF_N_CATS, m_pConfig->flimAlines * range_length);
+					for (int i = 0; i < RF_N_CATS; i++)
+					{
+						np::FloatArray weightMulVector(m_pConfig->flimAlines * range_length);
+						ippiMul_32f_C1R(&plaqueCompositionProbVector(i, 0), sizeof(float) * RF_N_CATS, 
+							overallIntensityVector, sizeof(float) * 1, weightMulVector, sizeof(float) * 1,
+							{ 1, weightMulVector.length() });
+							
+						Ipp32f numerator;
+						ippsSum_32f(weightMulVector, weightMulVector.length(), &numerator, ippAlgHintAccurate);
+							
+						m_plaqueCompositionRatio(i + 1) = m_plaqueCompositionRatio(i) + 255.0f * numerator / denumerator;
+						//printf("%f ", m_plaqueCompositionRatio(i + 1));
+					}
+					//printf("\n");
+				}
+
+				///QFile file("compo.data");
+				///file.open(QIODevice::WriteOnly);
+				///file.write(reinterpret_cast<const char*>(m_featVectors.raw_ptr()), sizeof(float) * m_featVectors.length());
+				///file.close();				
 			}
 
 			// Colorbar
@@ -625,10 +738,15 @@ void QViewTab::invalidate()
 
 			QString qval("");
 			for (int i = 0; i < RF_N_CATS; i++)
-				qval += QString(" %1").arg((m_plaqueCompositionRatio(i + 1) - m_plaqueCompositionRatio(i)) / 255.0f, 5, 'f', 4);
+				qval += QString("%1\t").arg((m_plaqueCompositionRatio(i + 1) - m_plaqueCompositionRatio(i)) / 255.0f, 5, 'f', 4);
 			m_pImageView_ColorBar->setToolTip(qval);
-			m_pImageView_ColorBar->DidCopyLabel += [&, qval]() {
-				QApplication::clipboard()->setText(qval);
+
+			QString pt_name = m_pResultTab->getRecordInfo().patientName;
+			QString acq_date = m_pResultTab->getRecordInfo().date;
+
+			m_pImageView_ColorBar->DidCopyLabel += [&, pt_name, acq_date, qval]() {
+				QString label = QString("[%1] %2 range [%3 %4]\n%5").arg(pt_name).arg(acq_date).arg(m_pConfigTemp->quantitationRange.min).arg(m_pConfigTemp->quantitationRange.max).arg(qval);
+				QApplication::clipboard()->setText(label);
 			};
 		}
 		else if (rf_mode == RFPrediction::_INFLAMMATION_)

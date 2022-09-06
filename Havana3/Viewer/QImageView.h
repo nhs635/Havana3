@@ -63,6 +63,7 @@ public:
 	void setVerticalLine(int len, ...);
 	void setCircle(int len, ...);
     void setContour(int len, uint16_t* pContour);
+	void setShadingRegion(int start, int end);
 	void setText(QPoint pos, const QString& str, bool is_vertical = false, QColor color = Qt::white);
 	void setScaleBar(int len);
 	void setMagnDefault();
@@ -82,6 +83,9 @@ public slots:
 	void drawRgbImage(uint8_t* pImage);
 	void showContextMenu(const QPoint &);
 
+public:
+	void setCustomContextMenu(QString& menu_name, const std::function<void(void)> &slot);
+
 private:
     QHBoxLayout *m_pHBoxLayout;
 
@@ -98,6 +102,8 @@ private:
 
 public:
 	callback<void> DidCopyLabel;
+	callback<void> DidCustomMenu;
+	QString m_customMenuName;
 };
 
 
@@ -139,6 +145,8 @@ public:
 	bool m_bArcRoiSelect, m_bArcRoiShow;
 	int m_RLines[2];
 	bool m_bCW;
+
+	int m_ShadingRegions[2];
 
 	bool m_bMeasureDistance;
 	bool m_bMeasureArea;

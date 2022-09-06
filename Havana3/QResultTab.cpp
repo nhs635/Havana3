@@ -17,8 +17,8 @@
 #include <DataAcquisition/DataProcessing.h>
 
 
-QResultTab::QResultTab(QString record_id, QWidget *parent) :
-    QDialog(parent), m_bIsDataLoaded(false), m_pSettingDlg(nullptr), m_pExportDlg(nullptr), m_pIvusViewerDlg(nullptr)
+QResultTab::QResultTab(QString record_id, int frame, QWidget *parent) :
+    QDialog(parent), m_bIsDataLoaded(false), m_pSettingDlg(nullptr), m_pExportDlg(nullptr), m_pIvusViewerDlg(nullptr), m_firstFrame(frame)
 {
 	// Set main window objects
 	m_pMainWnd = dynamic_cast<MainWindow*>(parent);
@@ -113,7 +113,7 @@ void QResultTab::createResultReviewWidgets()
 
 	m_pPushButton_Comment = new QPushButton(this);
 	m_pPushButton_Comment->setText("  Comments");
-	m_pPushButton_Comment->setIcon(style()->standardIcon(QStyle::SP_FileDialogContentsView));
+	m_pPushButton_Comment->setIcon(style()->standardIcon(QStyle::SP_FileDialogDetailedView));
 	m_pPushButton_Comment->setFixedSize(125, 25);
 	
     m_pPushButton_Export = new QPushButton(this);
@@ -208,7 +208,7 @@ void QResultTab::readRecordData()
 		///m_pProgressDlg->show();
 
 		// Start read and process the reviewing file
-		m_pDataProcessing->startProcessing(m_recordInfo.filename);
+		m_pDataProcessing->startProcessing(m_recordInfo.filename, m_firstFrame);
 
 		// Write to log...
 		m_pConfig->writeToLog(QString("Record reviewing: %1 (ID: %2): %3: record id: %4")

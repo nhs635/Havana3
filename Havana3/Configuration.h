@@ -1,7 +1,7 @@
 #ifndef CONFIGURATION_H
 #define CONFIGURATION_H
 
-#define VERSION						"2.1.4.5"
+#define VERSION						"2.1.4.8"
 
 #define POWER_2(x)					(1 << x)
 #define NEAR_2_POWER(x)				(int)(1 << (int)ceil(log2(x)))
@@ -89,8 +89,8 @@
 #define RF_FIBROUS_COLOR			0x649254
 #define RF_LOOSE_FIBROUS_COLOR		0xd5d52b
 #define RF_CALCIFICATION_COLOR		0xffffff
-#define RF_MACROPHAGE_COLOR			0xff4748
-#define RF_LIPID_MAC_COLOR			0x780005
+#define RF_MACROPHAGE_COLOR			0xff2323 // ff355e // FF5A5F // 0xff4748
+#define RF_LIPID_MAC_COLOR			0x860005 //0x780005
 #define RF_SHEATH_COLOR				0x000000
 
 #define RF_INFL_DATA_NAME			"infl_forest.csv"
@@ -103,7 +103,7 @@
 
 #define INTER_FRAME_SYNC			0 // Frames adjustment
 #define INTRA_FRAME_SYNC			0 // A-lines adjustment
-#define FLIM_DELAY_SYNC				1000
+#define FLIM_DELAY_SYNC				1015
 
 #define RENEWAL_COUNT				8 
 #define REDUCED_COUNT				4
@@ -137,6 +137,8 @@ public:
 		reflectionRemoval(false), reflectionDistance(REFLECTION_DISTANCE), reflectionLevel(REFLECTION_LEVEL)
 	{
 		memset(flimDelayOffset0, 0, sizeof(float) * 3);
+		quantitationRange.min = -1;
+		quantitationRange.max = -1;
 	}
 	~Configuration() {}
 
@@ -206,6 +208,8 @@ public:
 		reflectionDistance = settings.value("reflectionDistance").toInt();
 		reflectionLevel = settings.value("reflectionLevel").toFloat();
 		autoVibCorrectionMode = settings.value("autoVibCorrectionMode").toBool();
+		quantitationRange.max = settings.value("quantitationRangeMax").toInt();
+		quantitationRange.min = settings.value("quantitationRangeMin").toInt();
 		
 		// Additional synchronization parameters
 		intraFrameSync = settings.value("intraFrameSync").toInt();
@@ -294,6 +298,8 @@ public:
 		settings.setValue("reflectionDistance", reflectionDistance);
 		settings.setValue("reflectionLevel", QString::number(reflectionLevel, 'f', 2));
 		settings.setValue("autoVibCorrectionMode", autoVibCorrectionMode);
+		settings.setValue("quantitationRangeMax", quantitationRange.max);
+		settings.setValue("quantitationRangeMin", quantitationRange.min);
 
 		// Additional synchronization parameters
 		settings.setValue("intraFrameSync", intraFrameSync);
@@ -380,6 +386,7 @@ public:
 	int reflectionDistance;
 	float reflectionLevel;
 	bool autoVibCorrectionMode;
+	ContrastRange<int> quantitationRange;
 
 	// Additional synchronization parameters
 	int intraFrameSync;

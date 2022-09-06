@@ -100,7 +100,7 @@ signals:
 	void deviceTerminate();
 	void pullbackFinished(bool);
 	void getCapture(QByteArray &);
-	void requestReview(const QString &);
+	void requestReview(const QString &, int frame = -1);
 #ifdef DEVELOPER_MODE
 	void setStreamingSyncStatusLabel(const QString &);
 	void setLaserStatusLabel(const QString &);

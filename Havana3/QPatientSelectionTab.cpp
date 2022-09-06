@@ -5,6 +5,7 @@
 
 #include <Havana3/MainWindow.h>
 #include <Havana3/Configuration.h>
+#include <Havana3/QPatientSummaryTab.h>
 #include <Havana3/HvnSqlDataBase.h>
 #include <Havana3/Dialog/AddPatientDlg.h>
 
@@ -61,6 +62,11 @@ void QPatientSelectionTab::createPatientSelectionViewWidgets()
     m_pLabel_PatientSelection->setAlignment(Qt::AlignLeft | Qt::AlignBottom);
     m_pLabel_PatientSelection->setStyleSheet("QLabel{font-size:20pt; font-weight:bold}");
 
+	m_pPushButton_SearchData = new QPushButton(this);
+	m_pPushButton_SearchData->setText("  Search Data");
+	m_pPushButton_SearchData->setIcon(style()->standardIcon(QStyle::SP_FileDialogContentsView));
+	m_pPushButton_SearchData->setFixedSize(130, 25);
+
     m_pPushButton_AddPatient = new QPushButton(this);
     m_pPushButton_AddPatient->setText("  Add Patient");
     m_pPushButton_AddPatient->setIcon(style()->standardIcon(QStyle::SP_FileDialogNewFolder));
@@ -92,6 +98,7 @@ void QPatientSelectionTab::createPatientSelectionViewWidgets()
     QHBoxLayout *pHBoxLayout_DatabaseLocation = new QHBoxLayout;
     pHBoxLayout_DatabaseLocation->setAlignment(Qt::AlignRight);
     pHBoxLayout_DatabaseLocation->setSpacing(2);
+	pHBoxLayout_DatabaseLocation->addWidget(m_pPushButton_SearchData);
     pHBoxLayout_DatabaseLocation->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed));
     pHBoxLayout_DatabaseLocation->addWidget(m_pLabel_DatabaseLocation);
     pHBoxLayout_DatabaseLocation->addWidget(m_pLineEdit_DatabaseLocation);
@@ -111,6 +118,7 @@ void QPatientSelectionTab::createPatientSelectionViewWidgets()
     // Connect signal and slot
     connect(m_pPushButton_AddPatient, SIGNAL(clicked(bool)), this, SLOT(addPatient()));
     connect(m_pPushButton_RemovePatient, SIGNAL(clicked(bool)), this, SLOT(removePatient()));
+	connect(m_pPushButton_SearchData, SIGNAL(clicked(bool)), this, SLOT(searchData()));
     connect(m_pLineEdit_DatabaseLocation, SIGNAL(textChanged(const QString &)), this, SLOT(editDatabaseLocation(const QString &)));
     connect(m_pPushButton_DatabaseLocation, SIGNAL(clicked(bool)), this, SLOT(findDatabaseLocation()));
 }
@@ -204,6 +212,116 @@ void QPatientSelectionTab::removePatient()
 	m_pConfig->writeToLog(QString("Patient info removed: %1 (ID: %2)").arg(patient_name).arg(patient_id));
 }
 
+void QPatientSelectionTab::searchData()
+{
+	QDialog *pDialog = new QDialog(this);
+	{
+		QTextEdit *pTextEdit_Data = new QTextEdit(this);
+		pTextEdit_Data->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+		pTextEdit_Data->setAlignment(Qt::AlignLeft | Qt::AlignTop);
+		pTextEdit_Data->setAcceptRichText(false);
+		
+		QPushButton *pPushButton_Find = new QPushButton(this);
+		pPushButton_Find->setText("Find");
+
+		QGridLayout *pGridLayout = new QGridLayout;
+		pGridLayout->addWidget(pTextEdit_Data, 0, 0, 1, 2);
+		pGridLayout->addWidget(pPushButton_Find, 1, 1, Qt::AlignRight);
+		pDialog->setLayout(pGridLayout);
+
+		connect(pPushButton_Find, &QPushButton::clicked, [&, pTextEdit_Data]() {
+
+			// Find databse
+			QString text = pTextEdit_Data->toPlainText();
+			
+			QString pt_name = "", pt_id = "", acq_date = "", record_id = "";
+			int frame = -1;
+
+			// Find patient name, id, acquisition date
+			if (text != "")
+			{
+				QStringList pb_data = text.split("]");				
+				if (pb_data.size() > 0)
+				{
+					pt_name = pb_data[0];
+					pt_name = pt_name.replace("[", "");
+					qDebug() << pt_name;
+
+					acq_date = pb_data[1];
+					acq_date = acq_date.right(acq_date.length() - 1);
+					acq_date = acq_date.left(19);
+					qDebug() << acq_date;
+				}
+
+				QStringList frame_data = text.split("/");				
+				if (frame_data.size() > 0)
+				{
+					QStringList frame_data1 = frame_data[0].split(":");
+					if (frame_data1.size() > 0)
+					{
+						frame = frame_data1.back().toInt();
+						qDebug() << frame;
+					}
+				}
+			}
+
+			// Find patient id & load his/her imaging database
+			if (pt_name != "")
+			{
+				m_pHvnSqlDataBase->queryDatabase("SELECT * FROM patients", [&](QSqlQuery& _sqlQuery) {
+					while (_sqlQuery.next())
+					{
+						QString _pt_name = _sqlQuery.value(1).toString() + ", " + _sqlQuery.value(0).toString();
+						if (_pt_name == pt_name)
+						{
+							pt_id = QString("%1").arg(_sqlQuery.value(3).toString().toInt(), 8, 10, QChar('0'));
+							break;
+						}
+					}
+				});
+
+				for (int i = 0; i < m_pTableWidget_PatientInformation->rowCount(); i++)
+					if (m_pTableWidget_PatientInformation->item(i, 1)->text() == pt_id)
+						emit m_pTableWidget_PatientInformation->cellDoubleClicked(i, 0);
+								
+				// Load the specified pullback
+				if (acq_date != "")
+				{
+					QString command = QString("SELECT * FROM records WHERE patient_id=%1").arg(pt_id);
+					m_pHvnSqlDataBase->queryDatabase(command, [&](QSqlQuery& _sqlQuery) {
+						while (_sqlQuery.next())
+						{
+							QString comment = _sqlQuery.value(8).toString();
+							if (!comment.contains("[HIDDEN]"))
+							{
+								QString _acq_date = _sqlQuery.value(3).toString();
+								if (_acq_date == acq_date)
+									record_id = _sqlQuery.value(0).toString();
+							}
+						}
+					});
+
+					foreach(QDialog* pTabView, m_pMainWnd->getVectorTabViews())
+					{
+						if (pTabView->windowTitle().contains("Summary"))
+						{
+							QString _pt_id = QString("%1").arg(((QPatientSummaryTab*)pTabView)->getPatientInfo().patientId.toInt(), 8, 10, QChar('0'));
+							if (_pt_id == pt_id)
+								emit((QPatientSummaryTab*)pTabView)->requestReview(record_id, frame);
+						}
+					}
+				}
+			}
+			
+			pDialog->close();
+		});
+	}
+	pDialog->setWindowTitle("Search Data");
+	pDialog->setFixedSize(300, 120);
+	pDialog->setModal(true);
+	pDialog->exec();
+}
+
 void QPatientSelectionTab::editDatabaseLocation(const QString &dbPath)
 {
     m_pConfig->dbPath = dbPath;
@@ -240,6 +358,8 @@ void QPatientSelectionTab::loadPatientDatabase()
 	m_pTableWidget_PatientInformation->setRowCount(0);
     m_pTableWidget_PatientInformation->setSortingEnabled(false);
 
+	QStringList dataset;
+
     m_pHvnSqlDataBase->queryDatabase("SELECT * FROM patients", [&](QSqlQuery& _sqlQuery) {
 
         int rowCount = 0;
@@ -257,12 +377,15 @@ void QPatientSelectionTab::loadPatientDatabase()
 
 			QDate last_date(1, 1, 1); QTime last_time(0, 0, 0);  int total = 0;
             QString command = QString("SELECT * FROM records WHERE patient_id=%1").arg(_sqlQuery.value(3).toString());
-            m_pHvnSqlDataBase->queryDatabase(command, [&](QSqlQuery& __sqlQuery) {
+            m_pHvnSqlDataBase->queryDatabase(command, [&, _sqlQuery](QSqlQuery& __sqlQuery) {
                 while (__sqlQuery.next())
                 {
 					QString comment = __sqlQuery.value(8).toString();
 					if (!comment.contains("[HIDDEN]"))
 					{
+						dataset << (QString("%1").arg(_sqlQuery.value(3).toString().toInt(), 8, 10, QChar('0'))) + " / " + (_sqlQuery.value(1).toString() + ", " + _sqlQuery.value(0).toString())
+							+ " / " + __sqlQuery.value(3).toString();
+
 						QTime time = QDateTime::fromString(__sqlQuery.value(3).toString(), "yyyy-MM-dd hh:mm:ss").time();
 						QDate date = QDateTime::fromString(__sqlQuery.value(3).toString(), "yyyy-MM-dd hh:mm:ss").date();
 
@@ -310,6 +433,23 @@ void QPatientSelectionTab::loadPatientDatabase()
 
 		m_pConfig->writeToLog(QString("Patient database loaded: %1").arg(m_pConfig->dbPath));
     });
+	
+	QFile file("dataset_paths.csv");
+	if (file.open(QFile::WriteOnly))
+	{
+		QTextStream stream(&file);
+
+		for (int i = 0; i < dataset.size(); i++)
+		{
+			QStringList _dataset = dataset.at(i).split("/");
+
+			stream << _dataset.at(0) << "\t" // ID
+				<< _dataset.at(1) << "\t" // Name
+				<< _dataset.at(2) << "\n"; // Acq date
+		}
+		file.close();
+	}
+
 
     m_pTableWidget_PatientInformation->setSortingEnabled(true);
 	m_pTableWidget_PatientInformation->sortItems(6, Qt::DescendingOrder);

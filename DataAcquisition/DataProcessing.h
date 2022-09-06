@@ -33,7 +33,7 @@ public:
 	inline QString getIniName() const { return m_iniName; }
 
 public:
-    void startProcessing(QString);
+    void startProcessing(QString, int frame = -1);
 	
 private:
 	void loadingRawData(QFile*, Configuration*);

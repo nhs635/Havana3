@@ -49,12 +49,12 @@ DataProcessing::~DataProcessing()
 }
 
 
-void DataProcessing::startProcessing(QString fileName)
+void DataProcessing::startProcessing(QString fileName, int frame)
 {
 	// Get path to read	
 	if (fileName != "")
 	{
-		std::thread t1([&, fileName]() {
+		std::thread t1([&, fileName, frame]() {
 			
             std::chrono::system_clock::time_point start = std::chrono::system_clock::now();
 
@@ -84,6 +84,12 @@ void DataProcessing::startProcessing(QString fileName)
 				m_pConfigTemp->frames = (int)(file.size() / (sizeof(float) * (qint64)m_pConfigTemp->octFrameSize + sizeof(uint16_t) * (qint64)m_pConfigTemp->flimFrameSize));
 #endif
                 ///m_pConfigTemp->frames -= m_pConfigTemp->interFrameSync;
+
+				if ((m_pConfigTemp->quantitationRange.max == 0) && (m_pConfigTemp->quantitationRange.min == 0))
+				{
+					m_pConfigTemp->quantitationRange.max = m_pConfigTemp->frames - 1;
+					m_pConfigTemp->quantitationRange.min = 0;
+				}
 
 				char msg[256];
 				sprintf(msg, "Start record review processing... (Total nFrame: %d)", m_pConfigTemp->frames);
@@ -135,7 +141,10 @@ void DataProcessing::startProcessing(QString fileName)
 				if (m_pConfig->autoVibCorrectionMode)
 					m_pResultTab->getVibCorrectionButton()->setChecked(true);
 				m_pResultTab->getViewTab()->loadPickFrames(m_pResultTab->getViewTab()->m_vectorPickFrames);
-				m_pResultTab->getViewTab()->getPlayButton()->setChecked(true);
+				if (frame == -1)
+					m_pResultTab->getViewTab()->getPlayButton()->setChecked(true);
+				else
+					m_pResultTab->getViewTab()->setCurrentFrame(frame - 1);
 			}
 
 			file.close();
@@ -307,6 +316,13 @@ void DataProcessing::flimProcessing(FLImProcess* pFLIm, Configuration* pConfig)
 			memcpy(mask, pFLIm->_resize.mask_src, mask.length() * sizeof(float));
 			memcpy(ext, pFLIm->_resize.ext_src, ext.length() * sizeof(float));
 			memcpy(filt, pFLIm->_resize.filt_src, filt.length() * sizeof(float));
+
+			if (frameCount == 93)
+			{
+				QFile file("pulse.data");
+				file.open(QIODevice::WriteOnly);
+				file.write(reinterpret_cast<const char*>(pFLIm->_resize.sat_src.raw_ptr()), sizeof(float) * pFLIm->_resize.sat_src.length());
+			}
 
 			pViewTab->m_vectorPulseCrop.push_back(crop);
 			pViewTab->m_vectorPulseBgSub.push_back(bg_sub);

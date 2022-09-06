@@ -50,7 +50,7 @@ QImageView::QImageView(QWidget *parent) :
 }
 
 QImageView::QImageView(ColorTable::colortable ctable, int width, int height, bool rgb, QWidget *parent) :
-    QDialog(parent), m_bSquareConstraint(false), m_bRgbUsed(rgb)
+    QDialog(parent), m_bSquareConstraint(false), m_bRgbUsed(rgb), m_customMenuName("")
 {
     // Set default size
     resize(400, 400);
@@ -208,6 +208,12 @@ void QImageView::setContour(int len, uint16_t* pContour)
         memcpy(m_pRenderImage->m_contour.raw_ptr(), pContour, sizeof(uint16_t) * len);
 }
 
+void QImageView::setShadingRegion(int start, int end)
+{
+	m_pRenderImage->m_ShadingRegions[0] = start;
+	m_pRenderImage->m_ShadingRegions[1] = end;
+}
+
 void QImageView::setText(QPoint pos, const QString & str, bool is_vertical, QColor color)
 {
 	m_pRenderImage->m_textPos = pos;
@@ -308,7 +314,9 @@ void QImageView::showContextMenu(const QPoint &p)
 	QMenu menu;
 	menu.addAction("Copy Image");
 	menu.addAction("Copy Label");
-
+	if (m_customMenuName != "")
+		menu.addAction(m_customMenuName);
+	
 	QAction* pSelectionItem = menu.exec(gp);
 	if (pSelectionItem)
 	{
@@ -321,10 +329,20 @@ void QImageView::showContextMenu(const QPoint &p)
 		{
 			DidCopyLabel();
 		}		
+		else if (pSelectionItem->text() == m_customMenuName)
+		{
+			DidCustomMenu();
+		}
 	}
 }
 
+void QImageView::setCustomContextMenu(QString& menu_name, const std::function<void(void)>& slot)
+{
+	m_customMenuName = menu_name;
 
+	DidCustomMenu.clear();
+	DidCustomMenu += slot;	
+}
 
 
 QRenderImage::QRenderImage(QWidget *parent) :
@@ -344,6 +362,9 @@ QRenderImage::QRenderImage(QWidget *parent) :
 
 	m_pHLineInd = new int[10];
     m_pVLineInd = new int[10];
+
+	m_ShadingRegions[0] = -1;
+	m_ShadingRegions[1] = -1;
 }
 
 QRenderImage::~QRenderImage()
@@ -380,59 +401,20 @@ void QRenderImage::paintEvent(QPaintEvent *)
 		painter.setPen(pen);
 		painter.drawLine(p1, p2);		
 	}
-
-	for (int i = 0; i < m_vLineLen; i++)
+	
+	if (!m_bArcRoiSelect && !m_bArcRoiShow)
 	{
-		QPointF p1, p2;
-		if (!m_bRadial)
-		{
-			p1.setX((double)((m_pVLineInd[i] - m_rectMagnified.left()) * w) / (double)m_fMagnLevel / (double)m_pImage->width()); 
-			p1.setY(0.0);
-			p2.setX((double)((m_pVLineInd[i] - m_rectMagnified.left()) * w) / (double)m_fMagnLevel / (double)m_pImage->width()); 
-			p2.setY(!m_bDiametric ? (double)h : (double)(h/2));
-
-			QPen pen; pen.setColor(m_colorVLine1); pen.setWidth(2);
-			painter.setPen(pen);
-			painter.drawLine(p1, p2);
-		}
-		else
-		{	
-			int center_x = ((double)m_pImage->width() / 2.0 - (double)m_rectMagnified.left()) * (double)w / (double)m_rectMagnified.width();
-			int center_y = ((double)m_pImage->height() / 2.0 - (double)m_rectMagnified.top()) * (double)h / (double)m_rectMagnified.height();
-			int circ_x = center_x + double(w / 2) * (double)m_pImage->width() / (double)m_rectMagnified.width() * cos((double)m_pVLineInd[i] / (double)m_rMax * IPP_2PI);
-			int circ_y = center_y - double(h / 2) * (double)m_pImage->height() / (double)m_rectMagnified.height() * sin((double)m_pVLineInd[i] / (double)m_rMax * IPP_2PI);
-			p1.setX(center_x);
-			p1.setY(center_y);
-			p2.setX(circ_x); 
-			p2.setY(circ_y);		
-			
-			QPen pen; pen.setColor(m_colorRLine1); pen.setWidth(2);
-			painter.setPen(pen);
-			painter.drawLine(p1, p2);
-
-			int scale_bar_len = int((double)(m_nScaleLen * w) / (double)m_pImage->width());
-			for (int j = 0; j < 6; j++)
-			{
-				int px = center_x + double(scale_bar_len * j) * (double)m_pImage->width() / (double)m_rectMagnified.width() * cos((double)m_pVLineInd[i] / (double)m_rMax * IPP_2PI);
-				int py = center_y - double(scale_bar_len * j) * (double)m_pImage->height() / (double)m_rectMagnified.height() * sin((double)m_pVLineInd[i] / (double)m_rMax * IPP_2PI);
-
-				pen.setColor(m_colorRLine1); pen.setWidth(6);
-				painter.setPen(pen);
-				painter.drawPoint(px, py);
-			}
-		}
-		
-		if (m_bDiametric)
+		for (int i = 0; i < m_vLineLen; i++)
 		{
 			QPointF p1, p2;
 			if (!m_bRadial)
 			{
 				p1.setX((double)((m_pVLineInd[i] - m_rectMagnified.left()) * w) / (double)m_fMagnLevel / (double)m_pImage->width());
-				p1.setY((double)(h/2));
+				p1.setY(0.0);
 				p2.setX((double)((m_pVLineInd[i] - m_rectMagnified.left()) * w) / (double)m_fMagnLevel / (double)m_pImage->width());
-				p2.setY((double)h);
+				p2.setY(!m_bDiametric ? (double)h : (double)(h / 2));
 
-				QPen pen; pen.setColor(m_colorVLine2); pen.setWidth(2);
+				QPen pen; pen.setColor(m_colorVLine1); pen.setWidth(2);
 				painter.setPen(pen);
 				painter.drawLine(p1, p2);
 			}
@@ -440,26 +422,68 @@ void QRenderImage::paintEvent(QPaintEvent *)
 			{
 				int center_x = ((double)m_pImage->width() / 2.0 - (double)m_rectMagnified.left()) * (double)w / (double)m_rectMagnified.width();
 				int center_y = ((double)m_pImage->height() / 2.0 - (double)m_rectMagnified.top()) * (double)h / (double)m_rectMagnified.height();
-				int circ_x = center_x + double(w / 2) * (double)m_pImage->width() / (double)m_rectMagnified.width() * cos((double)(m_pVLineInd[i] + m_rMax / 2) / (double)m_rMax * IPP_2PI);
-				int circ_y = center_y - double(h / 2) * (double)m_pImage->height() / (double)m_rectMagnified.height() * sin((double)(m_pVLineInd[i] + m_rMax / 2) / (double)m_rMax * IPP_2PI);
+				int circ_x = center_x + double(w / 2) * (double)m_pImage->width() / (double)m_rectMagnified.width() * cos((double)m_pVLineInd[i] / (double)m_rMax * IPP_2PI);
+				int circ_y = center_y - double(h / 2) * (double)m_pImage->height() / (double)m_rectMagnified.height() * sin((double)m_pVLineInd[i] / (double)m_rMax * IPP_2PI);
 				p1.setX(center_x);
 				p1.setY(center_y);
 				p2.setX(circ_x);
 				p2.setY(circ_y);
 
-				QPen pen; pen.setColor(m_colorRLine2); pen.setWidth(2);
+				QPen pen; pen.setColor(m_colorRLine1); pen.setWidth(2);
 				painter.setPen(pen);
 				painter.drawLine(p1, p2);
 
-				int scale_bar_len = int((double)(m_nScaleLen * w) / (double)m_rectMagnified.width());
-				for (int j = 1; j < 6; j++)
+				int scale_bar_len = int((double)(m_nScaleLen * w) / (double)m_pImage->width());
+				for (int j = 0; j < 6; j++)
 				{
-					int px = center_x + double(scale_bar_len * j) * (double)m_pImage->width() / (double)m_rectMagnified.width() * cos((double)(m_pVLineInd[i] + m_rMax / 2) / (double)m_rMax * IPP_2PI);
-					int py = center_y - double(scale_bar_len * j) * (double)m_pImage->height() / (double)m_rectMagnified.height() * sin((double)(m_pVLineInd[i] + m_rMax / 2) / (double)m_rMax * IPP_2PI);
+					int px = center_x + double(scale_bar_len * j) * (double)m_pImage->width() / (double)m_rectMagnified.width() * cos((double)m_pVLineInd[i] / (double)m_rMax * IPP_2PI);
+					int py = center_y - double(scale_bar_len * j) * (double)m_pImage->height() / (double)m_rectMagnified.height() * sin((double)m_pVLineInd[i] / (double)m_rMax * IPP_2PI);
 
-					pen.setColor(m_colorRLine2); pen.setWidth(6);
+					pen.setColor(m_colorRLine1); pen.setWidth(6);
 					painter.setPen(pen);
 					painter.drawPoint(px, py);
+				}
+			}
+
+			if (m_bDiametric)
+			{
+				QPointF p1, p2;
+				if (!m_bRadial)
+				{
+					p1.setX((double)((m_pVLineInd[i] - m_rectMagnified.left()) * w) / (double)m_fMagnLevel / (double)m_pImage->width());
+					p1.setY((double)(h / 2));
+					p2.setX((double)((m_pVLineInd[i] - m_rectMagnified.left()) * w) / (double)m_fMagnLevel / (double)m_pImage->width());
+					p2.setY((double)h);
+
+					QPen pen; pen.setColor(m_colorVLine2); pen.setWidth(2);
+					painter.setPen(pen);
+					painter.drawLine(p1, p2);
+				}
+				else
+				{
+					int center_x = ((double)m_pImage->width() / 2.0 - (double)m_rectMagnified.left()) * (double)w / (double)m_rectMagnified.width();
+					int center_y = ((double)m_pImage->height() / 2.0 - (double)m_rectMagnified.top()) * (double)h / (double)m_rectMagnified.height();
+					int circ_x = center_x + double(w / 2) * (double)m_pImage->width() / (double)m_rectMagnified.width() * cos((double)(m_pVLineInd[i] + m_rMax / 2) / (double)m_rMax * IPP_2PI);
+					int circ_y = center_y - double(h / 2) * (double)m_pImage->height() / (double)m_rectMagnified.height() * sin((double)(m_pVLineInd[i] + m_rMax / 2) / (double)m_rMax * IPP_2PI);
+					p1.setX(center_x);
+					p1.setY(center_y);
+					p2.setX(circ_x);
+					p2.setY(circ_y);
+
+					QPen pen; pen.setColor(m_colorRLine2); pen.setWidth(2);
+					painter.setPen(pen);
+					painter.drawLine(p1, p2);
+
+					int scale_bar_len = int((double)(m_nScaleLen * w) / (double)m_rectMagnified.width());
+					for (int j = 1; j < 6; j++)
+					{
+						int px = center_x + double(scale_bar_len * j) * (double)m_pImage->width() / (double)m_rectMagnified.width() * cos((double)(m_pVLineInd[i] + m_rMax / 2) / (double)m_rMax * IPP_2PI);
+						int py = center_y - double(scale_bar_len * j) * (double)m_pImage->height() / (double)m_rectMagnified.height() * sin((double)(m_pVLineInd[i] + m_rMax / 2) / (double)m_rMax * IPP_2PI);
+
+						pen.setColor(m_colorRLine2); pen.setWidth(6);
+						painter.setPen(pen);
+						painter.drawPoint(px, py);
+					}
 				}
 			}
 		}
@@ -748,6 +772,18 @@ void QRenderImage::paintEvent(QPaintEvent *)
 			painter.setFont(font);
 			painter.drawText(x, h / 2 - 15 + offset, QString::fromLocal8Bit("¡å"));
 		}
+	}
+
+	// Make shading region
+	if (m_ShadingRegions[0] != -1)
+	{
+		QRect rect = QRect(0, 0, (int)((double)w / (double)m_pImage->width() * (double)(m_ShadingRegions[0] -1)), h);
+		painter.fillRect(rect, QBrush(QColor(0, 0, 0, 128)));
+	}
+	if (m_ShadingRegions[1] != -1)
+	{
+		QRect rect = QRect((int)((double)w / (double)m_pImage->width() * (double)(m_ShadingRegions[1] + 1)), 0, w, h);
+		painter.fillRect(rect, QBrush(QColor(0, 0, 0, 128)));
 	}
 	
 	// Set text

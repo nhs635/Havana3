@@ -166,6 +166,8 @@ void MainWindow::tabCurrentChanged(int index)
 			dynamic_cast<QResultTab*>(previousTab)->getSettingDlg()->close();
 		if (dynamic_cast<QResultTab*>(previousTab)->getIvusViewerDlg())
 			dynamic_cast<QResultTab*>(previousTab)->getIvusViewerDlg()->close();
+		if (dynamic_cast<QResultTab*>(previousTab)->getViewTab()->getSetRangeDialog())
+			dynamic_cast<QResultTab*>(previousTab)->getViewTab()->getSetRangeDialog()->close();
 		dynamic_cast<QResultTab*>(previousTab)->updatePreviewImage();
 	}
 	else if (previousTab->windowTitle().contains("Summary"))
@@ -321,7 +323,7 @@ void MainWindow::makePatientSummaryTab(int row)
 	m_pConfiguration->writeToLog(QString("Tab added: %1").arg(pPatientSummaryTab->windowTitle()));
 
     connect(pPatientSummaryTab, SIGNAL(requestNewRecord(const QString &)), this, SLOT(makeStreamTab(const QString &)));
-    connect(pPatientSummaryTab, SIGNAL(requestReview(const QString &)), this, SLOT(makeResultTab(const QString &)));
+    connect(pPatientSummaryTab, SIGNAL(requestReview(const QString &, int)), this, SLOT(makeResultTab(const QString &, int)));
 }
 
 void MainWindow::makeStreamTab(const QString& patient_id)
@@ -345,11 +347,11 @@ void MainWindow::makeStreamTab(const QString& patient_id)
 	{
 		m_pConfiguration->writeToLog(QString("Tab added: %1").arg(m_pStreamTab->windowTitle()));
 
-		connect(m_pStreamTab, SIGNAL(requestReview(const QString &)), this, SLOT(makeResultTab(const QString &)));
+		connect(m_pStreamTab, SIGNAL(requestReview(const QString &, int)), this, SLOT(makeResultTab(const QString &, int)));
 	}
 }
 
-void MainWindow::makeResultTab(const QString& record_id)
+void MainWindow::makeResultTab(const QString& record_id, int frame)
 {
 	foreach(QDialog* pTabView, m_vectorTabViews)
 	{
@@ -363,7 +365,7 @@ void MainWindow::makeResultTab(const QString& record_id)
 		}
 	}
 
-    QResultTab *pResultTab = new QResultTab(record_id, this);
+    QResultTab *pResultTab = new QResultTab(record_id, frame, this);
     addTabView(pResultTab);
 
 	m_pConfiguration->writeToLog(QString("Tab added: %1").arg(pResultTab->windowTitle()));
