@@ -218,8 +218,9 @@ void DeviceControl::moveAbsolute()
 	if (m_pPullbackMotor)
 	{
 		// Pullback
-		int rpm = -int(m_pConfig->pullbackSpeed * GEAR_RATIO);
-		float duration = m_pConfig->pullbackLength / m_pConfig->pullbackSpeed;
+		float pullback_slowing_factor = 4.0f;
+		int rpm = -int(m_pConfig->pullbackSpeed / (m_pConfig->axsunPipelineMode == 0 ? 1.0f : pullback_slowing_factor) * GEAR_RATIO);
+		float duration = m_pConfig->pullbackLength / (m_pConfig->pullbackSpeed / (m_pConfig->axsunPipelineMode == 0 ? 1.0f : pullback_slowing_factor));
 		m_pPullbackMotor->setDuration(duration);
 		m_pPullbackMotor->RotateMotor(rpm);
 	}

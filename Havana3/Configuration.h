@@ -1,7 +1,7 @@
 #ifndef CONFIGURATION_H
 #define CONFIGURATION_H
 
-#define VERSION						"2.1.4.8"
+#define VERSION						"2.1.5.0"
 
 #define POWER_2(x)					(1 << x)
 #define NEAR_2_POWER(x)				(int)(1 << (int)ceil(log2(x)))
@@ -13,7 +13,7 @@
 ///#define ENABLE_FPGA_FFT
 #define ENABLE_DATABASE_ENCRYPTION
 #define AXSUN_ENABLE
-//#define NI_ENABLE
+#define NI_ENABLE
 
 //////////////////////// Size Setup /////////////////////////
 #define FLIM_SCANS                  512
@@ -48,6 +48,8 @@
 
 #define ROTATION_100FPS				5872
 #define CLOCK_DELAY					10
+
+#define RAW_SUBSAMPLING				8 // for raw data acquisition
 
 //////////////// Thread & Buffer Processing /////////////////
 #define PROCESSING_BUFFER_SIZE		80
@@ -101,12 +103,13 @@
 #define REFLECTION_DISTANCE			35
 #define REFLECTION_LEVEL			0.30f
 
-#define INTER_FRAME_SYNC			0 // Frames adjustment
-#define INTRA_FRAME_SYNC			0 // A-lines adjustment
+///#define INTER_FRAME_SYNC			0 // Frames adjustment
+///#define INTRA_FRAME_SYNC			0 // A-lines adjustment
 #define FLIM_DELAY_SYNC				1015
 
 #define RENEWAL_COUNT				8 
 #define REDUCED_COUNT				4
+
 #define PIXEL_RESOLUTION			5.0757 // micrometers
 #define OUTER_SHEATH_POSITION		114 // (int)((150 * 1.45 + 180 * 1 + 150 * 1.33) / PIXEL_RESOLUTION) // 0.034 inch OD
 
@@ -229,6 +232,7 @@ public:
 #else
 		flimLaserPower = settings.value("flimLaserPower").toInt();
 #endif
+		axsunPipelineMode = settings.value("axsunPipelineMode").toInt();
 		axsunVDLLength = settings.value("axsunVDLLength").toFloat();
 		axsunDispComp_a2 = settings.value("axsunDispComp_a2").toFloat();
 		axsunDispComp_a3 = settings.value("axsunDispComp_a3").toFloat();
@@ -320,6 +324,7 @@ public:
 #else
 		settings.setValue("flimLaserPower", flimLaserPower);
 #endif
+		settings.setValue("axsunPipelineMode", QString::number(axsunPipelineMode));
 		settings.setValue("axsunVDLLength", QString::number(axsunVDLLength, 'f', 2));
 		settings.setValue("axsunDispComp_a2", QString::number(axsunDispComp_a2, 'f', 1));
 		settings.setValue("axsunDispComp_a3", QString::number(axsunDispComp_a3, 'f', 1));

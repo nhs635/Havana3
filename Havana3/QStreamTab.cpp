@@ -8,6 +8,7 @@
 #include <Havana3/QViewTab.h>
 #include <Havana3/Dialog/SettingDlg.h>
 #include <Havana3/Dialog/FlimCalibTab.h>
+#include <Havana3/Dialog/DeviceOptionTab.h>
 #ifdef DEVELOPER_MODE
 #include <Havana3/Viewer/QScope.h>
 #endif
@@ -23,6 +24,7 @@
 #include <DataAcquisition/AlazarDAQ/AlazarDAQ.h>
 #endif
 #include <DataAcquisition/FLImProcess/FLImProcess.h>
+#include <DataAcquisition/OCTProcess/OCTProcess.h>
 
 #include <MemoryBuffer/MemoryBuffer.h>
 
@@ -69,7 +71,10 @@ QStreamTab::QStreamTab(QString patient_id, QWidget *parent) :
 	// Create buffers for threading operation
 	m_syncFlimProcessing.allocate_queue_buffer(m_pConfig->flimScans, m_pConfig->flimAlines, PROCESSING_BUFFER_SIZE);  // FLIm Processing
 #ifndef NEXT_GEN_SYSTEM
-	m_syncOctProcessing.allocate_queue_buffer(m_pConfig->octScans, m_pConfig->octAlines, PROCESSING_BUFFER_SIZE); // OCT Processing
+	if (m_pConfig->axsunPipelineMode == PipelineMode::JPEG_COMPRESSED)
+		m_syncOctProcessing.allocate_queue_buffer(m_pConfig->octScans, m_pConfig->octAlines, PROCESSING_BUFFER_SIZE); // OCT Processing
+	else
+		m_syncOctProcessing.allocate_queue_buffer(4 * m_pConfig->octScans, m_pConfig->octAlines, PROCESSING_BUFFER_SIZE); // OCT Processing
 #else
 	m_syncOctProcessing.allocate_queue_buffer(m_pConfig->octScansFFT / 2, m_pConfig->octAlines, PROCESSING_BUFFER_SIZE); // OCT Processing
 #endif
@@ -479,7 +484,7 @@ bool QStreamTab::enableDeviceControl(bool enabled)
 			// Set master trigger generation + Axsun imaging mode on
 			std::this_thread::sleep_for(std::chrono::milliseconds(500));			
 #ifndef NEXT_GEN_SYSTEM
-			m_pDeviceControl->setSubSampling(1);
+			//m_pDeviceControl->setSubSampling(1);
 			m_pDeviceControl->setLiveImaging(true);
 #endif
 			m_pDeviceControl->setLightSource(true);
@@ -512,7 +517,10 @@ void QStreamTab::setFlimAcquisitionCallback()
 #endif
 
         // Data transfer
-		int renewal_count = RENEWAL_COUNT / (m_pToggleButton_EnableRotation->isChecked() && !m_pToggleButton_StartPullback->isChecked() ? REDUCED_COUNT : 1);
+		int renewal_count = RENEWAL_COUNT /
+			(m_pToggleButton_EnableRotation->isChecked() &&
+				!m_pToggleButton_StartPullback->isChecked() &&
+				m_pConfig->axsunPipelineMode == 0 ? REDUCED_COUNT : 1);
         if (!(frame_count % renewal_count))
         {
             // Data transfer for FLIm processing
@@ -608,7 +616,10 @@ void QStreamTab::setOctAcquisitionCallback()
 	m_pDataAcquisition->ConnectAcquiredOctData1([&](int frame_count, const void* _frame_ptr) {
 #endif
 		// Data transfer
-		int renewal_count = RENEWAL_COUNT / (m_pToggleButton_EnableRotation->isChecked() && !m_pToggleButton_StartPullback->isChecked() ? REDUCED_COUNT : 1);
+		int renewal_count = RENEWAL_COUNT / 
+			(m_pToggleButton_EnableRotation->isChecked() && 
+				!m_pToggleButton_StartPullback->isChecked() && 
+				m_pConfig->axsunPipelineMode == 0 ? REDUCED_COUNT : 1);
 		if (!(frame_count % renewal_count))
 		{
 #ifndef NEXT_GEN_SYSTEM
@@ -638,7 +649,10 @@ void QStreamTab::setOctAcquisitionCallback()
 			{
 				// Body
 #ifndef NEXT_GEN_SYSTEM
-				memcpy(oct_ptr, frame_ptr, sizeof(uint8_t) * m_pConfig->octFrameSize);
+				if (m_pConfig->axsunPipelineMode == PipelineMode::JPEG_COMPRESSED)
+					memcpy(oct_ptr, frame_ptr, sizeof(uint8_t) * m_pConfig->octFrameSize);
+				else
+					memcpy(oct_ptr, frame_ptr, sizeof(uint8_t) * 4 * m_pConfig->octFrameSize);
 #else
 				memcpy(oct_ptr, frame_ptr, sizeof(float) * m_pConfig->octFrameSize);
 #endif
@@ -673,8 +687,12 @@ void QStreamTab::setOctAcquisitionCallback()
 				if (oct_ptr != nullptr)
 				{
 					// Body (Copying the frame data)
+					const uint8_t* frame_ptr = frame.raw_ptr();
 #ifndef NEXT_GEN_SYSTEM
-					memcpy(oct_ptr, frame.raw_ptr(), sizeof(uint8_t) * m_pConfig->octFrameSize);
+					if (m_pConfig->axsunPipelineMode == PipelineMode::JPEG_COMPRESSED)
+						memcpy(oct_ptr, frame_ptr, sizeof(uint8_t) * m_pConfig->octFrameSize);
+					else
+						memcpy(oct_ptr, frame_ptr, sizeof(uint8_t) * 4 * m_pConfig->octFrameSize);
 #else
 					memcpy(oct_ptr, (float*)_frame_ptr, sizeof(float) * m_pConfig->octFrameSize);
 #endif
@@ -697,10 +715,10 @@ void QStreamTab::setOctAcquisitionCallback()
 			file.write(reinterpret_cast<const char*>(getDeviceControl()->getAxsunControl()->background_frame.raw_ptr()), 
 				sizeof(uint16_t) * getDeviceControl()->getAxsunControl()->background_frame.length());
 		file.close();
-#else
-		(void)frame_count;
+#else		
 		(void)frame;
 #endif
+		(void)frame_count;
 	});
 
 	m_pDataAcquisition->ConnectStopOctData([&]() {
@@ -817,7 +835,8 @@ void QStreamTab::setFlimProcessingCallback()
 void QStreamTab::setOctProcessingCallback()
 {
 	// OCT Process Signal Objects /////////////////////////////////////////////////////////////////////////////////////////	
-	m_pThreadOctProcess->DidAcquireData += [&](int frame_count) {
+	OCTProcess *pOCT = m_pDataAcquisition->getOCT();
+	m_pThreadOctProcess->DidAcquireData += [&, pOCT](int frame_count) {
 
 		// Get the buffer from the previous sync Queue
 #ifndef NEXT_GEN_SYSTEM
@@ -845,7 +864,10 @@ void QStreamTab::setOctProcessingCallback()
 
 				// Body
 #ifndef NEXT_GEN_SYSTEM
-				memcpy(img_ptr, oct_data, sizeof(uint8_t) * m_pConfig->octFrameSize);
+				if (m_pConfig->axsunPipelineMode == PipelineMode::JPEG_COMPRESSED)
+					memcpy(img_ptr, oct_data, sizeof(uint8_t) * m_pConfig->octFrameSize);
+				else
+					(*pOCT)(img_ptr, (int16_t*)oct_data, m_pConfig->axsunDbRange.min, m_pConfig->axsunDbRange.max);
 #else
 				ippiScale_32f8u_C1R(oct_data, sizeof(float) * m_pConfig->octScansFFT / 2,
 					img_ptr, sizeof(uint8_t) * m_pConfig->octScansFFT / 2,
@@ -1085,9 +1107,15 @@ void QStreamTab::enableRotation(bool enabled)
 		m_pToggleButton_StartPullback->setEnabled(true);
 
 		if (m_pDeviceControl->getRotatyMotor())
-		{
-			m_pConfig->rotaryRpm = int(ROTATION_100FPS / REDUCED_COUNT);
-			m_pDeviceControl->setSubSampling(REDUCED_COUNT);
+		{			
+			if (m_pConfig->axsunPipelineMode == 0)
+			{
+				m_pConfig->rotaryRpm = int(ROTATION_100FPS / REDUCED_COUNT);
+				m_pDeviceControl->setSubSampling(REDUCED_COUNT);
+			}
+			else
+				m_pConfig->rotaryRpm = int(ROTATION_100FPS / RAW_SUBSAMPLING);
+
 			m_pDeviceControl->changeRotaryRpm(m_pConfig->rotaryRpm);
 		}
 		else
@@ -1102,7 +1130,8 @@ void QStreamTab::enableRotation(bool enabled)
     {
 		if (m_pDeviceControl->getRotatyMotor())
 		{
-			m_pDeviceControl->setSubSampling(1);
+			if (m_pConfig->axsunPipelineMode == 0)
+				m_pDeviceControl->setSubSampling(1);
 			m_pDeviceControl->rotateStop();
 		}
 
@@ -1127,9 +1156,15 @@ void QStreamTab::startPullback(bool enabled)
 		
 		// Allow faster rotation
 		if (m_pDeviceControl->getRotatyMotor())
-		{
-			m_pConfig->rotaryRpm = int(ROTATION_100FPS);
-			m_pDeviceControl->setSubSampling(1);
+		{			
+			if (m_pConfig->axsunPipelineMode == 0)
+			{
+				m_pConfig->rotaryRpm = int(ROTATION_100FPS);
+				m_pDeviceControl->setSubSampling(1);
+			}
+			else
+				m_pConfig->rotaryRpm = int(ROTATION_100FPS / RAW_SUBSAMPLING);
+
 			m_pDeviceControl->changeRotaryRpm(m_pConfig->rotaryRpm);
 		}
 		else

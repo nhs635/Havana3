@@ -13,7 +13,7 @@ class AxsunCapture;
 class SignatecDAQ;
 class AlazarDAQ;
 class FLImProcess;
-
+class OCTProcess;
 
 class DataAcquisition : public QObject
 {
@@ -31,6 +31,7 @@ public:
 	inline AlazarDAQ* getOctDigitizer() const { return m_pDaqOct; }
 	inline AlazarDAQ* getFlimDigitizer() const { return m_pDaqFlim; }
     inline FLImProcess* getFLIm() const { return m_pFLIm; }
+	inline OCTProcess* getOCT() const { return m_pOCT; }
 	inline bool getAcquisitionState() { return m_bAcquisitionState; }
 	inline bool getPauseState() { return m_bIsPaused; }
 
@@ -71,6 +72,7 @@ private:
 	AlazarDAQ* m_pDaqOct;
 	AlazarDAQ* m_pDaqFlim;
     FLImProcess* m_pFLIm;    
+	OCTProcess* m_pOCT;
 };
 
 #endif // DATAACQUISITION_H

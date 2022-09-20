@@ -60,8 +60,8 @@ void MemoryBuffer::allocateWritingBuffer()
 			m_queueWritingFlimBuffer.push(buffer1);
 
 #ifndef NEXT_GEN_SYSTEM
-			uint8_t* buffer2 = new uint8_t[m_pConfig->octFrameSize];
-			memset(buffer2, 0, m_pConfig->octFrameSize * sizeof(uint8_t));
+			uint8_t* buffer2 = new uint8_t[m_pConfig->octFrameSize * (m_pConfig->axsunPipelineMode == 0 ? 1 : 4)];
+			memset(buffer2, 0, m_pConfig->octFrameSize * sizeof(uint8_t) * (m_pConfig->axsunPipelineMode == 0 ? 1 : 4));	
 #else
 			float* buffer2 = new float[m_pConfig->octFrameSize];
 			memset(buffer2, 0, m_pConfig->octFrameSize * sizeof(float));
@@ -73,7 +73,8 @@ void MemoryBuffer::allocateWritingBuffer()
 
 		m_syncFlimBuffering.allocate_queue_buffer(m_pConfig->flimScans, m_pConfig->flimAlines, PROCESSING_BUFFER_SIZE);
 #ifndef NEXT_GEN_SYSTEM
-		m_syncOctBuffering.allocate_queue_buffer(m_pConfig->octScans, m_pConfig->octAlines, PROCESSING_BUFFER_SIZE);
+		m_syncOctBuffering.allocate_queue_buffer(m_pConfig->octScans * (m_pConfig->axsunPipelineMode == 0 ? 1 : 4), 
+			m_pConfig->octAlines, PROCESSING_BUFFER_SIZE);	
 #else
 		m_syncOctBuffering.allocate_queue_buffer(m_pConfig->octScansFFT / 2, m_pConfig->octAlines, PROCESSING_BUFFER_SIZE);
 #endif
@@ -168,7 +169,7 @@ bool MemoryBuffer::startRecording()
 #ifndef NEXT_GEN_SYSTEM
 					uint8_t* buffer_oct = m_queueWritingOctBuffer.front();
 					m_queueWritingOctBuffer.pop();
-					memcpy(buffer_oct, oct_im, sizeof(uint8_t) * m_pConfig->octFrameSize);
+					memcpy(buffer_oct, oct_im, sizeof(uint8_t) * m_pConfig->octFrameSize * (m_pConfig->axsunPipelineMode == 0 ? 1 : 4));					
 #else
 					float* buffer_oct = m_queueWritingOctBuffer.front();
 					m_queueWritingOctBuffer.pop();
@@ -303,7 +304,7 @@ void MemoryBuffer::write()
 {	
 	qint64 res;
 	qint64 flimSamplesToWrite;
-	qint64 octSamplesToWrite = m_pConfig->octFrameSize;
+	qint64 octSamplesToWrite = m_pConfig->octFrameSize * (m_pConfig->axsunPipelineMode == 0 ? 1 : 4);
 
 	if (QFile::exists(m_fileName))
 	{
@@ -419,8 +420,8 @@ void MemoryBuffer::write()
 		if (m_fileName.at(i) == QChar('/')) filePath = m_fileName.left(i);
 	}
 
-	m_pConfig->interFrameSync = INTER_FRAME_SYNC;
-	m_pConfig->intraFrameSync = INTRA_FRAME_SYNC;
+	///m_pConfig->interFrameSync = INTER_FRAME_SYNC;
+	///m_pConfig->intraFrameSync = INTRA_FRAME_SYNC;
 	m_pConfig->flimDelaySync = FLIM_DELAY_SYNC;
 	m_pConfig->reflectionDistance = REFLECTION_DISTANCE;
 	m_pConfig->reflectionLevel = REFLECTION_LEVEL;

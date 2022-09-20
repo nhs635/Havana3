@@ -36,20 +36,6 @@
 #include <chrono>
 
 
-enum PullbackMode
-{
-	_20MM_S_50MM_ = 0,
-	_10MM_S_30MM_ = 1,
-	_10MM_S_40MM_ = 2
-};
-
-enum PipelineMode
-{
-	JPEG_COMPRESSED = 0,
-	RAW_ADC_DATA = 1
-};
-
-
 DeviceOptionTab::DeviceOptionTab(QWidget *parent) :
     QDialog(parent), m_pPatientSummaryTab(nullptr), m_pStreamTab(nullptr), m_pResultTab(nullptr), m_pDeviceControl(nullptr)
 {

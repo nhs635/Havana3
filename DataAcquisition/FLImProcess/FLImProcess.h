@@ -172,7 +172,7 @@ public:
 
 				// 5. Jitter compensation
 				int cpos, rpos = 9;
-				int irf_wlen = pParams.ch_start_ind[1] - pParams.ch_start_ind[0];
+				int irf_wlen = (pParams.ch_start_ind[1] - pParams.ch_start_ind[0]) / 2;
 				ippsMaxIndx_32f(&bgsb_src(0, (int)i), irf_wlen, &max_val, &cpos);
 
 				int offset = cpos - rpos;

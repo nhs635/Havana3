@@ -1016,7 +1016,7 @@ void PulseReviewTab::selectRow(int row, int, int row0, int)
 	bool isVibCorrted = m_pResultTab->getVibCorrectionButton()->isChecked();
 	int delay = !isVibCorrted ? m_pConfigTemp->flimDelaySync : 0;
 	int delay_frame = delay / m_pConfigTemp->octAlines;
-	int delay_aline = (delay % m_pConfigTemp->octAlines) / 4;
+	///int delay_aline = (delay % m_pConfigTemp->octAlines) / 4;
 
 	int frame0 = m_pTableWidget_RoiList->item(row, 1)->data(Qt::EditRole).toInt() - 1;
 	int frame = frame0 - delay_frame;

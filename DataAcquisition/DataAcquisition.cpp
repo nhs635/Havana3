@@ -15,12 +15,13 @@
 #include <DataAcquisition/AlazarDAQ/AlazarDAQ.h>
 #endif
 #include <DataAcquisition/FLImProcess/FLImProcess.h>
+#include <DataAcquisition/OCTProcess/OCTProcess.h>
 
 
 DataAcquisition::DataAcquisition(Configuration* pConfig)
     : m_bAcquisitionState(false), m_bIsPaused(false), 
 	m_pAxsunCapture(nullptr), m_pDaqOct(nullptr), m_pDaqFlim(nullptr),
-	m_pDaq(nullptr), m_pFLIm(nullptr)
+	m_pDaq(nullptr), m_pFLIm(nullptr), m_pOCT(nullptr)
 {
     // Set main window objects
     m_pConfig = pConfig;
@@ -71,6 +72,10 @@ DataAcquisition::DataAcquisition(Configuration* pConfig)
     m_pFLIm->setParameters(m_pConfig);
     m_pFLIm->_resize(np::Uint16Array2(m_pConfig->flimScans, m_pConfig->flimAlines), m_pFLIm->_params);
     m_pFLIm->loadMaskData();
+
+	// Create OCT process object
+	m_pOCT = new OCTProcess(m_pConfig->octScans * 2, m_pConfig->octAlines);
+	m_pOCT->changeDiscomValue(m_pConfig->axsunDispComp_a2);
 }
 
 DataAcquisition::~DataAcquisition()
@@ -89,6 +94,7 @@ DataAcquisition::~DataAcquisition()
 		m_pFLIm->saveMaskData();
 		delete m_pFLIm;
 	}
+	if (m_pOCT) delete m_pOCT;
 }
 
 
@@ -100,7 +106,7 @@ bool DataAcquisition::InitializeAcquistion()
 
     // Parameter settings for DAQ & Axsun Capture
 #ifdef AXSUN_ENABLE
-	m_pAxsunCapture->image_height = m_pConfig->octScans;
+	m_pAxsunCapture->image_height = (m_pConfig->axsunPipelineMode == 0) ? m_pConfig->octScans : 4 * m_pConfig->octScans;
 	m_pAxsunCapture->image_width = m_pConfig->octAlines;
 #endif
 

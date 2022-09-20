@@ -296,7 +296,7 @@ public:
 
 		// Find guide-wire region
 		std::vector<int> gw_region_left, gw_region_right;
-		int min_p_th = gw_th / 10;
+		//int min_p_th = gw_th / 10;
 
 		// In case of non-bright guide-wire
 		if (gw_peaks.size() == 0)
@@ -665,7 +665,7 @@ public:
 		}
 		
 		// Interpolation
-		int n0 = cx0.size();
+		int n0 = (int)cx0.size();
 		for (int i = 0; i < n0; i++)
 		{
 			cx0.push_back(cx0.at(i) + nalines);
@@ -675,7 +675,7 @@ public:
 		bf::LineSpace_32f(0, 2 * nalines - 1, 2 * nalines, cx1);
 		
 		if (cx0.size() > 0)
-			bf::Interpolation_32f(&cx0[0], &cy0[0], cx1, cy0.size(), cy1.length(), cy1);
+			bf::Interpolation_32f(&cx0[0], &cy0[0], cx1, (int)cy0.size(), cy1.length(), cy1);
 
 		//np::FloatArray sm_contour(2 * nalines);
 		//memcpy(sm_contour, cy1, sizeof(float) * cy1.length());

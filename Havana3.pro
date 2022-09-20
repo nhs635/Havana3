@@ -80,6 +80,7 @@ SOURCES += Havana3/Havana3.cpp \
 SOURCES += DataAcquisition/SignatecDAQ/SignatecDAQ.cpp \
 #    DataAcquisition/AlazarDAQ/AlazarDAQ.cpp \
     DataAcquisition/FLImProcess/FLImProcess.cpp \
+    DataAcquisition/OCTProcess/OCTProcess.cpp \
     DataAcquisition/AxsunCapture/AxsunCapture.cpp \
     DataAcquisition/ThreadManager.cpp \
     DataAcquisition/DataAcquisition.cpp \
@@ -120,8 +121,9 @@ HEADERS += Havana3/Configuration.h \
     Havana3/Dialog/ExportDlg.h
 
 HEADERS += DataAcquisition/SignatecDAQ/SignatecDAQ.h \
-#    DataAcquisition/AlazarDAQ/AlazarDAQ.h \
+#    DataAcquisition/AlazarDAQ/AlazarDAQ.h \    
     DataAcquisition/FLImProcess/FLImProcess.h \
+    DataAcquisition/OCTProcess/OCTProcess.cpp \
     DataAcquisition/AxsunCapture/AxsunCapture.h \
     DataAcquisition/ThreadManager.h \
     DataAcquisition/DataAcquisition.h \

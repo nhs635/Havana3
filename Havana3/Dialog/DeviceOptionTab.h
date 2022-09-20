@@ -11,6 +11,20 @@ class QStreamTab;
 class QResultTab;
 class DeviceControl;
 
+enum PullbackMode
+{
+	_20MM_S_50MM_ = 0,
+	_10MM_S_30MM_ = 1,
+	_10MM_S_40MM_ = 2
+};
+
+enum PipelineMode
+{
+	JPEG_COMPRESSED = 0,
+	RAW_ADC_DATA = 1
+};
+
+
 class QMySpinBox : public QDoubleSpinBox
 {
 public:

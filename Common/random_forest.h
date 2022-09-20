@@ -220,7 +220,7 @@ public:
 				for (size_t i = r.begin(); i != r.end(); ++i)
 				{
 					Mat omat;
-					forest->getVotes(input_mat.row(i), omat, 0);
+					forest->getVotes(input_mat.row((int)i), omat, 0);
 					memcpy((int*)output_mat.data + i * output_mat.cols, (int*)omat.data + omat.cols, sizeof(int) * omat.cols);
 				}
 			});			

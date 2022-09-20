@@ -469,7 +469,7 @@ void QResultTab::deleteIvusViewerDlg()
 	m_pViewTab->getPickButton()->setEnabled(true);
 }
 
-void QResultTab::enableVibrationCorrection(bool enabled)
+void QResultTab::enableVibrationCorrection(bool)
 {
 	//if (enabled)
 	{

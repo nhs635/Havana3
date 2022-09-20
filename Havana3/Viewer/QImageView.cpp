@@ -814,7 +814,7 @@ void QRenderImage::paintEvent(QPaintEvent *)
 
 }
 
-void QRenderImage::enterEvent(QEvent *e)
+void QRenderImage::enterEvent(QEvent *)
 {
 	if (!m_bMeasureDistance && !m_bMeasureArea && !m_bArcRoiSelect && !m_bArcRoiShow)
 	{
@@ -823,7 +823,7 @@ void QRenderImage::enterEvent(QEvent *e)
 	}
 }
 
-void QRenderImage::leaveEvent(QEvent *e)
+void QRenderImage::leaveEvent(QEvent *)
 {
 	if (!m_bMeasureDistance && !m_bMeasureArea && !m_bArcRoiSelect && !m_bArcRoiShow)
 	{

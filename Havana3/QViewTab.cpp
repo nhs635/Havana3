@@ -295,7 +295,7 @@ void QViewTab::createViewTabWidgets(bool is_streaming)
 		m_pImageView_CircImage->DidCopyLabel += [&, pt_name, acq_date, get_flim_info]() {
 
 			int frame = getCurrentFrame() + 1;
-			int total_frame = m_vectorOctImage.size();
+			int total_frame = (int)m_vectorOctImage.size();
 
 			QString label = QString("[%1] %2 (%3 %4 / %5)\n%6 (rot: %7)").arg(pt_name).arg(acq_date).arg("circ:").arg(frame).arg(total_frame).arg(get_flim_info()).arg(m_pConfigTemp->rotatedAlines);
 			QApplication::clipboard()->setText(label);

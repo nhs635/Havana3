@@ -6,6 +6,7 @@
 #include <Havana3/QViewTab.h>
 
 #include <DataAcquisition/FLImProcess/FLImProcess.h>
+#include <DataAcquisition/OCTProcess/OCTProcess.h>
 
 #include <ippcore.h>
 #include <ippvm.h>
@@ -15,7 +16,7 @@
 
 
 DataProcessing::DataProcessing(QWidget *parent)
-    : m_pConfigTemp(nullptr), m_pFLIm(nullptr)
+    : m_pConfigTemp(nullptr), m_pFLIm(nullptr), m_pOCT(nullptr)
 {
 	// Set main window objects    
     m_pResultTab = dynamic_cast<QResultTab*>(parent);
@@ -79,7 +80,8 @@ void DataProcessing::startProcessing(QString fileName, int frame)
 
                 m_pConfigTemp->getConfigFile(m_iniName);
 #ifndef NEXT_GEN_SYSTEM
-                m_pConfigTemp->frames = (int)(file.size() / (sizeof(uint8_t) * (qint64)m_pConfigTemp->octFrameSize + sizeof(uint16_t) * (qint64)m_pConfigTemp->flimFrameSize));
+				m_pConfigTemp->frames = (int)(file.size() / (sizeof(uint8_t) * (m_pConfigTemp->axsunPipelineMode == 0 ? 1 : 4) * (qint64)m_pConfigTemp->octFrameSize 
+														   + sizeof(uint16_t) * (qint64)m_pConfigTemp->flimFrameSize));
 #else
 				m_pConfigTemp->frames = (int)(file.size() / (sizeof(float) * (qint64)m_pConfigTemp->octFrameSize + sizeof(uint16_t) * (qint64)m_pConfigTemp->flimFrameSize));
 #endif
@@ -102,7 +104,8 @@ void DataProcessing::startProcessing(QString fileName, int frame)
                 m_pResultTab->getViewTab()->setBuffers(m_pConfigTemp);
 				m_pResultTab->getViewTab()->setObjects(m_pConfigTemp);				
 #ifndef NEXT_GEN_SYSTEM
-				m_syncDeinterleaving.allocate_queue_buffer(m_pConfigTemp->flimScans + m_pConfigTemp->octScans, m_pConfigTemp->octAlines, PROCESSING_BUFFER_SIZE);
+				m_syncDeinterleaving.allocate_queue_buffer(m_pConfigTemp->flimScans + m_pConfigTemp->octScans * (m_pConfigTemp->axsunPipelineMode == 0 ? 1 : 4), 
+					m_pConfigTemp->octAlines, PROCESSING_BUFFER_SIZE);
 #else
 				m_syncDeinterleaving.allocate_queue_buffer(sizeof(uint16_t) * m_pConfigTemp->flimScans / 4 + sizeof(float) * m_pConfigTemp->octScansFFT / 2, m_pConfigTemp->octAlines, PROCESSING_BUFFER_SIZE);
 #endif
@@ -115,11 +118,18 @@ void DataProcessing::startProcessing(QString fileName, int frame)
 				m_pFLIm->_resize(np::Uint16Array2(m_pConfigTemp->flimScans, m_pConfigTemp->flimAlines), m_pFLIm->_params);
 				m_pFLIm->loadMaskData(maskName);
 
+				if (m_pConfigTemp->axsunPipelineMode == 1)
+				{
+					if (m_pOCT) delete m_pOCT;
+					m_pOCT = new OCTProcess(m_pConfigTemp->octScans * 2, m_pConfigTemp->octAlines);
+					m_pOCT->changeDiscomValue(m_pConfigTemp->axsunDispComp_a2);
+				}
+
 				// Get external data ////////////////////////////////////////////////////////////////////////
 				std::thread load_data([&]() { loadingRawData(&file, m_pConfigTemp); });
 
 				// Data DeInterleaving //////////////////////////////////////////////////////////////////////
-				std::thread deinterleave([&]() { deinterleaving(m_pConfigTemp); });
+				std::thread deinterleave([&]() { deinterleaving(m_pOCT, m_pConfigTemp); });
 
 				// FLIm Process /////////////////////////////////////////////////////////////////////////////
 				std::thread flim_proc([&]() { flimProcessing(m_pFLIm, m_pConfigTemp); });
@@ -185,7 +195,7 @@ void DataProcessing::loadingRawData(QFile* pFile, Configuration* pConfig)
 			{
 				// Read data from the external data
 #ifndef NEXT_GEN_SYSTEM
-				pFile->read(reinterpret_cast<char *>(frame_data), sizeof(uint16_t) * pConfig->flimFrameSize + sizeof(uint8_t) * pConfig->octFrameSize);
+				pFile->read(reinterpret_cast<char *>(frame_data), sizeof(uint16_t) * pConfig->flimFrameSize + sizeof(uint8_t) * pConfig->octFrameSize * (pConfig->axsunPipelineMode == 0 ? 1 : 4));
 #else
 				pFile->read(reinterpret_cast<char *>(frame_data), sizeof(uint16_t) * pConfig->flimFrameSize + sizeof(float) * pConfig->octFrameSize);
 #endif
@@ -198,7 +208,7 @@ void DataProcessing::loadingRawData(QFile* pFile, Configuration* pConfig)
 	}
 }
 
-void DataProcessing::deinterleaving(Configuration* pConfig)
+void DataProcessing::deinterleaving(OCTProcess* pOCT, Configuration* pConfig)
 {
     QViewTab* pVisTab = m_pResultTab->getViewTab();
 
@@ -229,11 +239,15 @@ void DataProcessing::deinterleaving(Configuration* pConfig)
 					// Data deinterleaving
 					memcpy(pulse_ptr, frame_ptr, sizeof(uint16_t) * pConfig->flimFrameSize);
 					if (frameCount >= 0) /// pConfig->interFrameSync)
-					{
+					{						
 						memset(pVisTab->m_vectorOctImage.at(frameCount).raw_ptr(), 0, pVisTab->m_vectorOctImage.at(frameCount).length());
 						np::Uint8Array2 frame_data(pConfig->octScans, pConfig->octAlines);
 #ifndef NEXT_GEN_SYSTEM
-						memcpy(frame_data, frame_ptr + sizeof(uint16_t) * pConfig->flimFrameSize, sizeof(uint8_t) * pConfig->octFrameSize);
+						if (pConfig->axsunPipelineMode == 0)
+							memcpy(frame_data, frame_ptr + sizeof(uint16_t) * pConfig->flimFrameSize, sizeof(uint8_t) * pConfig->octFrameSize);
+						else
+							(*pOCT)(frame_data.raw_ptr(), (int16_t*)(frame_ptr + sizeof(uint16_t) * pConfig->flimFrameSize), 
+								pConfig->axsunDbRange.min, pConfig->axsunDbRange.max);
 #else
 						memcpy(pVisTab->m_vectorOctImage.at(frameCount).raw_ptr(), ///  - pConfig->interFrameSync
 							frame_ptr + sizeof(uint16_t) * pConfig->flimFrameSize, sizeof(float) * pConfig->octFrameSize);
@@ -316,13 +330,6 @@ void DataProcessing::flimProcessing(FLImProcess* pFLIm, Configuration* pConfig)
 			memcpy(mask, pFLIm->_resize.mask_src, mask.length() * sizeof(float));
 			memcpy(ext, pFLIm->_resize.ext_src, ext.length() * sizeof(float));
 			memcpy(filt, pFLIm->_resize.filt_src, filt.length() * sizeof(float));
-
-			if (frameCount == 93)
-			{
-				QFile file("pulse.data");
-				file.open(QIODevice::WriteOnly);
-				file.write(reinterpret_cast<const char*>(pFLIm->_resize.sat_src.raw_ptr()), sizeof(float) * pFLIm->_resize.sat_src.length());
-			}
 
 			pViewTab->m_vectorPulseCrop.push_back(crop);
 			pViewTab->m_vectorPulseBgSub.push_back(bg_sub);

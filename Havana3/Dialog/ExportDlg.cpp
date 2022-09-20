@@ -837,8 +837,23 @@ void ExportDlg::scaling(std::vector<np::FloatArray2>& vectorOctImage, std::vecto
 			np::FloatArray2 scale_temp(roi_oct.width, roi_oct.height);
 #ifndef NEXT_GEN_SYSTEM
 			ippsConvert_8u32f(vectorOctImage.at(frameCount).raw_ptr(), scale_temp.raw_ptr(), scale_temp.length());
-			ippiScale_32f8u_C1R(scale_temp.raw_ptr(), roi_oct.width * sizeof(float),
-				pImgObjVec->at(0)->arr.raw_ptr(), roi_oct.width * sizeof(uint8_t), roi_oct, (float)m_pConfigTemp->octGrayRange.min, (float)m_pConfigTemp->octGrayRange.max);
+
+			if (m_pConfigTemp->reflectionRemoval)
+			{
+				np::FloatArray2 reflection_temp(roi_oct.width, roi_oct.height);
+				ippiCopy_32f_C1R(&scale_temp(m_pConfigTemp->reflectionDistance, 0), sizeof(float) * scale_temp.size(0),
+					&reflection_temp(0, 0), sizeof(float) * reflection_temp.size(0),
+					{ roi_oct.width - m_pConfigTemp->reflectionDistance, roi_oct.height });
+				ippsMulC_32f_I(m_pConfigTemp->reflectionLevel, reflection_temp, reflection_temp.length());
+				ippsSub_32f_I(reflection_temp, scale_temp, scale_temp.length());
+				ippiScale_32f8u_C1R(scale_temp.raw_ptr(), roi_oct.width * sizeof(float),
+					pImgObjVec->at(0)->arr.raw_ptr(), roi_oct.width * sizeof(uint8_t), roi_oct,
+					(float)m_pConfigTemp->octGrayRange.min, (float)m_pConfigTemp->octGrayRange.max * 0.9f);
+			}
+			else
+				ippiScale_32f8u_C1R(scale_temp.raw_ptr(), roi_oct.width * sizeof(float),
+					pImgObjVec->at(0)->arr.raw_ptr(), roi_oct.width * sizeof(uint8_t), roi_oct,
+					(float)m_pConfigTemp->octGrayRange.min, (float)m_pConfigTemp->octGrayRange.max);
 #else
 			ippiScale_32f8u_C1R(vectorOctImage.at(frameCount).raw_ptr(), roi_oct.width * sizeof(float),
 				pImgObjVec->at(0)->arr.raw_ptr(), roi_oct.width * sizeof(uint8_t), roi_oct, (float)m_pConfig->axsunDbRange.min, (float)m_pConfig->axsunDbRange.max);

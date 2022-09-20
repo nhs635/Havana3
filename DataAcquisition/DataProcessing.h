@@ -15,6 +15,7 @@ class Configuration;
 class QResultTab;
 
 class FLImProcess;
+class OCTProcess;
 
 class DataProcessing : public QObject
 {
@@ -30,6 +31,7 @@ public:
 	inline Configuration* getConfigTemp() const { return m_pConfigTemp; }
     inline QResultTab* getResultTab() const { return m_pResultTab; }
     inline FLImProcess* getFLImProcess() const { return m_pFLIm; }
+	inline OCTProcess* getOCTProcess() const { return m_pOCT; }
 	inline QString getIniName() const { return m_iniName; }
 
 public:
@@ -37,7 +39,7 @@ public:
 	
 private:
 	void loadingRawData(QFile*, Configuration*);
-	void deinterleaving(Configuration*);
+	void deinterleaving(OCTProcess*, Configuration*);
 	void flimProcessing(FLImProcess*, Configuration*);
 	
 public:
@@ -61,6 +63,7 @@ private:
 	Configuration* m_pConfigTemp;
     QResultTab* m_pResultTab;
 	FLImProcess* m_pFLIm;
+	OCTProcess* m_pOCT;
 	
 private:
     // for threading operation
