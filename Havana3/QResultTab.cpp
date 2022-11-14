@@ -266,6 +266,25 @@ void QResultTab::loadRecordInfo()
 			m_recordInfo.filename = m_pConfig->dbPath + m_recordInfo.filename0.remove(0, idx - 1);;
 			m_recordInfo.comment = _sqlQuery.value(8).toString();
 
+			int pb_num = 0;
+			QString command = QString("SELECT * FROM records WHERE patient_id=%1").arg(m_recordInfo.patientId);
+			m_pHvnSqlDataBase->queryDatabase(command, [&, _sqlQuery](QSqlQuery& __sqlQuery) {
+				while (__sqlQuery.next())
+				{
+					QString comment = __sqlQuery.value(8).toString();
+					if (!comment.contains("[HIDDEN]"))
+					{
+						pb_num++;						
+						QString date_ = __sqlQuery.value(3).toString();
+						if (date_ == m_recordInfo.date)
+							break;						
+					}
+				}
+			});
+			m_recordInfo.pb_num = pb_num;
+			if (m_recordInfo.comment.contains("[HIDDEN]"))
+				m_recordInfo.pb_num = 0;
+
 			QString title_color;
 			if (m_recordInfo.title.contains(QString::fromLocal8Bit("¡Ú")))
 				title_color = "red";
@@ -275,7 +294,7 @@ void QResultTab::loadRecordInfo()
 				title_color = "white";
 
 			m_pLabel_RecordInformation->setText(QString("<b><font size=6><font color=%1>%2</font></font></b><br>"
-				"<font size=4>%3</font>") // &nbsp;&nbsp;&nbsp;
+				"<font size=4>%3</font>") /// &nbsp;&nbsp;&nbsp;
 				.arg(title_color).arg(m_recordInfo.title).arg(m_recordInfo.date));
 			m_pComboBox_Vessel->setCurrentIndex(m_recordInfo.vessel);
 			m_pComboBox_Procedure->setCurrentIndex(m_recordInfo.procedure);
@@ -293,17 +312,19 @@ void QResultTab::loadPatientInfo()
 		while (_sqlQuery.next())
 		{
 			m_recordInfo.patientName = _sqlQuery.value(1).toString() + ", " + _sqlQuery.value(0).toString();
-
+			
 			QDate date_of_birth = QDate::fromString(_sqlQuery.value(4).toString(), "yyyy-MM-dd");
 			QDate date_today = QDate::currentDate();
 			int age = (int)((double)date_of_birth.daysTo(date_today) / 365.25);
 			QString gender = m_pHvnSqlDataBase->getGender(_sqlQuery.value(5).toInt());
-
+			
 			m_pLabel_PatientInformation->setText(QString("<br><b>%1 (%2%3)</b>\n"
 				"&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br><br><b>ID:</b> %4").
 				arg(m_recordInfo.patientName).arg(age).arg(gender).
 				arg(QString("%1").arg(m_recordInfo.patientId.toInt(), 8, 10, QChar('0'))));
-			setWindowTitle(QString("Review: %1: %2").arg(m_recordInfo.patientName).arg(m_recordInfo.date));
+
+			///setWindowTitle(QString("Review: %1: %2").arg(m_recordInfo.patientName).arg(m_recordInfo.date));			
+			setWindowTitle(QString("Review: %1: %2 (%3: %4)").arg(m_recordInfo.patientName).arg(QString("PB%1").arg(m_recordInfo.pb_num)).arg(m_pHvnSqlDataBase->getVessel(m_recordInfo.vessel)).arg(m_pHvnSqlDataBase->getProcedure(m_recordInfo.procedure)));
 		}
 
 		m_pConfig->writeToLog(QString("Patient info loaded: %1 (ID: %2) [QResultTab]").arg(m_recordInfo.patientName).arg(m_recordInfo.patientId));

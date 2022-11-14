@@ -795,47 +795,55 @@ void QPatientSummaryTab::loadRecordDatabase()
 
     QString command = QString("SELECT * FROM records WHERE patient_id=%1").arg(m_patientInfo.patientId);
 
-    m_pHvnSqlDataBase->queryDatabase(command, [&](QSqlQuery& _sqlQuery) {
+	m_pHvnSqlDataBase->queryDatabase(command, [&](QSqlQuery& _sqlQuery) {
 
-        int rowCount = 0;
-        while (_sqlQuery.next())
-        {
-            m_pTableWidget_RecordInformation->insertRow(rowCount);
+		int rowCount = 0;
+		while (_sqlQuery.next())
+		{
+			m_pTableWidget_RecordInformation->insertRow(rowCount);
 
-            QTableWidgetItem *pTitleItem = new QTableWidgetItem;
-            QTableWidgetItem *pPreviewItem = new QTableWidgetItem;
-            QTableWidgetItem *pDateTimeItem = new QTableWidgetItem;
-            QTableWidgetItem *pVesselItem = new QTableWidgetItem;
-            QTableWidgetItem *pProcedureItem = new QTableWidgetItem;
-            QTableWidgetItem *pCommentItem = new QTableWidgetItem;
+			QTableWidgetItem *pTitleItem = new QTableWidgetItem;
+			QTableWidgetItem *pPreviewItem = new QTableWidgetItem;
+			QTableWidgetItem *pDateTimeItem = new QTableWidgetItem;
+			QTableWidgetItem *pVesselItem = new QTableWidgetItem;
+			QTableWidgetItem *pProcedureItem = new QTableWidgetItem;
+			QTableWidgetItem *pCommentItem = new QTableWidgetItem;
 
-            QPushButton *pPushButton_Review = new QPushButton;
-            pPushButton_Review->setFixedSize(40, 30);
-            pPushButton_Review->setIcon(style()->standardIcon(QStyle::SP_DialogYesButton));
+			QPushButton *pPushButton_Review = new QPushButton;
+			pPushButton_Review->setFixedSize(40, 30);
+			pPushButton_Review->setIcon(style()->standardIcon(QStyle::SP_DialogYesButton));
 
-            QWidget *pWidget_Review = new QWidget;
-            QHBoxLayout *pHBoxLayout_Review = new QHBoxLayout;
-            pHBoxLayout_Review->setSpacing(0);
-            pHBoxLayout_Review->setAlignment(Qt::AlignCenter);
-            pHBoxLayout_Review->addWidget(pPushButton_Review);
-            pWidget_Review->setLayout(pHBoxLayout_Review);
+			QWidget *pWidget_Review = new QWidget;
+			QHBoxLayout *pHBoxLayout_Review = new QHBoxLayout;
+			pHBoxLayout_Review->setSpacing(0);
+			pHBoxLayout_Review->setAlignment(Qt::AlignCenter);
+			pHBoxLayout_Review->addWidget(pPushButton_Review);
+			pWidget_Review->setLayout(pHBoxLayout_Review);
 
-            QPushButton *pPushButton_Delete = new QPushButton;
-            pPushButton_Delete->setFixedSize(40, 30);
-            pPushButton_Delete->setIcon(style()->standardIcon(QStyle::SP_DialogCancelButton));
+			QPushButton *pPushButton_Delete = new QPushButton;
+			pPushButton_Delete->setFixedSize(40, 30);
+			pPushButton_Delete->setIcon(style()->standardIcon(QStyle::SP_DialogCancelButton));
 
-            QWidget *pWidget_Delete = new QWidget;
-            QHBoxLayout *pHBoxLayout_Delete = new QHBoxLayout;
-            pHBoxLayout_Delete->setSpacing(0);
-            pHBoxLayout_Delete->setAlignment(Qt::AlignCenter);
-            pHBoxLayout_Delete->addWidget(pPushButton_Delete);
-            pWidget_Delete->setLayout(pHBoxLayout_Delete);
+			QWidget *pWidget_Delete = new QWidget;
+			QHBoxLayout *pHBoxLayout_Delete = new QHBoxLayout;
+			pHBoxLayout_Delete->setSpacing(0);
+			pHBoxLayout_Delete->setAlignment(Qt::AlignCenter);
+			pHBoxLayout_Delete->addWidget(pPushButton_Delete);
+			pWidget_Delete->setLayout(pHBoxLayout_Delete);
 
-			QString title = _sqlQuery.value(7).toString();			
-			if (title.contains(QString::fromLocal8Bit("¡Ú")))			
+			QString title = _sqlQuery.value(7).toString();
+			if (title.contains(QString::fromLocal8Bit("¡Ú")))
 				pTitleItem->setTextColor(QColor(255, 0, 0));
 			else if (title.contains(QString::fromLocal8Bit("¡Ù")))
 				pTitleItem->setTextColor(QColor(0, 255, 255));
+
+			QString procedure = m_pHvnSqlDataBase->getProcedure(_sqlQuery.value(11).toInt());
+			if (procedure.contains("Follow Up"))
+			{
+				//pVesselItem->setTextColor(QColor(235, 235, 174));
+				pProcedureItem->setTextColor(QColor(235, 235, 174));
+				//pCommentItem->setTextColor(QColor(235, 235, 174));
+			}
 
 			QString comment = _sqlQuery.value(8).toString();
 			if (comment.contains("[HIDDEN]"))
@@ -881,7 +889,7 @@ void QPatientSummaryTab::loadRecordDatabase()
             pTitleItem->setText(title); pTitleItem->setTextAlignment(Qt::AlignCenter);            
             pDateTimeItem->setText(_sqlQuery.value(3).toString()); pDateTimeItem->setTextAlignment(Qt::AlignCenter);
             pVesselItem->setText(m_pHvnSqlDataBase->getVessel(_sqlQuery.value(12).toInt())); pVesselItem->setTextAlignment(Qt::AlignCenter);
-            pProcedureItem->setText(m_pHvnSqlDataBase->getProcedure(_sqlQuery.value(11).toInt())); pProcedureItem->setTextAlignment(Qt::AlignCenter);            
+            pProcedureItem->setText(procedure); pProcedureItem->setTextAlignment(Qt::AlignCenter);            
             pCommentItem->setText(comment); pCommentItem->setTextAlignment(Qt::AlignLeft | Qt::AlignVCenter); 
 						            			
             QString record_id = _sqlQuery.value(0).toString();

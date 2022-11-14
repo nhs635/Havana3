@@ -63,6 +63,7 @@ public:
 	void setVerticalLine(int len, ...);
 	void setCircle(int len, ...);
     void setContour(int len, uint16_t* pContour);
+	void setGwPos(std::vector<int> _gw_pos);
 	void setShadingRegion(int start, int end);
 	void setText(QPoint pos, const QString& str, bool is_vertical = false, QColor color = Qt::white);
 	void setScaleBar(int len);
@@ -141,6 +142,7 @@ public:
 	QColor m_colorALine;
 
     np::Uint16Array m_contour;
+	std::vector<int> m_gw_pos;
 
 	bool m_bArcRoiSelect, m_bArcRoiShow;
 	int m_RLines[2];

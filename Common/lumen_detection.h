@@ -252,6 +252,8 @@ public:
 			}
 		}
 		/****************************************************************/
+
+		gw_peaks_exp = gw_peaks;
 		
 		// Find guire-wire valleys	
 		std::vector<int> gw_valleys_left, gw_valleys_right;
@@ -722,8 +724,11 @@ public:
 		return w_r - w_l + 1;
 	}
 
+public:
+	std::vector<int> gw_peaks_exp;
+
 private:	
-	// Size parameters
+	// Size parameters	
 	int nalines;
 	int nradius;
 

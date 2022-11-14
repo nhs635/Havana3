@@ -25,6 +25,7 @@ struct RecordInfo
 	QString filename0;
 	QString filename;
 	QString comment = "";
+	int pb_num = 0;
 };
 
 class QPatientSummaryTab : public QDialog

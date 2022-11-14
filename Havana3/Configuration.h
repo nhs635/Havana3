@@ -1,7 +1,7 @@
 #ifndef CONFIGURATION_H
 #define CONFIGURATION_H
 
-#define VERSION						"2.1.5.0"
+#define VERSION						"2.1.5.1"
 
 #define POWER_2(x)					(1 << x)
 #define NEAR_2_POWER(x)				(int)(1 << (int)ceil(log2(x)))
@@ -12,8 +12,8 @@
 ///#define NEXT_GEN_SYSTEM
 ///#define ENABLE_FPGA_FFT
 #define ENABLE_DATABASE_ENCRYPTION
-#define AXSUN_ENABLE
-#define NI_ENABLE
+//#define AXSUN_ENABLE
+//#define NI_ENABLE
 
 //////////////////////// Size Setup /////////////////////////
 #define FLIM_SCANS                  512
@@ -87,12 +87,12 @@
 #define RF_N_CATS					7
 #define RF_COMPO_DATA_NAME			"compo_forest.csv"
 #define RF_COMPO_MODEL_NAME			"compo_forest.xml"
-#define RF_NORMAL_COLOR				0x84c06f
+#define RF_NORMAL_COLOR				0x85bb65 // 0x84c06f
 #define RF_FIBROUS_COLOR			0x649254
-#define RF_LOOSE_FIBROUS_COLOR		0xd5d52b
+#define RF_LOOSE_FIBROUS_COLOR		0x4b9cd3  // 0xd5d52b  // 
 #define RF_CALCIFICATION_COLOR		0xffffff
 #define RF_MACROPHAGE_COLOR			0xff2323 // ff355e // FF5A5F // 0xff4748
-#define RF_LIPID_MAC_COLOR			0x860005 //0x780005
+#define RF_LIPID_MAC_COLOR			0xffc30b // 0xff7518 // 0x860005 //0x780005
 #define RF_SHEATH_COLOR				0x000000
 
 #define RF_INFL_DATA_NAME			"infl_forest.csv"

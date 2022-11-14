@@ -1388,6 +1388,7 @@ void QViewTab::visualizeImage(int frame)
 				np::Uint16Array contour_16u(m_pConfig->octAlines);
 				ippsConvert_32f16u_Sfs(&m_contourMap(0, getCurrentFrame()), contour_16u, contour_16u.length(), ippRndNear, 0);
 				m_pImageView_CircImage->setContour(m_pConfig->octAlines, contour_16u);
+				m_pImageView_CircImage->setGwPos(m_gwPoss.at(getCurrentFrame()));
 				m_pImageView_CircImage->getRender()->update();
 			}
 		}
@@ -1846,6 +1847,9 @@ void QViewTab::autoContouring(bool toggled)
 
 void QViewTab::lumenContourDetection()
 {
+	QString gw_path = m_pResultTab->getRecordInfo().filename;
+	gw_path.replace("pullback.data", "gw_pos.csv");
+
 	QString lumen_contour_path = m_pResultTab->getRecordInfo().filename;
 	lumen_contour_path.replace("pullback.data", "lumen_contour.map");
 
@@ -1864,12 +1868,20 @@ void QViewTab::lumenContourDetection()
 			msg_box.show();
 								
 			m_contourMap = np::FloatArray2(m_pConfig->octAlines, m_pConfigTemp->frames);
+			for (int i = 0; i < m_pConfigTemp->frames; i++)
+				m_gwPoss.push_back(std::vector<int>());
+
+			QFile match_file(gw_path);
+			if (!match_file.open(QFile::WriteOnly))
+				return;
 
 			int n_pieces = 10;
 			np::Array<int> pieces(n_pieces + 1);
 			pieces[0] = 0;
 			for (int p = 0; p < n_pieces; p++)
 				pieces[p + 1] = (int)((double)m_vectorOctImage.size() / (double)n_pieces * (double)(p + 1));
+
+			std::mutex _mutex;
 
 			std::thread *plumdet = new std::thread[n_pieces];
 			for (int p = 0; p < n_pieces; p++)
@@ -1880,11 +1892,26 @@ void QViewTab::lumenContourDetection()
 						true, m_pConfigTemp->reflectionDistance, m_pConfigTemp->reflectionLevel);
 
 					for (int i = pieces[p]; i < pieces[p + 1]; i++)
-					{
+					{						
 						np::FloatArray contour(&m_contourMap(0, i), m_contourMap.size(0));
 						(*pLumenDetection)(m_vectorOctImage.at(i), contour);
+						
+						{
+							std::unique_lock<std::mutex> lock(_mutex);
+							{
+								QTextStream stream(&match_file);
 
-						printf("%d\n", i);
+								stream << i + 1 << "\t";								
+								for (int j = 0; j < pLumenDetection->gw_peaks_exp.size(); j++)
+								{									
+									m_gwPoss.at(i).push_back(pLumenDetection->gw_peaks_exp.at(j) - m_pConfigTemp->octAlines/2);
+									stream << pLumenDetection->gw_peaks_exp.at(j) << "\t";
+								}
+								stream << "\n";								
+							}
+						}						
+
+						qDebug() << QString("%1").arg(i + 1, 3, 10, (QChar)'0') << pLumenDetection->gw_peaks_exp;
 					}
 
 					delete pLumenDetection;
@@ -1899,6 +1926,8 @@ void QViewTab::lumenContourDetection()
 			file.open(QIODevice::WriteOnly);
 			file.write(reinterpret_cast<const char*>(m_contourMap.raw_ptr()), sizeof(float) * m_contourMap.length());
 			file.close();
+
+			match_file.close();
 		}
 	}
 	else
@@ -2374,7 +2403,7 @@ void QViewTab::vibrationCorrection()
 		file.close();
 
 		// Vibration correction		
-		for (int i = 1; i < (int)m_vectorOctImage.size() - 1; i++)
+		for (int i = 1; i < (int)m_vectorOctImage.size(); i++)
 		{
 			// OCT correction
 			circShift(m_vectorOctImage.at(i), m_vibCorrIdx(i));

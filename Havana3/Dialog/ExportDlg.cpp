@@ -830,7 +830,7 @@ void ExportDlg::scaling(std::vector<np::FloatArray2>& vectorOctImage, std::vecto
 			pImgObjVec->push_back(new ImageObject(RING_THICKNESS, roi_oct.height / 4, temp_ctable.m_colorTableVector.at(LIFETIME_COLORTABLE)));
 			// Image objects for Ch2 FLIM		
 			pImgObjVec->push_back(new ImageObject(RING_THICKNESS, roi_oct.height / 4, temp_ctable.m_colorTableVector.at(LIFETIME_COLORTABLE)));
-			// Image objects for Ch3 FLIM		
+			// Image objects for Ch3 FLIM
 			pImgObjVec->push_back(new ImageObject(RING_THICKNESS, roi_oct.height / 4, temp_ctable.m_colorTableVector.at(LIFETIME_COLORTABLE)));
 
 			// OCT Visualization
