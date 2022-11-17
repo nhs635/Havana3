@@ -1385,10 +1385,22 @@ void QViewTab::visualizeImage(int frame)
 		{
 			if (m_contourMap.length() != 0)
 			{
-				np::Uint16Array contour_16u(m_pConfig->octAlines);
-				ippsConvert_32f16u_Sfs(&m_contourMap(0, getCurrentFrame()), contour_16u, contour_16u.length(), ippRndNear, 0);
-				m_pImageView_CircImage->setContour(m_pConfig->octAlines, contour_16u);
-				m_pImageView_CircImage->setGwPos(m_gwPoss.at(getCurrentFrame()));
+				{
+					np::Uint16Array contour_16u(m_pConfig->octAlines);
+					ippsConvert_32f16u_Sfs(&m_contourMap(0, getCurrentFrame()), contour_16u, contour_16u.length(), ippRndNear, 0);					
+					std::rotate(&contour_16u(0), &contour_16u((m_vibCorrIdx(getCurrentFrame()) + m_pConfigTemp->rotatedAlines) % m_pConfigTemp->octAlines), &contour_16u(contour_16u.length()));
+					m_pImageView_CircImage->setContour(m_pConfig->octAlines, contour_16u);
+				}
+				{
+					std::vector<int> gwp = m_gwPoss.at(getCurrentFrame());
+					for (int i = 0; i < gwp.size(); i++)
+					{
+						gwp.at(i) = gwp.at(i) - m_vibCorrIdx(getCurrentFrame()) - m_pConfigTemp->rotatedAlines;
+						while (gwp.at(i) < 0)
+							gwp.at(i) += m_pConfigTemp->octAlines;
+					}
+					m_pImageView_CircImage->setGwPos(gwp);
+				}
 				m_pImageView_CircImage->getRender()->update();
 			}
 		}
@@ -1644,10 +1656,11 @@ void QViewTab::visualizeLongiImage(int aline)
 		if (m_contourMap.length() != 0)
 		{
 			np::Uint16Array lcontour_16u(2 * m_pConfigTemp->frames);
-			ippiConvert_32f16u_C1RSfs(&m_contourMap(aline0, 0), sizeof(float) * m_contourMap.size(0),
-				lcontour_16u, sizeof(uint16_t), { 1, m_pConfigTemp->frames }, ippRndNear, 0);
-			ippiConvert_32f16u_C1RSfs(&m_contourMap(aline1, 0), sizeof(float) * m_contourMap.size(0),
-				lcontour_16u + m_pConfigTemp->frames, sizeof(uint16_t), { 1, m_pConfigTemp->frames }, ippRndNear, 0);
+			for (int i = 0; i < m_pConfigTemp->frames; i++)
+			{
+				lcontour_16u(i) = m_contourMap((aline0 + (int)m_vibCorrIdx(i)) % m_pConfigTemp->octAlines, i);
+				lcontour_16u(i + m_pConfigTemp->frames) = m_contourMap((aline1 + (int)m_vibCorrIdx(i)) % m_pConfigTemp->octAlines, i);
+			}
 
 			m_pImageView_Longi->setContour(2 * m_pConfigTemp->frames, lcontour_16u);
 			m_pImageView_Longi->getRender()->update();
@@ -1893,9 +1906,12 @@ void QViewTab::lumenContourDetection()
 
 					for (int i = pieces[p]; i < pieces[p + 1]; i++)
 					{						
+						// Lumen contour detection
 						np::FloatArray contour(&m_contourMap(0, i), m_contourMap.size(0));
 						(*pLumenDetection)(m_vectorOctImage.at(i), contour);
+						std::rotate(&contour(0), &contour(contour.length() - m_vibCorrIdx(i)), &contour(contour.length()));
 						
+						// Writing GW position
 						{
 							std::unique_lock<std::mutex> lock(_mutex);
 							{
@@ -1903,9 +1919,14 @@ void QViewTab::lumenContourDetection()
 
 								stream << i + 1 << "\t";								
 								for (int j = 0; j < pLumenDetection->gw_peaks_exp.size(); j++)
-								{									
-									m_gwPoss.at(i).push_back(pLumenDetection->gw_peaks_exp.at(j) - m_pConfigTemp->octAlines/2);
-									stream << pLumenDetection->gw_peaks_exp.at(j) << "\t";
+								{				
+									int gp = pLumenDetection->gw_peaks_exp.at(j) - m_pConfigTemp->octAlines / 2;
+									gp += m_vibCorrIdx(i);
+									if (gp > m_pConfigTemp->octAlines)
+										gp -= m_pConfigTemp->octAlines;
+
+									m_gwPoss.at(i).push_back(gp);
+									stream << gp << "\t";
 								}
 								stream << "\n";								
 							}
@@ -1933,14 +1954,48 @@ void QViewTab::lumenContourDetection()
 	else
 	{
 		m_contourMap = np::FloatArray2(m_pConfig->octAlines, m_pConfigTemp->frames);
+		for (int i = 0; i < m_pConfigTemp->frames; i++)
+			m_gwPoss.push_back(std::vector<int>());
 
-		// Loading
-		QFile file(lumen_contour_path);
-		file.open(QIODevice::ReadOnly);
-		file.read(reinterpret_cast<char*>(m_contourMap.raw_ptr()), sizeof(float) * m_contourMap.length());
-		file.close();
+		// Loading (contour)
+		{
+			QFile file(lumen_contour_path);
+			file.open(QIODevice::ReadOnly);
+			file.read(reinterpret_cast<char*>(m_contourMap.raw_ptr()), sizeof(float) * m_contourMap.length());
+			file.close();
+		}
+
+		// Loading (gw pos)
+		{
+			QFile file(gw_path);
+			if (file.open(QFile::ReadOnly))
+			{
+				QTextStream stream(&file);
+
+				stream.readLine();
+				while (!stream.atEnd())
+				{
+					QStringList gw_pos = stream.readLine().split('\t');
+					
+					for (int i = 1; i < gw_pos.size()-1; i++)
+						m_gwPoss.at(gw_pos.at(0).toInt() - 1).push_back(gw_pos.at(i).toInt());
+				}
+				file.close();
+			}
+		}
 	}
 
+	// Vectorization of guide-wire positions
+	m_gwVec.clear();
+	for (int i = 0; i < m_gwPoss.size(); i++)
+		for (int j = 0; j < m_gwPoss.at(i).size(); j++)
+			m_gwVec.push_back(i * m_pConfigTemp->octAlines + m_gwPoss.at(i).at(j));
+
+	m_gwVecDiff.clear();
+	for (int i = 0; i < m_gwVec.size() - 1; i++)	
+		m_gwVecDiff.push_back(m_gwVec.at(i + 1) - m_gwVec.at(i));
+
+	// Set widgets
 	m_pToggleButton_AutoContour->setChecked(true);
 	m_pPushButton_LumenDetection->setDisabled(true);
 

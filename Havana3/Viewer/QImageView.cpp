@@ -209,12 +209,7 @@ void QImageView::setContour(int len, uint16_t* pContour)
 }
 
 void QImageView::setGwPos(std::vector<int> _gw_pos)
-{
-	{
-		std::vector<int> temp;
-		m_pRenderImage->m_gw_pos.swap(temp);
-		m_pRenderImage->m_gw_pos.clear();
-	}
+{	
 	m_pRenderImage->m_gw_pos = _gw_pos;
 }
 
@@ -552,6 +547,23 @@ void QRenderImage::paintEvent(QPaintEvent *)
 			QFont font; font.setBold(true); font.setPointSize(11);
 			painter.setFont(font);
 			painter.drawText(QRect(10, 10, 300, 150), Qt::AlignLeft, QString("Perimeter: %1 mm\nArea: %2 mm2\nAvg Dia: %3 mm").arg(perimeter, 0, 'f', 3).arg(area, 0, 'f', 3).arg(area / perimeter * 4, 0, 'f', 3));
+
+			// Guide-wire radial line
+			for (int i = 0; i < m_gw_pos.size(); i++)
+			{
+				QPointF p1, p2;
+
+				int center_x = ((double)m_pImage->width() / 2.0 - (double)m_rectMagnified.left()) * (double)w / (double)m_rectMagnified.width();
+				int center_y = ((double)m_pImage->height() / 2.0 - (double)m_rectMagnified.top()) * (double)h / (double)m_rectMagnified.height();
+				int circ_x = center_x + double(w / 2) * (double)m_pImage->width() / (double)m_rectMagnified.width() * cos((double)m_gw_pos.at(i) / (double)m_rMax * IPP_2PI);
+				int circ_y = center_y - double(h / 2) * (double)m_pImage->height() / (double)m_rectMagnified.height() * sin((double)m_gw_pos.at(i) / (double)m_rMax * IPP_2PI);
+				p1.setX(center_x);
+				p1.setY(center_y);
+				p2.setX(circ_x);
+				p2.setY(circ_y);	
+
+				painter.drawLine(p1, p2);
+			}
 		}
 	}
 
@@ -583,20 +595,6 @@ void QRenderImage::paintEvent(QPaintEvent *)
 				x1.setY((double)((m_rectMagnified.height() / 2 + m_contour[i + 1 + m_contour.length() / 2] - m_rectMagnified.top()) * h) / (double)m_fMagnLevel / (double)m_pImage->height());
 
 				painter.drawLine(x0, x1);
-			}
-
-			for (int i = 0; i < m_gw_pos.size(); i++)
-			{
-				QPointF p1, p2;
-
-				int center_x = ((double)m_pImage->width() / 2.0 - (double)m_rectMagnified.left()) * (double)w / (double)m_rectMagnified.width();
-				int center_y = ((double)m_pImage->height() / 2.0 - (double)m_rectMagnified.top()) * (double)h / (double)m_rectMagnified.height();
-				int circ_x = center_x + double(w / 2) * (double)m_pImage->width() / (double)m_rectMagnified.width() * cos((double)m_gw_pos.at(i) / (double)m_rMax * IPP_2PI);
-				int circ_y = center_y - double(h / 2) * (double)m_pImage->height() / (double)m_rectMagnified.height() * sin((double)m_gw_pos.at(i) / (double)m_rMax * IPP_2PI);
-				p1.setX(center_x);
-				p1.setY(center_y);
-				p2.setX(circ_x);
-				p2.setY(circ_y);
 			}
 		}
 	}

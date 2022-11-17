@@ -159,6 +159,8 @@ public: // for post processing
 	np::FloatArray2 m_healedPlaqueMap;
 	np::FloatArray2 m_contourMap;
 	std::vector<std::vector<int>> m_gwPoss;
+	std::vector<int> m_gwVec;
+	std::vector<int> m_gwVecDiff;
 
 	std::vector<np::FloatArray2> m_vectorPulseCrop;
 	std::vector<np::FloatArray2> m_vectorPulseBgSub;
