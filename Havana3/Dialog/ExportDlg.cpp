@@ -113,7 +113,7 @@ ExportDlg::ExportDlg(QWidget *parent) :
 	m_pCheckBox_EnFaceCh3->setText("Channel 3");
 
 	m_pCheckBox_RFPrediction = new QCheckBox(this);
-	m_pCheckBox_RFPrediction->setText("RF Preidction");
+	m_pCheckBox_RFPrediction->setText("RF Prediction");
 	m_pCheckBox_RFPrediction->setEnabled((m_pViewTab->m_plaqueCompositionProbMap.length() != 0) || 
 		(m_pViewTab->m_plaqueCompositionMap.length() != 0) || (m_pViewTab->m_inflammationMap.length() != 0));
 		
@@ -585,7 +585,7 @@ void ExportDlg::saveEnFaceMaps()
 				{
 					// Intensity-weight composition map
 					ImageObject* pImgObjCompositionMap = new ImageObject(frame4, alines, temp_ctable.m_colorTableVector.at(COMPOSITION_COLORTABLE));
-					m_pViewTab->scaleFLImEnFaceMap(pImgObjIntensityMap, nullptr, nullptr, nullptr, pImgObjCompositionMap, nullptr, VisualizationMode::_RF_PREDICTION_, 0, 0, RFPrediction::_PLAQUE_COMPOSITION_);
+					m_pViewTab->scaleFLImEnFaceMap(pImgObjIntensityMap, nullptr, nullptr, nullptr, pImgObjCompositionMap, nullptr, VisualizationMode::_RF_PREDICTION_, 1, 0, RFPrediction::_PLAQUE_COMPOSITION_);
 
 					pImgObjCompositionMap->qrgbimg.copy(start - 1, 0, end - start + 1, roi_flimproj.width)
 						.save(enFacePath + QString("composition_map_range[%1 %2].bmp").arg(start).arg(end), "bmp");
@@ -597,7 +597,7 @@ void ExportDlg::saveEnFaceMaps()
 				{
 					// Intensity-weight inflammation map
 					ImageObject* pImgObjInflammationMap = new ImageObject(frame4, alines, temp_ctable.m_colorTableVector.at(INFLAMMATION_COLORTABLE));
-					m_pViewTab->scaleFLImEnFaceMap(pImgObjIntensityMap, nullptr, nullptr, nullptr, nullptr, pImgObjInflammationMap, VisualizationMode::_RF_PREDICTION_, 0, 0, RFPrediction::_INFLAMMATION_);
+					m_pViewTab->scaleFLImEnFaceMap(pImgObjIntensityMap, nullptr, nullptr, nullptr, nullptr, pImgObjInflammationMap, VisualizationMode::_RF_PREDICTION_, 1, 0, RFPrediction::_INFLAMMATION_);
 
 					pImgObjInflammationMap->qrgbimg.copy(start - 1, 0, end - start + 1, roi_flimproj.width)
 						.save(enFacePath + QString("inflammation_map_range[%1 %2]_i[%3 %4].bmp").arg(start).arg(end)

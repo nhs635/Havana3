@@ -472,7 +472,8 @@ void QViewTab::invalidate()
 		m_pImageView_Longi->setShadingRegion(-1, -1);
 
 		if (m_pDialog_SetRange) m_pDialog_SetRange->close();
-		m_pImageView_ColorBar->setCustomContextMenu(QString(""), []() {});
+        QString menu_name("");
+        m_pImageView_ColorBar->setCustomContextMenu(menu_name, []() {});
 
 		disconnect(m_pComboBox_FLImParameters, SIGNAL(currentIndexChanged(int)), 0, 0);
 		m_pComboBox_FLImParameters->setCurrentIndex(3 * m_pConfig->flimParameterMode + m_pConfig->flimEmissionChannel - 1);
@@ -527,7 +528,8 @@ void QViewTab::invalidate()
 
 		if (!m_pDialog_SetRange)
 		{
-			m_pImageView_ColorBar->setCustomContextMenu(QString("Set Range"), [&]() {
+            QString menu_name("Set Range");
+            m_pImageView_ColorBar->setCustomContextMenu(menu_name, [&]() {
 
 				if (m_pDialog_SetRange == nullptr)
 				{
@@ -819,7 +821,8 @@ void QViewTab::invalidate()
 
 						// Make prediction
 						np::FloatArray2 inflammation(m_pConfigTemp->flimAlines, m_pConfigTemp->frames);
-						m_pForestInflammation->predict(m_featVectors, inflammation); // RF prediction for inflammation estimation
+                        np::FloatArray2 posterior;
+                        m_pForestInflammation->predict(m_featVectors, inflammation, posterior); // RF prediction for inflammation estimation
 						ippiCopy_32f_C1C3R(inflammation, sizeof(float) * inflammation.size(0),
 							&m_inflammationMap(0, 0), sizeof(float) * m_inflammationMap.size(0),
 							{ inflammation.size(0), inflammation.size(1) });
@@ -836,7 +839,8 @@ void QViewTab::invalidate()
 
 						// Make prediction
 						np::FloatArray2 healed_plaque(m_pConfigTemp->flimAlines, m_pConfigTemp->frames);
-						m_pForestHealedPlaque->predict(m_featVectors, healed_plaque); // RF prediction for inflammation estimation
+                        np::FloatArray2 posterior;
+                        m_pForestHealedPlaque->predict(m_featVectors, healed_plaque, posterior); // RF prediction for inflammation estimation
 						ippiCopy_32f_C1C3R(healed_plaque, sizeof(float) * healed_plaque.size(0),
 							&m_inflammationMap(1, 0), sizeof(float) * m_inflammationMap.size(0),
 							{ healed_plaque.size(0), healed_plaque.size(1) });
@@ -1985,15 +1989,15 @@ void QViewTab::lumenContourDetection()
 		}
 	}
 
-	// Vectorization of guide-wire positions
-	m_gwVec.clear();
-	for (int i = 0; i < m_gwPoss.size(); i++)
-		for (int j = 0; j < m_gwPoss.at(i).size(); j++)
-			m_gwVec.push_back(i * m_pConfigTemp->octAlines + m_gwPoss.at(i).at(j));
+	//// Vectorization of guide-wire positions
+	//m_gwVec.clear();
+	//for (int i = 0; i < m_gwPoss.size(); i++)
+	//	for (int j = 0; j < m_gwPoss.at(i).size(); j++)
+	//		m_gwVec.push_back(i * m_pConfigTemp->octAlines + m_gwPoss.at(i).at(j));
 
-	m_gwVecDiff.clear();
-	for (int i = 0; i < m_gwVec.size() - 1; i++)	
-		m_gwVecDiff.push_back(m_gwVec.at(i + 1) - m_gwVec.at(i));
+	//m_gwVecDiff.clear();
+	//for (int i = 0; i < m_gwVec.size() - 1; i++)	
+	//	m_gwVecDiff.push_back(m_gwVec.at(i + 1) - m_gwVec.at(i));
 
 	// Set widgets
 	m_pToggleButton_AutoContour->setChecked(true);

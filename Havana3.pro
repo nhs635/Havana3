@@ -11,7 +11,7 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets serialport
 TARGET = Havana3
 TEMPLATE = app
 
-CONFIG += c++11
+CONFIG += c++14
 debug {
 CONFIG += console
 }
@@ -77,6 +77,7 @@ SOURCES += Havana3/Havana3.cpp \
     Havana3/Dialog/PulseReviewTab.cpp \
     Havana3/Dialog/ExportDlg.cpp
 
+win32 {
 SOURCES += DataAcquisition/SignatecDAQ/SignatecDAQ.cpp \
 #    DataAcquisition/AlazarDAQ/AlazarDAQ.cpp \
     DataAcquisition/FLImProcess/FLImProcess.cpp \
@@ -85,6 +86,14 @@ SOURCES += DataAcquisition/SignatecDAQ/SignatecDAQ.cpp \
     DataAcquisition/ThreadManager.cpp \
     DataAcquisition/DataAcquisition.cpp \
     DataAcquisition/DataProcessing.cpp
+}
+macx {
+SOURCES += DataAcquisition/FLImProcess/FLImProcess.cpp \
+    DataAcquisition/OCTProcess/OCTProcess.cpp \
+    DataAcquisition/ThreadManager.cpp \
+    DataAcquisition/DataAcquisition.cpp \
+    DataAcquisition/DataProcessing.cpp
+}
 
 SOURCES += MemoryBuffer/MemoryBuffer.cpp
 
@@ -120,6 +129,7 @@ HEADERS += Havana3/Configuration.h \
     Havana3/Dialog/PulseReviewTab.h \
     Havana3/Dialog/ExportDlg.h
 
+win32 {
 HEADERS += DataAcquisition/SignatecDAQ/SignatecDAQ.h \
 #    DataAcquisition/AlazarDAQ/AlazarDAQ.h \    
     DataAcquisition/FLImProcess/FLImProcess.h \
@@ -128,6 +138,14 @@ HEADERS += DataAcquisition/SignatecDAQ/SignatecDAQ.h \
     DataAcquisition/ThreadManager.h \
     DataAcquisition/DataAcquisition.h \
     DataAcquisition/DataProcessing.h
+}
+macx {
+HEADERS += DataAcquisition/FLImProcess/FLImProcess.h \
+    DataAcquisition/OCTProcess/OCTProcess.cpp \
+    DataAcquisition/ThreadManager.h \
+    DataAcquisition/DataAcquisition.h \
+    DataAcquisition/DataProcessing.h
+}
 
 HEADERS += MemoryBuffer/MemoryBuffer.h
 

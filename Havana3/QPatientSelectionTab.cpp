@@ -386,39 +386,39 @@ void QPatientSelectionTab::loadPatientDatabase()
 						QStringList comments = comment.split('\n');
 						QString procedure = m_pHvnSqlDataBase->getProcedure(__sqlQuery.value(11).toInt());
 
-						bool is_reproducibility = false;
-						for (int i = 0; i < comments.size(); i++)
-						{
-							if (comments.at(i).contains("repro"))
-							{
-								is_reproducibility = true;
-								break;
-							}
-						}
+						//bool is_reproducibility = false;
+						//for (int i = 0; i < comments.size(); i++)
+						//{
+						//	if (comments.at(i).contains("repro"))
+						//	{
+						//		is_reproducibility = true;
+						//		break;
+						//	}
+						//}
 
-						bool is_better_pair = false;
-						for (int i = 0; i < comments.size(); i++)
-						{
-							if (comments.at(i).contains("(better pair)"))
-							{
-								is_better_pair = true;
-								break;
-							}
-						}
+						//bool is_better_pair = false;
+						//for (int i = 0; i < comments.size(); i++)
+						//{
+						//	if (comments.at(i).contains("(better pair)"))
+						//	{
+						//		is_better_pair = true;
+						//		break;
+						//	}
+						//}
 
-						bool is_bad = false;
-						for (int i = 0; i < comments.size(); i++)
-						{
-							if (comments.at(i).contains("bad") || comments.at(i).contains("incomplete"))
-							{
-								is_bad = true;
-								break;
-							}
-						}
+						//bool is_bad = false;
+						//for (int i = 0; i < comments.size(); i++)
+						//{
+						//	if (comments.at(i).contains("bad") || comments.at(i).contains("incomplete"))
+						//	{
+						//		is_bad = true;
+						//		break;
+						//	}
+						//}
 
-						dataset << (QString("%1").arg(_sqlQuery.value(3).toString().toInt(), 8, 10, QChar('0'))) + " / " + (_sqlQuery.value(1).toString() + ", " + _sqlQuery.value(0).toString())
-							+ " / " + __sqlQuery.value(3).toString() + " / " + comments.at(1) + " / " + procedure + " / " + QString::number(total+1) 
-							+ " / " + QString::number(is_reproducibility) + " / " + QString::number(is_better_pair) + " / " + QString::number(is_bad);
+						//dataset << (QString("%1").arg(_sqlQuery.value(3).toString().toInt(), 8, 10, QChar('0'))) + " / " + (_sqlQuery.value(1).toString() + ", " + _sqlQuery.value(0).toString())
+						//	+ " / " + __sqlQuery.value(3).toString() + " / " + comments.at(1) + " / " + procedure + " / " + QString::number(total+1) 
+						//	+ " / " + QString::number(is_reproducibility) + " / " + QString::number(is_better_pair) + " / " + QString::number(is_bad);
 
 						QTime time = QDateTime::fromString(__sqlQuery.value(3).toString(), "yyyy-MM-dd hh:mm:ss").time();
 						QDate date = QDateTime::fromString(__sqlQuery.value(3).toString(), "yyyy-MM-dd hh:mm:ss").date();

@@ -14,6 +14,7 @@
 #define ENABLE_DATABASE_ENCRYPTION
 //#define AXSUN_ENABLE
 //#define NI_ENABLE
+#define MAC_OS
 
 //////////////////////// Size Setup /////////////////////////
 #define FLIM_SCANS                  512
@@ -89,7 +90,7 @@
 #define RF_COMPO_MODEL_NAME			"compo_forest.xml"
 #define RF_NORMAL_COLOR				0x85bb65 // 0x84c06f
 #define RF_FIBROUS_COLOR			0x649254
-#define RF_LOOSE_FIBROUS_COLOR		0x4b9cd3  // 0xd5d52b  // 
+#define RF_LOOSE_FIBROUS_COLOR		0x4b9cd3  // 0xd5d52b  //  0xbe93e4
 #define RF_CALCIFICATION_COLOR		0xffffff
 #define RF_MACROPHAGE_COLOR			0xff2323 // ff355e // FF5A5F // 0xff4748
 #define RF_LIPID_MAC_COLOR			0xffc30b // 0xff7518 // 0x860005 //0x780005
@@ -280,8 +281,8 @@ public:
 		settings.setValue("flimParameterMode", flimParameterMode);
 		for (int i = 0; i < 3; i++)
 		{
-			settings.setValue(QString("flimIntensityRangeMax_Ch%1").arg(i + 1), QString::number(flimIntensityRange[i].max, 'f', 1));
-			settings.setValue(QString("flimIntensityRangeMin_Ch%1").arg(i + 1), QString::number(flimIntensityRange[i].min, 'f', 1));
+			settings.setValue(QString("flimIntensityRangeMax_Ch%1").arg(i + 1), QString::number(flimIntensityRange[i].max, 'f', 2));
+			settings.setValue(QString("flimIntensityRangeMin_Ch%1").arg(i + 1), QString::number(flimIntensityRange[i].min, 'f', 2));
 			settings.setValue(QString("flimLifetimeRangeMax_Ch%1").arg(i + 1), QString::number(flimLifetimeRange[i].max, 'f', 1));
 			settings.setValue(QString("flimLifetimeRangeMin_Ch%1").arg(i + 1), QString::number(flimLifetimeRange[i].min, 'f', 1));
 			settings.setValue(QString("flimIntensityPropRangeMax_Ch%1").arg(i + 1), QString::number(flimIntensityPropRange[i].max, 'f', 1));

@@ -161,11 +161,11 @@ void ViewOptionTab::createFlimVisualizationOptionTab()
 	// Create line edit widgets for FLIm contrast adjustment
 	m_pLineEdit_IntensityMax = new QLineEdit(this);
     m_pLineEdit_IntensityMax->setFixedWidth(35);
-	m_pLineEdit_IntensityMax->setText(QString::number(m_pConfig->flimIntensityRange[m_pConfig->flimEmissionChannel - 1].max, 'f', 1));
+	m_pLineEdit_IntensityMax->setText(QString::number(m_pConfig->flimIntensityRange[m_pConfig->flimEmissionChannel - 1].max, 'f', 2));
 	m_pLineEdit_IntensityMax->setAlignment(Qt::AlignCenter);
 	m_pLineEdit_IntensityMin = new QLineEdit(this);
     m_pLineEdit_IntensityMin->setFixedWidth(35);
-	m_pLineEdit_IntensityMin->setText(QString::number(m_pConfig->flimIntensityRange[m_pConfig->flimEmissionChannel - 1].min, 'f', 1));
+	m_pLineEdit_IntensityMin->setText(QString::number(m_pConfig->flimIntensityRange[m_pConfig->flimEmissionChannel - 1].min, 'f', 2));
 	m_pLineEdit_IntensityMin->setAlignment(Qt::AlignCenter);
 	m_pLineEdit_LifetimeMax = new QLineEdit(this);
     m_pLineEdit_LifetimeMax->setFixedWidth(35);
@@ -712,8 +712,8 @@ void ViewOptionTab::changeEmissionChannel(int ch)
 	m_pLabel_NormIntensity->setText(QString("Ch%1 Intensity (AU) ").arg(ch0 + 1));
 	m_pLabel_Lifetime->setText(QString("Ch%1 Lifetime (nsec) ").arg(ch0 + 1));
 
-	m_pLineEdit_IntensityMin->setText(QString::number(m_pConfig->flimIntensityRange[ch0].min, 'f', 1));
-	m_pLineEdit_IntensityMax->setText(QString::number(m_pConfig->flimIntensityRange[ch0].max, 'f', 1));
+	m_pLineEdit_IntensityMin->setText(QString::number(m_pConfig->flimIntensityRange[ch0].min, 'f', 2));
+	m_pLineEdit_IntensityMax->setText(QString::number(m_pConfig->flimIntensityRange[ch0].max, 'f', 2));
 	m_pLineEdit_LifetimeMin->setText(QString::number(m_pConfig->flimLifetimeRange[ch0].min, 'f', 1));
 	m_pLineEdit_LifetimeMax->setText(QString::number(m_pConfig->flimLifetimeRange[ch0].max, 'f', 1));
 

@@ -1,8 +1,8 @@
 #ifndef AXSUN_CAPTURE_H
 #define AXSUN_CAPTURE_H
 
-#include <Common\Array.h>
-#include <Common\Callback.h>
+#include <Common/array.h>
+#include <Common/callback.h>
 
 #include <iostream>
 #include <thread>

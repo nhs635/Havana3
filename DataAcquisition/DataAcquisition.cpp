@@ -7,7 +7,9 @@
 #include <Havana3/Configuration.h>
 
 #ifndef NEXT_GEN_SYSTEM
+#ifndef MAC_OS
 #include <DataAcquisition/SignatecDAQ/SignatecDAQ.h>
+#endif
 #ifdef AXSUN_ENABLE
 #include <DataAcquisition/AxsunCapture/AxsunCapture.h>
 #endif
@@ -50,10 +52,12 @@ DataAcquisition::DataAcquisition(Configuration* pConfig)
 	m_pAxsunCapture->DidStopData += [&]() { m_pAxsunCapture->capture_running = false; };
 #endif
 
+#ifndef MAC_OS
     // Create SignatecDAQ object
     m_pDaq = new SignatecDAQ;
 	m_pDaq->SendStatusMessage += messgae_handling;
     m_pDaq->DidStopData += [&]() { m_pDaq->_running = false; };
+#endif
 #else
 	// Create AlazarDAQ object
 	m_pDaqOct = new AlazarDAQ;
@@ -84,7 +88,9 @@ DataAcquisition::~DataAcquisition()
 #ifdef AXSUN_ENABLE
 	if (m_pAxsunCapture) delete m_pAxsunCapture;
 #endif
+#ifndef MAC_OS
     if (m_pDaq) delete m_pDaq;
+#endif
 #else
 	if (m_pDaqOct) delete m_pDaqOct;
 	if (m_pDaqFlim) delete m_pDaqFlim;
@@ -109,16 +115,19 @@ bool DataAcquisition::InitializeAcquistion()
 	m_pAxsunCapture->image_height = (m_pConfig->axsunPipelineMode == 0) ? m_pConfig->octScans : 4 * m_pConfig->octScans;
 	m_pAxsunCapture->image_width = m_pConfig->octAlines;
 #endif
-
+#ifndef MAC_OS
     m_pDaq->nScans = m_pConfig->flimScans;
     m_pDaq->nAlines = m_pConfig->flimAlines;
     m_pDaq->BootTimeBufIdx = PX14_BOOTBUF_IDX;
+#endif
 	
     // Initialization for DAQ & Axsun Capture
+#ifndef MAC_OS
 #ifdef AXSUN_ENABLE
     if (!m_pDaq->set_init() || !m_pAxsunCapture->initializeCapture())	
 #else
 	if (!m_pDaq->set_init())
+#endif
 #endif
     {
 		StopAcquisition();
@@ -181,13 +190,17 @@ bool DataAcquisition::StartAcquisition()
 {
 #ifndef NEXT_GEN_SYSTEM
     // Parameter settings for DAQ
+#ifndef MAC_OS
     m_pDaq->DcOffset = m_pConfig->px14DcOffset;
+#endif
 
     // Start acquisition
+#ifndef MAC_OS
 #ifdef AXSUN_ENABLE
 	if (!m_pDaq->startAcquisition() || !m_pAxsunCapture->startCapture())
 #else
 	if (!m_pDaq->startAcquisition())
+#endif
 #endif
 	{
 		StopAcquisition();
@@ -220,7 +233,9 @@ void DataAcquisition::StopAcquisition()
 	if (m_bAcquisitionState)
 	{
 #ifndef NEXT_GEN_SYSTEM
+#ifndef MAC_OS
 		m_pDaq->stopAcquisition();
+#endif
 #ifdef AXSUN_ENABLE
 		m_pAxsunCapture->stopCapture();
 #endif
@@ -240,7 +255,9 @@ void DataAcquisition::StopAcquisition()
 void DataAcquisition::GetBootTimeBufCfg(int idx, int& buffer_size)
 {
 #ifndef NEXT_GEN_SYSTEM
+#ifndef MAC_OS
     buffer_size = m_pDaq->getBootTimeBuffer(idx);
+#endif
 #else
 	(void)idx;
 	(void)buffer_size;
@@ -250,7 +267,9 @@ void DataAcquisition::GetBootTimeBufCfg(int idx, int& buffer_size)
 void DataAcquisition::SetBootTimeBufCfg(int idx, int buffer_size)
 {
 #ifndef NEXT_GEN_SYSTEM
+#ifndef MAC_OS
     m_pDaq->setBootTimeBuffer(idx, buffer_size);
+#endif
 #else
 	(void)idx;
 	(void)buffer_size;
@@ -260,7 +279,9 @@ void DataAcquisition::SetBootTimeBufCfg(int idx, int buffer_size)
 void DataAcquisition::SetDcOffset(int offset)
 {
 #ifndef NEXT_GEN_SYSTEM
+#ifndef MAC_OS
     m_pDaq->setDcOffset(offset);
+#endif
 #else
 	(void)offset;
 #endif
@@ -270,7 +291,9 @@ void DataAcquisition::SetDcOffset(int offset)
 void DataAcquisition::ConnectAcquiredFlimData(const std::function<void(int, const np::Array<uint16_t, 2>&)> &slot)
 {
 #ifndef NEXT_GEN_SYSTEM
+#ifndef MAC_OS
     m_pDaq->DidAcquireData += slot;
+#endif
 #else
 	(void)slot;
 #endif
@@ -288,7 +311,9 @@ void DataAcquisition::ConnectAcquiredFlimData1(const std::function<void(int, con
 void DataAcquisition::ConnectStopFlimData(const std::function<void(void)> &slot)
 {
 #ifndef NEXT_GEN_SYSTEM
+#ifndef MAC_OS
     m_pDaq->DidStopData += slot;
+#endif
 #else
 	m_pDaqFlim->DidStopData += slot;
 #endif
@@ -297,7 +322,9 @@ void DataAcquisition::ConnectStopFlimData(const std::function<void(void)> &slot)
 void DataAcquisition::ConnectFlimSendStatusMessage(const std::function<void(const char*, bool)> &slot)
 {
 #ifndef NEXT_GEN_SYSTEM
+#ifndef MAC_OS
     m_pDaq->SendStatusMessage += slot;
+#endif
 #else
 	m_pDaqFlim->SendStatusMessage += slot;
 #endif

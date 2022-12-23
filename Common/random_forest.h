@@ -189,7 +189,7 @@ public:
 		return true;
     }
 
-    void predict(np::FloatArray2& input, np::FloatArray2& output, np::FloatArray2& posterior = np::FloatArray2())
+    void predict(np::FloatArray2& input, np::FloatArray2& output, np::FloatArray2& posterior)
     {
         Mat input_mat(input.size(1), input.size(0), CV_32F, input.raw_ptr());
 		Mat output_mat;
