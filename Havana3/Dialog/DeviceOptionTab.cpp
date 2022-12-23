@@ -234,6 +234,11 @@ void DeviceOptionTab::createHelicalScanningControl()
 	m_pLabel_PullbackFlag = new QLabel("Pullback Flag", this);
 	m_pLabel_PullbackFlag->setDisabled(true);
 
+	m_pCheckBox_AutoHome = new QCheckBox(this);
+	m_pCheckBox_AutoHome->setText("Auto Home");
+	m_pCheckBox_AutoHome->setDisabled(true);
+	m_pCheckBox_AutoHome->setChecked(m_pConfig->autoHomeMode);
+
 	m_pLabel_AutoPullback = new QLabel(this);
 	m_pLabel_AutoPullback->setText("Automatic Pullback");
 	m_pLabel_AutoPullback->setDisabled(true);
@@ -296,26 +301,30 @@ void DeviceOptionTab::createHelicalScanningControl()
 	pGridLayout_PullbackMotor->addItem(new QSpacerItem(0, 0, QSizePolicy::MinimumExpanding, QSizePolicy::Fixed), 2, 1, 1, 3);
 	pGridLayout_PullbackMotor->addWidget(m_pPushButton_Pullback, 2, 4, 1, 2, Qt::AlignRight);
 
-	pGridLayout_PullbackMotor->addItem(new QSpacerItem(0, 0, QSizePolicy::MinimumExpanding, QSizePolicy::Fixed), 3, 0, 1, 4);
+	pGridLayout_PullbackMotor->addItem(new QSpacerItem(0, 0, QSizePolicy::MinimumExpanding, QSizePolicy::Fixed), 3, 0, 1, 3);
+	pGridLayout_PullbackMotor->addWidget(m_pCheckBox_AutoHome, 3, 3);
 	pGridLayout_PullbackMotor->addWidget(m_pPushButton_Home, 3, 4, Qt::AlignRight);
 	pGridLayout_PullbackMotor->addWidget(m_pPushButton_PullbackStop, 3, 5);
 
-	pGridLayout_PullbackMotor->addWidget(m_pLabel_PullbackFlag, 4, 0);
-	pGridLayout_PullbackMotor->addItem(new QSpacerItem(0, 0, QSizePolicy::MinimumExpanding, QSizePolicy::Fixed), 4, 1, 1, 3);
+	//pGridLayout_PullbackMotor->addItem(new QSpacerItem(0, 0, QSizePolicy::MinimumExpanding, QSizePolicy::Fixed), 4, 0, 1, 4);
+	//pGridLayout_PullbackMotor->addWidget(m_pCheckBox_AutoHome, 4, 4, 1, 2);
+
+	pGridLayout_PullbackMotor->addWidget(m_pLabel_PullbackFlag, 5, 0);
+	pGridLayout_PullbackMotor->addItem(new QSpacerItem(0, 0, QSizePolicy::MinimumExpanding, QSizePolicy::Fixed), 5, 1, 1, 3);
 	QHBoxLayout *pHBoxLayout_PullbackFlag = new QHBoxLayout;
 	pHBoxLayout_PullbackFlag->setSpacing(3);
 	pHBoxLayout_PullbackFlag->addWidget(m_pLabel_PullbackFlagIndicator, Qt::AlignRight);
 	pHBoxLayout_PullbackFlag->addWidget(m_pPushButton_PullbackFlagStateRenew);
-	pGridLayout_PullbackMotor->addItem(pHBoxLayout_PullbackFlag, 4, 4, 1, 2, Qt::AlignRight);
+	pGridLayout_PullbackMotor->addItem(pHBoxLayout_PullbackFlag, 5, 4, 1, 2, Qt::AlignRight);
 
-	pGridLayout_PullbackMotor->addWidget(m_pLabel_AutoPullback, 5, 0);
-	pGridLayout_PullbackMotor->addItem(new QSpacerItem(0, 0, QSizePolicy::MinimumExpanding, QSizePolicy::Fixed), 5, 1);
+	pGridLayout_PullbackMotor->addWidget(m_pLabel_AutoPullback, 6, 0);
+	pGridLayout_PullbackMotor->addItem(new QSpacerItem(0, 0, QSizePolicy::MinimumExpanding, QSizePolicy::Fixed), 6, 1);
 	QHBoxLayout *pHBoxLayout_AutoPullbackTime = new QHBoxLayout;
 	pHBoxLayout_AutoPullbackTime->setSpacing(3);
 	pHBoxLayout_AutoPullbackTime->addWidget(m_pLineEdit_AutoPullbackTime);
 	pHBoxLayout_AutoPullbackTime->addWidget(m_pLabel_AutoPullbackSecond);
-	pGridLayout_PullbackMotor->addItem(pHBoxLayout_AutoPullbackTime, 5, 2, 1, 2, Qt::AlignRight);	
-	pGridLayout_PullbackMotor->addWidget(m_pToggleButton_AutoPullback, 5, 4, 1, 2, Qt::AlignRight);
+	pGridLayout_PullbackMotor->addItem(pHBoxLayout_AutoPullbackTime, 6, 2, 1, 2, Qt::AlignRight);	
+	pGridLayout_PullbackMotor->addWidget(m_pToggleButton_AutoPullback, 6, 4, 1, 2, Qt::AlignRight);
 
 
 	QVBoxLayout *pVBoxLayout_HelicalScanning = new QVBoxLayout;
@@ -339,6 +348,7 @@ void DeviceOptionTab::createHelicalScanningControl()
 	connect(m_pPushButton_Home, SIGNAL(clicked(bool)), this, SLOT(home()));
 	connect(m_pPushButton_PullbackStop, SIGNAL(clicked(bool)), this, SLOT(stop()));
 	connect(m_pPushButton_PullbackFlagStateRenew, SIGNAL(clicked(bool)), this, SLOT(renewPullbackFlag()));
+	connect(m_pCheckBox_AutoHome, SIGNAL(toggled(bool)), this, SLOT(enableAutoHomeMode(bool)));
 	connect(m_pLineEdit_AutoPullbackTime, SIGNAL(textChanged(const QString &)), this, SLOT(changeAutoPullbackTime(const QString &)));
 	connect(m_pToggleButton_AutoPullback, SIGNAL(toggled(bool)), this, SLOT(enableAutoPullbackMode(bool)));
 }
@@ -835,6 +845,7 @@ bool DeviceOptionTab::connectPullbackMotor(bool toggled)
 			m_pPushButton_PullbackFlagStateRenew->setEnabled(true);			
 			m_pLabel_PullbackFlagIndicator->setText(!m_pConfig->pullbackFlag ? "On" : "Off");
 			m_pLabel_PullbackFlagIndicator->setStyleSheet(!m_pConfig->pullbackFlag ? "QLabel { background-color:#00ff00; color:black; }" : "QLabel { background-color:#ff0000; color:white; }");
+			m_pCheckBox_AutoHome->setEnabled(true);
 			m_pLabel_AutoPullback->setEnabled(true);
 			if (m_pConfig->autoPullbackMode)
 			{
@@ -871,6 +882,7 @@ bool DeviceOptionTab::connectPullbackMotor(bool toggled)
 		m_pPushButton_PullbackFlagStateRenew->setDisabled(true);
 		m_pLabel_PullbackFlagIndicator->setText("");
 		m_pLabel_PullbackFlagIndicator->setStyleSheet("QLabel { background-color:#353535; }");
+		m_pCheckBox_AutoHome->setDisabled(true);
 		m_pLabel_AutoPullback->setDisabled(true);
 		m_pLineEdit_AutoPullbackTime->setDisabled(true);
 		m_pLabel_AutoPullbackSecond->setDisabled(true);
@@ -952,6 +964,11 @@ void DeviceOptionTab::renewPullbackFlag()
 {
 	m_pLabel_PullbackFlagIndicator->setText(!m_pConfig->pullbackFlag ? "On" : "Off");
 	m_pLabel_PullbackFlagIndicator->setStyleSheet(!m_pConfig->pullbackFlag ? "QLabel { background-color:#00ff00; color:black; }" : "QLabel { background-color:#ff0000; color:white; }");
+}
+
+void DeviceOptionTab::enableAutoHomeMode(bool enabled)
+{
+	m_pConfig->autoHomeMode = enabled;
 }
 
 void DeviceOptionTab::setPullbackWidgets(bool enabled)

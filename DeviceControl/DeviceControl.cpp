@@ -249,8 +249,8 @@ void DeviceControl::home()
 	if (m_pPullbackMotor)
 	{
 		// Pullback
-		int rpm = int(m_pConfig->pullbackSpeed * GEAR_RATIO);
-		float duration = 1.2 * m_pConfig->pullbackLength / m_pConfig->pullbackSpeed;
+		int rpm = int(m_pConfig->pullbackSpeed * GEAR_RATIO / 1.5f);
+		float duration = 1.2 * 1.5f * m_pConfig->pullbackLength / m_pConfig->pullbackSpeed;
 		m_pPullbackMotor->setDuration(duration);
 		m_pPullbackMotor->RotateMotor(rpm);
 	}

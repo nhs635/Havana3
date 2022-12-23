@@ -72,6 +72,7 @@ private slots:
 	void home();
 	void stop();
 	void renewPullbackFlag();
+	void enableAutoHomeMode(bool);
 	void setPullbackWidgets(bool);
 	void changeAutoPullbackTime(const QString &);
 	void enableAutoPullbackMode(bool);
@@ -148,6 +149,7 @@ private:
 	QPushButton *m_pPushButton_Pullback;
 	QPushButton *m_pPushButton_Home;
 	QPushButton *m_pPushButton_PullbackStop;
+	QCheckBox *m_pCheckBox_AutoHome;
 
 	QLabel *m_pLabel_PullbackFlag;
 	QLabel *m_pLabel_PullbackFlagIndicator;

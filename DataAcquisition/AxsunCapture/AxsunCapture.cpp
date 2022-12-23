@@ -1,8 +1,6 @@
 
 #include "AxsunCapture.h"
 
-#include <windows.h>
-
 using namespace std;
 
 
@@ -151,7 +149,7 @@ void AxsunCapture::captureRun()
 	image_data_out = np::Uint8Array2(image_height, 4 * image_width); // 4 frame buffers
 	uint8_t *cur_section = nullptr;
 	
-	ULONG dwTickStart = 0, dwTickLastUpdate;
+	uint32_t dwTickStart = 0, dwTickLastUpdate;
 
 	uint64_t bytesAcquired = 0, bytesAcquiredUpdate = 0;
 	uint32_t frameIndex = 0, frameIndexUpdate = 0;
@@ -210,13 +208,13 @@ void AxsunCapture::captureRun()
                     loop_counter++;
 
                     // Periodically update progress
-                    ULONG dwTickNow = GetTickCount();
+					uint32_t dwTickNow = GetTickCount();
                     if (dwTickNow - dwTickLastUpdate > 2500)
                     {
                         double dRate, dRateUpdate;
 
-                        ULONG dwElapsed = dwTickNow - dwTickStart;
-                        ULONG dwElapsedUpdate = dwTickNow - dwTickLastUpdate;
+						uint32_t dwElapsed = dwTickNow - dwTickStart;
+						uint32_t dwElapsedUpdate = dwTickNow - dwTickLastUpdate;
                         dwTickLastUpdate = dwTickNow;
 
                         if (dwElapsed)

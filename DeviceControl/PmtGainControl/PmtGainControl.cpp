@@ -86,7 +86,7 @@ void PmtGainControl::dumpError(int res, const char* pPreamble)
 		DAQmxGetErrorString(res, errBuff, 2048);
 
 	char msg[2048];
-    sprintf_s(msg, 2048, "%s %s", pPreamble, errBuff);
+	sprintf_s(msg, 2048, "%s %s", pPreamble, errBuff);
 	SendStatusMessage(msg, true);
 
 	if (_taskHandle)

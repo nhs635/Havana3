@@ -251,7 +251,7 @@ void QPatientSummaryTab::catheterConnect(bool toggled)
 				}
 			};
 			m_pDeviceControl->home();
-			std::this_thread::sleep_for(std::chrono::milliseconds(3500));
+			std::this_thread::sleep_for(std::chrono::milliseconds(6000));
 
 			m_pDeviceControl->connectPullbackMotor(false);
 		}

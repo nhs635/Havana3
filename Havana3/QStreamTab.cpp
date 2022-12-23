@@ -450,7 +450,7 @@ bool QStreamTab::enableDeviceControl(bool enabled)
 					m_pConfig->setConfigFile("Havana3.ini");
 				}
 			};
-			m_pDeviceControl->home(); // ±¦ÂúÀº°¡..
+			if (m_pConfig->autoHomeMode) m_pDeviceControl->home();
 		}
 
 		// Set FLIm system control
@@ -1271,7 +1271,7 @@ void QStreamTab::startPullback(bool enabled)
 				m_pConfig->setConfigFile("Havana3.ini");
 			}
 		};
-		m_pDeviceControl->home();
+		if (m_pConfig->autoHomeMode) m_pDeviceControl->home();
 
 		m_pConfig->writeToLog(QString("Pullback recording stopped: %1 (ID: %2)").arg(m_recordInfo.patientName).arg(m_recordInfo.patientId));
 
