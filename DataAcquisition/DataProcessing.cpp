@@ -471,4 +471,6 @@ void DataProcessing::calculateFlimParameters()
 		memcpy(&features(0, 6 + i), pViewTab->m_intensityProportionMap.at(i).raw_ptr(), sizeof(float) * pViewTab->m_intensityProportionMap.at(i).length());
 	}
 	ippiTranspose_32f_C1R(features, sizeof(float) * features.size(0), pViewTab->m_featVectors, sizeof(float) * pViewTab->m_featVectors.size(0), { features.size(0), features.size(1) });
+
+	m_pResultTab->getViewTab()->m_bRePrediction = true;
 }

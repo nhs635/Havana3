@@ -29,7 +29,7 @@ QViewTab::QViewTab(bool is_streaming, QWidget *parent) :
 	m_pImgObjInflammationMap(nullptr), m_pImgObjPlaqueCompositionMap(nullptr), 
 	m_pCirc(nullptr), m_pMedfiltRect(nullptr), m_pMedfiltIntensityMap(nullptr), m_pMedfiltLifetimeMap(nullptr), m_pMedfiltLongi(nullptr),
 	m_pLumenDetection(nullptr), m_pForestPlqCompo(nullptr), m_pForestInflammation(nullptr), m_pForestHealedPlaque(nullptr), _running(false),
-	m_pDialog_SetRange(nullptr)
+	m_pDialog_SetRange(nullptr), m_bRePrediction(true)
 {
 	// Set configuration objects
 	if (is_streaming)
@@ -662,7 +662,7 @@ void QViewTab::invalidate()
 			// RF prediction: Plaque composition classification
 			if (m_pForestPlqCompo)
 			{
-				if (m_plaqueCompositionMap.length() == 0) // Prediction is only made when the buffer is empty.
+				if ((m_plaqueCompositionMap.length() == 0) || m_bRePrediction) // Prediction is only made when the buffer is empty.
 				{
 					QMessageBox msg_box(QMessageBox::NoIcon, "RF Model Prediction...", "", QMessageBox::NoButton, this);
 					msg_box.setStandardButtons(0);
@@ -675,7 +675,9 @@ void QViewTab::invalidate()
 					// Make prediction
 					m_plaqueCompositionProbMap = np::FloatArray2(RF_N_CATS * m_pConfig->flimAlines, m_pConfigTemp->frames);
 					m_plaqueCompositionMap = np::FloatArray2(3 * m_pConfigTemp->flimAlines, m_pConfigTemp->frames);
-					m_pForestPlqCompo->predict(m_featVectors, m_plaqueCompositionMap, m_plaqueCompositionProbMap); // RF prediction for plaque composition classification				
+					m_pForestPlqCompo->predict(m_featVectors, m_plaqueCompositionMap, m_plaqueCompositionProbMap); // RF prediction for plaque composition classification		
+
+					m_bRePrediction = false;
 				}
 
 				// Calculate composition ratio 

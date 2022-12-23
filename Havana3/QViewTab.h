@@ -161,6 +161,7 @@ public: // for post processing
 	std::vector<std::vector<int>> m_gwPoss;
 	std::vector<int> m_gwVec;
 	std::vector<int> m_gwVecDiff;
+	bool m_bRePrediction;
 
 	std::vector<np::FloatArray2> m_vectorPulseCrop;
 	std::vector<np::FloatArray2> m_vectorPulseBgSub;

@@ -763,6 +763,7 @@ void PulseReviewTab::updateDelayOffset()
 		
 		m_pConfigTemp->flimDelayOffset[i] = delayOffset;			
 	}
+	m_pResultTab->getDataProcessing()->calculateFlimParameters();
 	m_pViewTab->invalidate();
 	m_pConfigTemp->setConfigFile(m_pResultTab->getDataProcessing()->getIniName());
 }
