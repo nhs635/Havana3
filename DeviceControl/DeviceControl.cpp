@@ -547,7 +547,7 @@ bool DeviceControl::startSynchronization(bool enabled, bool async)
 			m_pFlimDaqFreqDivider->start();
 #endif
 			char msg[256];
-			sprintf_s(msg, 256, "[SYNC] Synchronization started. (source: %s)", !async ? FLIM_LASER_SOURCE_TERMINAL : "100kHzTimebase");
+            snprintf(msg, 256, "[SYNC] Synchronization started. (source: %s)", !async ? FLIM_LASER_SOURCE_TERMINAL : "100kHzTimebase");
 			SendStatusMessage(msg, false);
 		}
 		else

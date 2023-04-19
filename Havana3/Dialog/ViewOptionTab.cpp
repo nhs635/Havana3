@@ -2,7 +2,6 @@
 #include "ViewOptionTab.h"
 
 #include <Havana3/MainWindow.h>
-#include <Havana3/Configuration.h>
 #include <Havana3/QStreamTab.h>
 #include <Havana3/QResultTab.h>
 #include <Havana3/QViewTab.h>
@@ -74,10 +73,10 @@ ViewOptionTab::~ViewOptionTab()
 
 void ViewOptionTab::createFlimVisualizationOptionTab()
 {
-	QGroupBox *pGroupBox_FlimVisualization = new QGroupBox;
-	pGroupBox_FlimVisualization->setStyleSheet("QGroupBox{padding-top:15px; margin-top:-15px}");
-	pGroupBox_FlimVisualization->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Preferred);
-
+	m_pGroupBox_FlimVisualization = new QGroupBox;
+	m_pGroupBox_FlimVisualization->setStyleSheet("QGroupBox{padding-top:15px; margin-top:-15px}");
+	m_pGroupBox_FlimVisualization->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Preferred);
+	
 	// Create widgets for visualization mode control
 	m_pLabel_VisualizationMode = new QLabel("Visualization Mode    ", this);
 	m_pLabel_VisualizationMode->setAlignment(Qt::AlignVCenter | Qt::AlignRight);
@@ -85,17 +84,17 @@ void ViewOptionTab::createFlimVisualizationOptionTab()
 	if (!m_pStreamTab)
 	{
 		m_pRadioButton_FLImParameters = new QRadioButton(this);
-		m_pRadioButton_FLImParameters->setText("FLIm Parameters");
-		m_pRadioButton_RFPrediction = new QRadioButton(this);
-		m_pRadioButton_RFPrediction->setText("RF Prediction");
+		m_pRadioButton_FLImParameters->setText("FLIm Parameters ");
+		m_pRadioButton_MLPrediction = new QRadioButton(this);
+		m_pRadioButton_MLPrediction->setText("ML Prediction");
 		if (m_pViewTab->getVisualizationMode() == _FLIM_PARAMETERS_)
 			m_pRadioButton_FLImParameters->setChecked(true);
-		else if (m_pViewTab->getVisualizationMode() == _RF_PREDICTION_)
-			m_pRadioButton_RFPrediction->setChecked(true);
+		else if (m_pViewTab->getVisualizationMode() == _ML_PREDICTION_)
+			m_pRadioButton_MLPrediction->setChecked(true);
 
 		m_pButtonGroup_VisualizationMode = new QButtonGroup(this);
 		m_pButtonGroup_VisualizationMode->addButton(m_pRadioButton_FLImParameters, _FLIM_PARAMETERS_);
-		m_pButtonGroup_VisualizationMode->addButton(m_pRadioButton_RFPrediction, _RF_PREDICTION_);
+		m_pButtonGroup_VisualizationMode->addButton(m_pRadioButton_MLPrediction, _ML_PREDICTION_);
 	}
 
     // Create widgets for FLIm emission control
@@ -118,7 +117,7 @@ void ViewOptionTab::createFlimVisualizationOptionTab()
 		m_pLabel_FLImParameters->setAlignment(Qt::AlignVCenter | Qt::AlignRight);
 
 		m_pRadioButton_Lifetime = new QRadioButton(this);
-		m_pRadioButton_Lifetime->setText("Lifetime");
+		m_pRadioButton_Lifetime->setText("Lifetime ");
 		m_pRadioButton_Lifetime->setChecked(m_pConfig->flimParameterMode == FLImParameters::_LIFETIME_);
 		m_pRadioButton_IntensityProp = new QRadioButton(this);
 		m_pRadioButton_IntensityProp->setText("Intensity Proportion");
@@ -136,26 +135,32 @@ void ViewOptionTab::createFlimVisualizationOptionTab()
 		m_pButtonGroup_FLImParameters->addButton(m_pRadioButton_IntensityRatio, _INTENSITY_RATIO_);
 		m_pButtonGroup_FLImParameters->addButton(m_pRadioButton_None, _NONE_);
 		
-		// Create widgets for RF prediction
-		m_pLabel_RFPrediction = new QLabel("RF Prediction   ", this);
-		m_pLabel_RFPrediction->setAlignment(Qt::AlignVCenter | Qt::AlignRight);
-		m_pLabel_RFPrediction->setDisabled(true);
+		// Create widgets for ML prediction
+		m_pLabel_MLPrediction = new QLabel("ML Prediction   ", this);
+		m_pLabel_MLPrediction->setAlignment(Qt::AlignVCenter | Qt::AlignRight);
+		m_pLabel_MLPrediction->setDisabled(true);
 
-		m_pRadioButton_PlaqueComposition = new QRadioButton(this);
-		m_pRadioButton_PlaqueComposition->setText("Plaque Composition");
-		m_pRadioButton_PlaqueComposition->setDisabled(true);
-		m_pRadioButton_Inflammation = new QRadioButton(this);
-		m_pRadioButton_Inflammation->setText("Inflammation");
-		m_pRadioButton_Inflammation->setDisabled(true);
+		m_pRadioButton_RandomForest = new QRadioButton(this);
+		m_pRadioButton_RandomForest->setText("RF");
+		m_pRadioButton_RandomForest->setDisabled(true);
+		m_pRadioButton_SVMSoftmax = new QRadioButton(this);
+		m_pRadioButton_SVMSoftmax->setText("SVM Softmax");
+		m_pRadioButton_SVMSoftmax->setDisabled(true);
+		m_pRadioButton_SVMLogistics = new QRadioButton(this);
+		m_pRadioButton_SVMLogistics->setText("SVM Logistics");
+		m_pRadioButton_SVMLogistics->setDisabled(true);
 
-		if (m_pViewTab->getRFPrediction() == _PLAQUE_COMPOSITION_)
-			m_pRadioButton_PlaqueComposition->setChecked(true);
-		else if (m_pViewTab->getRFPrediction() == _INFLAMMATION_)
-			m_pRadioButton_Inflammation->setChecked(true);
+		if (m_pViewTab->getMLPrediction() == _RF_COMPO_)
+			m_pRadioButton_RandomForest->setChecked(true);
+		else if (m_pViewTab->getMLPrediction() == _SVM_SOFTMAX_)
+			m_pRadioButton_SVMSoftmax->setChecked(true);
+		else if (m_pViewTab->getMLPrediction() == _SVM_LOGISTICS_)
+			m_pRadioButton_SVMLogistics->setChecked(true);
 		
-		m_pButtonGroup_RFPrediction = new QButtonGroup(this);
-		m_pButtonGroup_RFPrediction->addButton(m_pRadioButton_PlaqueComposition, _PLAQUE_COMPOSITION_);
-		m_pButtonGroup_RFPrediction->addButton(m_pRadioButton_Inflammation, _INFLAMMATION_);
+		m_pButtonGroup_MLPrediction = new QButtonGroup(this);
+		m_pButtonGroup_MLPrediction->addButton(m_pRadioButton_RandomForest, _RF_COMPO_);
+		m_pButtonGroup_MLPrediction->addButton(m_pRadioButton_SVMSoftmax, _SVM_SOFTMAX_);
+		m_pButtonGroup_MLPrediction->addButton(m_pRadioButton_SVMLogistics, _SVM_LOGISTICS_);
 	}
 		
 	// Create line edit widgets for FLIm contrast adjustment
@@ -195,15 +200,6 @@ void ViewOptionTab::createFlimVisualizationOptionTab()
 		m_pLineEdit_IntensityRatioMin->setText(QString::number(m_pConfig->flimIntensityRatioRange[m_pConfig->flimEmissionChannel - 1].min, 'f', 1));
 		m_pLineEdit_IntensityRatioMin->setAlignment(Qt::AlignCenter);
 		m_pLineEdit_IntensityRatioMin->setDisabled(true);
-
-		//m_pLineEdit_InflammationMax = new QLineEdit(this);
-		//m_pLineEdit_InflammationMax->setFixedWidth(35);
-		//m_pLineEdit_InflammationMax->setText(QString::number(m_pConfig->rfInflammationRange.max, 'f', 1));
-		//m_pLineEdit_InflammationMax->setAlignment(Qt::AlignCenter);
-		//m_pLineEdit_InflammationMin = new QLineEdit(this);
-		//m_pLineEdit_InflammationMin->setFixedWidth(35);
-		//m_pLineEdit_InflammationMin->setText(QString::number(m_pConfig->rfInflammationRange.min, 'f', 1));
-		//m_pLineEdit_InflammationMin->setAlignment(Qt::AlignCenter);
 	}
 
 	// Create color bar for FLIM visualization
@@ -224,13 +220,7 @@ void ViewOptionTab::createFlimVisualizationOptionTab()
 		m_pImageView_IntensityPropColorbar->drawImage(color);
 		m_pImageView_IntensityRatioColorbar = new QImageView(ColorTable::colortable(INTENSITY_RATIO_COLORTABLE), 256, 1, false, this);
 		m_pImageView_IntensityRatioColorbar->setFixedSize(190, 20);
-		m_pImageView_IntensityRatioColorbar->drawImage(color);
-		m_pImageView_PlaqueCompositionColorbar = new QImageView(ColorTable::colortable(COMPOSITION_COLORTABLE), 256, 1, false, this);
-		m_pImageView_PlaqueCompositionColorbar->setFixedSize(255, 24);
-		m_pImageView_PlaqueCompositionColorbar->drawImage(color);
-		m_pImageView_InflammationColorbar = new QImageView(ColorTable::colortable(INFLAMMATION_COLORTABLE), 256, 1, false, this);
-		m_pImageView_InflammationColorbar->setFixedSize(255, 24);
-		m_pImageView_InflammationColorbar->drawImage(color);
+		m_pImageView_IntensityRatioColorbar->drawImage(color);		
 	}
 	m_pLabel_NormIntensity = new QLabel(QString("Ch%1 Intensity (AU) ").arg(m_pConfig->flimEmissionChannel), this);
     m_pLabel_NormIntensity->setFixedWidth(140);
@@ -247,14 +237,39 @@ void ViewOptionTab::createFlimVisualizationOptionTab()
 		m_pLabel_IntensityRatio = new QLabel(QString("Ch%1/%2 IntRatio (AU) ").arg(m_pConfig->flimEmissionChannel).arg((m_pConfig->flimEmissionChannel == 1) ? 3 : m_pConfig->flimEmissionChannel - 1), this);
 		m_pLabel_IntensityRatio->setFixedWidth(140);
 		m_pLabel_IntensityRatio->setAlignment(Qt::AlignVCenter | Qt::AlignLeft);
-		
+	}
+	if (!m_pStreamTab)
+	{
 		m_pLabel_PlaqueComposition = new QLabel("Plaque Composition", this);
 		m_pLabel_PlaqueComposition->setFixedWidth(140);
 		m_pLabel_PlaqueComposition->setAlignment(Qt::AlignVCenter | Qt::AlignLeft);
+		
+		QString compo_name[ML_N_CATS] = { "NOR ", "FIB ", "LF ", "CAL ", "MAC ", "TCFA", "OTH " };
+		uint32_t colors[ML_N_CATS] = { ML_NORMAL_COLOR, ML_FIBROUS_COLOR, ML_LOOSE_FIBROUS_COLOR, ML_CALCIFICATION_COLOR, ML_MACROPHAGE_COLOR, ML_LIPID_MAC_COLOR, ML_SHEATH_COLOR };
+		np::Uint8Array2 compo_color(3, ML_N_CATS);
+		for (int i = 0; i < ML_N_CATS; i++)
+			for (int j = 0; j < 3; j++)
+				compo_color(j, i) = (colors[i] >> (8 * (2 - j))) & 0xff;
 
-		m_pLabel_Inflammation = new QLabel("Inflammation", this);
-		m_pLabel_Inflammation->setFixedWidth(140);
-		m_pLabel_Inflammation->setAlignment(Qt::AlignVCenter | Qt::AlignLeft);
+		for (int i = 0; i < ML_N_CATS; i++)
+		{  
+			m_pCheckBox_PlaqueComposition[i] = new QCheckBox(this);
+			m_pCheckBox_PlaqueComposition[i]->setText(compo_name[i]);
+			m_pCheckBox_PlaqueComposition[i]->setChecked(m_pConfigTemp->showPlaqueComposition[i]);
+			m_pCheckBox_PlaqueComposition[i]->setStyleSheet(QString("QCheckBox {color: #%1;}").arg((ulong)colors[i], 6, 16, QChar('0')));
+		}
+
+		m_pCheckBox_NormalFibrousMerge = new QCheckBox(this);
+		m_pCheckBox_NormalFibrousMerge->setText("Merge NOR-FIB     ");
+		m_pCheckBox_NormalFibrousMerge->setChecked(m_pConfigTemp->mergeNorFib);
+
+		m_pCheckBox_MacTcfaMerge = new QCheckBox(this);
+		m_pCheckBox_MacTcfaMerge->setText("Merge MAC-TCFA ");
+		m_pCheckBox_MacTcfaMerge->setChecked(m_pConfigTemp->mergeMacTcfa);
+
+		m_pCheckBox_LogisticsNormalize = new QCheckBox(this);
+		m_pCheckBox_LogisticsNormalize->setText("Normalize SVM Logistic Probability");
+		m_pCheckBox_LogisticsNormalize->setChecked(m_pConfigTemp->normalizeLogistics);
 	}
 		
     // Set layout
@@ -265,7 +280,7 @@ void ViewOptionTab::createFlimVisualizationOptionTab()
 		pHBoxLayout_FlimVisualization0->addWidget(m_pLabel_VisualizationMode);
 		pHBoxLayout_FlimVisualization0->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed));
 		pHBoxLayout_FlimVisualization0->addWidget(m_pRadioButton_FLImParameters);
-		pHBoxLayout_FlimVisualization0->addWidget(m_pRadioButton_RFPrediction);
+		pHBoxLayout_FlimVisualization0->addWidget(m_pRadioButton_MLPrediction);
 	}
 
     QHBoxLayout *pHBoxLayout_FlimVisualization1 = new QHBoxLayout;
@@ -278,8 +293,7 @@ void ViewOptionTab::createFlimVisualizationOptionTab()
 	QHBoxLayout *pHBoxLayout_LifetimeColorbar = new QHBoxLayout;
 	QHBoxLayout *pHBoxLayout_IntensityPropColorbar = new QHBoxLayout;
 	QHBoxLayout *pHBoxLayout_IntensityRatioColorbar = new QHBoxLayout;
-	QHBoxLayout *pHBoxLayout_PlaqueCompositionColorbar = new QHBoxLayout;
-	QHBoxLayout *pHBoxLayout_InflammationColorbar = new QHBoxLayout;
+	QGridLayout *pGridLayout_PlaqueCompositionOption = new QGridLayout;
 
 	pHBoxLayout_IntensityColorbar->setSpacing(1);
 	pHBoxLayout_IntensityColorbar->addWidget(m_pLabel_NormIntensity);
@@ -310,18 +324,25 @@ void ViewOptionTab::createFlimVisualizationOptionTab()
 		pHBoxLayout_IntensityRatioColorbar->addWidget(m_pLineEdit_IntensityRatioMin);
 		pHBoxLayout_IntensityRatioColorbar->addWidget(m_pImageView_IntensityRatioColorbar);
 		pHBoxLayout_IntensityRatioColorbar->addWidget(m_pLineEdit_IntensityRatioMax);
-
-		pHBoxLayout_PlaqueCompositionColorbar->setSpacing(1);
-		pHBoxLayout_PlaqueCompositionColorbar->addWidget(m_pLabel_PlaqueComposition);
-		pHBoxLayout_PlaqueCompositionColorbar->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed));
-		pHBoxLayout_PlaqueCompositionColorbar->addWidget(m_pImageView_PlaqueCompositionColorbar);
-
-		pHBoxLayout_InflammationColorbar->setSpacing(1);
-		pHBoxLayout_InflammationColorbar->addWidget(m_pLabel_Inflammation);
-		pHBoxLayout_InflammationColorbar->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed));
-		//pHBoxLayout_InflammationColorbar->addWidget(m_pLineEdit_InflammationMin);
-		pHBoxLayout_InflammationColorbar->addWidget(m_pImageView_InflammationColorbar);
-		//pHBoxLayout_InflammationColorbar->addWidget(m_pLineEdit_InflammationMax);
+	}
+	if (!m_pStreamTab)
+	{
+		pGridLayout_PlaqueCompositionOption->setSpacing(1);		
+		pGridLayout_PlaqueCompositionOption->addWidget(m_pLabel_PlaqueComposition, 0, 0);
+		pGridLayout_PlaqueCompositionOption->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed), 0, 1);
+		pGridLayout_PlaqueCompositionOption->addWidget(m_pCheckBox_PlaqueComposition[0], 0, 2);
+		pGridLayout_PlaqueCompositionOption->addWidget(m_pCheckBox_PlaqueComposition[1], 0, 3);
+		pGridLayout_PlaqueCompositionOption->addWidget(m_pCheckBox_PlaqueComposition[2], 0, 4);
+		pGridLayout_PlaqueCompositionOption->addWidget(m_pCheckBox_PlaqueComposition[3], 0, 5);
+		pGridLayout_PlaqueCompositionOption->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed), 1, 0, 1, 2);
+		pGridLayout_PlaqueCompositionOption->addWidget(m_pCheckBox_PlaqueComposition[4], 1, 2);
+		pGridLayout_PlaqueCompositionOption->addWidget(m_pCheckBox_PlaqueComposition[5], 1, 3);
+		pGridLayout_PlaqueCompositionOption->addWidget(m_pCheckBox_PlaqueComposition[6], 1, 4);
+		pGridLayout_PlaqueCompositionOption->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed), 2, 0, 1, 2);
+		pGridLayout_PlaqueCompositionOption->addWidget(m_pCheckBox_NormalFibrousMerge, 2, 2, 1, 2);
+		pGridLayout_PlaqueCompositionOption->addWidget(m_pCheckBox_MacTcfaMerge, 2, 4, 1, 2);
+		pGridLayout_PlaqueCompositionOption->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed), 3, 0, 1, 2);
+		pGridLayout_PlaqueCompositionOption->addWidget(m_pCheckBox_LogisticsNormalize, 3, 2, 1, 4);
 	}
   
 	QVBoxLayout *pVBoxLayout_FlimVisualization = new QVBoxLayout;
@@ -344,10 +365,11 @@ void ViewOptionTab::createFlimVisualizationOptionTab()
 		QGridLayout *pGridLayout_FlimVisualization3 = new QGridLayout;
 		pGridLayout_FlimVisualization3->setSpacing(3);
 
-		pGridLayout_FlimVisualization3->addWidget(m_pLabel_RFPrediction, 0, 0);
+		pGridLayout_FlimVisualization3->addWidget(m_pLabel_MLPrediction, 0, 0);
 		pGridLayout_FlimVisualization3->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed), 0, 1);
-		pGridLayout_FlimVisualization3->addWidget(m_pRadioButton_PlaqueComposition, 0, 2);
-		pGridLayout_FlimVisualization3->addWidget(m_pRadioButton_Inflammation, 0, 3);
+		pGridLayout_FlimVisualization3->addWidget(m_pRadioButton_RandomForest, 0, 2);
+		pGridLayout_FlimVisualization3->addWidget(m_pRadioButton_SVMSoftmax, 0, 3);
+		pGridLayout_FlimVisualization3->addWidget(m_pRadioButton_SVMLogistics, 0, 4);
 
 		pVBoxLayout_FlimVisualization->addItem(pGridLayout_FlimVisualization2);
 		pVBoxLayout_FlimVisualization->addItem(pGridLayout_FlimVisualization3);
@@ -356,12 +378,11 @@ void ViewOptionTab::createFlimVisualizationOptionTab()
 	pVBoxLayout_FlimVisualization->addItem(pHBoxLayout_LifetimeColorbar);
 	if (!m_pStreamTab) pVBoxLayout_FlimVisualization->addItem(pHBoxLayout_IntensityPropColorbar);
 	if (!m_pStreamTab) pVBoxLayout_FlimVisualization->addItem(pHBoxLayout_IntensityRatioColorbar);
-	if (!m_pStreamTab) pVBoxLayout_FlimVisualization->addItem(pHBoxLayout_PlaqueCompositionColorbar);
-	if (!m_pStreamTab) pVBoxLayout_FlimVisualization->addItem(pHBoxLayout_InflammationColorbar);
+	if (!m_pStreamTab) pVBoxLayout_FlimVisualization->addItem(pGridLayout_PlaqueCompositionOption);
 
-	pGroupBox_FlimVisualization->setLayout(pVBoxLayout_FlimVisualization);
+	m_pGroupBox_FlimVisualization->setLayout(pVBoxLayout_FlimVisualization);
 
-	m_pVBoxLayout_ViewOption->addWidget(pGroupBox_FlimVisualization);
+	m_pVBoxLayout_ViewOption->addWidget(m_pGroupBox_FlimVisualization);
 
     // Connect signal and slot
     connect(m_pComboBox_EmissionChannel, SIGNAL(currentIndexChanged(int)), this, SLOT(changeEmissionChannel(int)));
@@ -369,7 +390,7 @@ void ViewOptionTab::createFlimVisualizationOptionTab()
 	{
 		connect(m_pButtonGroup_VisualizationMode, SIGNAL(buttonClicked(int)), this, SLOT(changeVisualizationMode(int)));
 		connect(m_pButtonGroup_FLImParameters, SIGNAL(buttonClicked(int)), this, SLOT(changeFLImParameters(int)));
-		connect(m_pButtonGroup_RFPrediction, SIGNAL(buttonClicked(int)), this, SLOT(changeRFPrediction(int)));
+		connect(m_pButtonGroup_MLPrediction, SIGNAL(buttonClicked(int)), this, SLOT(changeMLPrediction(int)));
 	}
 	connect(m_pLineEdit_IntensityMax, SIGNAL(textEdited(const QString &)), this, SLOT(adjustFlimContrast()));
 	connect(m_pLineEdit_IntensityMin, SIGNAL(textEdited(const QString &)), this, SLOT(adjustFlimContrast()));
@@ -382,15 +403,18 @@ void ViewOptionTab::createFlimVisualizationOptionTab()
 		connect(m_pLineEdit_IntensityRatioMax, SIGNAL(textEdited(const QString &)), this, SLOT(adjustFlimContrast()));
 		connect(m_pLineEdit_IntensityRatioMin, SIGNAL(textEdited(const QString &)), this, SLOT(adjustFlimContrast()));
 
-		//connect(m_pLineEdit_InflammationMax, SIGNAL(textEdited(const QString &)), this, SLOT(adjustInflammationContrast()));
-		//connect(m_pLineEdit_InflammationMin, SIGNAL(textEdited(const QString &)), this, SLOT(adjustInflammationContrast()));
-		
+		for (int i = 0; i < ML_N_CATS; i++)
+			connect(m_pCheckBox_PlaqueComposition[i], SIGNAL(toggled(bool)), this, SLOT(changePlaqueCompositionShowingMode()));
+		connect(m_pCheckBox_NormalFibrousMerge, SIGNAL(toggled(bool)), this, SLOT(changeMergeCompositionMode()));
+		connect(m_pCheckBox_MacTcfaMerge, SIGNAL(toggled(bool)), this, SLOT(changeMergeCompositionMode()));
+		connect(m_pCheckBox_LogisticsNormalize, SIGNAL(toggled(bool)), this, SLOT(changeLogisticsNormalizeMode()));
+
 		// Initialization
-		changeVisualizationMode(m_pRadioButton_RFPrediction->isChecked());
-		if (m_pRadioButton_RFPrediction->isChecked() == false)
+		changeVisualizationMode(m_pRadioButton_MLPrediction->isChecked());
+		if (m_pRadioButton_MLPrediction->isChecked() == false)
 			changeFLImParameters(m_pConfig->flimParameterMode);
 		else
-			changeRFPrediction(m_pRadioButton_Inflammation->isChecked());
+			changeMLPrediction(m_pConfig->mlPredictionMode);
 	}
 }
 
@@ -421,7 +445,7 @@ void ViewOptionTab::createOctVisualizationOptionTab()
 	if (m_pStreamTab)
 	{
 		m_pCheckBox_VerticalMirroring = new QCheckBox(this);
-		m_pCheckBox_VerticalMirroring->setText(" OCT Image Veritcal Mirroring");
+		m_pCheckBox_VerticalMirroring->setText("OCT Image Veritcal Mirroring");
 		m_pCheckBox_VerticalMirroring->setChecked(m_pConfig->verticalMirroring);
 	}
 
@@ -478,7 +502,7 @@ void ViewOptionTab::createOctVisualizationOptionTab()
 	if (!m_pStreamTab)
 	{
 		m_pCheckBox_ReflectionRemoval = new QCheckBox(this);
-		m_pCheckBox_ReflectionRemoval->setText(" Remove OCT Reflection Artifact");
+		m_pCheckBox_ReflectionRemoval->setText("Remove OCT Reflection Artifact");
 		m_pCheckBox_ReflectionRemoval->setChecked(m_pConfigTemp->reflectionRemoval);
 
 		m_pLineEdit_ReflectionDistance = new QLineEdit(this);
@@ -547,7 +571,7 @@ void ViewOptionTab::createOctVisualizationOptionTab()
 	
     // Connect signal and slot
 	if (!m_pStreamTab) connect(m_pScrollBar_Rotation, SIGNAL(valueChanged(int)), this, SLOT(rotateImage(int)));
-	if (m_pStreamTab) connect(m_pCheckBox_VerticalMirroring, SIGNAL(toggled(bool)), this, SLOT(verticalMirriong(bool)));
+	if (m_pStreamTab) connect(m_pCheckBox_VerticalMirroring, SIGNAL(toggled(bool)), this, SLOT(verticalMirroring(bool)));
 #ifndef NEXT_GEN_SYSTEM
 	if (m_pStreamTab) connect(m_pLineEdit_DecibelMax, SIGNAL(textEdited(const QString &)), this, SLOT(adjustDecibelRange()));
 	if (m_pStreamTab) connect(m_pLineEdit_DecibelMin, SIGNAL(textEdited(const QString &)), this, SLOT(adjustDecibelRange()));
@@ -661,6 +685,9 @@ void ViewOptionTab::changeVisualizationMode(int mode)
 
 			if (mode0 == _FLIM_PARAMETERS_)
 			{
+				m_pGroupBox_FlimVisualization->setFixedHeight(208);
+				m_pGroupBox_ViewOption->setFixedHeight(410);
+
 				m_pLabel_EmissionChannel->setEnabled(true);
 				m_pComboBox_EmissionChannel->setEnabled(true);
 
@@ -670,14 +697,18 @@ void ViewOptionTab::changeVisualizationMode(int mode)
 				m_pRadioButton_IntensityRatio->setEnabled(true);
 				m_pRadioButton_None->setEnabled(true);
 
-				m_pLabel_RFPrediction->setDisabled(true);
-				m_pRadioButton_PlaqueComposition->setDisabled(true);
-				m_pRadioButton_Inflammation->setDisabled(true);
+				m_pLabel_MLPrediction->setDisabled(true);
+				m_pRadioButton_RandomForest->setDisabled(true);
+				m_pRadioButton_SVMSoftmax->setDisabled(true);
+				m_pRadioButton_SVMLogistics->setDisabled(true);
 
 				changeFLImParameters(m_pConfig->flimParameterMode);
 			}
-			else if (mode0 == _RF_PREDICTION_)
+			else if (mode0 == _ML_PREDICTION_)
 			{
+				m_pGroupBox_FlimVisualization->setFixedHeight(275);
+				m_pGroupBox_ViewOption->setFixedHeight(477);
+
 				m_pLabel_EmissionChannel->setDisabled(true);
 				m_pComboBox_EmissionChannel->setDisabled(true);
 
@@ -687,11 +718,13 @@ void ViewOptionTab::changeVisualizationMode(int mode)
 				m_pRadioButton_IntensityRatio->setDisabled(true);
 				m_pRadioButton_None->setDisabled(true);
 
-				m_pLabel_RFPrediction->setEnabled(true);
-				m_pRadioButton_PlaqueComposition->setEnabled(true);
-				m_pRadioButton_Inflammation->setEnabled(true);
+				m_pLabel_MLPrediction->setEnabled(true);
+				m_pRadioButton_RandomForest->setEnabled(true);
+				m_pRadioButton_SVMSoftmax->setEnabled(true);
+				m_pRadioButton_SVMLogistics->setEnabled(true);
 
-				changeRFPrediction(m_pRadioButton_Inflammation->isChecked());
+				changeEmissionChannel(1); // Alway designating ch 2
+				changeMLPrediction(m_pConfig->mlPredictionMode);
 			}
 
 			if (signaling) m_pViewTab->setVisualizationMode(mode);
@@ -797,12 +830,11 @@ void ViewOptionTab::changeFLImParameters(int mode)
 		m_pLineEdit_IntensityRatioMax->setVisible(false);
 		
 		m_pLabel_PlaqueComposition->setVisible(false);
-		m_pImageView_PlaqueCompositionColorbar->setVisible(false);
-		
-		m_pLabel_Inflammation->setVisible(false);
-		//m_pLineEdit_InflammationMin->setVisible(false);
-		m_pImageView_InflammationColorbar->setVisible(false);
-		//m_pLineEdit_InflammationMax->setVisible(false);
+		for (int i = 0; i < ML_N_CATS; i++)
+			m_pCheckBox_PlaqueComposition[i]->setVisible(false);
+		m_pCheckBox_NormalFibrousMerge->setVisible(false);
+		m_pCheckBox_MacTcfaMerge->setVisible(false);
+		m_pCheckBox_LogisticsNormalize->setVisible(false);
 	}
 	else if (mode == FLImParameters::_INTENSITY_PROP_)
 	{
@@ -822,12 +854,11 @@ void ViewOptionTab::changeFLImParameters(int mode)
 		m_pLineEdit_IntensityRatioMax->setVisible(false);
 		
 		m_pLabel_PlaqueComposition->setVisible(false);
-		m_pImageView_PlaqueCompositionColorbar->setVisible(false);
-		
-		m_pLabel_Inflammation->setVisible(false);
-		//m_pLineEdit_InflammationMin->setVisible(false);
-		m_pImageView_InflammationColorbar->setVisible(false);
-		//m_pLineEdit_InflammationMax->setVisible(false);
+		for (int i = 0; i < ML_N_CATS; i++)
+			m_pCheckBox_PlaqueComposition[i]->setVisible(false);
+		m_pCheckBox_NormalFibrousMerge->setVisible(false);
+		m_pCheckBox_MacTcfaMerge->setVisible(false);
+		m_pCheckBox_LogisticsNormalize->setVisible(false);
 	}
 	else if (mode == FLImParameters::_INTENSITY_RATIO_)
 	{
@@ -847,12 +878,11 @@ void ViewOptionTab::changeFLImParameters(int mode)
 		m_pLineEdit_IntensityRatioMax->setVisible(true);
 		
 		m_pLabel_PlaqueComposition->setVisible(false);
-		m_pImageView_PlaqueCompositionColorbar->setVisible(false);
-
-		m_pLabel_Inflammation->setVisible(false);
-		//m_pLineEdit_InflammationMin->setVisible(false);
-		m_pImageView_InflammationColorbar->setVisible(false);
-		//m_pLineEdit_InflammationMax->setVisible(false);
+		for (int i = 0; i < ML_N_CATS; i++)
+			m_pCheckBox_PlaqueComposition[i]->setVisible(false);
+		m_pCheckBox_NormalFibrousMerge->setVisible(false);
+		m_pCheckBox_MacTcfaMerge->setVisible(false);
+		m_pCheckBox_LogisticsNormalize->setVisible(false);
 	}
 	else if (mode == FLImParameters::_NONE_)
 	{
@@ -872,12 +902,11 @@ void ViewOptionTab::changeFLImParameters(int mode)
 		m_pLineEdit_IntensityRatioMax->setVisible(false);
 
 		m_pLabel_PlaqueComposition->setVisible(false);
-		m_pImageView_PlaqueCompositionColorbar->setVisible(false);
-
-		m_pLabel_Inflammation->setVisible(false);
-		//m_pLineEdit_InflammationMin->setVisible(false);
-		m_pImageView_InflammationColorbar->setVisible(false);
-		//m_pLineEdit_InflammationMax->setVisible(false);
+		for (int i = 0; i < ML_N_CATS; i++)
+			m_pCheckBox_PlaqueComposition[i]->setVisible(false);
+		m_pCheckBox_NormalFibrousMerge->setVisible(false);
+		m_pCheckBox_MacTcfaMerge->setVisible(false);
+		m_pCheckBox_LogisticsNormalize->setVisible(false);
 
 		m_pConfig->flimEmissionChannel = 1;
 		m_pComboBox_EmissionChannel->setDisabled(true);
@@ -887,8 +916,7 @@ void ViewOptionTab::changeFLImParameters(int mode)
 	adjustFlimContrast();
 }
 
-
-void ViewOptionTab::changeRFPrediction(int mode)
+void ViewOptionTab::changeMLPrediction(int mode)
 {
 	if (m_pStreamTab)
 	{
@@ -902,10 +930,9 @@ void ViewOptionTab::changeRFPrediction(int mode)
 
 		if (m_pViewTab)
 		{
-			int mode0 = mode % 2;
-			int signaling = (mode / 2) == 0;
+			int mode0 = mode % 3;
+			int signaling = (mode / 3) == 0;
 
-			if (mode0 == _PLAQUE_COMPOSITION_)
 			{
 				m_pLabel_Lifetime->setVisible(false);
 				m_pLineEdit_LifetimeMin->setVisible(false);
@@ -921,45 +948,20 @@ void ViewOptionTab::changeRFPrediction(int mode)
 				m_pLineEdit_IntensityRatioMin->setVisible(false);
 				m_pImageView_IntensityRatioColorbar->setVisible(false);
 				m_pLineEdit_IntensityRatioMax->setVisible(false);
-
-				m_pLabel_PlaqueComposition->setVisible(true);
-				m_pImageView_PlaqueCompositionColorbar->setVisible(true);
-
-				m_pLabel_Inflammation->setVisible(false);
-				//m_pLineEdit_InflammationMin->setVisible(false);
-				m_pImageView_InflammationColorbar->setVisible(false);
-				//m_pLineEdit_InflammationMax->setVisible(false);
-			}
-			else if (mode0 == _INFLAMMATION_)
-			{
-				m_pLabel_Lifetime->setVisible(false);
-				m_pLineEdit_LifetimeMin->setVisible(false);
-				m_pImageView_LifetimeColorbar->setVisible(false);
-				m_pLineEdit_LifetimeMax->setVisible(false);
-
-				m_pLabel_IntensityProp->setVisible(false);
-				m_pLineEdit_IntensityPropMin->setVisible(false);
-				m_pImageView_IntensityPropColorbar->setVisible(false);
-				m_pLineEdit_IntensityPropMax->setVisible(false);
-
-				m_pLabel_IntensityRatio->setVisible(false);
-				m_pLineEdit_IntensityRatioMin->setVisible(false);
-				m_pImageView_IntensityRatioColorbar->setVisible(false);
-				m_pLineEdit_IntensityRatioMax->setVisible(false);
-
-				m_pLabel_PlaqueComposition->setVisible(false);
-				m_pImageView_PlaqueCompositionColorbar->setVisible(false);
-
-				m_pLabel_Inflammation->setVisible(true);
-				//m_pLineEdit_InflammationMin->setVisible(true);
-				m_pImageView_InflammationColorbar->setVisible(true);
-				//m_pLineEdit_InflammationMax->setVisible(true);
 			}
 
-			if (signaling) m_pViewTab->setRFPrediction(mode);
+			m_pLabel_PlaqueComposition->setVisible(true);
+			for (int i = 0; i < ML_N_CATS; i++)
+				m_pCheckBox_PlaqueComposition[i]->setVisible(true);
+			m_pCheckBox_NormalFibrousMerge->setVisible(true);
+			m_pCheckBox_MacTcfaMerge->setVisible(true);
+			m_pCheckBox_LogisticsNormalize->setVisible(true);
+			m_pCheckBox_LogisticsNormalize->setEnabled(mode0 == _SVM_LOGISTICS_);
+
+			if (signaling) m_pViewTab->setMLPrediction(mode);
 			m_pViewTab->invalidate();
 
-			m_pConfig->writeToLog(QString("RF prediction mode changed: %1").arg(mode));
+			m_pConfig->writeToLog(QString("ML prediction mode changed: %1").arg(mode));
 		}
 	}
 }
@@ -1019,16 +1021,33 @@ void ViewOptionTab::adjustFlimContrast()
 		.arg(m_pConfig->flimIntensityRatioRange[m_pConfig->flimEmissionChannel - 1].max));
 }
 
-void ViewOptionTab::adjustInflammationContrast()
+void ViewOptionTab::changePlaqueCompositionShowingMode()
 {
-	//m_pConfig->rfInflammationRange.min = m_pLineEdit_InflammationMin->text().toFloat();
-	//m_pConfig->rfInflammationRange.max = m_pLineEdit_InflammationMax->text().toFloat();
-	
-	if (m_pViewTab) m_pViewTab->invalidate();
+	if (m_pResultTab)
+	{
+		for (int i = 0; i < ML_N_CATS; i++)
+			m_pConfigTemp->showPlaqueComposition[i] = m_pCheckBox_PlaqueComposition[i]->isChecked();
+		if (m_pViewTab) m_pViewTab->invalidate();			
+	}
+}
 
-	m_pConfig->writeToLog(QString("Inflammation contrast range set: [%1 %2]")
-		.arg(m_pConfig->rfInflammationRange.min)
-		.arg(m_pConfig->rfInflammationRange.max));
+void ViewOptionTab::changeMergeCompositionMode()
+{
+	if (m_pResultTab)
+	{
+		m_pConfigTemp->mergeNorFib = m_pCheckBox_NormalFibrousMerge->isChecked();
+		m_pConfigTemp->mergeMacTcfa = m_pCheckBox_MacTcfaMerge->isChecked();
+		if (m_pViewTab) m_pViewTab->invalidate();
+	}
+}
+
+void ViewOptionTab::changeLogisticsNormalizeMode()
+{
+	if (m_pResultTab)
+	{
+		m_pConfigTemp->normalizeLogistics = m_pCheckBox_LogisticsNormalize->isChecked();
+		if (m_pViewTab) m_pViewTab->invalidate();
+	}
 }
 
 
@@ -1047,7 +1066,7 @@ void ViewOptionTab::rotateImage(int shift)
 	m_pConfig->writeToLog(QString("Rotated alines set: %1").arg(shift));
 }
 
-void ViewOptionTab::verticalMirriong(bool enabled)
+void ViewOptionTab::verticalMirroring(bool enabled)
 {
 	// Only stream tab function
 	m_pConfig->verticalMirroring = enabled;

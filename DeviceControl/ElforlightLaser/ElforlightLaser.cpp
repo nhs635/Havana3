@@ -46,7 +46,7 @@ bool ElforlightLaser::ConnectDevice()
 				{
 					msg[j] = '\0';
 
-					int len = strnlen_s(msg, 256);					
+                    int len = strnlen(msg, 256);
 					if (len > 2)
 					{
 						// j: length of msg, (60~80: '?' / 5~20: '+' or '-' or c'E' or 'R')

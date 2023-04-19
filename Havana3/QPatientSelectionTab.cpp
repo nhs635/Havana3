@@ -220,13 +220,17 @@ void QPatientSelectionTab::searchData()
 		pTextEdit_Data->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 		pTextEdit_Data->setAlignment(Qt::AlignLeft | Qt::AlignTop);
 		pTextEdit_Data->setAcceptRichText(false);
-		
+
 		QPushButton *pPushButton_Find = new QPushButton(this);
 		pPushButton_Find->setText("Find");
+		QPushButton *pPushButton_Random = new QPushButton(this);
+		pPushButton_Random->setText("Random");
 
 		QGridLayout *pGridLayout = new QGridLayout;
-		pGridLayout->addWidget(pTextEdit_Data, 0, 0, 1, 2);
-		pGridLayout->addWidget(pPushButton_Find, 1, 1, Qt::AlignRight);
+		pGridLayout->addWidget(pTextEdit_Data, 0, 0, 1, 3);
+		pGridLayout->addWidget(pPushButton_Find, 1, 2, Qt::AlignRight);
+		pGridLayout->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed), 1, 1, Qt::AlignLeft);		
+		pGridLayout->addWidget(pPushButton_Random, 1, 0, Qt::AlignLeft);
 		pDialog->setLayout(pGridLayout);
 
 		connect(pPushButton_Find, &QPushButton::clicked, [&, pTextEdit_Data]() {
@@ -314,6 +318,92 @@ void QPatientSelectionTab::searchData()
 			}
 			
 			pDialog->close();
+			pDialog->deleteLater();
+		});
+
+		connect(pPushButton_Random, &QPushButton::clicked, [&, pTextEdit_Data]() {
+
+			m_pHvnSqlDataBase->queryDatabase("SELECT * FROM patients", [&](QSqlQuery& _sqlQuery) {
+
+				srand(time(0));
+
+				QString pt_id = "", record_id = "";
+
+				// Get random patient id
+				{
+					int num = 0;
+					while (_sqlQuery.next())
+					{
+						num++;
+					}
+
+					if (_sqlQuery.first())
+					{
+						int sel = rand() % num;
+
+						int num0 = 0;
+						while (_sqlQuery.next())
+						{
+							if (num0++ == sel)
+							{
+								pt_id = QString("%1").arg(_sqlQuery.value(3).toString().toInt(), 8, 10, QChar('0'));
+								break;
+							}
+						}
+					}
+				}
+
+				for (int i = 0; i < m_pTableWidget_PatientInformation->rowCount(); i++)
+					if (m_pTableWidget_PatientInformation->item(i, 1)->text() == pt_id)
+						emit m_pTableWidget_PatientInformation->cellDoubleClicked(i, 0);
+
+				// Load the random pullback
+				QString command = QString("SELECT * FROM records WHERE patient_id=%1").arg(pt_id);
+				m_pHvnSqlDataBase->queryDatabase(command, [&](QSqlQuery& _sqlQuery) {
+
+					int num = 0;
+					while (_sqlQuery.next())
+					{
+						QString comment = _sqlQuery.value(8).toString();
+						if (!comment.contains("[HIDDEN]"))
+						{
+							num++;
+						}
+					}
+
+					if (_sqlQuery.first())
+					{
+						int sel = rand() % num;
+
+						int num0 = 0;
+						while (_sqlQuery.next())
+						{
+							QString comment = _sqlQuery.value(8).toString();
+							if (!comment.contains("[HIDDEN]"))
+							{
+								if (num0++ == sel)
+								{
+									record_id = _sqlQuery.value(0).toString();
+									break;
+								}
+							}
+						}
+					}
+
+					foreach(QDialog* pTabView, m_pMainWnd->getVectorTabViews())
+					{
+						if (pTabView->windowTitle().contains("Summary"))
+						{
+							QString _pt_id = QString("%1").arg(((QPatientSummaryTab*)pTabView)->getPatientInfo().patientId.toInt(), 8, 10, QChar('0'));
+							if (_pt_id == pt_id)
+								emit((QPatientSummaryTab*)pTabView)->requestReview(record_id);
+						}
+					}
+				});
+			});
+
+			pDialog->close();
+			pDialog->deleteLater();
 		});
 	}
 	pDialog->setWindowTitle("Search Data");
@@ -386,39 +476,39 @@ void QPatientSelectionTab::loadPatientDatabase()
 						QStringList comments = comment.split('\n');
 						QString procedure = m_pHvnSqlDataBase->getProcedure(__sqlQuery.value(11).toInt());
 
-						//bool is_reproducibility = false;
-						//for (int i = 0; i < comments.size(); i++)
-						//{
-						//	if (comments.at(i).contains("repro"))
-						//	{
-						//		is_reproducibility = true;
-						//		break;
-						//	}
-						//}
+						bool is_reproducibility = false;
+						for (int i = 0; i < comments.size(); i++)
+						{
+							if (comments.at(i).contains("repro"))
+							{
+								is_reproducibility = true;
+								break;
+							}
+						}
 
-						//bool is_better_pair = false;
-						//for (int i = 0; i < comments.size(); i++)
-						//{
-						//	if (comments.at(i).contains("(better pair)"))
-						//	{
-						//		is_better_pair = true;
-						//		break;
-						//	}
-						//}
+						bool is_better_pair = false;
+						for (int i = 0; i < comments.size(); i++)
+						{
+							if (comments.at(i).contains("(better pair)"))
+							{
+								is_better_pair = true;
+								break;
+							}
+						}
 
-						//bool is_bad = false;
-						//for (int i = 0; i < comments.size(); i++)
-						//{
-						//	if (comments.at(i).contains("bad") || comments.at(i).contains("incomplete"))
-						//	{
-						//		is_bad = true;
-						//		break;
-						//	}
-						//}
+						bool is_bad = false;
+						for (int i = 0; i < comments.size(); i++)
+						{
+							if (comments.at(i).contains("bad") || comments.at(i).contains("incomplete"))
+							{
+								is_bad = true;
+								break;
+							}
+						}
 
-						//dataset << (QString("%1").arg(_sqlQuery.value(3).toString().toInt(), 8, 10, QChar('0'))) + " / " + (_sqlQuery.value(1).toString() + ", " + _sqlQuery.value(0).toString())
-						//	+ " / " + __sqlQuery.value(3).toString() + " / " + comments.at(1) + " / " + procedure + " / " + QString::number(total+1) 
-						//	+ " / " + QString::number(is_reproducibility) + " / " + QString::number(is_better_pair) + " / " + QString::number(is_bad);
+						dataset << (QString("%1").arg(_sqlQuery.value(3).toString().toInt(), 8, 10, QChar('0'))) + " / " + (_sqlQuery.value(1).toString() + ", " + _sqlQuery.value(0).toString())
+							+ " / " + __sqlQuery.value(3).toString() + " / " + comments.at(1) + " / " + procedure + " / " + QString::number(total+1) 
+							+ " / " + QString::number(is_reproducibility) + " / " + QString::number(is_better_pair) + " / " + QString::number(is_bad);
 
 						QTime time = QDateTime::fromString(__sqlQuery.value(3).toString(), "yyyy-MM-dd hh:mm:ss").time();
 						QDate date = QDateTime::fromString(__sqlQuery.value(3).toString(), "yyyy-MM-dd hh:mm:ss").date();
@@ -491,7 +581,7 @@ void QPatientSelectionTab::loadPatientDatabase()
 
 
     m_pTableWidget_PatientInformation->setSortingEnabled(true);
-	m_pTableWidget_PatientInformation->sortItems(4, Qt::DescendingOrder);
+	m_pTableWidget_PatientInformation->sortItems(6, Qt::DescendingOrder);
 	QStringList numbers;
 	for (int i = m_pTableWidget_PatientInformation->rowCount(); i > 0; i--)
 		numbers << QString::number(i);

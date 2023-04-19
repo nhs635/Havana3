@@ -1382,6 +1382,8 @@ void DeviceOptionTab::setPipelineMode(int id)
 {
 #ifdef AXSUN_ENABLE
 	m_pDeviceControl->setPipelineMode(id);
+#else
+	(void)id;
 #endif
 }
 

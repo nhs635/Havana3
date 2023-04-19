@@ -710,11 +710,11 @@ void QStreamTab::setOctAcquisitionCallback()
 		ippiTranspose_16u_C1R(bg, sizeof(uint16_t) * bg.size(0),
 			getDeviceControl()->getAxsunControl()->background_frame, sizeof(uint16_t) * bg.size(1), { bg.size(0), bg.size(1) });
 
-		QFile file("oct.data");
-		if (file.open(QIODevice::WriteOnly))
-			file.write(reinterpret_cast<const char*>(getDeviceControl()->getAxsunControl()->background_frame.raw_ptr()), 
-				sizeof(uint16_t) * getDeviceControl()->getAxsunControl()->background_frame.length());
-		file.close();
+		//QFile file("oct.data");
+		//if (file.open(QIODevice::WriteOnly))
+		//	file.write(reinterpret_cast<const char*>(getDeviceControl()->getAxsunControl()->background_frame.raw_ptr()), 
+		//		sizeof(uint16_t) * getDeviceControl()->getAxsunControl()->background_frame.length());
+		//file.close();
 #else		
 		(void)frame;
 #endif

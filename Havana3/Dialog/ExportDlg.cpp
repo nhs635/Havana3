@@ -113,9 +113,16 @@ ExportDlg::ExportDlg(QWidget *parent) :
 	m_pCheckBox_EnFaceCh3->setText("Channel 3");
 
 	m_pCheckBox_RFPrediction = new QCheckBox(this);
-	m_pCheckBox_RFPrediction->setText("RF Prediction");
-	m_pCheckBox_RFPrediction->setEnabled((m_pViewTab->m_plaqueCompositionProbMap.length() != 0) || 
-		(m_pViewTab->m_plaqueCompositionMap.length() != 0) || (m_pViewTab->m_inflammationMap.length() != 0));
+	m_pCheckBox_RFPrediction->setText("RF Pred");
+	m_pCheckBox_RFPrediction->setEnabled((m_pViewTab->m_plaqueCompositionProbMap.at(0).length() != 0) && (m_pViewTab->m_plaqueCompositionMap.at(0).length() != 0));
+
+	m_pCheckBox_SVMSoftmax = new QCheckBox(this);
+	m_pCheckBox_SVMSoftmax->setText("SVM Soft");
+	m_pCheckBox_SVMSoftmax->setEnabled((m_pViewTab->m_plaqueCompositionProbMap.at(1).length() != 0) && (m_pViewTab->m_plaqueCompositionMap.at(1).length() != 0));
+
+	m_pCheckBox_SVMLogistics = new QCheckBox(this);
+	m_pCheckBox_SVMLogistics->setText("SVM Logit");
+	m_pCheckBox_SVMLogistics->setEnabled((m_pViewTab->m_plaqueCompositionProbMap.at(2).length() != 0) && (m_pViewTab->m_plaqueCompositionMap.at(2).length() != 0));
 		
 	// Create layout
 	QVBoxLayout *pVBoxLayout = new QVBoxLayout;
@@ -179,14 +186,22 @@ ExportDlg::ExportDlg(QWidget *parent) :
 	pGridLayout_EnFaceChemogram->setSpacing(1);
 	
 	pGridLayout_EnFaceChemogram->addWidget(m_pCheckBox_RawData, 0, 0);
-	pGridLayout_EnFaceChemogram->addWidget(m_pCheckBox_ScaledImage, 0, 1);
+	pGridLayout_EnFaceChemogram->addWidget(m_pCheckBox_ScaledImage, 0, 1, 1, 2);
 
-	pGridLayout_EnFaceChemogram->addWidget(m_pCheckBox_EnFaceCh1, 1, 0);
-	pGridLayout_EnFaceChemogram->addWidget(m_pCheckBox_EnFaceCh2, 1, 1);
-	pGridLayout_EnFaceChemogram->addWidget(m_pCheckBox_EnFaceCh3, 1, 2);
+	QHBoxLayout *pHBoxLayout_EnFaceCh = new QHBoxLayout;
+	pHBoxLayout_EnFaceCh->setSpacing(1);
+	pHBoxLayout_EnFaceCh->addWidget(m_pCheckBox_EnFaceCh1);
+	pHBoxLayout_EnFaceCh->addWidget(m_pCheckBox_EnFaceCh2);
+	pHBoxLayout_EnFaceCh->addWidget(m_pCheckBox_EnFaceCh3);
+	pGridLayout_EnFaceChemogram->addItem(pHBoxLayout_EnFaceCh, 1, 0, 1, 3);
 
-	pGridLayout_EnFaceChemogram->addWidget(m_pCheckBox_RFPrediction, 2, 0, 1, 2);
-
+	QHBoxLayout *pHBoxLayout_EnFaceMl = new QHBoxLayout;
+	pHBoxLayout_EnFaceMl->setSpacing(1);
+	pHBoxLayout_EnFaceMl->addWidget(m_pCheckBox_RFPrediction);
+	pHBoxLayout_EnFaceMl->addWidget(m_pCheckBox_SVMSoftmax);
+	pHBoxLayout_EnFaceMl->addWidget(m_pCheckBox_SVMLogistics);
+	pGridLayout_EnFaceChemogram->addItem(pHBoxLayout_EnFaceMl, 2, 0, 1, 3);
+	
 	m_pGroupBox_EnFaceChemogram = new QGroupBox(this);
 	m_pGroupBox_EnFaceChemogram->setTitle("En Face Chemogram");
 	m_pGroupBox_EnFaceChemogram->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
@@ -227,6 +242,8 @@ ExportDlg::ExportDlg(QWidget *parent) :
 	connect(m_pCheckBox_EnFaceCh2, SIGNAL(toggled(bool)), this, SLOT(checkEnFaceOptions()));
 	connect(m_pCheckBox_EnFaceCh3, SIGNAL(toggled(bool)), this, SLOT(checkEnFaceOptions()));
 	connect(m_pCheckBox_RFPrediction, SIGNAL(toggled(bool)), this, SLOT(checkEnFaceOptions()));
+	connect(m_pCheckBox_SVMSoftmax, SIGNAL(toggled(bool)), this, SLOT(checkEnFaceOptions()));
+	connect(m_pCheckBox_SVMLogistics, SIGNAL(toggled(bool)), this, SLOT(checkEnFaceOptions()));
 
 	connect(this, SIGNAL(setWidgets(bool, int)), this, SLOT(setWidgetsEnabled(bool, int)));
 
@@ -328,7 +345,7 @@ void ExportDlg::saveCrossSections()
 			for (int i = 0; i < 3; i++)
 			{
 				ImageObject* pImgObjLifetimeMap = new ImageObject(frames4, alines, temp_ctable.m_colorTableVector.at(LIFETIME_COLORTABLE));
-				m_pViewTab->scaleFLImEnFaceMap(pImgObjIntensityMap, pImgObjLifetimeMap, nullptr, nullptr, nullptr, nullptr, VisualizationMode::_FLIM_PARAMETERS_, i, FLImParameters::_LIFETIME_, 0);
+				m_pViewTab->scaleFLImEnFaceMap(pImgObjIntensityMap, pImgObjLifetimeMap, nullptr, nullptr, nullptr, VisualizationMode::_FLIM_PARAMETERS_, i, FLImParameters::_LIFETIME_, 0);
 
 				// Push to the vector
 				vectorLifetimeMap.push_back(pImgObjLifetimeMap);
@@ -380,7 +397,9 @@ void ExportDlg::saveEnFaceMaps()
 	checkList.bCh[0] = m_pCheckBox_EnFaceCh1->isChecked();
 	checkList.bCh[1] = m_pCheckBox_EnFaceCh2->isChecked();
 	checkList.bCh[2] = m_pCheckBox_EnFaceCh3->isChecked();
-	checkList.bRfPred = m_pCheckBox_RFPrediction->isChecked();
+	checkList.bMlPred[0] = m_pCheckBox_RFPrediction->isChecked();
+	checkList.bMlPred[1] = m_pCheckBox_SVMSoftmax->isChecked();
+	checkList.bMlPred[2] = m_pCheckBox_SVMLogistics->isChecked();
 		
 	int start = m_pLineEdit_RangeStart->text().toInt();
 	int end = m_pLineEdit_RangeEnd->text().toInt();
@@ -492,36 +511,44 @@ void ExportDlg::saveEnFaceMaps()
 			///	}
 			///}
 
-			if (checkList.bRfPred)
+			if (checkList.bMlPred[0] || checkList.bMlPred[1] || checkList.bMlPred[2])
 			{
-				if (m_pViewTab->m_plaqueCompositionProbMap.length() != 0)
+				QString type[3] = { "rf", "svm_soft", "svm_logit" };
+				
+				for (int i = 0; i < 3; i++)
 				{
-					IppiSize roi_flim = { RF_N_CATS * flimAlines, frames };
-
-					QFile fileComposition(enFacePath + QString("composition_range[%1 %2].enface").arg(start).arg(end));
-					if (false != fileComposition.open(QIODevice::WriteOnly))
+					if (m_pViewTab->m_plaqueCompositionProbMap.at(i).length() != 0)
 					{
-						np::FloatArray2 composition_map(RF_N_CATS * flimAlines, frames);
-						memset(composition_map, 0, sizeof(float) * composition_map.length());
-						m_pResultTab->getViewTab()->makeDelay(m_pViewTab->m_plaqueCompositionProbMap, composition_map, !isVibCorrted ? RF_N_CATS * m_pConfigTemp->flimDelaySync : 0);
-						///if (m_pConfigTemp->interFrameSync >= 0)
-						///	ippiCopy_32f_C1R(m_pViewTab->m_plaqueCompositionProbMap.raw_ptr(), sizeof(float) * roi_flim.width,
-						///		&composition_map(0, m_pConfigTemp->interFrameSync), sizeof(float) * roi_flim.width, { roi_flim.width, roi_flim.height - m_pConfigTemp->interFrameSync });
-						///else
-						///	ippiCopy_32f_C1R(&m_pViewTab->m_plaqueCompositionProbMap(0, -m_pConfigTemp->interFrameSync), sizeof(float) * roi_flim.width,
-						///		&composition_map(0, 0), sizeof(float) * roi_flim.width, { roi_flim.width, roi_flim.height + m_pConfigTemp->interFrameSync });
-
-						if (m_pConfigTemp->rotatedAlines > 0)
+						if (checkList.bMlPred[i])
 						{
-							for (int i = 0; i < roi_flim.height; i++)
+							IppiSize roi_flim = { ML_N_CATS * flimAlines, frames };
+
+							QFile fileComposition(enFacePath + QString("%1_compo_range[%2 %3].enface").arg(type[i]).arg(start).arg(end));
+							if (false != fileComposition.open(QIODevice::WriteOnly))
 							{
-								float* pImg = composition_map.raw_ptr() + i * roi_flim.width;
-								std::rotate(pImg, pImg + RF_N_CATS * m_pConfigTemp->rotatedAlines / 4, pImg + roi_flim.width);
+								np::FloatArray2 composition_map(ML_N_CATS * flimAlines, frames);
+								memset(composition_map, 0, sizeof(float) * composition_map.length());
+								m_pResultTab->getViewTab()->makeDelay(m_pViewTab->m_plaqueCompositionProbMap.at(i), composition_map, !isVibCorrted ? ML_N_CATS * m_pConfigTemp->flimDelaySync : 0);
+								///if (m_pConfigTemp->interFrameSync >= 0)
+								///	ippiCopy_32f_C1R(m_pViewTab->m_plaqueCompositionProbMap.raw_ptr(), sizeof(float) * roi_flim.width,
+								///		&composition_map(0, m_pConfigTemp->interFrameSync), sizeof(float) * roi_flim.width, { roi_flim.width, roi_flim.height - m_pConfigTemp->interFrameSync });
+								///else
+								///	ippiCopy_32f_C1R(&m_pViewTab->m_plaqueCompositionProbMap(0, -m_pConfigTemp->interFrameSync), sizeof(float) * roi_flim.width,
+								///		&composition_map(0, 0), sizeof(float) * roi_flim.width, { roi_flim.width, roi_flim.height + m_pConfigTemp->interFrameSync });
+
+								if (m_pConfigTemp->rotatedAlines > 0)
+								{
+									for (int i = 0; i < roi_flim.height; i++)
+									{
+										float* pImg = composition_map.raw_ptr() + i * roi_flim.width;
+										std::rotate(pImg, pImg + ML_N_CATS * m_pConfigTemp->rotatedAlines / 4, pImg + roi_flim.width);
+									}
+								}
+
+								fileComposition.write(reinterpret_cast<char*>(&composition_map(0, start - 1)), sizeof(float) * composition_map.size(0) * (end - start + 1));
+								fileComposition.close();
 							}
 						}
-
-						fileComposition.write(reinterpret_cast<char*>(&composition_map(0, start - 1)), sizeof(float) * composition_map.size(0) * (end - start + 1));
-						fileComposition.close();
 					}
 				}
 
@@ -568,7 +595,7 @@ void ExportDlg::saveEnFaceMaps()
 					ImageObject* pImgObjLifetimeMap = new ImageObject(frame4, alines, temp_ctable.m_colorTableVector.at(LIFETIME_COLORTABLE));
 					memset(pImgObjLifetimeMap->arr, 0, sizeof(uint8_t) * frame4 * alines);
 
-					m_pViewTab->scaleFLImEnFaceMap(pImgObjIntensityMap, pImgObjLifetimeMap, nullptr, nullptr, nullptr, nullptr, VisualizationMode::_FLIM_PARAMETERS_, i, FLImParameters::_LIFETIME_, 0);
+					m_pViewTab->scaleFLImEnFaceMap(pImgObjIntensityMap, pImgObjLifetimeMap, nullptr, nullptr, nullptr, VisualizationMode::_FLIM_PARAMETERS_, i, FLImParameters::_LIFETIME_, 0);
 
 					pImgObjLifetimeMap->qrgbimg.copy(start - 1, 0, end - start + 1, roi_flimproj.width)
 						.save(enFacePath + QString("flim_map_range[%1 %2]_ch%3_i[%4 %5]_t[%6 %7].bmp").arg(start).arg(end).arg(i + 1)
@@ -579,31 +606,26 @@ void ExportDlg::saveEnFaceMaps()
 				}
 			}
 
-			if (checkList.bRfPred)
+			if (checkList.bMlPred[0] || checkList.bMlPred[1] || checkList.bMlPred[2])
 			{
-				if (m_pViewTab->m_plaqueCompositionMap.length() != 0)
+				QString type[3] = { "rf", "svm_soft", "svm_logit" };
+
+				for (int i = 0; i < 3; i++)
 				{
-					// Intensity-weight composition map
-					ImageObject* pImgObjCompositionMap = new ImageObject(frame4, alines, temp_ctable.m_colorTableVector.at(COMPOSITION_COLORTABLE));
-					m_pViewTab->scaleFLImEnFaceMap(pImgObjIntensityMap, nullptr, nullptr, nullptr, pImgObjCompositionMap, nullptr, VisualizationMode::_RF_PREDICTION_, 1, 0, RFPrediction::_PLAQUE_COMPOSITION_);
+					if (m_pViewTab->m_plaqueCompositionMap.at(i).length() != 0)
+					{
+						if (checkList.bMlPred[i])
+						{
+							// Intensity-weight composition map
+							ImageObject* pImgObjCompositionMap = new ImageObject(frame4, alines, temp_ctable.m_colorTableVector.at(COMPOSITION_COLORTABLE));
+							m_pViewTab->scaleFLImEnFaceMap(pImgObjIntensityMap, nullptr, nullptr, nullptr, pImgObjCompositionMap, VisualizationMode::_ML_PREDICTION_, 1, 0, i);
 
-					pImgObjCompositionMap->qrgbimg.copy(start - 1, 0, end - start + 1, roi_flimproj.width)
-						.save(enFacePath + QString("composition_map_range[%1 %2].bmp").arg(start).arg(end), "bmp");
+							pImgObjCompositionMap->qrgbimg.copy(start - 1, 0, end - start + 1, roi_flimproj.width)
+								.save(enFacePath + QString("%1_compo_map_range[%2 %3].bmp").arg(type[i]).arg(start).arg(end), "bmp");
 
-					delete pImgObjCompositionMap;
-				}
-
-				if (m_pViewTab->m_inflammationMap.length() != 0)
-				{
-					// Intensity-weight inflammation map
-					ImageObject* pImgObjInflammationMap = new ImageObject(frame4, alines, temp_ctable.m_colorTableVector.at(INFLAMMATION_COLORTABLE));
-					m_pViewTab->scaleFLImEnFaceMap(pImgObjIntensityMap, nullptr, nullptr, nullptr, nullptr, pImgObjInflammationMap, VisualizationMode::_RF_PREDICTION_, 1, 0, RFPrediction::_INFLAMMATION_);
-
-					pImgObjInflammationMap->qrgbimg.copy(start - 1, 0, end - start + 1, roi_flimproj.width)
-						.save(enFacePath + QString("inflammation_map_range[%1 %2]_i[%3 %4].bmp").arg(start).arg(end)
-							.arg(m_pConfig->rfInflammationRange.min, 2, 'f', 1).arg(m_pConfig->rfInflammationRange.max, 2, 'f', 1), "bmp");
-
-					delete pImgObjInflammationMap;
+							delete pImgObjCompositionMap;
+						}
+					}
 				}
 
 				///IppiSize roi_proj = { m_pVisTab->m_octProjection.size(0), m_pVisTab->m_octProjection.size(1) };

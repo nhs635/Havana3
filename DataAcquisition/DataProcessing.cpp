@@ -82,6 +82,7 @@ void DataProcessing::startProcessing(QString fileName, int frame)
 #ifndef NEXT_GEN_SYSTEM
 				m_pConfigTemp->frames = (int)(file.size() / (sizeof(uint8_t) * (m_pConfigTemp->axsunPipelineMode == 0 ? 1 : 4) * (qint64)m_pConfigTemp->octFrameSize 
 														   + sizeof(uint16_t) * (qint64)m_pConfigTemp->flimFrameSize));
+				//m_pConfigTemp->frames = 10;
 #else
 				m_pConfigTemp->frames = (int)(file.size() / (sizeof(float) * (qint64)m_pConfigTemp->octFrameSize + sizeof(uint16_t) * (qint64)m_pConfigTemp->flimFrameSize));
 #endif

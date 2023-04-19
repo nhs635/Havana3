@@ -1,7 +1,7 @@
 #ifndef CONFIGURATION_H
 #define CONFIGURATION_H
 
-#define VERSION						"2.1.5.3"
+#define VERSION						"2.1.5.5"
 
 #define POWER_2(x)					(1 << x)
 #define NEAR_2_POWER(x)				(int)(1 << (int)ceil(log2(x)))
@@ -12,8 +12,8 @@
 ///#define NEXT_GEN_SYSTEM
 ///#define ENABLE_FPGA_FFT
 #define ENABLE_DATABASE_ENCRYPTION
-#define AXSUN_ENABLE
-#define NI_ENABLE
+//#define AXSUN_ENABLE
+//#define NI_ENABLE
 
 //////////////////////// Size Setup /////////////////////////
 #define FLIM_SCANS                  512
@@ -80,25 +80,22 @@
 #define LIFETIME_COLORTABLE         13 // hsv2 ==> Viewer/QImageView.cpp
 #define IVUS_COLORTABLE				0 // gray
 #define COMPOSITION_COLORTABLE		14 // compo
-#define INFLAMMATION_COLORTABLE		15 // redgreen
+
+#define ML_N_FEATURES				9
+#define ML_N_CATS					7
+#define ML_COMPO_DATASET_NAME		"compo_dataset.csv"
+
+#define ML_NORMAL_COLOR				0x85bb65 // 0x84c06f
+#define ML_FIBROUS_COLOR			0x649254
+#define ML_LOOSE_FIBROUS_COLOR		0x4b9cd3  // 0xd5d52b  // 
+#define ML_CALCIFICATION_COLOR		0xffffff
+#define ML_MACROPHAGE_COLOR			0xff2323 // ff355e // FF5A5F // 0xff4748
+#define ML_LIPID_MAC_COLOR			0xffc30b // 0xff7518 // 0x860005 //0x780005
+#define ML_SHEATH_COLOR				0x000000
 
 #define RF_N_TREES					100
-#define RF_N_FEATURES				9
-#define RF_N_CATS					7
-#define RF_COMPO_DATA_NAME			"compo_forest.csv"
 #define RF_COMPO_MODEL_NAME			"compo_forest.xml"
-#define RF_NORMAL_COLOR				0x85bb65 // 0x84c06f
-#define RF_FIBROUS_COLOR			0x649254
-#define RF_LOOSE_FIBROUS_COLOR		0x4b9cd3  // 0xd5d52b  // 
-#define RF_CALCIFICATION_COLOR		0xffffff
-#define RF_MACROPHAGE_COLOR			0xff2323 // ff355e // FF5A5F // 0xff4748
-#define RF_LIPID_MAC_COLOR			0xffc30b // 0xff7518 // 0x860005 //0x780005
-#define RF_SHEATH_COLOR				0x000000
-
-#define RF_INFL_DATA_NAME			"infl_forest.csv"
-#define RF_INFL_MODEL_NAME			"infl_forest.xml"
-#define RF_HEALED_DATA_NAME			"healed_forest.csv"
-#define RF_HEALED_MODEL_NAME		"healed_forest.xml"
+#define SVM_COMPO_MODEL_NAME		"compo_svm"
 
 #define REFLECTION_DISTANCE			35
 #define REFLECTION_LEVEL			0.10f
@@ -137,11 +134,13 @@ class Configuration
 {
 public:
 	explicit Configuration() : dbPath(""), ivusPath(""), 
-		reflectionRemoval(false), reflectionDistance(REFLECTION_DISTANCE), reflectionLevel(REFLECTION_LEVEL)
+		reflectionRemoval(false), reflectionDistance(REFLECTION_DISTANCE), reflectionLevel(REFLECTION_LEVEL), 
+		mergeNorFib(false), mergeMacTcfa(true), normalizeLogistics(true), playInterval(100)
 	{
 		memset(flimDelayOffset0, 0, sizeof(float) * 3);
 		quantitationRange.min = -1;
 		quantitationRange.max = -1;
+		memset(showPlaqueComposition, 1, sizeof(bool) * ML_N_CATS);
 	}
 	~Configuration() {}
 
@@ -184,6 +183,7 @@ public:
         // Visualization
         flimEmissionChannel = settings.value("flimEmissionChannel").toInt();
 		flimParameterMode = settings.value("flimParameterMode").toInt();
+		mlPredictionMode = settings.value("mlPredictionMode").toInt();
 		for (int i = 0; i < 3; i++)
 		{
 			flimIntensityRange[i].max = settings.value(QString("flimIntensityRangeMax_Ch%1").arg(i + 1)).toFloat();
@@ -202,8 +202,6 @@ public:
 		octGrayRange.max = settings.value("octGrayRangeMax").toInt();
 		octGrayRange.min = settings.value("octGrayRangeMin").toInt();
 #endif
-		rfInflammationRange.max = settings.value("rfInflammationRangeMax").toFloat();
-		rfInflammationRange.min = settings.value("rfInflammationRangeMin").toFloat();
 		rotatedAlines = settings.value("rotatedAlines").toInt();
 		innerOffsetLength = settings.value("innerOffsetLength").toInt();
 		verticalMirroring = settings.value("verticalMirroring").toBool();
@@ -212,7 +210,13 @@ public:
 		reflectionLevel = settings.value("reflectionLevel").toFloat();
 		autoVibCorrectionMode = settings.value("autoVibCorrectionMode").toBool();
 		quantitationRange.max = settings.value("quantitationRangeMax").toInt();
-		quantitationRange.min = settings.value("quantitationRangeMin").toInt();
+		quantitationRange.min = settings.value("quantitationRangeMin").toInt();		
+		//for (int i = 0; i < ML_N_CATS; i++)
+		//	showPlaqueComposition[i] = settings.value(QString("showPlaqueComposition_%1").arg(i + 1)).toBool();
+		//mergeNorFib = settings.value("mergeNorFib").toBool();
+		//mergeMacTcfa = settings.value("mergeMacTcfa").toBool();
+		//normalizeLogistics = settings.value("normalizeLogistics").toBool();
+		playInterval = settings.value("playInterval").toInt();
 		
 		// Additional synchronization parameters
 		intraFrameSync = settings.value("intraFrameSync").toInt();
@@ -279,6 +283,7 @@ public:
 		// Visualization
         settings.setValue("flimEmissionChannel", flimEmissionChannel);
 		settings.setValue("flimParameterMode", flimParameterMode);
+		settings.setValue("mlPredictionMode", mlPredictionMode);
 		for (int i = 0; i < 3; i++)
 		{
 			settings.setValue(QString("flimIntensityRangeMax_Ch%1").arg(i + 1), QString::number(flimIntensityRange[i].max, 'f', 1));
@@ -294,8 +299,6 @@ public:
 		settings.setValue("octGrayRangeMax", octGrayRange.max);
 		settings.setValue("octGrayRangeMin", octGrayRange.min);
 #endif
-		settings.setValue("rfInflammationRangeMax", QString::number(rfInflammationRange.max, 'f', 2));
-		settings.setValue("rfInflammationRangeMin", QString::number(rfInflammationRange.min, 'f', 2));
 		settings.setValue("rotatedAlines", rotatedAlines);
 		settings.setValue("innerOffsetLength", innerOffsetLength);
 		settings.setValue("verticalMirroring", verticalMirroring);
@@ -305,6 +308,12 @@ public:
 		settings.setValue("autoVibCorrectionMode", autoVibCorrectionMode);
 		settings.setValue("quantitationRangeMax", quantitationRange.max);
 		settings.setValue("quantitationRangeMin", quantitationRange.min);
+		//for (int i = 0; i < ML_N_CATS; i++)
+		//	settings.setValue(QString("showPlaqueComposition_%1").arg(i + 1), showPlaqueComposition[i]);
+		//settings.setValue("mergeNorFib", mergeNorFib);
+		//settings.setValue("mergeMacTcfa", mergeMacTcfa);
+		//settings.setValue("normalizeLogistics", normalizeLogistics);
+		settings.setValue("playInterval", playInterval);
 
 		// Additional synchronization parameters
 		settings.setValue("intraFrameSync", intraFrameSync);
@@ -377,6 +386,7 @@ public:
 	// Visualization    
     int flimEmissionChannel;
 	int flimParameterMode;
+	int mlPredictionMode;
     ContrastRange<float> flimIntensityRange[3];
     ContrastRange<float> flimLifetimeRange[3];
 	ContrastRange<float> flimIntensityPropRange[3];
@@ -385,7 +395,6 @@ public:
 #ifndef NEXT_GEN_SYSTEM
     ContrastRange<int> octGrayRange;
 #endif
-	ContrastRange<float> rfInflammationRange;
 	int rotatedAlines;
 	int innerOffsetLength;
 	bool verticalMirroring;
@@ -394,6 +403,10 @@ public:
 	float reflectionLevel;
 	bool autoVibCorrectionMode;
 	ContrastRange<int> quantitationRange;
+	bool showPlaqueComposition[ML_N_CATS];
+	bool mergeNorFib, mergeMacTcfa;
+	bool normalizeLogistics;
+	int playInterval;
 
 	// Additional synchronization parameters
 	int intraFrameSync;

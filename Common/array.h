@@ -378,6 +378,9 @@ namespace np {
     using FloatArray         = Array<float>;
     using FloatArray2        = Array<float, 2>;
 
+	using DoubleArray		 = Array<double>;
+	using DoubleArray2		 = Array<double, 2>;
+
 	using ComplexFloatArray  = Array<std::complex<float>>;
     using ComplexFloatArray2 = Array<std::complex<float>, 2>;
 

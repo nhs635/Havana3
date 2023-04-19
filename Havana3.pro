@@ -29,6 +29,7 @@ DEFINES += QT_DEPRECATED_WARNINGS
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 
+win32 {
 INCLUDEPATH += $$PWD/include
 
 LIBS += $$PWD/lib/PX14_64.lib # \
@@ -50,10 +51,31 @@ LIBS += $$PWD/lib/intel64_win/vc14/tbb_debug.lib \
 LIBS += $$PWD/lib/intel64_win/mkl_core.lib \
         $$PWD/lib/intel64_win/mkl_tbb_thread.lib \
         $$PWD/lib/intel64_win/mkl_intel_lp64.lib
-#debug {
-#    LIBS += $$PWD/lib/vld.lib
-#}
+debug {
+    LIBS += $$PWD/lib/vld.lib
+}
+}
+macx {
+INCLUDEPATH += /opt/intel/oneapi/ipp/2021.7.0/include \
+            /opt/intel/oneapi/tbb/2021.8.0/include \
+            /opt/intel/oneapi/mkl/2021.7.0/include
+INCLUDEPATH += /opt/homebrew/Cellar/opencv@3/3.4.16_4/include
 
+IPPLIBS = -lippch -lippcore -lippi -lipps -lippvm
+MKLLIBS = -lmkl_core -lmkl_tbb_thread -lmkl_intel_lp64
+
+LIBS += -L/opt/intel/oneapi/ipp/2021.7.0/lib $$IPPLIBS
+CONFIG(debug, debug|release) {
+LIBS += -L/opt/intel/oneapi/tbb/2021.8.0/lib -ltbb_debug
+} else {
+LIBS += -L/opt/intel/oneapi/tbb/2021.8.0/lib -ltbb_debug \
+        -L/opt/intel/oneapi/tbb/2021.8.0/lib -ltbb
+}
+LIBS += -L/opt/intel/oneapi/mkl/2021.7.0/lib $$MKLLIBS
+
+LIBS += -L/opt/homebrew/Cellar/opencv@3/3.4.16_4/lib -lopencv_core \
+        -L/opt/homebrew/Cellar/opencv@3/3.4.16_4/lib -lopencv_ml
+}
 
 
 
@@ -108,6 +130,8 @@ SOURCES += DeviceControl/FreqDivider/FreqDivider.cpp \
     DeviceControl/FaulhaberMotor/RotaryMotor.cpp \
     DeviceControl/DeviceControl.cpp
 
+SOURCES += Common/svm.cpp
+
 
 HEADERS += Havana3/Configuration.h \
     Havana3/HvnSqlDataBase.h \
@@ -161,5 +185,9 @@ HEADERS += DeviceControl/FreqDivider/FreqDivider.h \
     DeviceControl/QSerialComm.h \
     DeviceControl/DeviceControl.h
 
+HEADERS += Common/lumen_detection.h \
+    Common/random_forest.h \
+    Common/support_vector_machine.h \
+    Common/svm.h
 
 FORMS   += Havana3/MainWindow.ui

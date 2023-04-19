@@ -4,6 +4,8 @@
 #include <QtWidgets>
 #include <QtCore>
 
+#include <Havana3/Configuration.h>
+
 
 class Configuration;
 class QPatientSummaryTab;
@@ -15,7 +17,7 @@ class QImageView;
 enum VisualizationMode
 {
 	_FLIM_PARAMETERS_ = 0,
-	_RF_PREDICTION_ = 1
+	_ML_PREDICTION_ = 1
 };
 
 enum FLImParameters
@@ -26,10 +28,11 @@ enum FLImParameters
 	_NONE_ = 3
 };
 
-enum RFPrediction
+enum MLPrediction
 {
-	_PLAQUE_COMPOSITION_ = 0,
-	_INFLAMMATION_ = 1
+	_RF_COMPO_ = 0,
+	_SVM_SOFTMAX_ = 1,
+	_SVM_LOGISTICS_ = 2	
 };
 
 class ViewOptionTab : public QDialog
@@ -50,13 +53,14 @@ public:
     inline QGroupBox* getLayoutBox() const { return m_pGroupBox_ViewOption; }
 
 	inline QRadioButton* getRadioButtonFLImParameters() const { return m_pRadioButton_FLImParameters; }
-	inline QRadioButton* getRadioButtonRFPrediction() const { return m_pRadioButton_RFPrediction; }
+	inline QRadioButton* getRadioButtonMLPrediction() const { return m_pRadioButton_MLPrediction; }
 	inline QComboBox* getEmissionChannelComboBox() const { return m_pComboBox_EmissionChannel; }
 	inline QRadioButton* getRadioButtonLifetime() const { return m_pRadioButton_Lifetime; }
 	inline QRadioButton* getRadioButtonIntensityProp() const { return m_pRadioButton_IntensityProp; }
-	inline QRadioButton* getRadioButtonIntensityRatio() const { return m_pRadioButton_IntensityRatio; }
-	inline QRadioButton* getRadioButtonInflammation() const { return m_pRadioButton_Inflammation; }
-	inline QRadioButton* getRadioButtonPlaqueComposition() const { return m_pRadioButton_PlaqueComposition; }
+	inline QRadioButton* getRadioButtonIntensityRatio() const { return m_pRadioButton_IntensityRatio; }	
+	inline QRadioButton* getRadioButtonRandomForest() const { return m_pRadioButton_RandomForest; }
+	inline QRadioButton* getRadioButtonSVMSoftmax() const { return m_pRadioButton_SVMSoftmax; }
+	inline QRadioButton* getRadioButtonSVMLogistics() const { return m_pRadioButton_SVMLogistics; }
 
 	inline QLabel* getLabelFlimDelaySync() const { return m_pLabel_FlimDelaySync; }
 	inline QScrollBar* getScrollBarFlimDelaySync() const { return m_pScrollBar_FlimDelaySync; }
@@ -73,14 +77,16 @@ public slots:
 	void changeVisualizationMode(int);
 	void changeEmissionChannel(int);
 	void changeFLImParameters(int);
-	void changeRFPrediction(int);
+	void changeMLPrediction(int);
 
 private slots:
     void adjustFlimContrast();
-	void adjustInflammationContrast();
+	void changePlaqueCompositionShowingMode();
+	void changeMergeCompositionMode();
+	void changeLogisticsNormalizeMode();
 
 	void rotateImage(int);
-	void verticalMirriong(bool);
+	void verticalMirroring(bool);
 	void reflectionRemoval(bool);
 	void changeReflectionDistance(const QString &);
 	void changeReflectionLevel(const QString &);
@@ -104,11 +110,12 @@ private:
     // Visualization option widgets
 	QGroupBox *m_pGroupBox_ViewOption;
     QVBoxLayout *m_pVBoxLayout_ViewOption;
+	QGroupBox *m_pGroupBox_FlimVisualization;
 
     // FLIm visualization option widgets
 	QLabel *m_pLabel_VisualizationMode;
 	QRadioButton *m_pRadioButton_FLImParameters;
-	QRadioButton *m_pRadioButton_RFPrediction;
+	QRadioButton *m_pRadioButton_MLPrediction;
 	QButtonGroup *m_pButtonGroup_VisualizationMode;
 	
     QLabel *m_pLabel_EmissionChannel;
@@ -121,10 +128,11 @@ private:
 	QRadioButton *m_pRadioButton_None;
 	QButtonGroup *m_pButtonGroup_FLImParameters;
 
-	QLabel *m_pLabel_RFPrediction;
-	QRadioButton *m_pRadioButton_Inflammation;
-	QRadioButton *m_pRadioButton_PlaqueComposition;
-	QButtonGroup *m_pButtonGroup_RFPrediction;
+	QLabel *m_pLabel_MLPrediction;
+	QRadioButton *m_pRadioButton_RandomForest;
+	QRadioButton *m_pRadioButton_SVMSoftmax;
+	QRadioButton *m_pRadioButton_SVMLogistics;
+	QButtonGroup *m_pButtonGroup_MLPrediction;
 	
     QLabel *m_pLabel_NormIntensity;
     QLabel *m_pLabel_Lifetime;
@@ -143,13 +151,11 @@ private:
 	QImageView *m_pImageView_IntensityPropColorbar;
 	QImageView *m_pImageView_IntensityRatioColorbar;
 
-	QLabel *m_pLabel_Inflammation;
-	QLineEdit *m_pLineEdit_InflammationMax;
-	QLineEdit *m_pLineEdit_InflammationMin;
-	QImageView *m_pImageView_InflammationColorbar;
-
 	QLabel *m_pLabel_PlaqueComposition;
-	QImageView *m_pImageView_PlaqueCompositionColorbar;
+	QCheckBox *m_pCheckBox_PlaqueComposition[ML_N_CATS];
+	QCheckBox *m_pCheckBox_NormalFibrousMerge;
+	QCheckBox *m_pCheckBox_MacTcfaMerge;
+	QCheckBox *m_pCheckBox_LogisticsNormalize;
 
     // OCT visualization option widgets
 	QLabel *m_pLabel_Rotation;

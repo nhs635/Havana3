@@ -15,6 +15,7 @@
 #include <Common/basic_functions.h>
 #include <Common/lumen_detection.h>
 #include <Common/random_forest.h>
+#include <Common/support_vector_machine.h>
 
 #include <iostream>
 #include <vector>
@@ -49,18 +50,19 @@ public:
 	inline medfilt* getMedfiltIntensityMap() const { return m_pMedfiltIntensityMap; }
 	inline medfilt* getMedfiltLifetimeMap() const { return m_pMedfiltLifetimeMap; }
 	inline medfilt* getMedfiltLongi() const { return m_pMedfiltLongi; }	
-	inline RandomForest* getForestPlqCompo() const { return m_pForestPlqCompo; }
+	inline RandomForest* getForest() const { return m_pForest; }
+	inline SupportVectorMachine* getSVM() const { return m_pSVM; }
 	inline QPushButton* getPlayButton() const { return m_pToggleButton_Play; }
 	inline QPushButton* getPickButton() const { return m_pPushButton_Pick; }
     inline QSlider* getSliderSelectFrame() const { return m_pSlider_SelectFrame; }
 	inline QDialog* getSetRangeDialog() const { return m_pDialog_SetRange; }
 	inline void setVisualizationMode(int mode) { if (!mode) m_pRadioButton_FLImParameters->setChecked(true); 
-	else m_pRadioButton_RFPrediction->setChecked(true); changeVisualizationMode(mode);	}
-	inline bool getVisualizationMode() { return m_pRadioButton_RFPrediction->isChecked(); }
+	else m_pRadioButton_MLPrediction->setChecked(true); changeVisualizationMode(mode);	}
+	inline bool getVisualizationMode() { return m_pRadioButton_MLPrediction->isChecked(); }
 	inline void setFLImParameters(int ch) { m_pComboBox_FLImParameters->setCurrentIndex(ch); }
 	inline int getFLImparameters() { return m_pComboBox_FLImParameters->currentIndex(); }
-	inline void setRFPrediction(int mode) { return m_pComboBox_RFPrediction->setCurrentIndex(mode); }
-	inline int getRFPrediction() { return m_pComboBox_RFPrediction->currentIndex(); }
+	inline void setMLPrediction(int mode) { return m_pComboBox_MLPrediction->setCurrentIndex(mode); }
+	inline int getMLPrediction() { return m_pComboBox_MLPrediction->currentIndex(); }
 	inline void setCurrentFrame(int frame) { m_pSlider_SelectFrame->setValue(frame); }
     inline int getCurrentFrame() { return m_pSlider_SelectFrame->value(); }
 	inline int getCurrentAline() { return m_pImageView_CircImage->getRender()->m_pVLineInd[0]; }
@@ -97,13 +99,13 @@ private slots:
 	void lumenContourDetection();
 	void changeVisualizationMode(int);
 	void changeEmissionChannel(int);
-	void changeRFPrediction(int);
+	void changeMLPrediction(int);
 
 public:
 	void scaleFLImEnFaceMap(ImageObject* pImgObjIntensityMap, ImageObject* pImgObjLifetimeMap,
 		ImageObject* pImgObjIntensityPropMap, ImageObject* pImgObjIntensityRatioMap,
-		ImageObject* pImgObjPlaqueCompositionMap, ImageObject* pImgObjInflammationMap,
-		int vis_mode, int ch, int flim_mode, int rf_mode);
+		ImageObject* pImgObjPlaqueCompositionMap, 
+		int vis_mode, int ch, int flim_mode, int ml_mode);
 	void circShift(np::Uint8Array2& image, int shift);
 	void setAxialOffset(np::Uint8Array2& image, int offset);
 	void makeDelay(np::FloatArray2& input, np::FloatArray2& output, int delay);
@@ -145,6 +147,7 @@ public: // for post processing
 	std::vector<np::FloatArray2> m_vectorOctImage;
 	np::FloatArray2 m_octProjection;
 #endif
+	np::FloatArray2 m_grayMap;
 	std::vector<np::FloatArray2> m_pulsepowerMap; // (256 x N) x 4
 	std::vector<np::FloatArray2> m_intensityMap; // (256 x N) x 3
 	std::vector<np::FloatArray2> m_meandelayMap; // (256 X N) x 4
@@ -152,11 +155,9 @@ public: // for post processing
 	std::vector<np::FloatArray2> m_intensityProportionMap; // (256 x N) x 3
 	std::vector<np::FloatArray2> m_intensityRatioMap; // (256 x N) x 3
 	np::FloatArray2 m_featVectors;
-	np::FloatArray2 m_plaqueCompositionProbMap;
-	np::FloatArray2 m_plaqueCompositionMap;
-	np::FloatArray m_plaqueCompositionRatio;
-	np::FloatArray2 m_inflammationMap;
-	np::FloatArray2 m_healedPlaqueMap;
+	std::vector<np::FloatArray2> m_plaqueCompositionProbMap;
+	std::vector<np::FloatArray2> m_plaqueCompositionMap;
+	std::vector<np::FloatArray> m_plaqueCompositionRatio;
 	np::FloatArray2 m_contourMap;
 	std::vector<std::vector<int>> m_gwPoss;
 	std::vector<int> m_gwVec;
@@ -187,8 +188,7 @@ private:
 	ImageObject *m_pImgObjIntensityPropMap;
 	ImageObject *m_pImgObjIntensityRatioMap;
 	ImageObject *m_pImgObjPlaqueCompositionMap;
-	ImageObject *m_pImgObjInflammationMap;
-
+	
     // Image visualization buffers - longitudinal
     ImageObject *m_pImgObjLongiImage;
 
@@ -199,9 +199,8 @@ private:
 	medfilt* m_pMedfiltLifetimeMap;
     medfilt* m_pMedfiltLongi;
 	LumenDetection* m_pLumenDetection;
-	RandomForest* m_pForestPlqCompo;
-	RandomForest* m_pForestInflammation;
-	RandomForest* m_pForestHealedPlaque;
+	RandomForest* m_pForest;
+	SupportVectorMachine* m_pSVM;
 	
 private:
 	std::thread playing;
@@ -235,11 +234,11 @@ private:
 	QPushButton *m_pPushButton_LumenDetection;
 
     QComboBox *m_pComboBox_FLImParameters;
-	QComboBox *m_pComboBox_RFPrediction;
+	QComboBox *m_pComboBox_MLPrediction;
     
 	QButtonGroup *m_pButtonGroup_VisualizationMode;
 	QRadioButton *m_pRadioButton_FLImParameters;
-	QRadioButton *m_pRadioButton_RFPrediction;
+	QRadioButton *m_pRadioButton_MLPrediction;
 
 	// Set range dialog
 	QDialog *m_pDialog_SetRange;

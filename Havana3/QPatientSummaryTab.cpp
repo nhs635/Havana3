@@ -813,19 +813,19 @@ void QPatientSummaryTab::loadRecordDatabase()
 			pPushButton_Review->setFixedSize(40, 30);
 			pPushButton_Review->setIcon(style()->standardIcon(QStyle::SP_DialogYesButton));
 
-			QWidget *pWidget_Review = new QWidget;
-			QHBoxLayout *pHBoxLayout_Review = new QHBoxLayout;
+			QWidget *pWidget_Review = new QWidget; // (m_pTableWidget_RecordInformation);
+			QHBoxLayout *pHBoxLayout_Review = new QHBoxLayout; //(m_pTableWidget_RecordInformation); // leak
 			pHBoxLayout_Review->setSpacing(0);
 			pHBoxLayout_Review->setAlignment(Qt::AlignCenter);
 			pHBoxLayout_Review->addWidget(pPushButton_Review);
 			pWidget_Review->setLayout(pHBoxLayout_Review);
 
-			QPushButton *pPushButton_Delete = new QPushButton;
+			QPushButton *pPushButton_Delete = new QPushButton; //(m_pTableWidget_RecordInformation); // leak
 			pPushButton_Delete->setFixedSize(40, 30);
 			pPushButton_Delete->setIcon(style()->standardIcon(QStyle::SP_DialogCancelButton));
 
-			QWidget *pWidget_Delete = new QWidget;
-			QHBoxLayout *pHBoxLayout_Delete = new QHBoxLayout;
+			QWidget *pWidget_Delete = new QWidget; //(m_pTableWidget_RecordInformation); // leak
+			QHBoxLayout *pHBoxLayout_Delete = new QHBoxLayout; //(m_pTableWidget_RecordInformation); // leak
 			pHBoxLayout_Delete->setSpacing(0);
 			pHBoxLayout_Delete->setAlignment(Qt::AlignCenter);
 			pHBoxLayout_Delete->addWidget(pPushButton_Delete);

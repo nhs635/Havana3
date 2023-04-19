@@ -27,8 +27,8 @@ bool FreqDivider::initialize()
 {	
     SendStatusMessage("[SYNC] Initializing NI Counter for triggering FLIm laser...", false);
 
-    int lowTicks = (int)(ceil(slow / 2));
-    int highTicks = (int)(floor(slow / 2));
+    int lowTicks = (int)(slow / 2) + 1;  // (int)(ceil(slow / 2));
+    int highTicks = (int)(slow / 2);  // (int)(floor(slow / 2));
     uint64_t sampsPerChan = 210000;
     int res;
 
@@ -85,7 +85,7 @@ void FreqDivider::dumpError(int res, const char* pPreamble)
         DAQmxGetErrorString(res, errBuff, 2048);
 
 	char msg[2048];
-	sprintf_s(msg, 2048, "%s %s", pPreamble, errBuff);
+    snprintf(msg, 2048, "%s %s", pPreamble, errBuff);
     SendStatusMessage(msg, true);
 
     if (_taskHandle)

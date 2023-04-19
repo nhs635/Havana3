@@ -35,14 +35,14 @@ typedef enum plaque_type {
 	other
 } plaque_type;
 
-uint32_t plaque_type_color[9] = { 0xffffff, // none
-								  0x43bfdc, // normal
-								  0x649254, // fibrous
-								  0xbf9000, // loose fibrous
-								  0x808080, // calcification
-								  0xff4746, // focal mac
-								  0x780005, // lipid + mac
-								  0xfffffe }; // other 
+uint32_t plaque_type_color[9] = { 0xf0f0f0, // none
+								  ML_NORMAL_COLOR, // normal
+								  ML_FIBROUS_COLOR, // fibrous
+								  ML_LOOSE_FIBROUS_COLOR, // loose fibrous
+								  ML_CALCIFICATION_COLOR, // calcification
+								  ML_MACROPHAGE_COLOR, // focal mac
+								  ML_LIPID_MAC_COLOR, // lipid + mac
+								  ML_SHEATH_COLOR }; // other 
 
 
 PulseReviewTab::PulseReviewTab(QWidget *parent) :
