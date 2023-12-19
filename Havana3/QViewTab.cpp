@@ -11,6 +11,7 @@
 #include <Havana3/Dialog/IvusViewerDlg.h>
 
 #include <DataAcquisition/DataProcessing.h>
+#include <DataAcquisition/DataProcessingDotter.h>
 
 #include <ipps.h>
 
@@ -93,7 +94,8 @@ void QViewTab::createViewTabWidgets(bool is_streaming)
 		m_pImageView_CircImage->setMinimumSize(620, 620);
 
 	m_pImageView_CircImage->setSquare(true);
-	m_pImageView_CircImage->setCircle(1, OUTER_SHEATH_POSITION);
+	m_pImageView_CircImage->getRender()->m_dPixelResol = !m_pConfig->is_dotter ? PIXEL_RESOLUTION_SAMSUNG : PIXEL_RESOLUTION_DOTTER;
+	m_pImageView_CircImage->setCircle(1, int(OUTER_SHEATH_POSITION / m_pImageView_CircImage->getRender()->m_dPixelResol));
 
 	if (!is_streaming)
 	{
@@ -456,7 +458,16 @@ void QViewTab::invalidate()
 		if (m_pResultTab)
 		{
 			m_pConfigTemp = m_pResultTab->getDataProcessing()->getConfigTemp();
-			m_pImageView_Longi->getRender()->m_nPullbackLength = m_pConfigTemp->pullbackLength;
+			if (m_pConfigTemp)
+			{
+				m_pImageView_Longi->getRender()->m_nPullbackLength = m_pConfigTemp->pullbackLength;
+			}
+			else
+			{
+				// Dotter device
+				m_pConfigTemp = m_pResultTab->getDataProcessingDotter()->getConfigTemp();
+				m_pImageView_Longi->getRender()->m_nPullbackLength = 55; // Dotter pullback length (fixed)
+			}
 		}
 	}
 		
@@ -917,7 +928,7 @@ void QViewTab::setStreamingBuffersObjects()
 void QViewTab::setBuffers(Configuration* pConfig)
 {
 #ifndef NEXT_GEN_SYSTEM
-	int diameter = 2 * m_pConfig->octScans;
+	int diameter = 2 * pConfig->octRadius;
 #else
 	int diameter = m_pConfig->octScansFFT;
 #endif
@@ -1027,7 +1038,7 @@ void QViewTab::setObjects(Configuration* pConfig)
 	int frames4 = ROUND_UP_4S(pConfig->frames);
 
 #ifndef NEXT_GEN_SYSTEM
-	int diameter = 2 * m_pConfig->octScans;
+	int diameter = 2 * pConfig->octRadius;
 #else
 	int diameter = m_pConfig->octScansFFT;
 #endif
@@ -1083,7 +1094,7 @@ void QViewTab::setWidgets(Configuration* pConfig)
 	int frames4 = (pConfig->frames);
 
 #ifndef NEXT_GEN_SYSTEM
-	int diameter = 2 * m_pConfig->octScans;
+	int diameter = 2 * pConfig->octRadius;
 #else
 	int diameter = m_pConfig->octScansFFT;
 #endif
@@ -1106,7 +1117,8 @@ void QViewTab::setWidgets(Configuration* pConfig)
 	m_pImageView_CircImage->getRender()->m_rMax = pConfig->octAlines;
 	///m_pImageView_CircImage->setWheelMouseCallback([&]() { m_pToggleButton_MeasureDistance->setChecked(false); });
 	m_pImageView_CircImage->getRender()->m_bCanBeMagnified = true;
-	m_pImageView_CircImage->setScaleBar(int(1000.0 / PIXEL_RESOLUTION));
+	m_pImageView_CircImage->getRender()->m_dPixelResol = !pConfig->is_dotter ? PIXEL_RESOLUTION_SAMSUNG : PIXEL_RESOLUTION_DOTTER;
+	m_pImageView_CircImage->setScaleBar(int(1000.0 / m_pImageView_CircImage->getRender()->m_dPixelResol));
 
 	m_pImageView_EnFace->resetSize(frames4, pConfig->flimAlines);
 	m_pImageView_EnFace->setVLineChangeCallback([&](int frame) { m_pSlider_SelectFrame->setValue(frame); });
@@ -1256,13 +1268,14 @@ void QViewTab::visualizeImage(uint8_t* oct_im, float* intensity, float* lifetime
 {
 	// OCT Visualization
 #ifndef NEXT_GEN_SYSTEM
-	IppiSize roi_oct = { m_pConfig->octScans, m_pConfig->octAlines };
+	IppiSize roi_oct = { m_pConfig->octRadius, m_pConfig->octAlines };
 #else
 	IppiSize roi_oct = { m_pConfig->octScansFFT / 2, m_pConfig->octAlines };
 #endif	
 
 	ippiCopy_8u_C1R(oct_im + m_pConfig->innerOffsetLength, roi_oct.width, m_pImgObjRectImage->arr.raw_ptr(), roi_oct.width,
 		{ roi_oct.width - m_pConfig->innerOffsetLength, roi_oct.height });
+
 	(*m_pMedfiltRect)(m_pImgObjRectImage->arr.raw_ptr());
 		
 	// FLIm Visualization
@@ -1285,12 +1298,13 @@ void QViewTab::visualizeImage(uint8_t* oct_im, float* intensity, float* lifetime
 	ippsMul_8u_ISfs(m_pImgObjIntensity->qrgbimg.bits(), m_pImgObjLifetime->qrgbimg.bits(), m_pImgObjIntensity->qrgbimg.byteCount(), 8);
 
 	// Copy FLIM rings
-	tbb::parallel_for(tbb::blocked_range<size_t>(0, (size_t)RING_THICKNESS),
-		[&](const tbb::blocked_range<size_t>& r) {
+	int ring_thickness = (RING_THICKNESS * m_pConfigTemp->octRadius) / 1024;
+	tbb::parallel_for(tbb::blocked_range<size_t>(0, (size_t)ring_thickness),
+		[&, ring_thickness](const tbb::blocked_range<size_t>& r) {
 		for (size_t i = r.begin(); i != r.end(); ++i)
 		{
 			ippiCopy_8u_C3R(m_pImgObjLifetime->qrgbimg.constBits(), 3 * roi_flim.width,
-				m_pImgObjRectImage->qrgbimg.bits() + 3 * (m_pImgObjRectImage->arr.size(0) - RING_THICKNESS + i), 3 * m_pImgObjRectImage->arr.size(0), { 1, m_pImgObjRectImage->arr.size(1) });
+				m_pImgObjRectImage->qrgbimg.bits() + 3 * (m_pImgObjRectImage->arr.size(0) - ring_thickness + i), 3 * m_pImgObjRectImage->arr.size(0), { 1, m_pImgObjRectImage->arr.size(1) });
 		}
 	});
 	
@@ -1308,31 +1322,8 @@ void QViewTab::visualizeImage(int frame) // Post-processing mode
 		if (m_contourMap.length() == 0)	if (m_pToggleButton_AutoContour->isChecked()) m_pToggleButton_AutoContour->setChecked(false);
 
         // OCT Visualization
-		IppiSize roi_oct = { m_pImgObjRectImage->getWidth(), m_pImgObjRectImage->getHeight() };
-
-#ifndef NEXT_GEN_SYSTEM
-        np::FloatArray2 scale_temp(roi_oct.width, roi_oct.height);
-        ippsConvert_8u32f(m_vectorOctImage.at(frame).raw_ptr(), scale_temp.raw_ptr(), scale_temp.length());
-		if (m_pConfigTemp->reflectionRemoval)
-		{
-			np::FloatArray2 reflection_temp(roi_oct.width, roi_oct.height);
-			ippiCopy_32f_C1R(&scale_temp(m_pConfigTemp->reflectionDistance, 0), sizeof(float) * scale_temp.size(0),
-				&reflection_temp(0, 0), sizeof(float) * reflection_temp.size(0),
-				{ roi_oct.width - m_pConfigTemp->reflectionDistance, roi_oct.height });
-			ippsMulC_32f_I(m_pConfigTemp->reflectionLevel, reflection_temp, reflection_temp.length());
-			ippsSub_32f_I(reflection_temp, scale_temp, scale_temp.length());
-			ippiScale_32f8u_C1R(scale_temp.raw_ptr(), roi_oct.width * sizeof(float),
-				m_pImgObjRectImage->arr.raw_ptr(), roi_oct.width * sizeof(uint8_t), roi_oct,
-				(float)m_pConfigTemp->octGrayRange.min, (float)m_pConfigTemp->octGrayRange.max * 0.9f);
-		}
-		else
-			ippiScale_32f8u_C1R(scale_temp.raw_ptr(), roi_oct.width * sizeof(float),
-				m_pImgObjRectImage->arr.raw_ptr(), roi_oct.width * sizeof(uint8_t), roi_oct, 
-				(float)m_pConfigTemp->octGrayRange.min, (float)m_pConfigTemp->octGrayRange.max);
-#else
-		ippiScale_32f8u_C1R(m_vectorOctImage.at(frame).raw_ptr(), roi_oct.width * sizeof(float),
-			m_pImgObjRectImage->arr.raw_ptr(), roi_oct.width * sizeof(uint8_t), roi_oct, (float)m_pConfig->axsunDbRange.min, (float)m_pConfig->axsunDbRange.max);
-#endif
+		scaleOctImage(m_vectorOctImage.at(frame), m_pImgObjRectImage->arr, m_pConfigTemp->reflectionRemoval);
+		
 		circShift(m_pImgObjRectImage->arr, (m_pConfigTemp->rotatedAlines) % m_pConfig->octAlines);  ///  + m_pConfigTemp->intraFrameSync
         (*m_pMedfiltRect)(m_pImgObjRectImage->arr.raw_ptr());
 		
@@ -1341,6 +1332,7 @@ void QViewTab::visualizeImage(int frame) // Post-processing mode
 
         // FLIM Visualization
 		int vis_mode = m_pRadioButton_MLPrediction->isChecked();
+		int ring_thickness = (RING_THICKNESS * m_pConfigTemp->octRadius) / 1024;
 		IppiSize roi_flimring = { 1, m_pImgObjIntensityMap->arr.size(1) };
 		
 		ImageObject *temp_imgobj;
@@ -1378,15 +1370,18 @@ void QViewTab::visualizeImage(int frame) // Post-processing mode
 		}
 		temp_imgobj->scaledRgb4();
 
-		tbb::parallel_for(tbb::blocked_range<size_t>(1, (size_t)RING_THICKNESS),
-			[&](const tbb::blocked_range<size_t>& r) {
-			for (size_t i = r.begin(); i != r.end(); ++i)
-			{
-				ippiCopy_8u_C3R(temp_imgobj->qrgbimg.constBits(), 3 * roi_flimring.width,
-					m_pImgObjRectImage->qrgbimg.bits() + 3 * (m_pImgObjRectImage->arr.size(0) - RING_THICKNESS + i),
-					3 * m_pImgObjRectImage->arr.size(0), { 1, m_pImgObjRectImage->arr.size(1) });
-			}
-		});
+		if ((vis_mode == VisualizationMode::_ML_PREDICTION_) || (m_pConfig->flimParameterMode != FLImParameters::_NONE_))
+		{
+			tbb::parallel_for(tbb::blocked_range<size_t>(1, (size_t)ring_thickness),
+				[&, ring_thickness](const tbb::blocked_range<size_t>& r) {
+				for (size_t i = r.begin(); i != r.end(); ++i)
+				{
+					ippiCopy_8u_C3R(temp_imgobj->qrgbimg.constBits(), 3 * roi_flimring.width,
+						m_pImgObjRectImage->qrgbimg.bits() + 3 * (m_pImgObjRectImage->arr.size(0) - ring_thickness + i),
+						3 * m_pImgObjRectImage->arr.size(0), { 1, m_pImgObjRectImage->arr.size(1) });
+				}
+			});
+		}
 
 		if (temp_imgobj) delete temp_imgobj;
 				
@@ -1509,7 +1504,7 @@ void QViewTab::visualizeLongiImage(int aline)
 {
 	// Pre-determined values
 	int frames = (int)m_vectorOctImage.size();
-	int octScans = m_pConfigTemp->octScans; 
+	int octScans = m_pConfigTemp->octRadius;
     int octAlines = m_octProjection.size(0);
 
     // Specified A line
@@ -1522,13 +1517,22 @@ void QViewTab::visualizeLongiImage(int aline)
 	IppiSize roi_longi = { m_pImgObjLongiImage->getHeight(), m_pImgObjLongiImage->getWidth() };
 
 	np::Uint8Array2 scale_temp(roi_longi.width, roi_longi.height);
+	memset(scale_temp, 0, sizeof(uint8_t) * scale_temp.length());
 	tbb::parallel_for(tbb::blocked_range<size_t>(0, (size_t)frames),
 		[&](const tbb::blocked_range<size_t>& r) {
 		for (size_t i = r.begin(); i != r.end(); ++i)
 		{
 #ifndef NEXT_GEN_SYSTEM
-			memcpy(&scale_temp(0, (int)i), &m_vectorOctImage.at((int)i)(0, aline0), sizeof(uint8_t) * octScans);
-			memcpy(&scale_temp(octScans, (int)i), &m_vectorOctImage.at((int)i)(0, aline1), sizeof(uint8_t) * octScans);
+			if (m_pConfigTemp->circOffset > 0)
+			{
+				memcpy(&scale_temp(m_pConfigTemp->circOffset, (int)i), &m_vectorOctImage.at((int)i)(0, aline0), sizeof(uint8_t) * (octScans - m_pConfigTemp->circOffset));
+				memcpy(&scale_temp(octScans + m_pConfigTemp->circOffset, (int)i), &m_vectorOctImage.at((int)i)(0, aline1), sizeof(uint8_t) * (octScans - m_pConfigTemp->circOffset));
+			}
+			else
+			{
+				memcpy(&scale_temp(0, (int)i), &m_vectorOctImage.at((int)i)(-m_pConfigTemp->circOffset, aline0), sizeof(uint8_t) * (octScans + m_pConfigTemp->circOffset));
+				memcpy(&scale_temp(octScans, (int)i), &m_vectorOctImage.at((int)i)(-m_pConfigTemp->circOffset, aline1), sizeof(uint8_t) * (octScans + m_pConfigTemp->circOffset));
+			}
 			ippsFlip_8u_I(&scale_temp(0, (int)i), octScans);
 #else
 			memcpy(&longi_temp(0, (int)i), &m_vectorOctImage.at((int)i)(0, aline0), sizeof(float) * octScans);
@@ -1574,14 +1578,15 @@ void QViewTab::visualizeLongiImage(int aline)
     m_pImgObjLongiImage->convertRgb();
 
     // Make longitudinal - FLIM
-	int vis_mode = m_pRadioButton_MLPrediction->isChecked();
-	
+	int vis_mode = m_pRadioButton_MLPrediction->isChecked();	
+	int ring_thickness = (RING_THICKNESS * m_pConfigTemp->octRadius) / 1024;
+
 	if (vis_mode == VisualizationMode::_FLIM_PARAMETERS_)
 	{
 		if (m_pConfig->flimParameterMode == FLImParameters::_LIFETIME_)
 		{
-			tbb::parallel_for(tbb::blocked_range<size_t>(1, (size_t)RING_THICKNESS),
-				[&](const tbb::blocked_range<size_t>& r) {
+			tbb::parallel_for(tbb::blocked_range<size_t>(1, (size_t)ring_thickness),
+				[&, ring_thickness](const tbb::blocked_range<size_t>& r) {
 				for (size_t i = r.begin(); i != r.end(); ++i)
 				{
 					memcpy(m_pImgObjLongiImage->qrgbimg.bits() + 3 * (int)i * m_pImgObjLongiImage->getWidth(),
@@ -1593,8 +1598,8 @@ void QViewTab::visualizeLongiImage(int aline)
 		}
 		else if (m_pConfig->flimParameterMode == FLImParameters::_INTENSITY_PROP_)
 		{
-			tbb::parallel_for(tbb::blocked_range<size_t>(1, (size_t)RING_THICKNESS),
-				[&](const tbb::blocked_range<size_t>& r) {
+			tbb::parallel_for(tbb::blocked_range<size_t>(1, (size_t)ring_thickness),
+				[&, ring_thickness](const tbb::blocked_range<size_t>& r) {
 				for (size_t i = r.begin(); i != r.end(); ++i)
 				{
 					memcpy(m_pImgObjLongiImage->qrgbimg.bits() + 3 * (int)i * m_pImgObjLongiImage->getWidth(),
@@ -1606,8 +1611,8 @@ void QViewTab::visualizeLongiImage(int aline)
 		}
 		else if (m_pConfig->flimParameterMode == FLImParameters::_INTENSITY_RATIO_)
 		{
-			tbb::parallel_for(tbb::blocked_range<size_t>(1, (size_t)RING_THICKNESS),
-				[&](const tbb::blocked_range<size_t>& r) {
+			tbb::parallel_for(tbb::blocked_range<size_t>(1, (size_t)ring_thickness),
+				[&, ring_thickness](const tbb::blocked_range<size_t>& r) {
 				for (size_t i = r.begin(); i != r.end(); ++i)
 				{
 					memcpy(m_pImgObjLongiImage->qrgbimg.bits() + 3 * (int)i * m_pImgObjLongiImage->getWidth(),
@@ -1619,8 +1624,8 @@ void QViewTab::visualizeLongiImage(int aline)
 		}
 		else if (m_pConfig->flimParameterMode == FLImParameters::_NONE_)
 		{
-			tbb::parallel_for(tbb::blocked_range<size_t>(1, (size_t)RING_THICKNESS),
-				[&](const tbb::blocked_range<size_t>& r) {
+			tbb::parallel_for(tbb::blocked_range<size_t>(1, (size_t)ring_thickness),
+				[&, ring_thickness](const tbb::blocked_range<size_t>& r) {
 				for (size_t i = r.begin(); i != r.end(); ++i)
 				{
 					memset(m_pImgObjLongiImage->qrgbimg.bits() + 3 * (int)i * m_pImgObjLongiImage->getWidth(), 0, sizeof(uint8_t) * 3 * m_pImgObjLongiImage->getWidth());
@@ -1631,8 +1636,8 @@ void QViewTab::visualizeLongiImage(int aline)
 	}
 	else if (vis_mode == VisualizationMode::_ML_PREDICTION_)
 	{
-		tbb::parallel_for(tbb::blocked_range<size_t>(1, (size_t)RING_THICKNESS),
-			[&](const tbb::blocked_range<size_t>& r) {
+		tbb::parallel_for(tbb::blocked_range<size_t>(1, (size_t)ring_thickness),
+			[&, ring_thickness](const tbb::blocked_range<size_t>& r) {
 			for (size_t i = r.begin(); i != r.end(); ++i)
 			{
 				memcpy(m_pImgObjLongiImage->qrgbimg.bits() + 3 * (int)i * m_pImgObjLongiImage->getWidth(),
@@ -1677,7 +1682,19 @@ void QViewTab::constructCircImage()
 {
     // Circularizing
     np::Uint8Array2 rect_temp(m_pImgObjRectImage->qrgbimg.bits(), 3 * m_pImgObjRectImage->arr.size(0), m_pImgObjRectImage->arr.size(1));
-    (*m_pCirc)(rect_temp, m_pImgObjCircImage->qrgbimg.bits(), false, true); // depth-aline domain, rgb coordinate
+	np::Uint8Array2 rect_offset(3 * m_pImgObjRectImage->arr.size(0), m_pImgObjRectImage->arr.size(1));
+	memset(rect_offset, 0, sizeof(uint8_t) * rect_offset.length());
+
+	if (m_pConfigTemp->circOffset > 0)
+		ippiCopy_8u_C3R(&rect_temp(0, 0), sizeof(uint8_t) * rect_temp.size(0), 
+			&rect_offset(3 * m_pConfigTemp->circOffset, 0), sizeof(uint8_t) * rect_temp.size(0), 
+			{ m_pImgObjRectImage->arr.size(0) - m_pConfigTemp->circOffset, m_pImgObjRectImage->arr.size(1) });
+	else
+		ippiCopy_8u_C3R(&rect_temp(-3 * m_pConfigTemp->circOffset, 0), sizeof(uint8_t) * rect_temp.size(0),
+			&rect_offset(0, 0), sizeof(uint8_t) * rect_temp.size(0),
+			{ m_pImgObjRectImage->arr.size(0) + m_pConfigTemp->circOffset, m_pImgObjRectImage->arr.size(1) });
+
+    (*m_pCirc)(rect_offset, m_pImgObjCircImage->qrgbimg.bits(), false, true); // depth-aline domain, rgb coordinate
 	
     // Draw image
     emit paintCircImage(m_pImgObjCircImage->qrgbimg.bits());
@@ -1801,25 +1818,30 @@ void QViewTab::autoContouring(bool toggled)
 		if (m_pToggleButton_MeasureArea->isChecked()) m_pToggleButton_MeasureArea->setChecked(false);
 
 		// Set lumen contour in circ image
-		np::Uint16Array contour_16u(m_pConfig->octAlines);		
-		if (m_contourMap.length() == 0)
+		np::Uint16Array contour_16u(m_pConfigTemp->octAlines);		
+		///if (m_contourMap.length() == 0)
 		{
 			if (!m_pLumenDetection)
-			{
-				np::FloatArray contour;
-				m_pLumenDetection = new LumenDetection(OUTER_SHEATH_POSITION, m_pConfigTemp->innerOffsetLength, true,
-					true, m_pConfigTemp->reflectionDistance, m_pConfigTemp->reflectionLevel);
+			{				
+				m_pLumenDetection = new LumenDetection(int(OUTER_SHEATH_POSITION / m_pImageView_CircImage->getRender()->m_dPixelResol), 
+					!m_pConfigTemp->is_dotter ? m_pConfigTemp->innerOffsetLength : 0, false);
+				///true, true, m_pConfigTemp->reflectionDistance, m_pConfigTemp->reflectionLevel);
 
-				(*m_pLumenDetection)(m_vectorOctImage.at(getCurrentFrame()), contour);
+				np::Uint8Array2 oct_image(m_pConfigTemp->octRadius, m_pConfigTemp->octAlines);
+				scaleOctImage(m_vectorOctImage.at(getCurrentFrame()), oct_image, m_pConfigTemp->reflectionRemoval);
+
+				np::FloatArray contour;
+				(*m_pLumenDetection)(oct_image, contour);
 								
 				ippsConvert_32f16u_Sfs(contour, contour_16u, contour.length(), ippRndNear, 0);
 			}
 		}
-		else
-		{
-			ippsConvert_32f16u_Sfs(&m_contourMap(0, getCurrentFrame()), contour_16u, contour_16u.length(), ippRndNear, 0);
-		}
-		m_pImageView_CircImage->setContour(m_pConfig->octAlines, contour_16u);		
+		///else
+		///{
+		///	ippsConvert_32f16u_Sfs(&m_contourMap(0, getCurrentFrame()), contour_16u, contour_16u.length(), ippRndNear, 0);
+		///}
+		ippsAddC_16s_ISfs(m_pConfigTemp->circOffset, (Ipp16s *)contour_16u.raw_ptr(), contour_16u.length(), 0);
+		m_pImageView_CircImage->setContour(m_pConfigTemp->octAlines, contour_16u);		
 
 		// Set lumen contour in longi image
 		np::Uint16Array lcontour_16u(2 * m_pConfigTemp->frames);
@@ -1827,9 +1849,10 @@ void QViewTab::autoContouring(bool toggled)
 		{
 			ippiConvert_32f16u_C1RSfs(&m_contourMap(getCurrentAline(), 0), sizeof(float) * m_contourMap.size(0), 
 				lcontour_16u, sizeof(uint16_t), { 1, m_pConfigTemp->frames }, ippRndNear, 0);
-			ippiConvert_32f16u_C1RSfs(&m_contourMap((getCurrentAline() + m_pConfig->octAlines / 2) % m_pConfig->octAlines, 0), sizeof(float) * m_contourMap.size(0), 
+			ippiConvert_32f16u_C1RSfs(&m_contourMap((getCurrentAline() + m_pConfigTemp->octAlines / 2) % m_pConfigTemp->octAlines, 0), sizeof(float) * m_contourMap.size(0),
 				lcontour_16u + m_pConfigTemp->frames, sizeof(uint16_t), { 1, m_pConfigTemp->frames }, ippRndNear, 0);
 
+			ippsAddC_16s_ISfs(m_pConfigTemp->circOffset, (Ipp16s *)lcontour_16u.raw_ptr(), lcontour_16u.length(), 0);
 			m_pImageView_Longi->setContour(2 * m_pConfigTemp->frames, lcontour_16u);
 		}
 	}
@@ -1873,7 +1896,7 @@ void QViewTab::lumenContourDetection()
 			msg_box.setFixedSize(msg_box.width(), msg_box.height());
 			msg_box.show();
 								
-			m_contourMap = np::FloatArray2(m_pConfig->octAlines, m_pConfigTemp->frames);
+			m_contourMap = np::FloatArray2(m_pConfigTemp->octAlines, m_pConfigTemp->frames);
 			for (int i = 0; i < m_pConfigTemp->frames; i++)
 				m_gwPoss.push_back(std::vector<int>());
 
@@ -1894,14 +1917,18 @@ void QViewTab::lumenContourDetection()
 			{
 				plumdet[p] = std::thread([&, p, pieces]() {
 
-					LumenDetection *pLumenDetection = new LumenDetection(OUTER_SHEATH_POSITION, m_pConfigTemp->innerOffsetLength, false,
-						true, m_pConfigTemp->reflectionDistance, m_pConfigTemp->reflectionLevel);
+					LumenDetection *pLumenDetection = new LumenDetection(int(OUTER_SHEATH_POSITION / m_pImageView_CircImage->getRender()->m_dPixelResol), 
+						!m_pConfigTemp->is_dotter ? m_pConfigTemp->innerOffsetLength : 0, false);
+						///true, m_pConfigTemp->reflectionDistance, m_pConfigTemp->reflectionLevel);
 
 					for (int i = pieces[p]; i < pieces[p + 1]; i++)
 					{						
 						// Lumen contour detection
 						np::FloatArray contour(&m_contourMap(0, i), m_contourMap.size(0));
-						(*pLumenDetection)(m_vectorOctImage.at(i), contour);
+
+						np::Uint8Array2 oct_image(m_pConfigTemp->octRadius, m_pConfigTemp->octAlines);
+						scaleOctImage(m_vectorOctImage.at(i), oct_image, m_pConfigTemp->reflectionRemoval);
+						(*pLumenDetection)(oct_image, contour);
 						std::rotate(&contour(0), &contour(contour.length() - m_vibCorrIdx(i)), &contour(contour.length()));
 						
 						// Writing GW position
@@ -1946,7 +1973,7 @@ void QViewTab::lumenContourDetection()
 	}
 	else
 	{
-		m_contourMap = np::FloatArray2(m_pConfig->octAlines, m_pConfigTemp->frames);
+		m_contourMap = np::FloatArray2(m_pConfigTemp->octAlines, m_pConfigTemp->frames);
 		for (int i = 0; i < m_pConfigTemp->frames; i++)
 			m_gwPoss.push_back(std::vector<int>());
 
@@ -1990,7 +2017,7 @@ void QViewTab::lumenContourDetection()
 
 	// Set widgets
 	m_pToggleButton_AutoContour->setChecked(true);
-	m_pPushButton_LumenDetection->setDisabled(true);
+	//m_pPushButton_LumenDetection->setDisabled(true);
 
 	invalidate();
 }
@@ -2077,6 +2104,36 @@ void QViewTab::changeMLPrediction(int mode)
 		invalidate();
 }
 
+
+void QViewTab::scaleOctImage(np::Uint8Array2& oct_input, np::Uint8Array2& oct_output, bool reflection_removal)
+{
+	// OCT Visualization
+	IppiSize roi_oct = { oct_input.size(0), oct_input.size(1) };
+
+#ifndef NEXT_GEN_SYSTEM
+	np::FloatArray2 scale_temp(roi_oct.width, roi_oct.height);
+	ippsConvert_8u32f(oct_input.raw_ptr(), scale_temp.raw_ptr(), scale_temp.length());
+	if (reflection_removal)
+	{
+		np::FloatArray2 reflection_temp(roi_oct.width, roi_oct.height);
+		ippiCopy_32f_C1R(&scale_temp(m_pConfigTemp->reflectionDistance, 0), sizeof(float) * scale_temp.size(0),
+			&reflection_temp(0, 0), sizeof(float) * reflection_temp.size(0),
+			{ roi_oct.width - m_pConfigTemp->reflectionDistance, roi_oct.height });
+		ippsMulC_32f_I(m_pConfigTemp->reflectionLevel, reflection_temp, reflection_temp.length());
+		ippsSub_32f_I(reflection_temp, scale_temp, scale_temp.length());
+		ippiScale_32f8u_C1R(scale_temp.raw_ptr(), roi_oct.width * sizeof(float),
+			oct_output.raw_ptr(), roi_oct.width * sizeof(uint8_t), roi_oct,
+			(float)m_pConfigTemp->octGrayRange.min, (float)m_pConfigTemp->octGrayRange.max * 0.9f);
+	}
+	else
+		ippiScale_32f8u_C1R(scale_temp.raw_ptr(), roi_oct.width * sizeof(float),
+			oct_output.raw_ptr(), roi_oct.width * sizeof(uint8_t), roi_oct,
+			(float)m_pConfigTemp->octGrayRange.min, (float)m_pConfigTemp->octGrayRange.max);
+#else
+	ippiScale_32f8u_C1R(m_vectorOctImage.at(frame).raw_ptr(), roi_oct.width * sizeof(float),
+		m_pImgObjRectImage->arr.raw_ptr(), roi_oct.width * sizeof(uint8_t), roi_oct, (float)m_pConfig->axsunDbRange.min, (float)m_pConfig->axsunDbRange.max);
+#endif
+}
 
 void QViewTab::scaleFLImEnFaceMap(ImageObject* pImgObjIntensityMap, ImageObject* pImgObjLifetimeMap, 
 	ImageObject* pImgObjIntensityPropMap, ImageObject* pImgObjIntensityRatioMap, 
@@ -2278,7 +2335,10 @@ void QViewTab::vibrationCorrection()
 {
 	// Get vib correction index
 	QString vib_corr_path = m_pResultTab->getRecordInfo().filename;
-	vib_corr_path.replace("pullback.data", "vib_corr.idx");
+	if (!m_pConfigTemp->is_dotter)
+		vib_corr_path.replace("pullback.data", "vib_corr.idx");
+	else
+		vib_corr_path.replace(".xml", ".vidx");
 	
 	QFileInfo check_file(vib_corr_path);
 
@@ -2300,12 +2360,13 @@ void QViewTab::vibrationCorrection()
 
 	if (!(check_file.exists()))
 	{
+		int d_smp_factor = !m_pConfigTemp->is_dotter ? 16 : 13;
+
 		// Data size specification
 		IppiSize img_size = { m_vectorOctImage.at(0).size(0), m_vectorOctImage.at(0).size(1) };
-		IppiSize img_size16 = { m_vectorOctImage.at(0).size(0) / 16, m_vectorOctImage.at(0).size(1) };
+		IppiSize img_size16 = { m_vectorOctImage.at(0).size(0) / d_smp_factor, m_vectorOctImage.at(0).size(1) };
 
-		// Spline parameters
-		int d_smp_factor = 16;
+		// Spline parameters		
 		MKL_INT dorder = 1;
 		MKL_INT nx = (int)m_vectorOctImage.at(0).size(1) / d_smp_factor + 1; // original data length
 		MKL_INT nsite = (int)m_vectorOctImage.at(0).size(1) + 1; // interpolated data length		
@@ -2319,7 +2380,7 @@ void QViewTab::vibrationCorrection()
 			// Fixed
 			np::Uint8Array2 fixed_8u(img_size16.width, img_size16.height);
 			np::FloatArray2 fixed_32f(img_size16.width, img_size16.height);
-			ippiCopy_8u_C1R(m_vectorOctImage.at(i).raw_ptr(), sizeof(uint8_t) * 16,
+			ippiCopy_8u_C1R(m_vectorOctImage.at(i).raw_ptr(), sizeof(uint8_t) * d_smp_factor,
 				fixed_8u.raw_ptr(), sizeof(uint8_t) * 1, { 1, img_size16.width * img_size16.height });
 			ippsConvert_8u32f(fixed_8u, fixed_32f, fixed_8u.length());
 
@@ -2331,7 +2392,7 @@ void QViewTab::vibrationCorrection()
 
 			// Moving
 			np::Uint8Array2 moving_8u(img_size16.width, img_size16.height);
-			ippiCopy_8u_C1R(m_vectorOctImage.at(i + 1).raw_ptr(), sizeof(uint8_t) * 16,
+			ippiCopy_8u_C1R(m_vectorOctImage.at(i + 1).raw_ptr(), sizeof(uint8_t) * d_smp_factor,
 				moving_8u.raw_ptr(), sizeof(uint8_t) * 1, { 1, img_size16.width * img_size16.height });
 
 			// Correlation buffers

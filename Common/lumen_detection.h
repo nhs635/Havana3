@@ -85,8 +85,7 @@ public:
 		/****************************************************************/
 		
 		// Set size
-		nradius = preprop.size(1);
-		nalines = preprop.size(0);
+		nradius = preprop.size(0); nalines = preprop.size(1);
 
 		// Normalization
 		ippiMean_32f_C1R(&preprop(nradius - inner_offset - 30, 0), sizeof(float) * preprop.size(0), { 15, preprop.size(1) }, &bg, ippAlgHintAccurate);

@@ -22,7 +22,7 @@ ColorTable::ColorTable()
 	m_cNameVector.push_back("hsv2"); // 13
 	m_cNameVector.push_back("compo"); // 14
 	m_cNameVector.push_back("redgreen"); // 15
-	// »õ·Î¿î ÆÄÀÏ ÀÌ¸§ Ãß°¡ ÇÏ±â
+	// ï¿½ï¿½ï¿½Î¿ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ì¸ï¿½ ï¿½ß°ï¿½ ï¿½Ï±ï¿½
 
 	for (int i = 0; i < m_cNameVector.size(); i++)
 	{
@@ -356,7 +356,7 @@ QRenderImage::QRenderImage(QWidget *parent) :
 	m_colorHLine(0x00ffff),
 	m_colorRLine1(0x00ffff), m_colorRLine2(0xffff00), m_colorCLine(0x00ffff), m_colorALine(0xffffff),
 	m_bArcRoiSelect(false), m_bArcRoiShow(false), m_bCW(false),
-	m_bMeasureDistance(false), m_bMeasureArea(false), m_nClicked(0), m_bIsClicking(false),
+	m_dPixelResol(1), m_bMeasureDistance(false), m_bMeasureArea(false), m_nClicked(0), m_bIsClicking(false),
     m_hLineLen(0), m_vLineLen(0), m_circLen(0), 
 	m_bRadial(false), m_bDiametric(false),
 	m_bCanBeMagnified(false), m_rectMagnified(0, 0, 0, 0), m_fMagnLevel(1.0),
@@ -532,13 +532,13 @@ void QRenderImage::paintEvent(QPaintEvent *)
 			
 				// Arc length to calculate perimter
 				double arc_length = sqrt(m_contour[i] * m_contour[i] + m_contour[i + 1] * m_contour[i + 1] - 2 * m_contour[i] * m_contour[i + 1] * cos(IPP_2PI / m_contour.length()));
-				arc_length *= PIXEL_RESOLUTION / 1000.0;
+				arc_length *= m_dPixelResol / 1000.0;
 				perimeter += arc_length;
 
 				// Arc area to calculate area
 				double arc_area = 0.5 * m_contour[i] * m_contour[i + 1] * sin(IPP_2PI / m_contour.length());
-				arc_area *= PIXEL_RESOLUTION / 1000.0;
-				arc_area *= PIXEL_RESOLUTION / 1000.0;
+				arc_area *= m_dPixelResol / 1000.0;
+				arc_area *= m_dPixelResol / 1000.0;
 				area += arc_area;
 
 				painter.drawLine(x0, x1);
@@ -672,7 +672,7 @@ void QRenderImage::paintEvent(QPaintEvent *)
 				{
 					dist = sqrt((m_vecPoint.at(0).x() - m_vecPoint.at(1).x()) * (m_vecPoint.at(0).x() - m_vecPoint.at(1).x())
 						+ (m_vecPoint.at(0).y() - m_vecPoint.at(1).y()) * (m_vecPoint.at(0).y() - m_vecPoint.at(1).y()));
-					dist *= PIXEL_RESOLUTION / 1000.0;
+					dist *= m_dPixelResol / 1000.0;
 
 					painter.drawText((p[0] + p[1]) / 2, QString(" %1 mm").arg(dist, 0, 'f', 3));
 				}
@@ -728,12 +728,12 @@ void QRenderImage::paintEvent(QPaintEvent *)
 				// Euclidean distance
 				double dist_c = sqrt((m_vecPoint.at(i0).x() - m_vecPoint.at(i1).x()) * (m_vecPoint.at(i0).x() - m_vecPoint.at(i1).x())
 					+ (m_vecPoint.at(i0).y() - m_vecPoint.at(i1).y()) * (m_vecPoint.at(i0).y() - m_vecPoint.at(i1).y()));
-				dist_c *= PIXEL_RESOLUTION / 1000.0;
+				dist_c *= m_dPixelResol / 1000.0;
 				perimeter += dist_c;
 
 				// Piece area
-				double dist_a = sqrt((m_vecPoint.at(i0).x() - cx) * (m_vecPoint.at(i0).x() - cx) + (m_vecPoint.at(i0).y() - cy) * (m_vecPoint.at(i0).y() - cy)) * PIXEL_RESOLUTION / 1000.0;
-				double dist_b = sqrt((m_vecPoint.at(i1).x() - cx) * (m_vecPoint.at(i1).x() - cx) + (m_vecPoint.at(i1).y() - cy) * (m_vecPoint.at(i1).y() - cy)) * PIXEL_RESOLUTION / 1000.0;
+				double dist_a = sqrt((m_vecPoint.at(i0).x() - cx) * (m_vecPoint.at(i0).x() - cx) + (m_vecPoint.at(i0).y() - cy) * (m_vecPoint.at(i0).y() - cy)) * m_dPixelResol / 1000.0;
+				double dist_b = sqrt((m_vecPoint.at(i1).x() - cx) * (m_vecPoint.at(i1).x() - cx) + (m_vecPoint.at(i1).y() - cy) * (m_vecPoint.at(i1).y() - cy)) * m_dPixelResol / 1000.0;
 
 				double cos_angle = (dist_a * dist_a + dist_b * dist_b - dist_c * dist_c) / (2 * dist_a * dist_b);
 				double sin_angle = sqrt(1 - cos_angle * cos_angle);
@@ -758,22 +758,22 @@ void QRenderImage::paintEvent(QPaintEvent *)
 
 		int offset = 0.4 * h;
 
-		int nHMinorGrid = m_nPullbackLength / 10 * 2;
-		for (int i = 1; i <= nHMinorGrid; i+=2)
+		int nHMinorGrid = m_nPullbackLength / 5;
+		for (int i = 0; i <= nHMinorGrid; i++)
 			painter.drawLine(i * w / nHMinorGrid, h / 2 - 5 + offset, i * w / nHMinorGrid, h / 2 + offset);
 
 		QFont font; font.setBold(true); font.setPointSize(9);
 		painter.setFont(font);
 
-		int nHMajorGrid = m_nPullbackLength / 10;
-		for (int i = 0; i <= nHMajorGrid; i++)
+		int nHMajorGrid = nHMinorGrid; // m_nPullbackLength / 10;
+		for (int i = 0; i <= nHMajorGrid; i+=2)
 		{
 			painter.drawLine(i * w / nHMajorGrid, h / 2 - 10 + offset, i * w / nHMajorGrid, h / 2 + offset);
 
 			int x = (i != 0) ? i * w / nHMajorGrid - 9 : 0;
 			x = (i != nHMajorGrid) ? x : x - 30;
-			painter.drawText(x, h / 2 - 15 + offset, QString(i != nHMajorGrid ? "%1" : "%1mm").arg(i * 10));
-			//painter.drawText(x, h / 2 - 15 + offset, QString(i != nHMajorGrid ? "%1" : QString::fromLocal8Bit("%1¡Ú").arg(i * 10)));
+			painter.drawText(x, h / 2 - 15 + offset, QString(i != 2 * (nHMajorGrid / 2) ? "%1" : "%1mm").arg(i * 5));
+		//	//painter.drawText(x, h / 2 - 15 + offset, QString(i != nHMajorGrid ? "%1" : QString::fromLocal8Bit("%1ï¿½ï¿½").arg(i * 10)));
 		}
 		painter.drawLine(0, 0.5 * h + offset, w, 0.5 * h + offset);
 	}
@@ -792,7 +792,7 @@ void QRenderImage::paintEvent(QPaintEvent *)
 			
 			QFont font; font.setBold(true); font.setPointSizeF(11.5);
 			painter.setFont(font);
-			painter.drawText(x, h / 2 - 15 + offset, QString::fromLocal8Bit("¡å"));
+			painter.drawText(x, h / 2 - 15 + offset, QString::fromLocal8Bit("")); // â–¼"));
 		}
 	}
 

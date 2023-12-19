@@ -65,6 +65,7 @@ public:
 	inline QLabel* getLabelFlimDelaySync() const { return m_pLabel_FlimDelaySync; }
 	inline QScrollBar* getScrollBarFlimDelaySync() const { return m_pScrollBar_FlimDelaySync; }
 	
+	inline int getCurrentCircOffset() const { return m_pScrollBar_CircOffset->value(); }
 	inline int getCurrentRotation() const { return m_pScrollBar_Rotation->value(); }
 	
 private:
@@ -85,6 +86,7 @@ private slots:
 	void changeMergeCompositionMode();
 	void changeLogisticsNormalizeMode();
 
+	void setCircOffset(int);
 	void rotateImage(int);
 	void verticalMirroring(bool);
 	void reflectionRemoval(bool);
@@ -158,6 +160,9 @@ private:
 	QCheckBox *m_pCheckBox_LogisticsNormalize;
 
     // OCT visualization option widgets
+	QLabel *m_pLabel_CircOffset;
+	QScrollBar *m_pScrollBar_CircOffset;
+
 	QLabel *m_pLabel_Rotation;
 	QScrollBar *m_pScrollBar_Rotation;
 

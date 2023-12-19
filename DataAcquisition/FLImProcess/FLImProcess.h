@@ -44,11 +44,13 @@ using namespace np;
 struct FLIM_PARAMS
 {
     float bg = 0.0f;
+	float irf = 0.0f;
 
     float samp_intv = 1.0f;
     float width_factor = 2.0f;
 
     int ch_start_ind[5] = { 0, };
+	int ch_end_ind[4] = { 0, };
     float delay_offset[3] = { 0.0f, };
 };
 
@@ -122,13 +124,13 @@ public:
 
     void operator() (const Uint16Array2 &src, const FLIM_PARAMS &pParams)
     {
-        // 0. Initialize
-        int _nx = pParams.ch_start_ind[4] - pParams.ch_start_ind[0];
-        if ((nx != _nx) || !initiated)
-            initialize(pParams, _nx, FLIM_SPLINE_FACTOR, src.size(1));
+		// 0. Initialize
+		int _nx = pParams.ch_start_ind[4] - pParams.ch_start_ind[0];
+		if ((nx != _nx) || !initiated)
+			initialize(pParams, _nx, FLIM_SPLINE_FACTOR, src.size(1));
 
-        // 1. Crop ROI
-        int offset = pParams.ch_start_ind[0];
+		// 1. Crop ROI
+		int offset = pParams.ch_start_ind[0];
         ippiConvert_16u32f_C1R(&src(offset, 0), sizeof(uint16_t) * src.size(0),
                                crop_src.raw_ptr(), sizeof(float) * crop_src.size(0), srcSize);
 		
@@ -215,6 +217,89 @@ public:
 		mkl_free_buffers();
     }
 
+	void operator() (const Uint16Array2 &src, const FLIM_PARAMS &pParams, bool dotter)
+	{
+		// 0. Initialize
+		int rmin, rmax;
+		ippsMinMax_32s(pParams.ch_start_ind, 5, &rmin, &rmax);
+
+		int _nx = rmax - rmin;
+		if ((nx != _nx) || !initiated)
+			initialize(pParams, _nx, FLIM_SPLINE_FACTOR, src.size(1));
+
+		// Parallel-for processing
+		tbb::parallel_for(tbb::blocked_range<size_t>(0, (size_t)ny),
+			[&, rmin](const tbb::blocked_range<size_t>& r) {
+			for (size_t i = r.begin(); i != r.end(); ++i)
+			{
+				// 1. Find IRF center position
+				int from = -1, to = -1;
+				for (int j = 0; j < src.size(0); j++)
+				{					
+					if (src(j, i) > pParams.irf)
+					{
+						if ((from == -1) || (to < j - 1))
+							from = j; 
+						to = j;
+					}
+				}
+				int irf_center = (from + to) / 2;
+
+				// 2. Find appropriate shift value & crop ROI
+				int shift = (pParams.ch_start_ind[0] + pParams.ch_end_ind[0]) / 2 - irf_center;
+				ippsConvert_16u32f(&src(rmin - shift, i), &crop_src(0, i), nx);
+
+				//// 3. Determined whether saturated
+				//ippsThreshold_32f(&crop_src(0, i), &sat_src(0, i), sat_src.size(0), 60000, ippCmpLess);
+				//ippsSubC_32f_I(60000, &sat_src(0, i), sat_src.size(0));
+				//int roi_len = (int)round(pulse_roi_length / ActualFactor);
+
+				// 4. BG removal (first stage)
+				ippsSubC_32f_I(pParams.bg, &crop_src(0, i), crop_src.size(0));
+				memcpy(&bgsb_src(0, i), &crop_src(0, i), sizeof(float) * crop_src.size(0));
+
+				// 5. BG removal (second stage)
+				float bg1, bg2;
+				ippsMean_32f(&bgsb_src(ch_end_ind0[0], i), bgsb_src.size(0) - ch_end_ind0[0], &bg1, ippAlgHintFast);
+				ippsMean_32f(&bgsb_src(ch_end_ind0[2], i), ch_start_ind0[1] - ch_end_ind0[2], &bg2, ippAlgHintFast);
+				ippsSubC_32f_I(bg1, &bgsb_src(ch_start_ind0[0], i), bgsb_src.size(0) - ch_start_ind0[0]);
+				ippsSubC_32f_I(bg2, &bgsb_src(0, i), ch_start_ind0[0]);
+				memcpy(&mask_src(0, i), &bgsb_src(0, i), sizeof(float) * bgsb_src.size(0));
+
+				// 6. RJ artifact removal
+				ippsSet_32f(0.0f, &mask_src(ch_end_ind0[3], i), ch_start_ind0[2] - ch_end_ind0[3]);
+				ippsSet_32f(0.0f, &mask_src(ch_end_ind0[2], i), ch_start_ind0[1] - ch_end_ind0[2]);
+				
+				//% bg removal(second)
+				//	bg1 = mean(pulse1(channel_rois1(2, 1) + 1:end));
+				//bg2 = mean(pulse1(channel_rois1(2, 3) + 1:channel_rois1(1, 2)));
+				//pulse1(channel_rois1(1, 1) :end) = pulse1(channel_rois1(1, 1) :end) - bg1;
+				//pulse1(1:channel_rois1(1, 1) - 1) = pulse1(1:channel_rois1(1, 1) - 1) - bg2;
+
+				//% rj artifact removal
+				//	pulse1(channel_rois1(2, 4) + 1:channel_rois1(1, 3)) = 0;
+				//pulse1(channel_rois1(2, 3) + 1:channel_rois1(1, 2)) = 0;
+
+				//% normalize
+				//	pulse1 = pulse1 / 65535;
+				
+				// 5. Up-sampling by cubic natural spline interpolation
+				DFTaskPtr task1;
+				dfsNewTask1D(&task1, nx, x, DF_UNIFORM_PARTITION, 1, &mask_src(0, (int)i), DF_MATRIX_STORAGE_ROWS);
+				dfsEditPPSpline1D(task1, DF_PP_CUBIC, DF_PP_NATURAL, DF_BC_NOT_A_KNOT, 0, DF_NO_IC, 0, scoeff + (int)i * (nx - 1) * DF_PP_CUBIC, DF_NO_HINT);
+				dfsConstruct1D(task1, DF_PP_SPLINE, DF_METHOD_STD);
+				dfsInterpolate1D(task1, DF_INTERP, DF_METHOD_PP, nsite, x, DF_UNIFORM_PARTITION, 1, &dorder,
+					DF_NO_APRIORI_INFO, &ext_src(0, (int)i), DF_MATRIX_STORAGE_ROWS, NULL);
+				dfDeleteTask(&task1);
+
+				// 6. Software broadening by FIR Gaussian filtering
+				_filter(&filt_src(0, (int)i), &ext_src(0, (int)i), (int)i);
+			}
+		});
+
+		mkl_free_buffers();
+	}
+
     void initialize(const FLIM_PARAMS& pParams, int _nx, int _upSampleFactor, int _alines)
     {
         /* Parameters */
@@ -227,15 +312,34 @@ public:
         dorder = 1;
 
         /* Find pulse roi length for mean delay calculation */
-        for (int i = 0; i < 5; i++)
-            ch_start_ind1[i] = (int)round((float)pParams.ch_start_ind[i] * ActualFactor);
+		int rmin;
+		ippsMin_32s(pParams.ch_start_ind, 5, &rmin);
+		for (int i = 0; i < 4; i++)
+		{
+			ch_start_ind0[i] = pParams.ch_start_ind[i] - rmin;
+			ch_end_ind0[i] = pParams.ch_end_ind[i] - rmin;
+		}
+		
+		for (int i = 0; i < 5; i++)
+			ch_start_ind1[i] = (int)round((float)ch_start_ind0[i] * ActualFactor);
 
-        int diff_ind[4];
-        for (int i = 0; i < 4; i++)
-            diff_ind[i] = ch_start_ind1[i + 1] - ch_start_ind1[i];
-		diff_ind[3] = round((FLIM_CH_START_5 - 1) * ActualFactor);
+		for (int i = 0; i < 4; i++)
+			ch_end_ind1[i] = (int)round((float)ch_end_ind0[i] * ActualFactor);
+		
+		if (pParams.irf == 0.0f)
+		{		
+			int diff_ind[4];
+			for (int i = 0; i < 4; i++)
+				diff_ind[i] = ch_start_ind1[i + 1] - ch_start_ind1[i];
+			diff_ind[3] = round((FLIM_CH_START_5 - 1) * ActualFactor);
 
-        ippsMin_32s(diff_ind, 4, &pulse_roi_length);
+			ippsMin_32s(diff_ind, 4, &pulse_roi_length);			
+		}
+		else
+		{			
+			pulse_roi_length = 28 * upSampleFactor;
+		}
+
 		roi_len = (int)round(pulse_roi_length / ActualFactor);
 		///char msg[256];
 		///sprintf(msg, "FLIm Initializing... %d", pulse_roi_length);
@@ -288,7 +392,8 @@ public:
     MKL_INT nx, ny; // original data length, dimension
     MKL_INT nsite; // interpolated data length
 
-    int ch_start_ind1[5];
+	int ch_start_ind0[4], ch_end_ind0[4];
+	int ch_start_ind1[5], ch_end_ind1[4];
     int upSampleFactor;
     Ipp32f ActualFactor;
     int pulse_roi_length;
@@ -331,12 +436,13 @@ public:
         int offset;
         for (int i = 0; i < 4; i++)
         {
-			offset = resize.ch_start_ind1[i] - resize.ch_start_ind1[0];
+			offset = resize.ch_start_ind1[i]; // -resize.ch_start_ind1[0];
             for (int j = 0; j < intensity.size(0); j++)
             {
                 intensity(j, i) = 0;
                 if (resize.saturated(j, i) <= 3)
                     ippsSum_32f(&resize.ext_src(offset, j), resize.pulse_roi_length, &intensity(j, i), ippAlgHintFast);
+				//printf("%d\n", intensity(j, i));
             }
         }
 
@@ -372,7 +478,7 @@ public:
                 {
                     int offset, width, left, maxIdx;
 					float md_temp;
-                    offset = resize.ch_start_ind1[j] - resize.ch_start_ind1[0];
+					offset = resize.ch_start_ind1[j]; // -resize.ch_start_ind1[0];
 
                     // 1. Get IRF width
                     const float* pulse = &resize.filt_src(offset, (int)i);
@@ -389,7 +495,7 @@ public:
                 for (int j = 0; j < 3; j++)
                 {
                     if (intensity((int)i, j + 1) > INTENSITY_THRES)
-                        lifetime((int)i, j) = pParams.samp_intv * (mean_delay((int)i, j + 1) - mean_delay((int)i, 0)) - pParams.delay_offset[j];
+                        lifetime((int)i, j) = pParams.samp_intv * (mean_delay((int)i, j + 1) - mean_delay((int)i, 0)) - pParams.delay_offset[j] * ((pParams.irf == 0.0f) ? 1 : -1);
                     else
                         lifetime((int)i, j) = 0.0f;
                 }

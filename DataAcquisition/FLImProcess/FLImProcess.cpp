@@ -18,7 +18,10 @@ FLImProcess::~FLImProcess()
 void FLImProcess::operator() (FloatArray2& intensity, FloatArray2& mean_delay, FloatArray2& lifetime, Uint16Array2& pulse)
 {
     // 1. Crop and resize pulse data
-    _resize(pulse, _params);
+	if (_params.irf == 0.0f)
+		_resize(pulse, _params);
+	else
+		_resize(pulse, _params, true);
 
     // 2. Get intensity
     _intensity(_resize);
@@ -35,16 +38,19 @@ void FLImProcess::operator() (FloatArray2& intensity, FloatArray2& mean_delay, F
 void FLImProcess::setParameters(Configuration* pConfig)
 {
 	_params.bg = pConfig->flimBg;
-    _params.samp_intv = 1000.0f / (float)PX14_ADC_RATE;
+	_params.irf = pConfig->is_dotter ? pConfig->flimIrfLevel : 0.0f;
+    _params.samp_intv = (!pConfig->is_dotter) ? 1000.0f / (float)PX14_ADC_RATE : 2.0f;
     _params.width_factor = 2.0f;
 
     for (int i = 0; i < 4; i++)
     {
-        _params.ch_start_ind[i] = pConfig->flimChStartInd[i];
+        _params.ch_start_ind[i] = (!pConfig->is_dotter) ? pConfig->flimChStartInd[i] : pConfig->flimChStartIndD[2 * i];
+		if (pConfig->is_dotter)
+			_params.ch_end_ind[i] = pConfig->flimChStartIndD[2 * i + 1];
         if (i != 0)
              _params.delay_offset[i - 1] = pConfig->flimDelayOffset[i - 1];
     }
-    _params.ch_start_ind[4] = _params.ch_start_ind[3] + FLIM_CH_START_5;
+    _params.ch_start_ind[4] = !pConfig->is_dotter ? _params.ch_start_ind[3] + FLIM_CH_START_5 : _params.ch_end_ind[0] + FLIM_CH_START_5/2;
 }
 
 void FLImProcess::saveMaskData(QString maskpath)

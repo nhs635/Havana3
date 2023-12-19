@@ -135,7 +135,7 @@ void QPatientSelectionTab::createPatientSelectionTable()
     m_pTableWidget_PatientInformation->setHorizontalHeaderLabels(colLabels);    
 
     // Cell items properties
-    m_pTableWidget_PatientInformation->setAlternatingRowColors(true);   // Focus ÀÒÀ¸¸é Deselect µÇµµ·Ï ÇÏ±â
+    m_pTableWidget_PatientInformation->setAlternatingRowColors(true);   // Focus ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Deselect ï¿½Çµï¿½ï¿½ï¿½ ï¿½Ï±ï¿½
     m_pTableWidget_PatientInformation->setSelectionMode(QAbstractItemView::SingleSelection);
     m_pTableWidget_PatientInformation->setEditTriggers(QAbstractItemView::NoEditTriggers);
     m_pTableWidget_PatientInformation->setSelectionBehavior(QAbstractItemView::SelectRows);
@@ -244,27 +244,46 @@ void QPatientSelectionTab::searchData()
 			// Find patient name, id, acquisition date
 			if (text != "")
 			{
-				QStringList pb_data = text.split("]");				
-				if (pb_data.size() > 0)
+				if (text.at(0) != "r")
 				{
-					pt_name = pb_data[0];
-					pt_name = pt_name.replace("[", "");
-					qDebug() << pt_name;
-
-					acq_date = pb_data[1];
-					acq_date = acq_date.right(acq_date.length() - 1);
-					acq_date = acq_date.left(19);
-					qDebug() << acq_date;
-				}
-
-				QStringList frame_data = text.split("/");				
-				if (frame_data.size() > 0)
-				{
-					QStringList frame_data1 = frame_data[0].split(":");
-					if (frame_data1.size() > 0)
+					QStringList pb_data = text.split("]");
+					if (pb_data.size() > 0)
 					{
-						frame = frame_data1.back().toInt();
-						qDebug() << frame;
+						pt_name = pb_data[0];
+						pt_name = pt_name.replace("[", "");
+						qDebug() << pt_name;
+
+						acq_date = pb_data[1];
+						acq_date = acq_date.right(acq_date.length() - 1);
+						acq_date = acq_date.left(19);
+						qDebug() << acq_date;
+					}
+
+					QStringList frame_data = text.split("/");
+					if (frame_data.size() > 0)
+					{
+						QStringList frame_data1 = frame_data[0].split(":");
+						if (frame_data1.size() > 0)
+						{
+							frame = frame_data1.back().toInt();
+							qDebug() << frame;
+						}
+					}
+				}
+				else
+				{
+					QStringList pb_data = text.split("\\");
+					if (pb_data.size() > 0)
+					{
+						pt_id = QString("%1").arg(pb_data[1].toInt(), 8, 10, QChar('0'));
+						
+						QStringList date_info = pb_data[2].split("_");
+						date_info[1] = date_info[1].replace("-", ":");
+						date_info[1] = date_info[1].replace("\n", "");
+						acq_date = date_info[0] + " " + date_info[1];
+
+						qDebug() << pt_id;
+						qDebug() << acq_date;
 					}
 				}
 			}
@@ -283,40 +302,40 @@ void QPatientSelectionTab::searchData()
 						}
 					}
 				});
+			}
 
-				for (int i = 0; i < m_pTableWidget_PatientInformation->rowCount(); i++)
-					if (m_pTableWidget_PatientInformation->item(i, 1)->text() == pt_id)
-						emit m_pTableWidget_PatientInformation->cellDoubleClicked(i, 0);
+			for (int i = 0; i < m_pTableWidget_PatientInformation->rowCount(); i++)
+				if (m_pTableWidget_PatientInformation->item(i, 1)->text() == pt_id)
+					emit m_pTableWidget_PatientInformation->cellDoubleClicked(i, 0);
 								
-				// Load the specified pullback
-				if (acq_date != "")
-				{
-					QString command = QString("SELECT * FROM records WHERE patient_id=%1").arg(pt_id);
-					m_pHvnSqlDataBase->queryDatabase(command, [&](QSqlQuery& _sqlQuery) {
-						while (_sqlQuery.next())
-						{
-							QString comment = _sqlQuery.value(8).toString();
-							if (!comment.contains("[HIDDEN]"))
-							{
-								QString _acq_date = _sqlQuery.value(3).toString();
-								if (_acq_date == acq_date)
-									record_id = _sqlQuery.value(0).toString();
-							}
-						}
-					});
-
-					foreach(QDialog* pTabView, m_pMainWnd->getVectorTabViews())
+			// Load the specified pullback
+			if (acq_date != "")
+			{
+				QString command = QString("SELECT * FROM records WHERE patient_id=%1").arg(pt_id);
+				m_pHvnSqlDataBase->queryDatabase(command, [&](QSqlQuery& _sqlQuery) {
+					while (_sqlQuery.next())
 					{
-						if (pTabView->windowTitle().contains("Summary"))
+						QString comment = _sqlQuery.value(8).toString();
+						if (!comment.contains("[HIDDEN]"))
 						{
-							QString _pt_id = QString("%1").arg(((QPatientSummaryTab*)pTabView)->getPatientInfo().patientId.toInt(), 8, 10, QChar('0'));
-							if (_pt_id == pt_id)
-								emit((QPatientSummaryTab*)pTabView)->requestReview(record_id, frame);
+							QString _acq_date = _sqlQuery.value(3).toString();
+							if (_acq_date == acq_date)
+								record_id = _sqlQuery.value(0).toString();
 						}
+					}
+				});
+
+				foreach(QDialog* pTabView, m_pMainWnd->getVectorTabViews())
+				{
+					if (pTabView->windowTitle().contains("Summary"))
+					{
+						QString _pt_id = QString("%1").arg(((QPatientSummaryTab*)pTabView)->getPatientInfo().patientId.toInt(), 8, 10, QChar('0'));
+						if (_pt_id == pt_id)
+							emit((QPatientSummaryTab*)pTabView)->requestReview(record_id, frame);
 					}
 				}
 			}
-			
+						
 			pDialog->close();
 			pDialog->deleteLater();
 		});
@@ -448,7 +467,7 @@ void QPatientSelectionTab::loadPatientDatabase()
 	m_pTableWidget_PatientInformation->setRowCount(0);
     m_pTableWidget_PatientInformation->setSortingEnabled(false);
 
-	QStringList dataset;
+	//QStringList dataset;
 
     m_pHvnSqlDataBase->queryDatabase("SELECT * FROM patients", [&](QSqlQuery& _sqlQuery) {
 
@@ -473,42 +492,42 @@ void QPatientSelectionTab::loadPatientDatabase()
 					QString comment = __sqlQuery.value(8).toString();
 					if (!comment.contains("[HIDDEN]"))
 					{
-						QStringList comments = comment.split('\n');
-						QString procedure = m_pHvnSqlDataBase->getProcedure(__sqlQuery.value(11).toInt());
+						//QStringList comments = comment.split('\n');
+						//QString procedure = m_pHvnSqlDataBase->getProcedure(__sqlQuery.value(11).toInt());
 
-						bool is_reproducibility = false;
-						for (int i = 0; i < comments.size(); i++)
-						{
-							if (comments.at(i).contains("repro"))
-							{
-								is_reproducibility = true;
-								break;
-							}
-						}
+						//bool is_sat = false;
+						//for (int i = 0; i < comments.size(); i++)
+						//{
+						//	if (comments.at(i).contains("sat"))
+						//	{
+						//		is_sat = true;
+						//		break;
+						//	}
+						//}
 
-						bool is_better_pair = false;
-						for (int i = 0; i < comments.size(); i++)
-						{
-							if (comments.at(i).contains("(better pair)"))
-							{
-								is_better_pair = true;
-								break;
-							}
-						}
+						//bool is_better_pair = false;
+						//for (int i = 0; i < comments.size(); i++)
+						//{
+						//	if (comments.at(i).contains("(better pair)"))
+						//	{
+						//		is_better_pair = true;
+						//		break;
+						//	}
+						//}
 
-						bool is_bad = false;
-						for (int i = 0; i < comments.size(); i++)
-						{
-							if (comments.at(i).contains("bad") || comments.at(i).contains("incomplete"))
-							{
-								is_bad = true;
-								break;
-							}
-						}
+						//bool is_bad = false;
+						//for (int i = 0; i < comments.size(); i++)
+						//{
+						//	if (comments.at(i).contains("bad") || comments.at(i).contains("incomplete"))
+						//	{
+						//		is_bad = true;
+						//		break;
+						//	}
+						//}
 
-						dataset << (QString("%1").arg(_sqlQuery.value(3).toString().toInt(), 8, 10, QChar('0'))) + " / " + (_sqlQuery.value(1).toString() + ", " + _sqlQuery.value(0).toString())
-							+ " / " + __sqlQuery.value(3).toString() + " / " + comments.at(1) + " / " + procedure + " / " + QString::number(total+1) 
-							+ " / " + QString::number(is_reproducibility) + " / " + QString::number(is_better_pair) + " / " + QString::number(is_bad);
+						//dataset << (QString("%1").arg(_sqlQuery.value(3).toString().toInt(), 8, 10, QChar('0'))) + " / " + (_sqlQuery.value(1).toString() + ", " + _sqlQuery.value(0).toString())
+						//	+ " / " + __sqlQuery.value(3).toString() + " / " + comments.at(1) + " / " + procedure + " / " + QString::number(total + 1)
+						//	+ " / " + QString::number(is_sat); // +" / " + QString::number(is_better_pair) + " / " + QString::number(is_bad);
 
 						QTime time = QDateTime::fromString(__sqlQuery.value(3).toString(), "yyyy-MM-dd hh:mm:ss").time();
 						QDate date = QDateTime::fromString(__sqlQuery.value(3).toString(), "yyyy-MM-dd hh:mm:ss").date();
@@ -558,26 +577,26 @@ void QPatientSelectionTab::loadPatientDatabase()
 		m_pConfig->writeToLog(QString("Patient database loaded: %1").arg(m_pConfig->dbPath));
     });
 	
-	QFile file("dataset_paths.csv");
-	if (file.open(QFile::WriteOnly))
-	{
-		QTextStream stream(&file);
+	//QFile file("dataset_paths.csv");
+	//if (file.open(QFile::WriteOnly))
+	//{
+	//	QTextStream stream(&file);
 
-		for (int i = 0; i < dataset.size(); i++)
-		{
-			QStringList _dataset = dataset.at(i).split("/");
+	//	for (int i = 0; i < dataset.size(); i++)
+	//	{
+	//		QStringList _dataset = dataset.at(i).split("/");
 
-			stream << _dataset.at(0) << "\t" // ID
-				<< _dataset.at(1) << "\t" // Name
-				<< _dataset.at(2) << "\t" // Acq date
-				<< _dataset.at(3) << "\t" // culprit
-				<< _dataset.at(4) << "\t" // procedure
-				<< _dataset.at(5) << "\t" // reproducibility
-				<< _dataset.at(6) << "\t" // better pair
-				<< _dataset.at(7) << "\n"; // bad data
-		}
-		file.close();
-	}
+	//		stream << _dataset.at(0) << "\t" // ID
+	//			<< _dataset.at(1) << "\t" // Name
+	//			<< _dataset.at(2) << "\t" // Acq date
+	//			<< _dataset.at(3) << "\t" // culprit
+	//			<< _dataset.at(4) << "\t" // procedure
+	//			<< _dataset.at(5) << "\t" // reproducibility
+	//			<< _dataset.at(6) << "\n"; // better pair
+	//			//<< _dataset.at(7) << "\n"; // bad data
+	//	}
+	//	file.close();
+	//}
 
 
     m_pTableWidget_PatientInformation->setSortingEnabled(true);

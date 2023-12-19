@@ -1,7 +1,7 @@
 #ifndef CONFIGURATION_H
 #define CONFIGURATION_H
 
-#define VERSION						"2.1.5.5"
+#define VERSION						"2.1.6.0"
 
 #define POWER_2(x)					(1 << x)
 #define NEAR_2_POWER(x)				(int)(1 << (int)ceil(log2(x)))
@@ -68,6 +68,7 @@
 #define INTENSITY_THRES				0.001f
 
 /////////////////////// Visualization ///////////////////////
+#define DOTTER_OCT_RADIUS			1300
 #define RING_THICKNESS				160
 
 #define LONGI_WIDTH					1180
@@ -107,10 +108,12 @@
 #define RENEWAL_COUNT				8 
 #define REDUCED_COUNT				4
 
-#define PIXEL_RESOLUTION			5.0757 // micrometers
-#define OUTER_SHEATH_POSITION		114 // (int)((150 * 1.45 + 180 * 1 + 150 * 1.33) / PIXEL_RESOLUTION) // 0.034 inch OD
+#define PIXEL_RESOLUTION_SAMSUNG	5.0757 // micrometers
+#define PIXEL_RESOLUTION_DOTTER		4.9425 // micrometers
+#define OUTER_SHEATH_POSITION		597.0 // (int)((150 * 1.45 + 180 * 1 + 150 * 1.33) / PIXEL_RESOLUTION) // 0.034 inch OD
 
-
+// ID: 1000 * 0.026*25.4 = 660.4 ¥ìm
+// OD : 1000 * 0.034*25.4 = 863.6 ¥ìm
 
 
 
@@ -134,13 +137,16 @@ class Configuration
 {
 public:
 	explicit Configuration() : dbPath(""), ivusPath(""), 
-		reflectionRemoval(false), reflectionDistance(REFLECTION_DISTANCE), reflectionLevel(REFLECTION_LEVEL), 
-		mergeNorFib(false), mergeMacTcfa(true), normalizeLogistics(true), playInterval(100)
+		octRadius(0), circOffset(0), reflectionRemoval(false), reflectionDistance(REFLECTION_DISTANCE), reflectionLevel(REFLECTION_LEVEL),
+		mergeNorFib(false), mergeMacTcfa(true), normalizeLogistics(true), playInterval(100),
+		rotatedAlines(0), verticalMirroring(false), intraFrameSync(0), interFrameSync(0), flimDelaySync(0), is_dotter(false)
 	{
 		memset(flimDelayOffset0, 0, sizeof(float) * 3);
 		quantitationRange.min = -1;
 		quantitationRange.max = -1;
 		memset(showPlaqueComposition, 1, sizeof(bool) * ML_N_CATS);
+		octGrayRange.min = 0;
+		octGrayRange.max = 255;
 	}
 	~Configuration() {}
 
@@ -158,6 +164,9 @@ public:
 #ifdef NEXT_GEN_SYSTEM
 		octScansFFT = NEAR_2_POWER(octScans);
 #endif
+		octRadius = settings.value("octRadius").toInt();
+		if (octRadius == 0)
+			octRadius = octScans;
         octAlines = settings.value("octAlines").toInt();
 #ifndef NEXT_GEN_SYSTEM
         octFrameSize = octScans * octAlines;
@@ -167,6 +176,7 @@ public:
 
         // FLIm processing
 		flimBg = settings.value("flimBg").toFloat();
+		flimIrfLevel = settings.value("flimIrfLevel").toFloat();
 		flimWidthFactor = settings.value("flimWidthFactor").toFloat();
 		for (int i = 0; i < 4; i++)
 		{
@@ -174,6 +184,8 @@ public:
 			if (i != 0)
 				flimDelayOffset[i - 1] = settings.value(QString("flimDelayOffset_%1").arg(i)).toFloat();
 		}
+		for (int i = 0; i < 8; i++)
+			flimChStartIndD[i] = settings.value(QString("flimChStartIndD_%1").arg(i)).toInt();
 
 		// FLIM classification
 		///clfAnnXNode = settings.value("clfAnnXNode").toInt();
@@ -202,6 +214,7 @@ public:
 		octGrayRange.max = settings.value("octGrayRangeMax").toInt();
 		octGrayRange.min = settings.value("octGrayRangeMin").toInt();
 #endif
+		circOffset = settings.value("circOffset").toInt();
 		rotatedAlines = settings.value("rotatedAlines").toInt();
 		innerOffsetLength = settings.value("innerOffsetLength").toInt();
 		verticalMirroring = settings.value("verticalMirroring").toBool();
@@ -246,7 +259,10 @@ public:
 
         // Database
         dbPath = settings.value("dbPath").toString();
-		ivusPath = settings.value("ivusPath").toString();;
+		ivusPath = settings.value("ivusPath").toString();
+
+		// System type
+		is_dotter = settings.value("is_dotter").toBool();
 
 		settings.endGroup();
 
@@ -265,10 +281,12 @@ public:
 #ifdef NEXT_GEN_SYSTEM
 		settings.setValue("octScansFFT", octScansFFT);
 #endif
+		settings.setValue("octRadius", octRadius);
 		settings.setValue("octAlines", octAlines);
 
 		// FLIm processing
 		settings.setValue("flimBg", QString::number(flimBg, 'f', 2));
+		settings.setValue("flimIrfLevel", QString::number(flimIrfLevel, 'f', 2));
 		settings.setValue("flimWidthFactor", QString::number(flimWidthFactor, 'f', 2));
 		for (int i = 0; i < 4; i++)
 		{
@@ -279,6 +297,8 @@ public:
 				settings.setValue(QString("flimDelayOffset0_%1").arg(i), QString::number(flimDelayOffset0[i - 1], 'f', 3));
 			}
 		}
+		for (int i = 0; i < 8; i++)
+			settings.setValue(QString("flimChStartIndD_%1").arg(i), flimChStartIndD[i]);
 
 		// Visualization
         settings.setValue("flimEmissionChannel", flimEmissionChannel);
@@ -299,6 +319,7 @@ public:
 		settings.setValue("octGrayRangeMax", octGrayRange.max);
 		settings.setValue("octGrayRangeMin", octGrayRange.min);
 #endif
+		settings.setValue("circOffset", circOffset);
 		settings.setValue("rotatedAlines", rotatedAlines);
 		settings.setValue("innerOffsetLength", innerOffsetLength);
 		settings.setValue("verticalMirroring", verticalMirroring);
@@ -346,6 +367,9 @@ public:
         settings.setValue("dbPath", dbPath);
 		settings.setValue("ivusPath", ivusPath);
 
+		// System type
+		settings.setValue("is_dotter", is_dotter);
+
 		// Current Time
 		QString datetime = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss");
 		settings.setValue("time", datetime);
@@ -367,14 +391,17 @@ public:
     int frames;
     int flimScans, flimAlines, flimFrameSize;
     int octScans, octAlines, octFrameSize;
+	int octRadius;
 #ifdef NEXT_GEN_SYSTEM
 	int octScansFFT;
 #endif
 
     // FLIm processing
 	float flimBg;
+	float flimIrfLevel;
 	float flimWidthFactor;
 	int flimChStartInd[4];
+	int flimChStartIndD[8];
     float flimDelayOffset[3];
 	float flimDelayOffset0[3];
 
@@ -395,6 +422,7 @@ public:
 #ifndef NEXT_GEN_SYSTEM
     ContrastRange<int> octGrayRange;
 #endif
+	int circOffset;
 	int rotatedAlines;
 	int innerOffsetLength;
 	bool verticalMirroring;
@@ -437,6 +465,9 @@ public:
     QString dbPath;
 	QString ivusPath;
 	
+	// System type
+	bool is_dotter;
+
 	// System log
 	QStringList log;
 	callback<const QString&> DidLogAdded;

@@ -15,6 +15,7 @@
 #include <Havana3/Dialog/IvusViewerDlg.h>
 
 #include <DataAcquisition/DataProcessing.h>
+#include <DataAcquisition/DataProcessingDotter.h>
 
 
 QResultTab::QResultTab(QString record_id, int frame, QWidget *parent) :
@@ -28,6 +29,7 @@ QResultTab::QResultTab(QString record_id, int frame, QWidget *parent) :
 	
 	// Create post-processing objects
 	m_pDataProcessing = new DataProcessing(this);
+	m_pDataProcessingDotter = new DataProcessingDotter(this);
 
     // Create widgets for result review
     createResultReviewWidgets();
@@ -47,6 +49,7 @@ QResultTab::QResultTab(QString record_id, int frame, QWidget *parent) :
 QResultTab::~QResultTab()
 {
 	delete m_pDataProcessing;
+	delete m_pDataProcessingDotter;
 }
 
 
@@ -180,6 +183,10 @@ void QResultTab::createResultReviewWidgets()
 	connect(m_pDataProcessing, &DataProcessing::abortedProcessing, [&]() { m_pMainWnd->getTabWidget()->tabCloseRequested(m_pMainWnd->getCurrentTabIndex()); });
 	connect(m_pDataProcessing, SIGNAL(finishedProcessing(bool)), this, SLOT(setVisibleState(bool)));
 
+	connect(m_pDataProcessingDotter, SIGNAL(processedSingleFrame(int)), m_pProgressBar, SLOT(setValue(int)));
+	connect(m_pDataProcessingDotter, &DataProcessingDotter::abortedProcessing, [&]() { m_pMainWnd->getTabWidget()->tabCloseRequested(m_pMainWnd->getCurrentTabIndex()); });
+	connect(m_pDataProcessingDotter, SIGNAL(finishedProcessing(bool)), this, SLOT(setVisibleState(bool)));
+
 	connect(this, SIGNAL(getCapture(QByteArray &)), m_pViewTab, SLOT(getCapture(QByteArray &)));
     connect(m_pComboBox_Vessel, SIGNAL(currentIndexChanged(int)), this, SLOT(changeVesselInfo(int)));
     connect(m_pComboBox_Procedure, SIGNAL(currentIndexChanged(int)), this, SLOT(changeProcedureInfo(int)));
@@ -208,7 +215,10 @@ void QResultTab::readRecordData()
 		///m_pProgressDlg->show();
 
 		// Start read and process the reviewing file
-		m_pDataProcessing->startProcessing(m_recordInfo.filename, m_firstFrame);
+		if (!m_recordInfo.is_dotter)
+			m_pDataProcessing->startProcessing(m_recordInfo.filename, m_firstFrame);
+		else
+			m_pDataProcessingDotter->startProcessing(m_recordInfo.filename, m_firstFrame);
 
 		// Write to log...
 		m_pConfig->writeToLog(QString("Record reviewing: %1 (ID: %2): %3: record id: %4")
@@ -265,32 +275,42 @@ void QResultTab::loadRecordInfo()
 			int idx = m_recordInfo.filename0.indexOf("record");
 			m_recordInfo.filename = m_pConfig->dbPath + m_recordInfo.filename0.remove(0, idx - 1);;
 			m_recordInfo.comment = _sqlQuery.value(8).toString();
-
-			int pb_num = 0;
+			
+			QStringList date_list;			
 			QString command = QString("SELECT * FROM records WHERE patient_id=%1").arg(m_recordInfo.patientId);
 			m_pHvnSqlDataBase->queryDatabase(command, [&, _sqlQuery](QSqlQuery& __sqlQuery) {
 				while (__sqlQuery.next())
 				{
 					QString comment = __sqlQuery.value(8).toString();
 					if (!comment.contains("[HIDDEN]"))
-					{
-						pb_num++;						
+					{					
 						QString date_ = __sqlQuery.value(3).toString();
-						if (date_ == m_recordInfo.date)
-							break;						
+						date_list.append(date_);					
 					}
 				}
 			});
+			date_list.sort();
+
+			int pb_num = 0;
+			foreach(QString date_, date_list)
+			{
+				pb_num++;
+				if (date_ == m_recordInfo.date)
+					break;
+			}		
+
 			m_recordInfo.pb_num = pb_num;
 			if (m_recordInfo.comment.contains("[HIDDEN]"))
 				m_recordInfo.pb_num = 0;
 
+			m_recordInfo.is_dotter = m_recordInfo.filename0.split(".").at(1) == "xml";
+
 			QString title_color;
-			if (m_recordInfo.title.contains(QString::fromLocal8Bit("¡Ú")))
-				title_color = "red";
-			else if (m_recordInfo.title.contains(QString::fromLocal8Bit("¡Ù")))
-				title_color = "cyan";
-			else
+			//if (m_recordInfo.title.contains(QString::fromLocal8Bit(""))) // â˜…
+			//	title_color = "red";
+			//else if (m_recordInfo.title.contains(QString::fromLocal8Bit("")))  // â˜†
+			//	title_color = "cyan";
+			//else
 				title_color = "white";
 
 			m_pLabel_RecordInformation->setText(QString("<b><font size=6><font color=%1>%2</font></font></b><br>"
@@ -324,7 +344,9 @@ void QResultTab::loadPatientInfo()
 				arg(QString("%1").arg(m_recordInfo.patientId.toInt(), 8, 10, QChar('0'))));
 
 			///setWindowTitle(QString("Review: %1: %2").arg(m_recordInfo.patientName).arg(m_recordInfo.date));			
-			setWindowTitle(QString("Review: %1: %2 (%3: %4)").arg(m_recordInfo.patientName).arg(QString("PB%1").arg(m_recordInfo.pb_num)).arg(m_pHvnSqlDataBase->getVessel(m_recordInfo.vessel)).arg(m_pHvnSqlDataBase->getProcedure(m_recordInfo.procedure)));
+			setWindowTitle(QString("Review: %1: %2 (%3: %4)").arg(m_recordInfo.patientName).arg(QString("PB%1")
+				.arg(m_recordInfo.pb_num)).arg(m_pHvnSqlDataBase->getVessel(m_recordInfo.vessel))
+				.arg(m_pHvnSqlDataBase->getProcedure(m_recordInfo.procedure)));
 		}
 
 		m_pConfig->writeToLog(QString("Patient info loaded: %1 (ID: %2) [QResultTab]").arg(m_recordInfo.patientName).arg(m_recordInfo.patientId));

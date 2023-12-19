@@ -14,6 +14,7 @@
 #include <DataAcquisition/DataAcquisition.h>
 #include <DataAcquisition/FLImProcess/FLImProcess.h>
 #include <DataAcquisition/DataProcessing.h>
+#include <DataAcquisition/DataProcessingDotter.h>
 #include <DeviceControl/DeviceControl.h>
 
 
@@ -41,6 +42,8 @@ ViewOptionTab::ViewOptionTab(QWidget *parent) :
 		m_pResultTab = dynamic_cast<QResultTab*>(parent);
 		m_pConfig = m_pResultTab->getMainWnd()->m_pConfiguration;
 		m_pConfigTemp = m_pResultTab->getDataProcessing()->getConfigTemp();
+		if (!m_pConfigTemp)
+			m_pConfigTemp = m_pResultTab->getDataProcessingDotter()->getConfigTemp();
 		m_pViewTab = m_pResultTab->getViewTab();
 	}
 			
@@ -422,21 +425,34 @@ void ViewOptionTab::createOctVisualizationOptionTab()
 {		
 	QGroupBox *pGroupBox_OctVisualization = new QGroupBox;
 	pGroupBox_OctVisualization->setStyleSheet("QGroupBox{padding-top:15px; margin-top:-15px}");
-	pGroupBox_OctVisualization->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
+	pGroupBox_OctVisualization->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Expanding);
 
 	// Create widgets for OCT cross section rotation
 	if (!m_pStreamTab)
 	{
+		m_pScrollBar_CircOffset = new QScrollBar(this);
+		m_pScrollBar_CircOffset->setOrientation(Qt::Horizontal);
+		m_pScrollBar_CircOffset->setRange(-100, 100);
+		m_pScrollBar_CircOffset->setValue(m_pConfigTemp->circOffset);
+		m_pScrollBar_CircOffset->setSingleStep(1);
+		m_pScrollBar_CircOffset->setPageStep(m_pScrollBar_CircOffset->maximum() / 10);
+		m_pScrollBar_CircOffset->setFocusPolicy(Qt::StrongFocus);
+		m_pScrollBar_CircOffset->setFixedSize(200, 18);
+
+		QString str; str.sprintf("Circ Offset   %3d ", m_pConfigTemp->circOffset);
+		m_pLabel_CircOffset = new QLabel(str, this);
+		m_pLabel_CircOffset->setBuddy(m_pScrollBar_CircOffset);
+
 		m_pScrollBar_Rotation = new QScrollBar(this);
 		m_pScrollBar_Rotation->setOrientation(Qt::Horizontal);
-		m_pScrollBar_Rotation->setRange(0, m_pConfig->octAlines - 1);
+		m_pScrollBar_Rotation->setRange(0, m_pConfigTemp->octAlines - 1);
 		m_pScrollBar_Rotation->setValue(m_pConfigTemp->rotatedAlines);
 		m_pScrollBar_Rotation->setSingleStep(1);
 		m_pScrollBar_Rotation->setPageStep(m_pScrollBar_Rotation->maximum() / 10);
 		m_pScrollBar_Rotation->setFocusPolicy(Qt::StrongFocus);
 		m_pScrollBar_Rotation->setFixedSize(200, 18);
 
-		QString str; str.sprintf("Rotation %4d / %4d ", m_pConfigTemp->rotatedAlines, m_pConfig->octAlines - 1);
+		str.sprintf("Rotation %4d / %4d ", m_pConfigTemp->rotatedAlines, m_pConfigTemp->octAlines - 1);
 		m_pLabel_Rotation = new QLabel(str, this);
 		m_pLabel_Rotation->setBuddy(m_pScrollBar_Rotation);
 	}
@@ -540,13 +556,17 @@ void ViewOptionTab::createOctVisualizationOptionTab()
 	if (m_pStreamTab) pVBoxLayout_OctVisualization->addWidget(m_pCheckBox_VerticalMirroring);
 	if (!m_pStreamTab)
 	{
-		QHBoxLayout *pHBoxLayout_Rotation = new QHBoxLayout;
+		QGridLayout *pHBoxLayout_Rotation = new QGridLayout;
 		pHBoxLayout_Rotation->setSpacing(3);
 		if (!m_pStreamTab)
 		{
-			pHBoxLayout_Rotation->addWidget(m_pLabel_Rotation);
-			pHBoxLayout_Rotation->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed));
-			pHBoxLayout_Rotation->addWidget(m_pScrollBar_Rotation);
+			pHBoxLayout_Rotation->addWidget(m_pLabel_CircOffset, 0, 0);
+			pHBoxLayout_Rotation->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed), 0, 1);
+			pHBoxLayout_Rotation->addWidget(m_pScrollBar_CircOffset, 0, 2);
+
+			pHBoxLayout_Rotation->addWidget(m_pLabel_Rotation, 1, 0);
+			pHBoxLayout_Rotation->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed), 1, 1);
+			pHBoxLayout_Rotation->addWidget(m_pScrollBar_Rotation, 1, 2);
 		}
 		pVBoxLayout_OctVisualization->addItem(pHBoxLayout_Rotation);
 	}
@@ -570,6 +590,7 @@ void ViewOptionTab::createOctVisualizationOptionTab()
 	m_pVBoxLayout_ViewOption->addWidget(pGroupBox_OctVisualization);
 	
     // Connect signal and slot
+	if (!m_pStreamTab) connect(m_pScrollBar_CircOffset, SIGNAL(valueChanged(int)), this, SLOT(setCircOffset(int)));
 	if (!m_pStreamTab) connect(m_pScrollBar_Rotation, SIGNAL(valueChanged(int)), this, SLOT(rotateImage(int)));
 	if (m_pStreamTab) connect(m_pCheckBox_VerticalMirroring, SIGNAL(toggled(bool)), this, SLOT(verticalMirroring(bool)));
 #ifndef NEXT_GEN_SYSTEM
@@ -597,7 +618,7 @@ void ViewOptionTab::createSyncVisualizationOptionTab()
 	{
 		m_pScrollBar_IntraFrameSync = new QScrollBar(this);
 		m_pScrollBar_IntraFrameSync->setOrientation(Qt::Horizontal);
-		m_pScrollBar_IntraFrameSync->setRange(0, m_pConfig->octAlines - 1);
+		m_pScrollBar_IntraFrameSync->setRange(0, m_pConfigTemp->octAlines - 1);
 		m_pScrollBar_IntraFrameSync->setValue(m_pConfigTemp->intraFrameSync);
 		m_pScrollBar_IntraFrameSync->setSingleStep(1);
 		m_pScrollBar_IntraFrameSync->setPageStep(m_pScrollBar_Rotation->maximum() / 10);
@@ -605,7 +626,7 @@ void ViewOptionTab::createSyncVisualizationOptionTab()
 		m_pScrollBar_IntraFrameSync->setFixedSize(200, 18);
 		m_pScrollBar_IntraFrameSync->setDisabled(true);
 
-		QString str; str.sprintf("Intra Sync %4d / %4d ", m_pConfigTemp->intraFrameSync, m_pConfig->octAlines - 1);
+		QString str; str.sprintf("Intra Sync %4d / %4d ", m_pConfigTemp->intraFrameSync, m_pConfigTemp->octAlines - 1);
 		m_pLabel_IntraFrameSync = new QLabel(str, this);
 		m_pLabel_IntraFrameSync->setBuddy(m_pScrollBar_IntraFrameSync);
 		m_pLabel_IntraFrameSync->setDisabled(true);
@@ -629,7 +650,7 @@ void ViewOptionTab::createSyncVisualizationOptionTab()
 
 		m_pScrollBar_FlimDelaySync = new QScrollBar(this);
 		m_pScrollBar_FlimDelaySync->setOrientation(Qt::Horizontal);
-		m_pScrollBar_FlimDelaySync->setRange(0, 3 * m_pConfig->octAlines - 1);
+		m_pScrollBar_FlimDelaySync->setRange(0, 3 * m_pConfigTemp->octAlines - 1);
 		m_pScrollBar_FlimDelaySync->setValue(m_pConfigTemp->flimDelaySync);
 		m_pScrollBar_FlimDelaySync->setSingleStep(1);
 		m_pScrollBar_FlimDelaySync->setPageStep(10);
@@ -637,7 +658,7 @@ void ViewOptionTab::createSyncVisualizationOptionTab()
 		m_pScrollBar_FlimDelaySync->setFixedSize(200, 18);
 		m_pScrollBar_FlimDelaySync->setDisabled(isVibCorrted);
 
-		str.sprintf("FLIm Sync %4d / %4d ", m_pConfigTemp->flimDelaySync, 3 * m_pConfig->octAlines - 1);
+		str.sprintf("FLIm Sync %4d / %4d ", m_pConfigTemp->flimDelaySync, 3 * m_pConfigTemp->octAlines - 1);
 		m_pLabel_FlimDelaySync = new QLabel(str, this);
 		m_pLabel_FlimDelaySync->setBuddy(m_pScrollBar_FlimDelaySync);
 		m_pLabel_FlimDelaySync->setDisabled(isVibCorrted);
@@ -686,7 +707,7 @@ void ViewOptionTab::changeVisualizationMode(int mode)
 			if (mode0 == _FLIM_PARAMETERS_)
 			{
 				m_pGroupBox_FlimVisualization->setFixedHeight(208);
-				m_pGroupBox_ViewOption->setFixedHeight(410);
+				m_pGroupBox_ViewOption->setFixedHeight(443);
 
 				m_pLabel_EmissionChannel->setEnabled(true);
 				m_pComboBox_EmissionChannel->setEnabled(true);
@@ -1050,6 +1071,19 @@ void ViewOptionTab::changeLogisticsNormalizeMode()
 	}
 }
 
+
+void ViewOptionTab::setCircOffset(int offset)
+{
+	// Only result tab function
+	m_pConfigTemp->circOffset = offset;
+
+	QString str; str.sprintf("Circ Offset   %3d ", offset);
+	m_pLabel_CircOffset->setText(str);
+
+	if (m_pViewTab) m_pViewTab->invalidate();
+	
+	m_pConfig->writeToLog(QString("Circ offset set: %1").arg(offset));
+}
 
 void ViewOptionTab::rotateImage(int shift)
 {

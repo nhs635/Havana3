@@ -8,6 +8,7 @@
 
 #include <DataAcquisition/DataAcquisition.h>
 #include <DataAcquisition/DataProcessing.h>
+#include <DataAcquisition/DataProcessingDotter.h>
 #include <DataAcquisition/SignatecDAQ/SignatecDAQ.h>
 #include <DataAcquisition/FLImProcess/FLImProcess.h>
 
@@ -56,6 +57,11 @@ PulseReviewTab::PulseReviewTab(QWidget *parent) :
 	m_pConfig = m_pResultTab->getMainWnd()->m_pConfiguration;
 	m_pConfigTemp = m_pResultTab->getDataProcessing()->getConfigTemp();
 	m_pFLIm = m_pViewTab->getResultTab()->getDataProcessing()->getFLImProcess();
+	if (!m_pConfigTemp)
+	{
+		m_pConfigTemp = m_pResultTab->getDataProcessingDotter()->getConfigTemp();
+		m_pFLIm = m_pViewTab->getResultTab()->getDataProcessingDotter()->getFLImProcess();
+	}
 
 	// Create layout
 	m_pVBoxLayout = new QVBoxLayout;
@@ -380,7 +386,7 @@ void PulseReviewTab::createHistogram()
 	{
 		m_pLabel_FluIntensityVal[i] = new QLabel(this);
 		m_pLabel_FluIntensityVal[i]->setFixedWidth(180);
-		m_pLabel_FluIntensityVal[i]->setText(QString::fromLocal8Bit("Ch%1: %2 ¡¾ %3").arg(i + 1).arg(0.0, 4, 'f', 3).arg(0.0, 4, 'f', 3));
+		m_pLabel_FluIntensityVal[i]->setText(QString::fromLocal8Bit("Ch%1: %2 Â± %3").arg(i + 1).arg(0.0, 4, 'f', 3).arg(0.0, 4, 'f', 3));
 		m_pLabel_FluIntensityVal[i]->setAlignment(Qt::AlignCenter);
 	}
 	m_pLabel_FluIntensityVal[0]->setStyleSheet("QLabel{color:#d900ff}");
@@ -417,7 +423,7 @@ void PulseReviewTab::createHistogram()
 	{
 		m_pLabel_FluLifetimeVal[i] = new QLabel(this);
 		m_pLabel_FluLifetimeVal[i]->setFixedWidth(180);
-		m_pLabel_FluLifetimeVal[i]->setText(QString::fromLocal8Bit("Ch%1: %2 ¡¾ %3").arg(i + 1).arg(0.0, 4, 'f', 3).arg(0.0, 4, 'f', 3));
+		m_pLabel_FluLifetimeVal[i]->setText(QString::fromLocal8Bit("Ch%1: %2 Â± %3").arg(i + 1).arg(0.0, 4, 'f', 3).arg(0.0, 4, 'f', 3));
 		m_pLabel_FluLifetimeVal[i]->setAlignment(Qt::AlignCenter);
 	}
 	m_pLabel_FluLifetimeVal[0]->setStyleSheet("QLabel{color:#d900ff}");
@@ -457,11 +463,12 @@ void PulseReviewTab::showWindow(bool checked)
 {
 	if (checked)
 	{
-		int* ch_ind = (m_pComboBox_PulseType->currentIndex() <= 2) ? m_pFLIm->_params.ch_start_ind : m_pFLIm->_resize.ch_start_ind1;
+		int* ch_ind = (m_pComboBox_PulseType->currentIndex() <= 2) ? m_pFLIm->_resize.ch_start_ind0 : m_pFLIm->_resize.ch_start_ind1;
 
-		m_pScope_PulseView->setWindowLine(5,
-			0, ch_ind[1] - ch_ind[0], ch_ind[2] - ch_ind[0],
-			ch_ind[3] - ch_ind[0], ch_ind[4] - ch_ind[0]);
+		m_pScope_PulseView->setWindowLine(5, ch_ind[0], ch_ind[1], ch_ind[2], ch_ind[3], ch_ind[4]);
+		//m_pScope_PulseView->setWindowLine(5,
+		//	0, ch_ind[1] - ch_ind[0], ch_ind[2] - ch_ind[0],
+		//	ch_ind[3] - ch_ind[0], ch_ind[4] - ch_ind[0]);
 	}
 	else
 	{
@@ -479,8 +486,7 @@ void PulseReviewTab::showMeanDelay(bool checked)
 		m_pScope_PulseView->setMeanDelayLine(4);
 		for (int i = 0; i < 4; i++)
 			if (m_pFLIm->_lifetime.mean_delay.length() > 0)
-				m_pScope_PulseView->getRender()->m_pMdLineInd[i] =
-				(m_pFLIm->_lifetime.mean_delay(0, i) - m_pFLIm->_params.ch_start_ind[0]) * factor;
+				m_pScope_PulseView->getRender()->m_pMdLineInd[i] = (m_pFLIm->_lifetime.mean_delay(0, i)) * factor;
 	}
 	else
 	{
@@ -502,14 +508,14 @@ void PulseReviewTab::drawPulse(int aline)
 	frame = (frame >= m_pConfigTemp->frames) ? m_pConfigTemp->frames - 1 : frame;
 
 	int aline0 = aline + (m_pConfigTemp->rotatedAlines / 4);
-	while (aline0 >= m_pConfig->flimAlines)
-		aline0 -= m_pConfig->flimAlines;
+	while (aline0 >= m_pConfigTemp->flimAlines)
+		aline0 -= m_pConfigTemp->flimAlines;
 
 	int aline1 = aline + (m_pViewTab->m_vibCorrIdx(frame0) / 4) - delay_aline;
 	while (aline1 < 0)
-		aline1 += m_pConfig->flimAlines;
-	while (aline1 >= m_pConfig->flimAlines)
-		aline1 -= m_pConfig->flimAlines;
+		aline1 += m_pConfigTemp->flimAlines;
+	while (aline1 >= m_pConfigTemp->flimAlines)
+		aline1 -= m_pConfigTemp->flimAlines;
 
 	// Select pulse type		
 	np::FloatArray2 pulse;
@@ -553,10 +559,8 @@ void PulseReviewTab::drawPulse(int aline)
 	// Window
 	if (m_pCheckBox_ShowWindow->isChecked())
 	{
-		int* ch_ind = (m_pComboBox_PulseType->currentIndex() <= 2) ? m_pFLIm->_params.ch_start_ind : m_pFLIm->_resize.ch_start_ind1;
-		m_pScope_PulseView->setWindowLine(5,
-			0, ch_ind[1] - ch_ind[0], ch_ind[2] - ch_ind[0],
-			ch_ind[3] - ch_ind[0], ch_ind[4] - ch_ind[0]);
+		int* ch_ind = (m_pComboBox_PulseType->currentIndex() <= 2) ? m_pFLIm->_resize.ch_start_ind0 : m_pFLIm->_resize.ch_start_ind1;
+		m_pScope_PulseView->setWindowLine(5, ch_ind[0], ch_ind[1], ch_ind[2], ch_ind[3], ch_ind[4]);
 	}
 
 	// Mean delay
@@ -566,8 +570,7 @@ void PulseReviewTab::drawPulse(int aline)
 		
 		m_pScope_PulseView->setMeanDelayLine(4);
 		for (int i = 0; i < 4; i++)
-			m_pScope_PulseView->getRender()->m_pMdLineInd[i] =
-				(mean_delay.at(i)(aline0, frame) - m_pFLIm->_params.ch_start_ind[0]) * factor;
+			m_pScope_PulseView->getRender()->m_pMdLineInd[i] = (mean_delay.at(i)(aline0, frame)) * factor;
 	}
 
 	// Set widget
@@ -723,9 +726,9 @@ void PulseReviewTab::drawPulse(int aline)
 
 	//	Ipp32f mean, stdev;
 	//	auto res = ippsMeanStdDev_32f(scanIntensity, m_pConfig->flimAlines, &mean, &stdev, ippAlgHintFast);
-	//	m_pLabel_FluIntensityVal[i]->setText(QString::fromLocal8Bit("Ch%1: %2 ¡¾ %3").arg(i + 1).arg(mean, 4, 'f', 3).arg(stdev, 4, 'f', 3));
+	//	m_pLabel_FluIntensityVal[i]->setText(QString::fromLocal8Bit("Ch%1: %2 ï¿½ï¿½ %3").arg(i + 1).arg(mean, 4, 'f', 3).arg(stdev, 4, 'f', 3));
 	//	res = ippsMeanStdDev_32f(scanLifetime, m_pConfig->flimAlines, &mean, &stdev, ippAlgHintFast);
-	//	m_pLabel_FluLifetimeVal[i]->setText(QString::fromLocal8Bit("Ch%1: %2 ¡¾ %3").arg(i + 1).arg(mean, 4, 'f', 3).arg(stdev, 4, 'f', 3));
+	//	m_pLabel_FluLifetimeVal[i]->setText(QString::fromLocal8Bit("Ch%1: %2 ï¿½ï¿½ %3").arg(i + 1).arg(mean, 4, 'f', 3).arg(stdev, 4, 'f', 3));
 	//}
 	//m_pRenderArea_FluIntensity->update();
 	//m_pRenderArea_FluLifetime->update();
@@ -758,8 +761,16 @@ void PulseReviewTab::updateDelayOffset()
 		if (m_pConfigTemp->flimDelayOffset0[i] == 0.0f) // only record the original value
 			m_pConfigTemp->flimDelayOffset0[i] = m_pConfigTemp->flimDelayOffset[i];
 
-		ippsAddC_32f_I(m_pConfigTemp->flimDelayOffset[i], m_pViewTab->m_lifetimeMap.at(i).raw_ptr(), m_pViewTab->m_lifetimeMap.at(i).length());
-		ippsSubC_32f_I(delayOffset, m_pViewTab->m_lifetimeMap.at(i).raw_ptr(), m_pViewTab->m_lifetimeMap.at(i).length());
+		if (!m_pConfigTemp->is_dotter)
+		{
+			ippsAddC_32f_I(m_pConfigTemp->flimDelayOffset[i], m_pViewTab->m_lifetimeMap.at(i).raw_ptr(), m_pViewTab->m_lifetimeMap.at(i).length());
+			ippsSubC_32f_I(delayOffset, m_pViewTab->m_lifetimeMap.at(i).raw_ptr(), m_pViewTab->m_lifetimeMap.at(i).length());
+		}
+		else
+		{
+			ippsSubC_32f_I(m_pConfigTemp->flimDelayOffset[i], m_pViewTab->m_lifetimeMap.at(i).raw_ptr(), m_pViewTab->m_lifetimeMap.at(i).length());
+			ippsAddC_32f_I(delayOffset, m_pViewTab->m_lifetimeMap.at(i).raw_ptr(), m_pViewTab->m_lifetimeMap.at(i).length());
+		}
 		
 		m_pConfigTemp->flimDelayOffset[i] = delayOffset;			
 	}
@@ -1214,6 +1225,9 @@ void PulseReviewTab::loadRois()
 	
 	QString roi_path = m_pResultTab->getRecordInfo().filename;
 	roi_path.replace("pullback.data", "roi.csv");
+
+	if (roi_path.split(".").at(1) != "csv")
+		return;
 
 	QFile roi_file(roi_path);
 	if (roi_file.open(QFile::ReadOnly))

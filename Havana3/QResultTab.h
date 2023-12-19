@@ -17,6 +17,7 @@ class ExportDlg;
 class IvusViewerDlg;
 
 class DataProcessing;
+class DataProcessingDotter;
 
 class QResultTab : public QDialog
 {
@@ -36,6 +37,7 @@ public:
 	inline MainWindow* getMainWnd() const { return m_pMainWnd; }
     inline RecordInfo getRecordInfo() { return m_recordInfo; }
     inline DataProcessing* getDataProcessing() { return m_pDataProcessing; }
+	inline DataProcessingDotter* getDataProcessingDotter() { return m_pDataProcessingDotter; }
     inline QViewTab* getViewTab() const { return m_pViewTab; }
 	inline SettingDlg* getSettingDlg() const { return m_pSettingDlg; }
 	inline IvusViewerDlg* getIvusViewerDlg() const { return m_pIvusViewerDlg; }
@@ -75,6 +77,7 @@ private:
     HvnSqlDataBase* m_pHvnSqlDataBase;
 
     DataProcessing* m_pDataProcessing;
+	DataProcessingDotter* m_pDataProcessingDotter;
 		
 private:
 	int m_firstFrame;

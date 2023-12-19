@@ -1,5 +1,5 @@
 
-#include "DataProcessing.h"
+#include "DataProcessingDotter.h"
 
 #include <Havana3/MainWindow.h>
 #include <Havana3/QResultTab.h>
@@ -15,8 +15,8 @@
 #include <thread>
 
 
-DataProcessing::DataProcessing(QWidget *parent)
-    : m_pConfigTemp(nullptr), m_pFLIm(nullptr), m_pOCT(nullptr)
+DataProcessingDotter::DataProcessingDotter(QWidget *parent)
+    : m_pConfigTemp(nullptr), m_pFLIm(nullptr)
 {
 	// Set main window objects    
     m_pResultTab = dynamic_cast<QResultTab*>(parent);
@@ -39,7 +39,7 @@ DataProcessing::DataProcessing(QWidget *parent)
 	};
 }
 
-DataProcessing::~DataProcessing()
+DataProcessingDotter::~DataProcessingDotter()
 {
 	if (m_pConfigTemp)
 	{
@@ -50,7 +50,7 @@ DataProcessing::~DataProcessing()
 }
 
 
-void DataProcessing::startProcessing(QString fileName, int frame)
+void DataProcessingDotter::startProcessing(QString fileName, int frame)
 {
 	// Get path to read	
 	if (fileName != "")
@@ -58,41 +58,30 @@ void DataProcessing::startProcessing(QString fileName, int frame)
 		std::thread t1([&, fileName, frame]() {
 
 			std::chrono::system_clock::time_point start = std::chrono::system_clock::now();
-
-			QFile file(fileName);
-			if (false == file.open(QFile::ReadOnly))
-			{
-				SendStatusMessage("Invalid file path! Cannot review the data.", true);
-				emit abortedProcessing();
-			}
-			else
+			
 			{
 				// Read Ini File & Initialization ///////////////////////////////////////////////////////////
-				QString fileTitle;
-				for (int i = 0; i < fileName.length(); i++)
-					if (fileName.at(i) == QChar('.')) fileTitle = fileName.left(i);
-
+				QString fileTitle = fileName.split(".").at(0);
+				QString flimName = fileTitle + ".flim";
+				QString rpdName = fileTitle + ".rpd";
 				m_iniName = fileTitle + ".ini";
-				QString maskName = fileTitle + ".flim_mask";
 
 				if (m_pConfigTemp) delete m_pConfigTemp;
 				m_pConfigTemp = new Configuration;
 
-				m_pConfigTemp->getConfigFile(m_iniName);
-#ifndef NEXT_GEN_SYSTEM
-				m_pConfigTemp->frames = (int)(file.size() / (sizeof(uint8_t) * (m_pConfigTemp->axsunPipelineMode == 0 ? 1 : 4) * (qint64)m_pConfigTemp->octFrameSize
-					+ sizeof(uint16_t) * (qint64)m_pConfigTemp->flimFrameSize));
-				//m_pConfigTemp->frames = 10;
-#else
-				m_pConfigTemp->frames = (int)(file.size() / (sizeof(float) * (qint64)m_pConfigTemp->octFrameSize + sizeof(uint16_t) * (qint64)m_pConfigTemp->flimFrameSize));
-#endif
-				///m_pConfigTemp->frames -= m_pConfigTemp->interFrameSync;
+				getFlimInfo(flimName, m_pConfigTemp);
+				getOctInfo(rpdName, m_pConfigTemp);
 
+				m_pConfigTemp->is_dotter = true;
 				if ((m_pConfigTemp->quantitationRange.max == 0) && (m_pConfigTemp->quantitationRange.min == 0))
 				{
 					m_pConfigTemp->quantitationRange.max = m_pConfigTemp->frames - 1;
 					m_pConfigTemp->quantitationRange.min = 0;
 				}
+
+				QFileInfo check_file(m_iniName);
+				if (check_file.exists())
+					m_pConfigTemp->getConfigFile(m_iniName);
 
 				char msg[256];
 				sprintf(msg, "Start record review processing... (Total nFrame: %d)", m_pConfigTemp->frames);
@@ -104,45 +93,47 @@ void DataProcessing::startProcessing(QString fileName, int frame)
 				// Set Buffers & Objects ////////////////////////////////////////////////////////////////////
 				m_pResultTab->getViewTab()->setBuffers(m_pConfigTemp);
 				m_pResultTab->getViewTab()->setObjects(m_pConfigTemp);
-#ifndef NEXT_GEN_SYSTEM
-				m_syncDeinterleaving.allocate_queue_buffer(m_pConfigTemp->flimScans + m_pConfigTemp->octScans * (m_pConfigTemp->axsunPipelineMode == 0 ? 1 : 4),
-					m_pConfigTemp->octAlines, PROCESSING_BUFFER_SIZE);
-#else
-				m_syncDeinterleaving.allocate_queue_buffer(sizeof(uint16_t) * m_pConfigTemp->flimScans / 4 + sizeof(float) * m_pConfigTemp->octScansFFT / 2, m_pConfigTemp->octAlines, PROCESSING_BUFFER_SIZE);
-#endif
+
 				m_syncFlimProcessing.allocate_queue_buffer(m_pConfigTemp->flimScans, m_pConfigTemp->flimAlines, PROCESSING_BUFFER_SIZE);
 
-				// Set FLIm Object ///////////////////////////////////////////////////////////////////////////
+				// Open OCT & FLIm raw file /////////////////////////////////////////////////////////////////
+				QFile flim_file(flimName), oct_file(rpdName);
+				if ((false == flim_file.open(QFile::ReadOnly)) || (false == oct_file.open(QFile::ReadOnly)))
+				{
+					SendStatusMessage("Invalid file path! Cannot review the data.", true);
+					emit abortedProcessing();
+				}
+				else
+				{
+					flim_file.seek(88); oct_file.seek(63);
+				}
+				
+				// Set FLIm Object //////////////////////////////////////////////////////////////////////////
 				if (m_pFLIm) delete m_pFLIm;
 				m_pFLIm = new FLImProcess;
 				m_pFLIm->setParameters(m_pConfigTemp);
-				m_pFLIm->_resize(np::Uint16Array2(m_pConfigTemp->flimScans, m_pConfigTemp->flimAlines), m_pFLIm->_params);
-				m_pFLIm->loadMaskData(maskName);
+				m_pFLIm->_resize(np::Uint16Array2(m_pConfigTemp->flimScans, m_pConfigTemp->flimAlines), m_pFLIm->_params, true);				
+				
+				// Load FLIm raw data ///////////////////////////////////////////////////////////////////////
+				std::thread load_flim_data([&]() { loadingFlimRawData(&flim_file, m_pConfigTemp); });
 
-				if (m_pConfigTemp->axsunPipelineMode == 1)
-				{
-					if (m_pOCT) delete m_pOCT;
-					m_pOCT = new OCTProcess(m_pConfigTemp->octScans * 2, m_pConfigTemp->octAlines);
-					m_pOCT->changeDiscomValue(m_pConfigTemp->axsunDispComp_a2);
-				}
-
-				// Get external data ////////////////////////////////////////////////////////////////////////
-				std::thread load_data([&]() { loadingRawData(&file, m_pConfigTemp); });
-
-				// Data DeInterleaving //////////////////////////////////////////////////////////////////////
-				std::thread deinterleave([&]() { deinterleaving(m_pOCT, m_pConfigTemp); });
+				// Load OCT raw data ////////////////////////////////////////////////////////////////////////
+				std::thread load_oct_data([&]() { loadingOctRawData(&oct_file, m_pConfigTemp); });
 
 				// FLIm Process /////////////////////////////////////////////////////////////////////////////
 				std::thread flim_proc([&]() { flimProcessing(m_pFLIm, m_pConfigTemp); });
 
 				// Wait for threads end /////////////////////////////////////////////////////////////////////
-				load_data.join();
-				deinterleave.join();
+				load_flim_data.join();
+				load_oct_data.join();
 				flim_proc.join();
 
-				// Delete OCT FLIM Object & threading sync buffers //////////////////////////////////////////				
-				m_syncDeinterleaving.deallocate_queue_buffer();
+				// Delete threading sync buffers ////////////////////////////////////////////////////////////				
 				m_syncFlimProcessing.deallocate_queue_buffer();
+
+				// Close OCT & FLIm raw file ////////////////////////////////////////////////////////////////
+				flim_file.close();
+				oct_file.close();
 
 				// Generate en face maps ////////////////////////////////////////////////////////////////////
 				getOctProjection(m_pResultTab->getViewTab()->m_vectorOctImage, m_pResultTab->getViewTab()->m_octProjection);
@@ -160,8 +151,6 @@ void DataProcessing::startProcessing(QString fileName, int frame)
 				//m_pResultTab->getViewTab()->lumenDetection();				
 			}
 
-			file.close();
-
 			emit finishedProcessing(true);
 
             std::chrono::duration<double> elapsed = std::chrono::system_clock::now() - start;
@@ -176,126 +165,146 @@ void DataProcessing::startProcessing(QString fileName, int frame)
 }
 
 
-void DataProcessing::loadingRawData(QFile* pFile, Configuration* pConfig)
+void DataProcessingDotter::getFlimInfo(QString flimName, Configuration* pConfig)
+{
+	QFile file(flimName);
+	if (false == file.open(QFile::ReadOnly))
+	{
+		SendStatusMessage("Invalid FLIm file! Cannot review the data.", true);
+		emit abortedProcessing();
+	}
+	else
+	{
+		uint16_t pulse_len, pulse_per_frame, frame_count;
+		uint16_t irf_level, bg_level;
+		np::Uint16Array channel_rois(8); memset(channel_rois, 0, sizeof(uint16_t) * 8);
+		np::DoubleArray channel_offsets(3); memset(channel_offsets, 0, sizeof(double) * 3);
+
+		// Read FLIm-relevant parameters as big-endian machine format
+		file.seek(6);
+		file.read(reinterpret_cast<char*>(&pulse_len), sizeof(uint16_t)); pulse_len = qToBigEndian(pulse_len);
+		file.read(reinterpret_cast<char*>(&pulse_per_frame), sizeof(uint16_t)); pulse_per_frame = qToBigEndian(pulse_per_frame);
+		file.read(reinterpret_cast<char*>(&frame_count), sizeof(uint16_t)); frame_count = qToBigEndian(frame_count);
+				
+		file.seek(28);
+		file.read(reinterpret_cast<char*>(&irf_level), sizeof(uint16_t)); irf_level = qToBigEndian(irf_level);
+		file.read(reinterpret_cast<char*>(&bg_level), sizeof(uint16_t)); bg_level = qToBigEndian(bg_level);
+				
+		file.seek(44);
+		file.read(reinterpret_cast<char*>(channel_rois.raw_ptr()), sizeof(uint16_t) * 8);
+		for (int i = 0; i < 8; i++)
+			channel_rois(i) = qToBigEndian(channel_rois(i));
+
+		file.seek(62);		
+		file.read(reinterpret_cast<char*>(channel_offsets.raw_ptr()), sizeof(double) * 3);
+		for (int i = 0; i < 3; i++)
+			channel_offsets(i) = qToBigEndian(channel_offsets(i));
+
+		// Specify to configuration object
+		pConfig->flimScans = (int)pulse_len;
+		pConfig->flimAlines = (int)pulse_per_frame;
+		pConfig->flimFrameSize = pConfig->flimScans * pConfig->flimAlines;
+		pConfig->frames = (int)frame_count;
+
+		pConfig->flimIrfLevel = (float)irf_level;
+		pConfig->flimBg = (float)bg_level;
+
+		for (int i = 0; i < 8; i++)
+			pConfig->flimChStartIndD[i] = (int)channel_rois[i];
+		for (int i = 0; i < 3; i++)
+			pConfig->flimDelayOffset[i] = (float)channel_offsets[i];
+	}
+}
+
+void DataProcessingDotter::getOctInfo(QString rpdName, Configuration* pConfig)
+{
+	QFile file(rpdName);
+	if (false == file.open(QFile::ReadOnly))
+	{
+		SendStatusMessage("Invalid rpd file! Cannot review the data.", true);
+		emit abortedProcessing();
+	}
+	else
+	{
+		QByteArray arr;
+
+		uint16_t aline_len, aline_per_frame;
+		uint16_t calib_offset;
+
+		// Read FLIm-relevant parameters as big-endian machine format
+		file.seek(6);
+		file.read(reinterpret_cast<char*>(&aline_len), sizeof(uint16_t)); aline_len = qToBigEndian(aline_len);
+		file.read(reinterpret_cast<char*>(&aline_per_frame), sizeof(uint16_t)); aline_per_frame = qToBigEndian(aline_per_frame);
+
+		file.seek(36);
+		file.read(reinterpret_cast<char*>(&calib_offset), sizeof(uint16_t)); calib_offset = qToBigEndian(calib_offset);
+		
+		// Specify to configuration object
+		pConfig->octScans = (int)aline_len;
+		pConfig->octRadius = DOTTER_OCT_RADIUS;
+		pConfig->octAlines = (int)aline_per_frame;
+		pConfig->octFrameSize = pConfig->octScans * pConfig->octAlines;
+
+		pConfig->innerOffsetLength = (int)calib_offset;
+	}
+}
+
+
+void DataProcessingDotter::loadingFlimRawData(QFile* pFile, Configuration* pConfig)
 {
 	int frameCount = 0;
-	while (frameCount < pConfig->frames) /// + pConfig->interFrameSync)
+	while (frameCount < pConfig->frames)
 	{
 		// Get buffers from threading queues
-		uint8_t* frame_data = nullptr;
+		uint16_t* pulse_data = nullptr;
 		do
 		{
+			std::unique_lock<std::mutex> lock(m_syncFlimProcessing.mtx);
+			if (!m_syncFlimProcessing.queue_buffer.empty())
 			{
-				std::unique_lock<std::mutex> lock(m_syncDeinterleaving.mtx);
-				if (!m_syncDeinterleaving.queue_buffer.empty())
-				{
-					frame_data = m_syncDeinterleaving.queue_buffer.front();
-					m_syncDeinterleaving.queue_buffer.pop();
-				}
+				pulse_data = m_syncFlimProcessing.queue_buffer.front();
+				m_syncFlimProcessing.queue_buffer.pop();
 			}
 
-			if (frame_data)
+			if (pulse_data)
 			{
 				// Read data from the external data
-#ifndef NEXT_GEN_SYSTEM
-				pFile->read(reinterpret_cast<char *>(frame_data), sizeof(uint16_t) * pConfig->flimFrameSize + sizeof(uint8_t) * pConfig->octFrameSize * (pConfig->axsunPipelineMode == 0 ? 1 : 4));
-#else
-				pFile->read(reinterpret_cast<char *>(frame_data), sizeof(uint16_t) * pConfig->flimFrameSize + sizeof(float) * pConfig->octFrameSize);
-#endif
+				pFile->read(reinterpret_cast<char *>(pulse_data), sizeof(uint16_t) * pConfig->flimFrameSize);
 				frameCount++;
-
+				
 				// Push the buffers to sync Queues
-				m_syncDeinterleaving.Queue_sync.push(frame_data);
+				m_syncFlimProcessing.Queue_sync.push(pulse_data);
 			}
-		} while (frame_data == nullptr);
+
+		} while (pulse_data == nullptr);
 	}
 }
 
-void DataProcessing::deinterleaving(OCTProcess* pOCT, Configuration* pConfig)
+void DataProcessingDotter::loadingOctRawData(QFile* pFile, Configuration* pConfig)
 {
-    QViewTab* pVisTab = m_pResultTab->getViewTab();
+	QViewTab* pVisTab = m_pResultTab->getViewTab();
 
 	int frameCount = 0;
-	while (frameCount < pConfig->frames) /// + pConfig->interFrameSync)
+	while (frameCount < pConfig->frames)
 	{
-		// Get the buffer from the previous sync Queue
-		uint8_t* frame_ptr = m_syncDeinterleaving.Queue_sync.pop();
-		if (frame_ptr != nullptr)
-		{
-			// Get buffers from threading queues
-			uint16_t* pulse_ptr = nullptr;
-			do
-			{
-				if (pulse_ptr == nullptr)
-				{
-					std::unique_lock<std::mutex> lock(m_syncFlimProcessing.mtx);
+		// Read data from the external data
+		IppiSize roi_oct0 = { pConfig->octScans, pConfig->octAlines };
+		IppiSize roi_octR = { pConfig->octRadius, pConfig->octAlines };
+		np::Uint8Array2 frame_data(roi_oct0.width, roi_oct0.height);
+		pFile->read(reinterpret_cast<char *>(frame_data.raw_ptr()), sizeof(uint8_t) * pConfig->octFrameSize);
+		
+		if (pConfig->verticalMirroring)
+			ippiMirror_8u_C1IR(frame_data, roi_oct0.width, roi_oct0, ippAxsVertical);
 
-					if (!m_syncFlimProcessing.queue_buffer.empty())
-					{
-						pulse_ptr = m_syncFlimProcessing.queue_buffer.front();
-						m_syncFlimProcessing.queue_buffer.pop();
-					}
-				}
-
-				if (pulse_ptr != nullptr)
-				{
-					// Data deinterleaving
-					memcpy(pulse_ptr, frame_ptr, sizeof(uint16_t) * pConfig->flimFrameSize);
-					if (frameCount >= 0) /// pConfig->interFrameSync)
-					{						
-						memset(pVisTab->m_vectorOctImage.at(frameCount).raw_ptr(), 0, pVisTab->m_vectorOctImage.at(frameCount).length());
-						np::Uint8Array2 frame_data(pConfig->octScans, pConfig->octAlines);
-#ifndef NEXT_GEN_SYSTEM
-						if (pConfig->axsunPipelineMode == 0)
-							memcpy(frame_data, frame_ptr + sizeof(uint16_t) * pConfig->flimFrameSize, sizeof(uint8_t) * pConfig->octFrameSize);
-						else
-							(*pOCT)(frame_data.raw_ptr(), (int16_t*)(frame_ptr + sizeof(uint16_t) * pConfig->flimFrameSize), 
-								pConfig->axsunDbRange.min, pConfig->axsunDbRange.max);
-#else
-						memcpy(pVisTab->m_vectorOctImage.at(frameCount).raw_ptr(), ///  - pConfig->interFrameSync
-							frame_ptr + sizeof(uint16_t) * pConfig->flimFrameSize, sizeof(float) * pConfig->octFrameSize);
-#endif
-#ifndef NEXT_GEN_SYSTEM
-						IppiSize roi_oct = { pConfig->octScans, pConfig->octAlines };
-#else
-						IppiSize roi_oct = { m_pConfig->octScansFFT / 2, m_pConfig->octAlines };
-#endif
-						if (pConfig->verticalMirroring)
-							ippiMirror_8u_C1IR(frame_data, roi_oct.width, roi_oct, ippAxsVertical);  ///  - pConfig->interFrameSync
-
-						ippiCopy_8u_C1R(frame_data + pConfig->innerOffsetLength, roi_oct.width,  ///  - pConfig->interFrameSync
-							pVisTab->m_vectorOctImage.at(frameCount).raw_ptr(), roi_oct.width,  /// - pConfig->interFrameSync
-							{ roi_oct.width - pConfig->innerOffsetLength, roi_oct.height });
+		ippiCopy_8u_C1R(frame_data + pConfig->innerOffsetLength, roi_oct0.width,  ///  - pConfig->interFrameSync
+			pVisTab->m_vectorOctImage.at(frameCount).raw_ptr(), roi_octR.width,  /// - pConfig->interFrameSync
+			{ roi_octR.width, roi_octR.height });
 						
-						//ippiCopy_8u_C1R(frame_data, roi_oct.width, 
-						//	pVisTab->m_vectorOctImage.at(frameCount).raw_ptr() + m_pConfig->octScans - m_pConfig->innerOffsetLength, roi_oct.width,
-						//	{ pConfig->innerOffsetLength, roi_oct.height });
-					}
-					///else
-					///	memset(pVisTab->m_vectorOctImage.at(frameCount - pConfig->interFrameSync).raw_ptr(), 0, sizeof(uint8_t) * pConfig->octFrameSize);
-
-					frameCount++;
-
-					// Push the buffers to sync Queues
-					m_syncFlimProcessing.Queue_sync.push(pulse_ptr);
-
-					// Return (push) the buffer to the previous threading queue
-					{
-						std::unique_lock<std::mutex> lock(m_syncDeinterleaving.mtx);
-						m_syncDeinterleaving.queue_buffer.push(frame_ptr);
-					}
-				}
-			} while (pulse_ptr == nullptr);
-		}
-		else
-		{
-			printf("deinterleaving is halted.\n");
-			break;
-		}
+		frameCount++;
 	}
 }
 
-void DataProcessing::flimProcessing(FLImProcess* pFLIm, Configuration* pConfig)
+void DataProcessingDotter::flimProcessing(FLImProcess* pFLIm, Configuration* pConfig)
 {
     QViewTab* pViewTab = m_pResultTab->getViewTab();
 
@@ -315,12 +324,12 @@ void DataProcessing::flimProcessing(FLImProcess* pFLIm, Configuration* pConfig)
 		if (pulse_data != nullptr)
 		{			
 			// Pulse array definition
-			np::Uint16Array2 pulse_temp(pulse_data, pConfig->flimScans, pConfig->flimAlines);
-			np::Uint16Array2 pulse(pConfig->flimScans, pConfig->flimAlines);
+			//np::Uint16Array2 pulse_temp(pulse_data, pConfig->flimScans, pConfig->flimAlines);
+			np::Uint16Array2 pulse(pulse_data, pConfig->flimScans, pConfig->flimAlines);
 
-			// Additional intra frame synchronization process by pulse circulating
-			memcpy(&pulse(0, 0), &pulse_temp(0, 0), sizeof(uint16_t) * pulse.size(0) * pulse.size(1));  /// pConfig->intraFrameSync // - pConfig->intraFrameSync
-			/// memcpy(&pulse(0, pulse.size(1) - pConfig->intraFrameSync), &pulse_temp(0, 0), sizeof(uint16_t) * pulse.size(0) * pConfig->intraFrameSync);
+			//// Additional intra frame synchronization process by pulse circulating
+			//memcpy(&pulse(0, 0), &pulse_temp(0, 0), sizeof(uint16_t) * pulse.size(0) * pulse.size(1));  /// pConfig->intraFrameSync // - pConfig->intraFrameSync
+			///// memcpy(&pulse(0, pulse.size(1) - pConfig->intraFrameSync), &pulse_temp(0, 0), sizeof(uint16_t) * pulse.size(0) * pConfig->intraFrameSync);
 
 			// FLIM Process
 			(*pFLIm)(itn, md, ltm, pulse);
@@ -345,12 +354,12 @@ void DataProcessing::flimProcessing(FLImProcess* pFLIm, Configuration* pConfig)
 			pViewTab->m_vectorPulseFilter.push_back(filt);
 				
 			// Intensity compensation
-			for (int i = 0; i < 3; i++)
-				ippsDivC_32f_I(pConfig->flimIntensityComp[i], &itn(0, i + 1), pConfig->flimAlines);
+			//for (int i = 0; i < 3; i++)
+				//ippsDivC_32f_I(pConfig->flimIntensityComp[i], &itn(0, i + 1), pConfig->flimAlines);
 
-			///QFile file("pulse.data");
-			///file.open(QIODevice::WriteOnly);
-			///file.write(reinterpret_cast<const char*>(pFLIm->_resize.filt_src.raw_ptr()), sizeof(float) * pFLIm->_resize.nsite);
+			//QFile file("pulse.data");
+			//file.open(QIODevice::WriteOnly);
+			//file.write(reinterpret_cast<const char*>(pFLIm->_resize.mask_src.raw_ptr()), sizeof(float) * pFLIm->_resize.mask_src.length());
 
 			// Copy for Intensity & Lifetime	
 			memcpy(pp, pFLIm->_resize.pulse_power, sizeof(float) * pp.length());
@@ -418,9 +427,9 @@ void DataProcessing::flimProcessing(FLImProcess* pFLIm, Configuration* pConfig)
 
 
 #ifndef NEXT_GEN_SYSTEM
-void DataProcessing::getOctProjection(std::vector<np::Uint8Array2>& vecImg, np::Uint8Array2& octProj, int offset)
+void DataProcessingDotter::getOctProjection(std::vector<np::Uint8Array2>& vecImg, np::Uint8Array2& octProj, int offset)
 #else
-void DataProcessing::getOctProjection(std::vector<np::FloatArray2>& vecImg, np::FloatArray2& octProj, int offset)
+void DataProcessingDotter::getOctProjection(std::vector<np::FloatArray2>& vecImg, np::FloatArray2& octProj, int offset)
 #endif
 {
 	int len = vecImg.at(0).size(1);
@@ -448,7 +457,7 @@ void DataProcessing::getOctProjection(std::vector<np::FloatArray2>& vecImg, np::
 }
 
 
-void DataProcessing::calculateFlimParameters()
+void DataProcessingDotter::calculateFlimParameters()
 {
 	QViewTab* pViewTab = m_pResultTab->getViewTab();
 

@@ -26,6 +26,7 @@ struct RecordInfo
 	QString filename;
 	QString comment = "";
 	int pb_num = 0;
+	bool is_dotter = false;
 };
 
 class QPatientSummaryTab : public QDialog

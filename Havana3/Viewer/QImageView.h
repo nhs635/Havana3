@@ -150,6 +150,7 @@ public:
 
 	int m_ShadingRegions[2];
 
+	double m_dPixelResol;
 	bool m_bMeasureDistance;
 	bool m_bMeasureArea;
 	bool m_bIsClicking;

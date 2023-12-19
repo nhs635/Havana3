@@ -287,7 +287,7 @@ void FlimCalibTab::createHistogram()
 	{
 		m_pLabel_FluIntensityVal[i] = new QLabel(this);
 		m_pLabel_FluIntensityVal[i]->setFixedWidth(180);
-		m_pLabel_FluIntensityVal[i]->setText(QString::fromLocal8Bit("Ch%1: %2 ¡¾ %3").arg(i + 1).arg(0.0, 4, 'f', 3).arg(0.0, 4, 'f', 3));
+		m_pLabel_FluIntensityVal[i]->setText(QString::fromLocal8Bit("Ch%1: %2 Â± %3").arg(i + 1).arg(0.0, 4, 'f', 3).arg(0.0, 4, 'f', 3));
 		m_pLabel_FluIntensityVal[i]->setAlignment(Qt::AlignCenter);		
 	}
 	m_pLabel_FluIntensityVal[0]->setStyleSheet("QLabel{color:#d900ff}");
@@ -324,7 +324,7 @@ void FlimCalibTab::createHistogram()
 	{
 		m_pLabel_FluLifetimeVal[i] = new QLabel(this);
 		m_pLabel_FluLifetimeVal[i]->setFixedWidth(180);
-		m_pLabel_FluLifetimeVal[i]->setText(QString::fromLocal8Bit("Ch%1: %2 ¡¾ %3").arg(i + 1).arg(0.0, 4, 'f', 3).arg(0.0, 4, 'f', 3));
+		m_pLabel_FluLifetimeVal[i]->setText(QString::fromLocal8Bit("Ch%1: %2 Â± %3").arg(i + 1).arg(0.0, 4, 'f', 3).arg(0.0, 4, 'f', 3));
 		m_pLabel_FluLifetimeVal[i]->setAlignment(Qt::AlignCenter);
 	}
 	m_pLabel_FluLifetimeVal[0]->setStyleSheet("QLabel{color:#d900ff}");
@@ -405,9 +405,9 @@ void FlimCalibTab::drawRoiPulse(int aline)
 		
 		Ipp32f mean, stdev;
 		auto res = ippsMeanStdDev_32f(scanIntensity, m_pConfig->flimAlines, &mean, &stdev, ippAlgHintFast);
-		m_pLabel_FluIntensityVal[i]->setText(QString::fromLocal8Bit("Ch%1: %2 ¡¾ %3").arg(i + 1).arg(mean, 4, 'f', 3).arg(stdev, 4, 'f', 3));
+		m_pLabel_FluIntensityVal[i]->setText(QString::fromLocal8Bit("Ch%1: %2 Â± %3").arg(i + 1).arg(mean, 4, 'f', 3).arg(stdev, 4, 'f', 3));
 		res = ippsMeanStdDev_32f(scanLifetime, m_pConfig->flimAlines, &mean, &stdev, ippAlgHintFast);
-		m_pLabel_FluLifetimeVal[i]->setText(QString::fromLocal8Bit("Ch%1: %2 ¡¾ %3").arg(i + 1).arg(mean, 4, 'f', 3).arg(stdev, 4, 'f', 3));
+		m_pLabel_FluLifetimeVal[i]->setText(QString::fromLocal8Bit("Ch%1: %2 Â± %3").arg(i + 1).arg(mean, 4, 'f', 3).arg(stdev, 4, 'f', 3));
 	}
 	m_pRenderArea_FluIntensity->update();
 	m_pRenderArea_FluLifetime->update();

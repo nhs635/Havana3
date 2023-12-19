@@ -834,6 +834,7 @@ void ExportDlg::scaling(std::vector<np::FloatArray2>& vectorOctImage, std::vecto
 	// Colortable & size parameter
 	ColorTable temp_ctable;
 	IppiSize roi_oct = { vectorOctImage.at(0).size(0), vectorOctImage.at(0).size(1) };
+	int ring_thickness = (RING_THICKNESS * m_pConfigTemp->octRadius) / 1024;
 	
 	int frameCount = 0;
 	while (frameCount < nTotalFrame)
@@ -849,11 +850,11 @@ void ExportDlg::scaling(std::vector<np::FloatArray2>& vectorOctImage, std::vecto
 			// Image objects for OCT Images
 			pImgObjVec->push_back(new ImageObject(roi_oct.width, roi_oct.height, temp_ctable.m_colorTableVector.at(OCT_COLORTABLE)));
 			// Image objects for Ch1 FLIM
-			pImgObjVec->push_back(new ImageObject(RING_THICKNESS, roi_oct.height / 4, temp_ctable.m_colorTableVector.at(LIFETIME_COLORTABLE)));
+			pImgObjVec->push_back(new ImageObject(ring_thickness, roi_oct.height / 4, temp_ctable.m_colorTableVector.at(LIFETIME_COLORTABLE)));
 			// Image objects for Ch2 FLIM		
-			pImgObjVec->push_back(new ImageObject(RING_THICKNESS, roi_oct.height / 4, temp_ctable.m_colorTableVector.at(LIFETIME_COLORTABLE)));
+			pImgObjVec->push_back(new ImageObject(ring_thickness, roi_oct.height / 4, temp_ctable.m_colorTableVector.at(LIFETIME_COLORTABLE)));
 			// Image objects for Ch3 FLIM
-			pImgObjVec->push_back(new ImageObject(RING_THICKNESS, roi_oct.height / 4, temp_ctable.m_colorTableVector.at(LIFETIME_COLORTABLE)));
+			pImgObjVec->push_back(new ImageObject(ring_thickness, roi_oct.height / 4, temp_ctable.m_colorTableVector.at(LIFETIME_COLORTABLE)));
 
 			// OCT Visualization
 			np::FloatArray2 scale_temp(roi_oct.width, roi_oct.height);
@@ -889,12 +890,12 @@ void ExportDlg::scaling(std::vector<np::FloatArray2>& vectorOctImage, std::vecto
 			{
 				if (checkList.bCh[i])
 				{
-					tbb::parallel_for(tbb::blocked_range<size_t>(0, (size_t)RING_THICKNESS),
-						[&](const tbb::blocked_range<size_t>& r) {
+					tbb::parallel_for(tbb::blocked_range<size_t>(0, (size_t)ring_thickness),
+						[&, ring_thickness](const tbb::blocked_range<size_t>& r) {
 						for (size_t j = r.begin(); j != r.end(); ++j)
 						{
 							ippiCopy_8u_C3R(vectorLifetimeMap.at(i)->qrgbimg.constBits() + 3 * frameCount, 3 * vectorLifetimeMap.at(i)->arr.size(0),
-								pImgObjVec->at(i + 1)->qrgbimg.bits() + 3 * j, 3 * RING_THICKNESS, roi_flimring);
+								pImgObjVec->at(i + 1)->qrgbimg.bits() + 3 * j, 3 * ring_thickness, roi_flimring);
 						}
 					});
 				}
@@ -1014,6 +1015,8 @@ void ExportDlg::circularizing(CrossSectionCheckList checkList) // with longitudi
 			{
 				// ImageObject for circ writing
 				///if (!checkList.bMulti)
+
+				int ring_thickness = (RING_THICKNESS * m_pConfigTemp->octRadius) / 1024;
 				{
 					for (int i = 0; i < 3; i++)
 					{
@@ -1026,8 +1029,8 @@ void ExportDlg::circularizing(CrossSectionCheckList checkList) // with longitudi
 						if (checkList.bCh[i] && (checkList.bCirc || checkList.bLongi))
 						{
 							// Paste FLIM color ring to RGB rect image
-							ippiCopy_8u_C3R(pImgObjVec->at(i + 1)->qrgbimg.bits(), 3 * RING_THICKNESS,
-								pImgObjVec->at(0)->qrgbimg.bits() + 3 * (octScans - RING_THICKNESS), 3 * octScans, { RING_THICKNESS, octAlines });
+							ippiCopy_8u_C3R(pImgObjVec->at(i + 1)->qrgbimg.bits(), 3 * ring_thickness,
+								pImgObjVec->at(0)->qrgbimg.bits() + 3 * (octScans - ring_thickness), 3 * octScans, { ring_thickness, octAlines });
 
 							// Circularize						
 							(*m_pViewTab->getCirc())(rect_temp, pCircImgObj->qrgbimg.bits(), false, true);

@@ -66,6 +66,7 @@ public:
 	inline void setCurrentFrame(int frame) { m_pSlider_SelectFrame->setValue(frame); }
     inline int getCurrentFrame() { return m_pSlider_SelectFrame->value(); }
 	inline int getCurrentAline() { return m_pImageView_CircImage->getRender()->m_pVLineInd[0]; }
+	inline void lumenDetection() { lumenContourDetection(); }
 	
 private:
     void createViewTabWidgets(bool);
@@ -102,6 +103,7 @@ private slots:
 	void changeMLPrediction(int);
 
 public:
+	void scaleOctImage(np::Uint8Array2& oct_input, np::Uint8Array2& oct_output, bool reflection_removal);
 	void scaleFLImEnFaceMap(ImageObject* pImgObjIntensityMap, ImageObject* pImgObjLifetimeMap,
 		ImageObject* pImgObjIntensityPropMap, ImageObject* pImgObjIntensityRatioMap,
 		ImageObject* pImgObjPlaqueCompositionMap, 

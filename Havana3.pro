@@ -107,14 +107,16 @@ SOURCES += DataAcquisition/SignatecDAQ/SignatecDAQ.cpp \
     DataAcquisition/AxsunCapture/AxsunCapture.cpp \
     DataAcquisition/ThreadManager.cpp \
     DataAcquisition/DataAcquisition.cpp \
-    DataAcquisition/DataProcessing.cpp
+    DataAcquisition/DataProcessing.cpp \
+    DataAcquisition/DataProcessingDotter.cpp
 }
 macx {
 SOURCES += DataAcquisition/FLImProcess/FLImProcess.cpp \
     DataAcquisition/OCTProcess/OCTProcess.cpp \
     DataAcquisition/ThreadManager.cpp \
     DataAcquisition/DataAcquisition.cpp \
-    DataAcquisition/DataProcessing.cpp
+    DataAcquisition/DataProcessing.cpp \
+    DataAcquisition/DataProcessingDotter.cpp
 }
 
 SOURCES += MemoryBuffer/MemoryBuffer.cpp
@@ -161,7 +163,8 @@ HEADERS += DataAcquisition/SignatecDAQ/SignatecDAQ.h \
     DataAcquisition/AxsunCapture/AxsunCapture.h \
     DataAcquisition/ThreadManager.h \
     DataAcquisition/DataAcquisition.h \
-    DataAcquisition/DataProcessing.h
+    DataAcquisition/DataProcessing.h \
+    DataAcquisition/DataProcessingDotter.h
 }
 macx {
 HEADERS += DataAcquisition/FLImProcess/FLImProcess.h \

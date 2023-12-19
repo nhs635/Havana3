@@ -179,7 +179,7 @@ void QPatientSummaryTab::createPatientSummaryTable()
 
     // Cell items properties
     m_pTableWidget_RecordInformation->setAlternatingRowColors(true);
-    m_pTableWidget_RecordInformation->setSelectionMode(QAbstractItemView::SingleSelection);  /////////////////////// Focus ÀÒÀ¸¸é Deselect µÇµµ·Ï ÇÏ±â
+    m_pTableWidget_RecordInformation->setSelectionMode(QAbstractItemView::SingleSelection);  /////////////////////// Focus ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Deselect ï¿½Çµï¿½ï¿½ï¿½ ï¿½Ï±ï¿½
     m_pTableWidget_RecordInformation->setEditTriggers(QAbstractItemView::NoEditTriggers);
     m_pTableWidget_RecordInformation->setSelectionBehavior(QAbstractItemView::SelectRows);
     m_pTableWidget_RecordInformation->setTextElideMode(Qt::ElideRight);
@@ -456,32 +456,58 @@ void QPatientSummaryTab::exportRawData(bool toggled)
 
 void QPatientSummaryTab::import()
 {
-	QString fileName = QFileDialog::getOpenFileName(nullptr, "Import external FLIm OCT data", "", "FLIm OCT raw data (*.data)", nullptr, QFileDialog::DontUseNativeDialog);
+	QStringList fileNames = QFileDialog::getOpenFileNames(nullptr, "Import external OCT-FLIm data", "", "OCT-FLIm raw data (*.data *.xml)", nullptr, QFileDialog::DontUseNativeDialog);
 	
 	// Get path to read	
-	if (fileName != "")
+	if (fileNames.size() != 0)
 	{
-		// Set record information
-		RecordInfo record_info;
+		foreach(QString fileName, fileNames)
+		{
+			// Set record information
+			RecordInfo record_info;
 
-		record_info.patientId = m_patientInfo.patientId;
-		record_info.patientName = m_patientInfo.patientName;
-		record_info.filename = fileName;
-		record_info.date = QFileInfo(record_info.filename).lastModified().toString("yyyy-MM-dd hh:mm:ss");
+			record_info.patientId = m_patientInfo.patientId;
+			record_info.patientName = m_patientInfo.patientName;
+			record_info.filename = fileName;
+			record_info.date = QFileInfo(record_info.filename).lastModified().toString("yyyy-MM-dd hh:mm:ss");
 
-		// Add to database
-		QString command = QString("INSERT INTO records(patient_id, datetime_taken, title, filename, procedure_id, vessel_id) "
-			"VALUES('%1', '%2', '%3', '%4', %5, %6)").arg(record_info.patientId).arg(record_info.date)
-			.arg(record_info.title).arg(record_info.filename).arg(record_info.procedure).arg(record_info.vessel);
-		m_pHvnSqlDataBase->queryDatabase(command);
+			if (fileName.split(".")[1] == "xml")
+			{
+				QFile file(fileName);
+				if (file.open(QFile::ReadOnly))
+				{
+					QString rpdname = record_info.filename;
+					rpdname.replace(".xml", ".rpd");
+					record_info.date = QFileInfo(rpdname).lastModified().toString("yyyy-MM-dd hh:mm:ss");
+
+					QTextStream stream(&file);
+					QStringList info = stream.readLine().split(" ");
+
+					QString procedure = info.at(4).split("=").at(1); procedure.remove("\"");
+					record_info.procedure = procedure.toInt();
+					QString vessel = info.at(8).split("=").at(1); vessel.remove("\"");
+					record_info.vessel = vessel.toInt();
+
+					record_info.is_dotter = true;
+
+					file.close();
+				}
+			}
+
+			// Add to database
+			QString command = QString("INSERT INTO records(patient_id, datetime_taken, title, filename, procedure_id, vessel_id) "
+				"VALUES('%1', '%2', '%3', '%4', %5, %6)").arg(record_info.patientId).arg(record_info.date)
+				.arg(record_info.title).arg(record_info.filename).arg(record_info.procedure).arg(record_info.vessel);
+			m_pHvnSqlDataBase->queryDatabase(command);
+			
+			m_pConfig->writeToLog(QString("Exisiting record imported: %1 (ID: %2): %3")
+				.arg(m_patientInfo.patientName).arg(m_patientInfo.patientId).arg(fileName));
+		}
 
 		loadRecordDatabase();
 
 		QMessageBox MsgBox(QMessageBox::Information, "Import", "Successfully imported!");
 		MsgBox.exec();
-
-		m_pConfig->writeToLog(QString("Exisiting record imported: %1 (ID: %2): %3")
-			.arg(m_patientInfo.patientName).arg(m_patientInfo.patientId).arg(fileName));
 	}
 }
 
@@ -563,11 +589,11 @@ void QPatientSummaryTab::editContents(int row, int column)
 				pTextEdit_Title->setPlainText(m_pTableWidget_RecordInformation->item(row, column)->text());
 				connect(pTextEdit_Title, &QTextEdit::textChanged, [&, pTextEdit_Title]() { 					
 					QString title = pTextEdit_Title->toPlainText();
-					if (title.contains(QString::fromLocal8Bit("¡Ú")))
-						m_pTableWidget_RecordInformation->item(row, column)->setTextColor(QColor(255, 0, 0));
-					else if (title.contains(QString::fromLocal8Bit("¡Ù")))
-						m_pTableWidget_RecordInformation->item(row, column)->setTextColor(QColor(0, 255, 255));
-					else
+					//if (title.contains(QString::fromLocal8Bit("")))  // â˜…
+					//	m_pTableWidget_RecordInformation->item(row, column)->setTextColor(QColor(255, 0, 0));
+					//else if (title.contains(QString::fromLocal8Bit("")))  // â˜†
+					//	m_pTableWidget_RecordInformation->item(row, column)->setTextColor(QColor(0, 255, 255));
+					//else
 						m_pTableWidget_RecordInformation->item(row, column)->setTextColor(QColor(255, 255, 255));
 					m_pTableWidget_RecordInformation->item(row, column)->setText(pTextEdit_Title->toPlainText()); 
 				});
@@ -832,10 +858,10 @@ void QPatientSummaryTab::loadRecordDatabase()
 			pWidget_Delete->setLayout(pHBoxLayout_Delete);
 
 			QString title = _sqlQuery.value(7).toString();
-			if (title.contains(QString::fromLocal8Bit("¡Ú")))
-				pTitleItem->setTextColor(QColor(255, 0, 0));
-			else if (title.contains(QString::fromLocal8Bit("¡Ù")))
-				pTitleItem->setTextColor(QColor(0, 255, 255));
+			//if (title.contains(QString::fromLocal8Bit("")))  // â˜…
+			//	pTitleItem->setTextColor(QColor(255, 0, 0));
+			//else if (title.contains(QString::fromLocal8Bit("")))  // â˜†
+			//	pTitleItem->setTextColor(QColor(0, 255, 255));
 
 			QString procedure = m_pHvnSqlDataBase->getProcedure(_sqlQuery.value(11).toInt());
 			if (procedure.contains("Follow Up"))
@@ -907,18 +933,35 @@ void QPatientSummaryTab::loadRecordDatabase()
 
 			pTitleItem->setToolTip(record_id);
 
-			QString filepath0 = _sqlQuery.value(9).toString();			
+			QString filepath0 = _sqlQuery.value(9).toString();
+			QString ext = filepath0.split(".").at(1);
+			
 			int idx = filepath0.indexOf("record");
 			QString filepath = m_pConfig->dbPath + filepath0.remove(0, idx - 1);
 
-			QFileInfo check_file(filepath);
+			if (ext == "data")
+			{
+				QFileInfo check_file(filepath);
+				if (!(check_file.exists() && check_file.isFile()))
+					pWidget_Review->setDisabled(true);
 
-			if (!(check_file.exists() && check_file.isFile()))
-				pWidget_Review->setDisabled(true);
-
-			QFileInfo check_ini(filepath.replace("pullback.data", "roi.csv"));
-			if (check_ini.exists())
-				pDateTimeItem->setTextColor(QColor(244, 177, 131));
+				QFileInfo check_ini(filepath.replace("pullback.data", "roi.csv"));
+				if (check_ini.exists())
+					pDateTimeItem->setTextColor(QColor(244, 177, 131));
+			}
+			else if (ext == "xml")
+			{
+				{
+					QFileInfo check_file(filepath.replace(".xml", ".flim"));
+					if (!(check_file.exists() && check_file.isFile()))
+						pWidget_Review->setDisabled(true);
+				}
+				{
+					QFileInfo check_file(filepath.replace(".flim", ".rpd"));
+					if (!(check_file.exists() && check_file.isFile()))
+						pWidget_Review->setDisabled(true);
+				}
+			}
 
             m_pTableWidget_RecordInformation->setItem(rowCount, 0, pTitleItem);
             m_pTableWidget_RecordInformation->setItem(rowCount, 1, pPreviewItem);

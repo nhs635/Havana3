@@ -424,12 +424,12 @@ void DeviceOptionTab::createFlimSystemControl()
 	m_pLineEdit_FlimLaserPowerMonitor->setDisabled(true);
 
 	m_pPushButton_FlimLaserPowerIncrease = new QPushButton(this);
-	m_pPushButton_FlimLaserPowerIncrease->setText(QString::fromLocal8Bit("¡ã"));
+	m_pPushButton_FlimLaserPowerIncrease->setText(QString::fromLocal8Bit("â–²")); // ï¿½ï¿½"));
 	m_pPushButton_FlimLaserPowerIncrease->setFixedWidth(20);
 	m_pPushButton_FlimLaserPowerIncrease->setDisabled(true);
 
 	m_pPushButton_FlimLaserPowerDecrease = new QPushButton(this);
-	m_pPushButton_FlimLaserPowerDecrease->setText(QString::fromLocal8Bit("¡å"));
+	m_pPushButton_FlimLaserPowerDecrease->setText(QString::fromLocal8Bit("â–¼")); // ï¿½ï¿½"));
 	m_pPushButton_FlimLaserPowerDecrease->setFixedWidth(20);
 	m_pPushButton_FlimLaserPowerDecrease->setDisabled(true);
 #else
