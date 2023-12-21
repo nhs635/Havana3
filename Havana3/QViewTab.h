@@ -98,6 +98,7 @@ private slots:
 	void measureArea(bool);
 	void autoContouring(bool);
 	void lumenContourDetection();
+	void setDiameterView(bool);
 	void changeVisualizationMode(int);
 	void changeEmissionChannel(int);
 	void changeMLPrediction(int);
@@ -234,6 +235,7 @@ private:
 	QPushButton *m_pToggleButton_MeasureArea;
 	QPushButton *m_pToggleButton_AutoContour;
 	QPushButton *m_pPushButton_LumenDetection;
+	QPushButton *m_pToggleButton_DiameterView;
 
     QComboBox *m_pComboBox_FLImParameters;
 	QComboBox *m_pComboBox_MLPrediction;
@@ -241,7 +243,7 @@ private:
 	QButtonGroup *m_pButtonGroup_VisualizationMode;
 	QRadioButton *m_pRadioButton_FLImParameters;
 	QRadioButton *m_pRadioButton_MLPrediction;
-
+	
 	// Set range dialog
 	QDialog *m_pDialog_SetRange;
 };

@@ -202,6 +202,12 @@ void QViewTab::createViewTabWidgets(bool is_streaming)
 		m_pToggleButton_AutoContour->setText("Auto Contour");
 		m_pToggleButton_AutoContour->setFixedWidth(120);
 
+		m_pToggleButton_DiameterView = new QPushButton(this);
+		m_pToggleButton_DiameterView->setCheckable(true);
+		m_pToggleButton_DiameterView->setText("Diameter View");
+		m_pToggleButton_DiameterView->setFixedWidth(120);
+		m_pToggleButton_DiameterView->setDisabled(true);
+
         // Create widgets for FLIm parameters control
         m_pComboBox_FLImParameters = new QComboBox(this);
 		m_pComboBox_FLImParameters->addItem("Ch 1 Lifetime");
@@ -334,7 +340,8 @@ void QViewTab::createViewTabWidgets(bool is_streaming)
 						int ivus_total_frame = (int)pIvusViewerDlg->m_vectorIvusImages.size();
 						int ivus_rotation = matches.at(2).toInt();
 
-						QString label = QString("[%1] %2 (%3 %4 / %5) CCW %6 deg\n(%7)").arg(pt_name).arg(acq_date).arg("ivus:").arg(ivus_frame + 1).arg(ivus_total_frame).arg(ivus_rotation).arg(m_pConfigTemp->ivusPath);
+						QString label = QString("[%1] %2 (%3 %4 / %5) CCW %6 deg\n(%7)").arg(pt_name).arg(acq_date)
+							.arg("ivus:").arg(ivus_frame + 1).arg(ivus_total_frame).arg(ivus_rotation).arg(m_pConfigTemp->ivusPath);
 						QApplication::clipboard()->setText(label);
 					}
 				}
@@ -373,10 +380,12 @@ void QViewTab::createViewTabWidgets(bool is_streaming)
 		pGridLayout2->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed), 0, 0);
 		pGridLayout2->addWidget(m_pToggleButton_MeasureDistance, 0, 1);
 		pGridLayout2->addWidget(m_pToggleButton_MeasureArea, 0, 2);
-		pGridLayout2->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed), 1, 0, 1, 2);
+		pGridLayout2->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed), 1, 0);
 		pGridLayout2->addWidget(m_pPushButton_LumenDetection, 1, 1);
 		pGridLayout2->addWidget(m_pToggleButton_AutoContour, 1, 2);
-		
+		pGridLayout2->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed), 2, 0, 1, 2);
+		pGridLayout2->addWidget(m_pToggleButton_DiameterView, 2, 2);
+				
 		QGridLayout *pGridLayout3 = new QGridLayout;
 		pGridLayout3->setSpacing(4);
 
@@ -440,6 +449,7 @@ void QViewTab::createViewTabWidgets(bool is_streaming)
 		connect(m_pToggleButton_MeasureArea, SIGNAL(toggled(bool)), this, SLOT(measureArea(bool)));
 		connect(m_pPushButton_LumenDetection, SIGNAL(clicked(bool)), this, SLOT(lumenContourDetection()));
 		connect(m_pToggleButton_AutoContour, SIGNAL(toggled(bool)), this, SLOT(autoContouring(bool)));
+		connect(m_pToggleButton_DiameterView, SIGNAL(toggled(bool)), this, SLOT(setDiameterView(bool)));
 
 		connect(m_pButtonGroup_VisualizationMode, SIGNAL(buttonClicked(int)), this, SLOT(changeVisualizationMode(int)));
         connect(m_pComboBox_FLImParameters, SIGNAL(currentIndexChanged(int)), this, SLOT(changeEmissionChannel(int)));
@@ -510,7 +520,8 @@ void QViewTab::invalidate()
 		else if (m_pConfig->flimParameterMode == FLImParameters::_INTENSITY_RATIO_)
 		{
 			m_pImageView_EnFace->setEnterCallback([&]() { m_pImageView_EnFace->setText(QPoint(8, 4),
-				QString::fromLocal8Bit("2-D FLIm En Face Chemogram\n- Ch %1/%2 Intensity Ratio (z-θ)").arg(m_pConfig->flimEmissionChannel).arg((m_pConfig->flimEmissionChannel == 1) ? 3 : m_pConfig->flimEmissionChannel - 1)); });
+				QString::fromLocal8Bit("2-D FLIm En Face Chemogram\n- Ch %1/%2 Intensity Ratio (z-θ)").arg(m_pConfig->flimEmissionChannel)
+				.arg((m_pConfig->flimEmissionChannel == 1) ? 3 : m_pConfig->flimEmissionChannel - 1)); });
 
 			m_pImageView_ColorBar->setText(QPoint(0, 0), QString("%1       Intensity Ratio (AU)       %2")
 				.arg(m_pConfig->flimIntensityRatioRange[m_pConfig->flimEmissionChannel - 1].max, 2, 'f', 1)
@@ -879,7 +890,8 @@ void QViewTab::invalidate()
 		m_pImageView_ColorBar->DidCopyLabel += [&, pt_name, acq_date, flim_type, qval]() {
 			QString qval0 = qval;
 			qval0.replace("\n", "\t");
-			QString label = QString("[%1] %2 %3 range [%4 %5]\n%6").arg(pt_name).arg(acq_date).arg(flim_type).arg(m_pConfigTemp->quantitationRange.min).arg(m_pConfigTemp->quantitationRange.max).arg(qval0);
+			QString label = QString("[%1] %2 %3 range [%4 %5]\n%6").arg(pt_name).arg(acq_date).arg(flim_type)
+				.arg(m_pConfigTemp->quantitationRange.min).arg(m_pConfigTemp->quantitationRange.max).arg(qval0);
 			QApplication::clipboard()->setText(label);
 		};	
 	}
@@ -1138,7 +1150,8 @@ void QViewTab::setWidgets(Configuration* pConfig)
 	else if (m_pConfig->flimParameterMode == FLImParameters::_INTENSITY_RATIO_)
 	{
 		m_pImageView_EnFace->setEnterCallback([&]() { m_pImageView_EnFace->setText(QPoint(8, 4),
-			QString::fromLocal8Bit("2-D FLIm En Face Chemogram\n- Ch %1/%2 Intensity Ratio (z-θ)").arg(m_pConfig->flimEmissionChannel).arg((m_pConfig->flimEmissionChannel == 1) ? 3 : m_pConfig->flimEmissionChannel - 1)); });
+			QString::fromLocal8Bit("2-D FLIm En Face Chemogram\n- Ch %1/%2 Intensity Ratio (z-θ)").arg(m_pConfig->flimEmissionChannel)
+			.arg((m_pConfig->flimEmissionChannel == 1) ? 3 : m_pConfig->flimEmissionChannel - 1)); });
 	}
 	else if (m_pConfig->flimParameterMode == FLImParameters::_NONE_)
 	{
@@ -1153,6 +1166,7 @@ void QViewTab::setWidgets(Configuration* pConfig)
 	m_pImageView_Longi->setVLineChangeCallback([&](int frame) { m_pSlider_SelectFrame->setValue(frame); });
 	m_pImageView_Longi->setVerticalLine(1, 0);
 	m_pImageView_Longi->getRender()->m_bDiametric = true;
+	m_pImageView_Longi->setScaleBar(int(1000.0 / m_pImageView_CircImage->getRender()->m_dPixelResol));
 	///m_pImageView_Longi->setHorizontalLine(2, diameter / 2 + OUTER_SHEATH_POSITION, diameter / 2 - OUTER_SHEATH_POSITION);
 	m_pImageView_Longi->setEnterCallback([&]() { m_pImageView_Longi->setText(QPoint(8, 4), "Longitudinal View (z-r)"); });
 	m_pImageView_Longi->setLeaveCallback([&]() { m_pImageView_Longi->setText(QPoint(8, 4), ""); });
@@ -1324,7 +1338,7 @@ void QViewTab::visualizeImage(int frame) // Post-processing mode
         // OCT Visualization
 		scaleOctImage(m_vectorOctImage.at(frame), m_pImgObjRectImage->arr, m_pConfigTemp->reflectionRemoval);
 		
-		circShift(m_pImgObjRectImage->arr, (m_pConfigTemp->rotatedAlines) % m_pConfig->octAlines);  ///  + m_pConfigTemp->intraFrameSync
+		circShift(m_pImgObjRectImage->arr, (m_pConfigTemp->rotatedAlines) % m_pConfigTemp->octAlines);  ///  + m_pConfigTemp->intraFrameSync
         (*m_pMedfiltRect)(m_pImgObjRectImage->arr.raw_ptr());
 		
 		// Convert RGB
@@ -1391,10 +1405,11 @@ void QViewTab::visualizeImage(int frame) // Post-processing mode
 			if (m_contourMap.length() != 0)
 			{
 				{
-					np::Uint16Array contour_16u(m_pConfig->octAlines);
-					ippsConvert_32f16u_Sfs(&m_contourMap(0, getCurrentFrame()), contour_16u, contour_16u.length(), ippRndNear, 0);					
+					np::Uint16Array contour_16u(m_pConfigTemp->octAlines);
+					ippsConvert_32f16u_Sfs(&m_contourMap(0, getCurrentFrame()), contour_16u, contour_16u.length(), ippRndNear, 0);
+					ippsAddC_16s_ISfs(m_pConfigTemp->circOffset, (Ipp16s *)contour_16u.raw_ptr(), contour_16u.length(), 0);
 					std::rotate(&contour_16u(0), &contour_16u((m_vibCorrIdx(getCurrentFrame()) + m_pConfigTemp->rotatedAlines) % m_pConfigTemp->octAlines), &contour_16u(contour_16u.length()));
-					m_pImageView_CircImage->setContour(m_pConfig->octAlines, contour_16u);
+					m_pImageView_CircImage->setContour(m_pConfigTemp->octAlines, contour_16u);					
 				}
 				{
 					std::vector<int> gwp = m_gwPoss.at(getCurrentFrame());
@@ -1518,64 +1533,88 @@ void QViewTab::visualizeLongiImage(int aline)
 
 	np::Uint8Array2 scale_temp(roi_longi.width, roi_longi.height);
 	memset(scale_temp, 0, sizeof(uint8_t) * scale_temp.length());
-	tbb::parallel_for(tbb::blocked_range<size_t>(0, (size_t)frames),
-		[&](const tbb::blocked_range<size_t>& r) {
-		for (size_t i = r.begin(); i != r.end(); ++i)
-		{
+
+	if (!m_pToggleButton_DiameterView->isChecked())
+	{	
+		tbb::parallel_for(tbb::blocked_range<size_t>(0, (size_t)frames),
+			[&](const tbb::blocked_range<size_t>& r) {
+			for (size_t i = r.begin(); i != r.end(); ++i)
+			{
 #ifndef NEXT_GEN_SYSTEM
-			if (m_pConfigTemp->circOffset > 0)
-			{
-				memcpy(&scale_temp(m_pConfigTemp->circOffset, (int)i), &m_vectorOctImage.at((int)i)(0, aline0), sizeof(uint8_t) * (octScans - m_pConfigTemp->circOffset));
-				memcpy(&scale_temp(octScans + m_pConfigTemp->circOffset, (int)i), &m_vectorOctImage.at((int)i)(0, aline1), sizeof(uint8_t) * (octScans - m_pConfigTemp->circOffset));
-			}
-			else
-			{
-				memcpy(&scale_temp(0, (int)i), &m_vectorOctImage.at((int)i)(-m_pConfigTemp->circOffset, aline0), sizeof(uint8_t) * (octScans + m_pConfigTemp->circOffset));
-				memcpy(&scale_temp(octScans, (int)i), &m_vectorOctImage.at((int)i)(-m_pConfigTemp->circOffset, aline1), sizeof(uint8_t) * (octScans + m_pConfigTemp->circOffset));
-			}
-			ippsFlip_8u_I(&scale_temp(0, (int)i), octScans);
+				if (m_pConfigTemp->circOffset > 0)
+				{
+					memcpy(&scale_temp(m_pConfigTemp->circOffset, (int)i), &m_vectorOctImage.at((int)i)(0, aline0), sizeof(uint8_t) * (octScans - m_pConfigTemp->circOffset));
+					memcpy(&scale_temp(octScans + m_pConfigTemp->circOffset, (int)i), &m_vectorOctImage.at((int)i)(0, aline1), sizeof(uint8_t) * (octScans - m_pConfigTemp->circOffset));
+				}
+				else
+				{
+					memcpy(&scale_temp(0, (int)i), &m_vectorOctImage.at((int)i)(-m_pConfigTemp->circOffset, aline0), sizeof(uint8_t) * (octScans + m_pConfigTemp->circOffset));
+					memcpy(&scale_temp(octScans, (int)i), &m_vectorOctImage.at((int)i)(-m_pConfigTemp->circOffset, aline1), sizeof(uint8_t) * (octScans + m_pConfigTemp->circOffset));
+				}
+				ippsFlip_8u_I(&scale_temp(0, (int)i), octScans);
 #else
-			memcpy(&longi_temp(0, (int)i), &m_vectorOctImage.at((int)i)(0, aline0), sizeof(float) * octScans);
-			memcpy(&longi_temp(octScans, (int)i), &m_vectorOctImage.at((int)i)(0, aline1), sizeof(float) * octScans);
-			ippsFlip_32f_I(&longi_temp(0, (int)i), octScans);
+				memcpy(&longi_temp(0, (int)i), &m_vectorOctImage.at((int)i)(0, aline0), sizeof(float) * octScans);
+				memcpy(&longi_temp(octScans, (int)i), &m_vectorOctImage.at((int)i)(0, aline1), sizeof(float) * octScans);
+				ippsFlip_32f_I(&longi_temp(0, (int)i), octScans);
 #endif
-		}
-	});
+			}
+		});
 
 #ifndef NEXT_GEN_SYSTEM
-	np::FloatArray2 longi_temp(roi_longi.width, roi_longi.height);
-	ippsConvert_8u32f(scale_temp.raw_ptr(), longi_temp.raw_ptr(), scale_temp.length());
-	if (m_pConfigTemp->reflectionRemoval)
-	{
-		np::FloatArray2 reflection_temp(roi_longi.width, roi_longi.height);
-		ippiCopy_32f_C1R(&longi_temp(0, 0), sizeof(float) * longi_temp.size(0),
-			&reflection_temp(m_pConfigTemp->reflectionDistance, 0), sizeof(float) * reflection_temp.size(0),
-			{ roi_longi.width / 2 - m_pConfigTemp->reflectionDistance, roi_longi.height });
-		ippiCopy_32f_C1R(&longi_temp(roi_longi.width / 2 + m_pConfigTemp->reflectionDistance, 0), sizeof(float) * longi_temp.size(0),
-			&reflection_temp(roi_longi.width / 2, 0), sizeof(float) * reflection_temp.size(0),
-			{ roi_longi.width / 2 - m_pConfigTemp->reflectionDistance, roi_longi.height });
-		ippsMulC_32f_I(m_pConfigTemp->reflectionLevel, reflection_temp, reflection_temp.length());
-		ippsSub_32f_I(reflection_temp, longi_temp, longi_temp.length());
+		np::FloatArray2 longi_temp(roi_longi.width, roi_longi.height);
+		ippsConvert_8u32f(scale_temp.raw_ptr(), longi_temp.raw_ptr(), scale_temp.length());
+		if (m_pConfigTemp->reflectionRemoval)
+		{
+			np::FloatArray2 reflection_temp(roi_longi.width, roi_longi.height);
+			ippiCopy_32f_C1R(&longi_temp(0, 0), sizeof(float) * longi_temp.size(0),
+				&reflection_temp(m_pConfigTemp->reflectionDistance, 0), sizeof(float) * reflection_temp.size(0),
+				{ roi_longi.width / 2 - m_pConfigTemp->reflectionDistance, roi_longi.height });
+			ippiCopy_32f_C1R(&longi_temp(roi_longi.width / 2 + m_pConfigTemp->reflectionDistance, 0), sizeof(float) * longi_temp.size(0),
+				&reflection_temp(roi_longi.width / 2, 0), sizeof(float) * reflection_temp.size(0),
+				{ roi_longi.width / 2 - m_pConfigTemp->reflectionDistance, roi_longi.height });
+			ippsMulC_32f_I(m_pConfigTemp->reflectionLevel, reflection_temp, reflection_temp.length());
+			ippsSub_32f_I(reflection_temp, longi_temp, longi_temp.length());
+			ippiScale_32f8u_C1R(longi_temp.raw_ptr(), roi_longi.width * sizeof(float),
+				scale_temp.raw_ptr(), roi_longi.width * sizeof(uint8_t), roi_longi, (float)m_pConfigTemp->octGrayRange.min, 0.9f * (float)m_pConfigTemp->octGrayRange.max);
+		}
+		else
+			ippiScale_32f8u_C1R(longi_temp.raw_ptr(), roi_longi.width * sizeof(float),
+				scale_temp.raw_ptr(), roi_longi.width * sizeof(uint8_t), roi_longi, m_pConfigTemp->octGrayRange.min, m_pConfigTemp->octGrayRange.max);
+
+		///ippsConvert_8u32f(scale_temp.raw_ptr(), longi_temp.raw_ptr(), scale_temp.length());
+		///ippiScale_32f8u_C1R(longi_temp.raw_ptr(), roi_longi.width * sizeof(float),
+		///    scale_temp.raw_ptr(), roi_longi.width * sizeof(uint8_t), roi_longi, m_pConfigTemp->octGrayRange.min, m_pConfigTemp->octGrayRange.max);
+#else
 		ippiScale_32f8u_C1R(longi_temp.raw_ptr(), roi_longi.width * sizeof(float),
-			scale_temp.raw_ptr(), roi_longi.width * sizeof(uint8_t), roi_longi, (float)m_pConfigTemp->octGrayRange.min, 0.9f * (float)m_pConfigTemp->octGrayRange.max);
+			scale_temp.raw_ptr(), roi_longi.width * sizeof(uint8_t), roi_longi, m_pConfig->axsunDbRange.min, m_pConfig->axsunDbRange.max);
+#endif
+		///if (aline0 > (octAlines / 2))
+		///    ippiMirror_8u_C1IR(scale_temp.raw_ptr(), sizeof(uint8_t) * roi_longi.width, roi_longi, ippAxsVertical);
+		ippiTranspose_8u_C1R(scale_temp.raw_ptr(), roi_longi.width * sizeof(uint8_t), m_pImgObjLongiImage->arr.raw_ptr(), roi_longi.height * sizeof(uint8_t), roi_longi);
+		(*m_pMedfiltLongi)(m_pImgObjLongiImage->arr.raw_ptr());		
 	}
 	else
-		ippiScale_32f8u_C1R(longi_temp.raw_ptr(), roi_longi.width * sizeof(float),
-			scale_temp.raw_ptr(), roi_longi.width * sizeof(uint8_t), roi_longi, m_pConfigTemp->octGrayRange.min, m_pConfigTemp->octGrayRange.max);
+	{
+		ippsSet_8u(150, scale_temp, scale_temp.length());
 
-    ///ippsConvert_8u32f(scale_temp.raw_ptr(), longi_temp.raw_ptr(), scale_temp.length());
-    ///ippiScale_32f8u_C1R(longi_temp.raw_ptr(), roi_longi.width * sizeof(float),
-    ///    scale_temp.raw_ptr(), roi_longi.width * sizeof(uint8_t), roi_longi, m_pConfigTemp->octGrayRange.min, m_pConfigTemp->octGrayRange.max);
-#else
-	ippiScale_32f8u_C1R(longi_temp.raw_ptr(), roi_longi.width * sizeof(float),
-		scale_temp.raw_ptr(), roi_longi.width * sizeof(uint8_t), roi_longi, m_pConfig->axsunDbRange.min, m_pConfig->axsunDbRange.max);
-#endif
-    ///if (aline0 > (octAlines / 2))
-    ///    ippiMirror_8u_C1IR(scale_temp.raw_ptr(), sizeof(uint8_t) * roi_longi.width, roi_longi, ippAxsVertical);
-    ippiTranspose_8u_C1R(scale_temp.raw_ptr(), roi_longi.width * sizeof(uint8_t), m_pImgObjLongiImage->arr.raw_ptr(), roi_longi.height * sizeof(uint8_t), roi_longi);
-    (*m_pMedfiltLongi)(m_pImgObjLongiImage->arr.raw_ptr());
+		tbb::parallel_for(tbb::blocked_range<size_t>(0, (size_t)frames),
+			[&](const tbb::blocked_range<size_t>& r) {
+			for (size_t i = r.begin(); i != r.end(); ++i)
+			{
+				float mean_radius;
+				ippsMean_32f(&m_contourMap(0, i), m_pConfigTemp->octAlines, &mean_radius, ippAlgHintAccurate);
+				mean_radius += (float)m_pConfigTemp->circOffset;
+				if (mean_radius > octScans)
+					mean_radius = octScans;
+			
+				ippsSet_8u(0, &scale_temp(octScans - (int)round(mean_radius), i), (int)round(mean_radius) * 2);
+			}
+		});
 
-    m_pImgObjLongiImage->convertRgb();
+		ippiTranspose_8u_C1R(scale_temp.raw_ptr(), roi_longi.width * sizeof(uint8_t), m_pImgObjLongiImage->arr.raw_ptr(), roi_longi.height * sizeof(uint8_t), roi_longi);
+	}
+
+	m_pImgObjLongiImage->convertRgb();
 
     // Make longitudinal - FLIM
 	int vis_mode = m_pRadioButton_MLPrediction->isChecked();	
@@ -1628,8 +1667,10 @@ void QViewTab::visualizeLongiImage(int aline)
 				[&, ring_thickness](const tbb::blocked_range<size_t>& r) {
 				for (size_t i = r.begin(); i != r.end(); ++i)
 				{
-					memset(m_pImgObjLongiImage->qrgbimg.bits() + 3 * (int)i * m_pImgObjLongiImage->getWidth(), 0, sizeof(uint8_t) * 3 * m_pImgObjLongiImage->getWidth());
-					memset(m_pImgObjLongiImage->qrgbimg.bits() + 3 * (int)(m_pImgObjLongiImage->getHeight() - i) * m_pImgObjLongiImage->getWidth(),	0, sizeof(uint8_t) * 3 * m_pImgObjLongiImage->getWidth());
+					memset(m_pImgObjLongiImage->qrgbimg.bits() + 3 * (int)i * m_pImgObjLongiImage->getWidth(), 0, 
+						sizeof(uint8_t) * 3 * m_pImgObjLongiImage->getWidth());
+					memset(m_pImgObjLongiImage->qrgbimg.bits() + 3 * (int)(m_pImgObjLongiImage->getHeight() - i) * m_pImgObjLongiImage->getWidth(),	0, 
+						sizeof(uint8_t) * 3 * m_pImgObjLongiImage->getWidth());
 				}
 			});
 		}
@@ -1649,7 +1690,7 @@ void QViewTab::visualizeLongiImage(int aline)
 	}
 	
 	// Draw contours
-	if (m_pToggleButton_AutoContour->isChecked())
+	if (m_pToggleButton_AutoContour->isChecked() && !m_pToggleButton_DiameterView->isChecked())
 	{
 		if (m_contourMap.length() != 0)
 		{
@@ -1659,10 +1700,16 @@ void QViewTab::visualizeLongiImage(int aline)
 				lcontour_16u(i) = m_contourMap((aline0 + (int)m_vibCorrIdx(i)) % m_pConfigTemp->octAlines, i);
 				lcontour_16u(i + m_pConfigTemp->frames) = m_contourMap((aline1 + (int)m_vibCorrIdx(i)) % m_pConfigTemp->octAlines, i);
 			}
+			ippsAddC_16s_ISfs(m_pConfigTemp->circOffset, (Ipp16s *)lcontour_16u.raw_ptr(), lcontour_16u.length(), 0);
 
 			m_pImageView_Longi->setContour(2 * m_pConfigTemp->frames, lcontour_16u);
 			m_pImageView_Longi->getRender()->update();
 		}
+	}
+	else
+	{
+		m_pImageView_Longi->setContour(0, nullptr);
+		m_pImageView_Longi->getRender()->update();
 	}
 	
 	// Draw longitudinal view
@@ -1708,7 +1755,9 @@ void QViewTab::play(bool enabled)
 		m_pToggleButton_Play->setIcon(style()->standardIcon(QStyle::SP_MediaStop));
 		m_pToggleButton_MeasureDistance->setDisabled(true);
 		m_pToggleButton_MeasureArea->setDisabled(true);
+		m_pPushButton_LumenDetection->setDisabled(true);
 		m_pToggleButton_AutoContour->setDisabled(true);
+		m_pToggleButton_DiameterView->setDisabled(true);
 		
 		int cur_frame = m_pSlider_SelectFrame->value();
 		int end_frame = (int)m_vectorOctImage.size();
@@ -1742,6 +1791,10 @@ void QViewTab::play(bool enabled)
 		m_pToggleButton_MeasureDistance->setDisabled(false);
 		m_pToggleButton_MeasureArea->setDisabled(false);
 		m_pToggleButton_AutoContour->setDisabled(false);
+		if (m_contourMap.length() == 0)
+			m_pPushButton_LumenDetection->setEnabled(true);
+		else
+			m_pToggleButton_DiameterView->setEnabled(true);
 
 		m_pConfig->writeToLog("Stop playing mode.");
 	}
@@ -1819,11 +1872,11 @@ void QViewTab::autoContouring(bool toggled)
 
 		// Set lumen contour in circ image
 		np::Uint16Array contour_16u(m_pConfigTemp->octAlines);		
-		///if (m_contourMap.length() == 0)
+		if (m_contourMap.length() == 0)
 		{
 			if (!m_pLumenDetection)
 			{				
-				m_pLumenDetection = new LumenDetection(int(OUTER_SHEATH_POSITION / m_pImageView_CircImage->getRender()->m_dPixelResol), 
+				m_pLumenDetection = new LumenDetection(int(OUTER_SHEATH_POSITION / m_pImageView_CircImage->getRender()->m_dPixelResol) - m_pConfigTemp->circOffset, 
 					!m_pConfigTemp->is_dotter ? m_pConfigTemp->innerOffsetLength : 0, false);
 				///true, true, m_pConfigTemp->reflectionDistance, m_pConfigTemp->reflectionLevel);
 
@@ -1836,24 +1889,27 @@ void QViewTab::autoContouring(bool toggled)
 				ippsConvert_32f16u_Sfs(contour, contour_16u, contour.length(), ippRndNear, 0);
 			}
 		}
-		///else
-		///{
-		///	ippsConvert_32f16u_Sfs(&m_contourMap(0, getCurrentFrame()), contour_16u, contour_16u.length(), ippRndNear, 0);
-		///}
+		else
+		{
+			ippsConvert_32f16u_Sfs(&m_contourMap(0, getCurrentFrame()), contour_16u, contour_16u.length(), ippRndNear, 0);
+		}
 		ippsAddC_16s_ISfs(m_pConfigTemp->circOffset, (Ipp16s *)contour_16u.raw_ptr(), contour_16u.length(), 0);
+		if (m_contourMap.length() != 0)
+			std::rotate(&contour_16u(0), &contour_16u((m_vibCorrIdx(getCurrentFrame()) + m_pConfigTemp->rotatedAlines) % m_pConfigTemp->octAlines), &contour_16u(contour_16u.length()));
 		m_pImageView_CircImage->setContour(m_pConfigTemp->octAlines, contour_16u);		
-
+		
 		// Set lumen contour in longi image
 		np::Uint16Array lcontour_16u(2 * m_pConfigTemp->frames);
 		if (m_contourMap.length() != 0)
 		{
-			ippiConvert_32f16u_C1RSfs(&m_contourMap(getCurrentAline(), 0), sizeof(float) * m_contourMap.size(0), 
-				lcontour_16u, sizeof(uint16_t), { 1, m_pConfigTemp->frames }, ippRndNear, 0);
-			ippiConvert_32f16u_C1RSfs(&m_contourMap((getCurrentAline() + m_pConfigTemp->octAlines / 2) % m_pConfigTemp->octAlines, 0), sizeof(float) * m_contourMap.size(0),
-				lcontour_16u + m_pConfigTemp->frames, sizeof(uint16_t), { 1, m_pConfigTemp->frames }, ippRndNear, 0);
+			visualizeLongiImage(getCurrentAline());
+			//ippiConvert_32f16u_C1RSfs(&m_contourMap(getCurrentAline(), 0), sizeof(float) * m_contourMap.size(0), 
+			//	lcontour_16u, sizeof(uint16_t), { 1, m_pConfigTemp->frames }, ippRndNear, 0);
+			//ippiConvert_32f16u_C1RSfs(&m_contourMap((getCurrentAline() + m_pConfigTemp->octAlines / 2) % m_pConfigTemp->octAlines, 0), sizeof(float) * m_contourMap.size(0),
+			//	lcontour_16u + m_pConfigTemp->frames, sizeof(uint16_t), { 1, m_pConfigTemp->frames }, ippRndNear, 0);
 
-			ippsAddC_16s_ISfs(m_pConfigTemp->circOffset, (Ipp16s *)lcontour_16u.raw_ptr(), lcontour_16u.length(), 0);
-			m_pImageView_Longi->setContour(2 * m_pConfigTemp->frames, lcontour_16u);
+			//ippsAddC_16s_ISfs(m_pConfigTemp->circOffset, (Ipp16s *)lcontour_16u.raw_ptr(), lcontour_16u.length(), 0);
+			//m_pImageView_Longi->setContour(2 * m_pConfigTemp->frames, lcontour_16u);
 		}
 	}
 	else
@@ -1877,10 +1933,16 @@ void QViewTab::autoContouring(bool toggled)
 void QViewTab::lumenContourDetection()
 {
 	QString gw_path = m_pResultTab->getRecordInfo().filename;
-	gw_path.replace("pullback.data", "gw_pos.csv");
-
+	if (!m_pConfigTemp->is_dotter)
+		gw_path.replace("pullback.data", "gw_pos.csv");
+	else
+		gw_path.replace(".xml", "/gw_pos.csv");
+	
 	QString lumen_contour_path = m_pResultTab->getRecordInfo().filename;
-	lumen_contour_path.replace("pullback.data", "lumen_contour.map");
+	if (!m_pConfigTemp->is_dotter)
+		lumen_contour_path.replace("pullback.data", "lumen_contour.map");
+	else
+		lumen_contour_path.replace(".xml", "/lumen_contour.map");
 
 	QFileInfo check_file(lumen_contour_path);
 
@@ -1917,7 +1979,7 @@ void QViewTab::lumenContourDetection()
 			{
 				plumdet[p] = std::thread([&, p, pieces]() {
 
-					LumenDetection *pLumenDetection = new LumenDetection(int(OUTER_SHEATH_POSITION / m_pImageView_CircImage->getRender()->m_dPixelResol), 
+					LumenDetection *pLumenDetection = new LumenDetection(int(OUTER_SHEATH_POSITION / m_pImageView_CircImage->getRender()->m_dPixelResol) - m_pConfigTemp->circOffset, 
 						!m_pConfigTemp->is_dotter ? m_pConfigTemp->innerOffsetLength : 0, false);
 						///true, m_pConfigTemp->reflectionDistance, m_pConfigTemp->reflectionLevel);
 
@@ -2016,10 +2078,16 @@ void QViewTab::lumenContourDetection()
 	//	m_gwVecDiff.push_back(m_gwVec.at(i + 1) - m_gwVec.at(i));
 
 	// Set widgets
-	m_pToggleButton_AutoContour->setChecked(true);
-	//m_pPushButton_LumenDetection->setDisabled(true);
+	m_pToggleButton_AutoContour->setChecked(true);	
+	m_pPushButton_LumenDetection->setDisabled(true);
+	m_pToggleButton_DiameterView->setEnabled(true);
 
 	invalidate();
+}
+
+void QViewTab::setDiameterView(bool toggled)
+{
+	visualizeLongiImage(getCurrentAline());
 }
 
 void QViewTab::changeVisualizationMode(int mode)
@@ -2338,7 +2406,7 @@ void QViewTab::vibrationCorrection()
 	if (!m_pConfigTemp->is_dotter)
 		vib_corr_path.replace("pullback.data", "vib_corr.idx");
 	else
-		vib_corr_path.replace(".xml", ".vidx");
+		vib_corr_path.replace(".xml", "/vib_corr.idx");
 	
 	QFileInfo check_file(vib_corr_path);
 
@@ -2551,7 +2619,10 @@ void QViewTab::pickFrame(std::vector<QStringList>& _vector, int oct_frame, int i
 
 	// Save matching data
 	QString match_path = m_pResultTab->getRecordInfo().filename;
-	match_path.replace("pullback.data", "ivus_match.csv");
+	if (!m_pConfigTemp->is_dotter)
+		match_path.replace("pullback.data", "ivus_match.csv");
+	else
+		match_path.replace(".xml", "/ivus_match.csv");
 
 	QFile match_file(match_path);
 	if (match_file.open(QFile::WriteOnly))
@@ -2629,7 +2700,10 @@ void QViewTab::loadPickFrames(std::vector<QStringList>& _vector)
 	_vector.clear();
 
 	QString match_path = m_pResultTab->getRecordInfo().filename;
-	match_path.replace("pullback.data", "ivus_match.csv");
+	if (!m_pConfigTemp->is_dotter)
+		match_path.replace("pullback.data", "ivus_match.csv");
+	else
+		match_path.replace(".xml", "/ivus_match.csv");
 
 	QFile match_file(match_path);
 	if (match_file.open(QFile::ReadOnly))

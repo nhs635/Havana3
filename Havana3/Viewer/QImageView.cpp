@@ -479,7 +479,7 @@ void QRenderImage::paintEvent(QPaintEvent *)
 					painter.setPen(pen);
 					painter.drawLine(p1, p2);
 
-					int scale_bar_len = int((double)(m_nScaleLen * w) / (double)m_rectMagnified.width());
+					int scale_bar_len = int((double)(m_nScaleLen * w) / (double)m_pImage->width());
 					for (int j = 1; j < 6; j++)
 					{
 						int px = center_x + double(scale_bar_len * j) * (double)m_pImage->width() / (double)m_rectMagnified.width() * cos((double)(m_pVLineInd[i] + m_rMax / 2) / (double)m_rMax * IPP_2PI);
@@ -756,26 +756,39 @@ void QRenderImage::paintEvent(QPaintEvent *)
 		QPen pen; pen.setColor(Qt::white); pen.setWidth(2);
 		painter.setPen(pen);
 
-		int offset = 0.4 * h;
-
-		int nHMinorGrid = m_nPullbackLength / 5;
-		for (int i = 0; i <= nHMinorGrid; i++)
-			painter.drawLine(i * w / nHMinorGrid, h / 2 - 5 + offset, i * w / nHMinorGrid, h / 2 + offset);
-
-		QFont font; font.setBold(true); font.setPointSize(9);
-		painter.setFont(font);
-
-		int nHMajorGrid = nHMinorGrid; // m_nPullbackLength / 10;
-		for (int i = 0; i <= nHMajorGrid; i+=2)
+		// Grid to pullback direction
 		{
-			painter.drawLine(i * w / nHMajorGrid, h / 2 - 10 + offset, i * w / nHMajorGrid, h / 2 + offset);
+			int offset = 0.4 * h;
 
-			int x = (i != 0) ? i * w / nHMajorGrid - 9 : 0;
-			x = (i != nHMajorGrid) ? x : x - 30;
-			painter.drawText(x, h / 2 - 15 + offset, QString(i != 2 * (nHMajorGrid / 2) ? "%1" : "%1mm").arg(i * 5));
-		//	//painter.drawText(x, h / 2 - 15 + offset, QString(i != nHMajorGrid ? "%1" : QString::fromLocal8Bit("%1��").arg(i * 10)));
+			int nHMinorGrid = m_nPullbackLength / 5;
+			for (int i = 0; i <= nHMinorGrid; i++)
+				painter.drawLine(i * w / nHMinorGrid, h / 2 - 5 + offset, i * w / nHMinorGrid, h / 2 + offset);
+
+			QFont font; font.setBold(true); font.setPointSize(9);
+			painter.setFont(font);
+
+			int nHMajorGrid = nHMinorGrid; // m_nPullbackLength / 10;
+			for (int i = 0; i <= nHMajorGrid; i += 2)
+			{
+				painter.drawLine(i * w / nHMajorGrid, h / 2 - 10 + offset, i * w / nHMajorGrid, h / 2 + offset);
+
+				int x = (i != 0) ? i * w / nHMajorGrid - 9 : 0;
+				x = (i != nHMajorGrid) ? x : x - 30;
+				painter.drawText(x, h / 2 - 15 + offset, QString(i != 2 * (nHMajorGrid / 2) ? "%1" : "%1mm").arg(i * 5));
+				//	//painter.drawText(x, h / 2 - 15 + offset, QString(i != nHMajorGrid ? "%1" : QString::fromLocal8Bit("%1��").arg(i * 10)));
+			}
+			painter.drawLine(0, 0.5 * h + offset, w, 0.5 * h + offset);
 		}
-		painter.drawLine(0, 0.5 * h + offset, w, 0.5 * h + offset);
+
+		// Grid to radial direction
+		{			
+			double scale_bar_len = (double)(m_nScaleLen * h) / (double)m_pImage->height();						
+			for (int i = 0; i <= 6; i++)
+			{
+				painter.drawLine(w - 5, h / 2 - scale_bar_len * i, w, h / 2 - scale_bar_len * i);
+				painter.drawLine(w - 5, h / 2 + scale_bar_len * i, w, h / 2 + scale_bar_len * i);
+			}
+		}
 	}
 
 	// Draw pick frames
@@ -825,7 +838,7 @@ void QRenderImage::paintEvent(QPaintEvent *)
 	}
 
 	// Set scale bar
-	if (m_nScaleLen > 0)
+	if ((m_nScaleLen > 0) && (m_dPixelResol != 1))
 	{
 		QPen pen; pen.setColor(Qt::white); pen.setWidth(6);
 		painter.setPen(pen);

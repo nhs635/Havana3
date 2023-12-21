@@ -55,7 +55,11 @@ public:
 		// Gaussian blurring
 		cv::Mat input = cv::Mat(src.size(1), src.size(0), CV_8UC1, src.raw_ptr());
 		cv::Mat output = cv::Mat(src.size(1), src.size(0), CV_8UC1);
-		GaussianBlur(input, output, cv::Size(5, 5), 2.5);
+
+		int s1 = (int)(5 * src.size(1) / 1024); s1 = s1 / 2; s1 = 2 * s1 + 1;
+		int s2 = (int)(5 * src.size(0) / 1024); s2 = s2 / 2; s2 = 2 * s2 + 1;
+		auto size = cv::Size(s1, s2);
+		GaussianBlur(input, output, size, 2.5);
 		preprop = np::FloatArray2(src.size(0), src.size(1));
 		ippsConvert_8u32f(output.data, preprop, preprop.length());	
 		//ippiSet_32f_C1R(0.0f, &preprop(nradius - 50, 0), sizeof(float) * preprop.size(0), { 50, nalines });
@@ -86,6 +90,7 @@ public:
 		
 		// Set size
 		nradius = preprop.size(0); nalines = preprop.size(1);
+		max_w_th = 80 * nalines / 1024;
 
 		// Normalization
 		ippiMean_32f_C1R(&preprop(nradius - inner_offset - 30, 0), sizeof(float) * preprop.size(0), { 15, preprop.size(1) }, &bg, ippAlgHintAccurate);
@@ -122,11 +127,13 @@ public:
 		
 		// Moving averaging	
 		np::FloatArray sum_profile1(2 * nalines);
-		memcpy(sum_profile1, sum_profile, sizeof(float) * sum_profile.length());
-		for (int i = 2; i < 2 * nalines - 2; i++)
+		int nb2 = (int)(5 * nalines / 1024) / 2;
+		int nb = 2 * nb2 + 1;
+		memcpy(sum_profile1, sum_profile, sizeof(float) * sum_profile.length());		
+		for (int i = nb2; i < 2 * nalines - nb2; i++)
 		{
-			ippsSum_32f(&sum_profile(i - 1), 5, &sum_profile1(i), ippAlgHintAccurate);
-			sum_profile1(i) = sum_profile1(i) / 5;
+			ippsSum_32f(&sum_profile(i - 1), nb, &sum_profile1(i), ippAlgHintAccurate);
+			sum_profile1(i) = sum_profile1(i) / nb;
 		}
 		
 		/****************************************************************/
@@ -219,6 +226,7 @@ public:
 		ippsMax_32f(sum_profile1, sum_profile1.length(), &max_p);
 		int max_ps = (int)(0.9f * max_p);		
 		gw_th = (max_ps > gw_th) ? gw_th : max_ps;
+		gwp_th = -0.5f / (float)nalines * 1024.0f / (float)nalines * 1024.0f;
 
 		std::vector<int> fwhms;
 		std::vector<int> gw_peaks;
@@ -227,13 +235,39 @@ public:
 			int fwhm = 0;
 			if ((peaks.at(i) >= nalines / 2) && (peaks.at(i) < 3 * nalines / 2))
 			{
-				fwhm = _find_fwhm(sum_profile1, peaks.at(i));
-				//sum_profile1(peaks.at(i)) > gw_th
+				int pi = peaks.at(i);
 
-				if ((fwhm < 30) && ((sum_diff2(peaks.at(i)) < gwp_th) || (sum_diff2(peaks.at(i) - 1) < gwp_th) || (sum_diff2(peaks.at(i) - 2) < gwp_th)))
-					gw_peaks.push_back(peaks.at(i));
+				fwhm = _find_fwhm(sum_profile1, pi);
+				//sum_profile1(peaks.at(i)) > gw_th
+				
+				float d2_, d3_, d4_;
+				float d1, d2, d3, d4;
+				d1 = sum_diff2(pi);
+				d2 = sum_diff2(pi - 1); d2_ = sum_diff2(pi + 1);
+				d3 = sum_diff2(pi - 2); d3_ = sum_diff2(pi + 2);
+				d4 = sum_diff2(pi - 3); d4_ = sum_diff2(pi + 3);
+
+				if (fwhm < (int)(30 * nalines / 1024))
+					if ((d1 < gwp_th) || (d2 < gwp_th) || (d3 < gwp_th) || (d4 < gwp_th) || (d2_ < gwp_th) || (d3_ < gwp_th) || (d4_ < gwp_th))
+						gw_peaks.push_back(peaks.at(i));
 			}
 			fwhms.push_back(fwhm);
+		}
+
+		if (gw_peaks.size() == 0)
+		{
+			for (int i = 0; i < peaks.size(); i++)
+			{
+				int fwhm = 0;
+				if ((peaks.at(i) >= nalines / 2) && (peaks.at(i) < 3 * nalines / 2))
+				{
+					int pi = peaks.at(i);
+					fwhm = _find_fwhm(sum_profile1, pi);
+
+					if (fwhm < (int)(30 * nalines / 1024))
+						gw_peaks.push_back(peaks.at(i));
+				}
+			}
 		}
 
 		/****************************************************************/
@@ -559,7 +593,9 @@ public:
 
 		// Morphological opening
 		cv::Mat opened;
-		cv::morphologyEx(binary, opened, MORPH_OPEN, getStructuringElement(MORPH_ELLIPSE, cv::Size(5, 5)), cv::Point(-1, -1), 1, BORDER_REFLECT);
+		cv::morphologyEx(binary, opened, MORPH_OPEN, 
+			getStructuringElement(MORPH_ELLIPSE, cv::Size((int)(5 * nradius / 1024), (int)(5 * nalines / 1024))), 
+			cv::Point(-1, -1), 1, BORDER_REFLECT);
 
 		// Guide-wire & catheter artifact masking
 		ippsAnd_8u_I(mask, opened.data, mask.length());
@@ -615,6 +651,7 @@ public:
 		/****************************************************************/
 
 		// Delineate lumen contour
+		int area_th = 1000 * nalines * nradius / 1024 / 1024;
 		std::vector<int> small_compos;
 		std::vector<float> cx0, cy0;
 		for (int i = 0; i < nalines; i++)
@@ -630,7 +667,7 @@ public:
 				int idx = labeled.at<int>(i, surface.at(0) + 1);
 				int area = stats.at<int>(idx, CC_STAT_AREA);
 				
-				if (area > 1000)
+				if (area > area_th)
 				{
 					cx0.push_back(i);
 					cy0.push_back((float)surface.at(0));
@@ -654,7 +691,7 @@ public:
 					}
 				}
 
-				if (area0 > 1000)
+				if (area0 > area_th)
 				{
 					//if (std::find(small_compos.begin(), small_compos.end(), largest_idx) == small_compos.end())
 					{

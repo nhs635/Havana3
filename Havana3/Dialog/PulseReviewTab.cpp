@@ -1175,7 +1175,10 @@ void PulseReviewTab::saveRois()
 	if (m_vectorRois.size() > 0)
 	{
 		QString roi_path = m_pResultTab->getRecordInfo().filename;
-		roi_path.replace("pullback.data", "roi.csv");
+		if (!m_pConfigTemp->is_dotter)
+			roi_path.replace("pullback.data", "roi.csv");
+		else
+			roi_path.replace(".xml", "/roi.csv");
 
 		QFile roi_file(roi_path);
 		if (roi_file.open(QFile::WriteOnly))
@@ -1224,10 +1227,13 @@ void PulseReviewTab::loadRois()
 	m_pTableWidget_RoiList->setRowCount(0);
 	
 	QString roi_path = m_pResultTab->getRecordInfo().filename;
-	roi_path.replace("pullback.data", "roi.csv");
+	if (!m_pConfigTemp->is_dotter)
+		roi_path.replace("pullback.data", "roi.csv");
+	else
+		roi_path.replace(".xml", "/roi.csv");
 
-	if (roi_path.split(".").at(1) != "csv")
-		return;
+	//if (roi_path.split(".").at(1) != "csv")
+	//	return;
 
 	QFile roi_file(roi_path);
 	if (roi_file.open(QFile::ReadOnly))

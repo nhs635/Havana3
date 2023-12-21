@@ -961,6 +961,12 @@ void QPatientSummaryTab::loadRecordDatabase()
 					if (!(check_file.exists() && check_file.isFile()))
 						pWidget_Review->setDisabled(true);
 				}
+
+				{
+					QFileInfo check_ini(filepath.replace(".rpd", "/roi.csv"));
+					if (check_ini.exists())
+						pDateTimeItem->setTextColor(QColor(244, 177, 131));
+				}
 			}
 
             m_pTableWidget_RecordInformation->setItem(rowCount, 0, pTitleItem);

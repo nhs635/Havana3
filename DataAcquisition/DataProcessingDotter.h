@@ -30,6 +30,7 @@ public:
 	inline Configuration* getConfigTemp() const { return m_pConfigTemp; }
     inline QResultTab* getResultTab() const { return m_pResultTab; }
     inline FLImProcess* getFLImProcess() const { return m_pFLIm; }
+	inline QString getResFolder() const { return m_resFolder; }
 
 public:
     void startProcessing(QString, int frame = -1);
@@ -71,6 +72,7 @@ private:
 
 private:
 	QString m_iniName;
+	QString m_resFolder;
 
 private:
 	callback2<const char*, bool> SendStatusMessage;

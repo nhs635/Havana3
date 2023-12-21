@@ -7,6 +7,7 @@
 #include <Havana3/Dialog/ViewOptionTab.h>
 
 #include <DataAcquisition/DataProcessing.h>
+#include <DataAcquisition/DataProcessingDotter.h>
 
 #include <ippi.h>
 #include <ippcc.h>
@@ -32,6 +33,8 @@ ExportDlg::ExportDlg(QWidget *parent) :
     m_pResultTab = dynamic_cast<QResultTab*>(parent);
 	m_pConfig = m_pResultTab->getMainWnd()->m_pConfiguration;
 	m_pConfigTemp = m_pResultTab->getDataProcessing()->getConfigTemp();
+	if (!m_pConfigTemp)
+		m_pConfigTemp = m_pResultTab->getDataProcessingDotter()->getConfigTemp();
 	m_pViewTab = m_pResultTab->getViewTab();
 	
 	// Exporting
@@ -261,15 +264,20 @@ ExportDlg::ExportDlg(QWidget *parent) :
 	m_pCheckBox_EnFaceCh3->setChecked(true);
 
 	m_exportPath = m_pResultTab->getRecordInfo().filename;
-	for (int i = m_exportPath.size() - 1; i >= 0; i--)
+	if (!m_pConfigTemp->is_dotter)
 	{
-		int slash_pos = i;
-		if (m_exportPath.at(i) == '/')
+		for (int i = m_exportPath.size() - 1; i >= 0; i--)
 		{
-			m_exportPath = m_exportPath.left(slash_pos);
-			break;
+			int slash_pos = i;
+			if (m_exportPath.at(i) == '/')
+			{
+				m_exportPath = m_exportPath.left(slash_pos);
+				break;
+			}
 		}
 	}
+	else
+		m_exportPath.replace(".xml", "");
 
 	m_pLineEdit_ExportPath->setText(m_exportPath);
 	m_pLineEdit_ExportPath->setCursorPosition(0);

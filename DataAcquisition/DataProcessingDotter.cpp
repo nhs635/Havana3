@@ -42,7 +42,7 @@ DataProcessingDotter::DataProcessingDotter(QWidget *parent)
 DataProcessingDotter::~DataProcessingDotter()
 {
 	if (m_pConfigTemp)
-	{
+	{	
 		m_pConfigTemp->setConfigFile(m_iniName);
 		delete m_pConfigTemp;
 	}
@@ -64,7 +64,7 @@ void DataProcessingDotter::startProcessing(QString fileName, int frame)
 				QString fileTitle = fileName.split(".").at(0);
 				QString flimName = fileTitle + ".flim";
 				QString rpdName = fileTitle + ".rpd";
-				m_iniName = fileTitle + ".ini";
+				m_iniName = fileTitle + "/pullback.ini";
 
 				if (m_pConfigTemp) delete m_pConfigTemp;
 				m_pConfigTemp = new Configuration;
@@ -82,6 +82,9 @@ void DataProcessingDotter::startProcessing(QString fileName, int frame)
 				QFileInfo check_file(m_iniName);
 				if (check_file.exists())
 					m_pConfigTemp->getConfigFile(m_iniName);
+
+				m_resFolder = fileTitle;				
+				QDir().mkdir(m_resFolder);
 
 				char msg[256];
 				sprintf(msg, "Start record review processing... (Total nFrame: %d)", m_pConfigTemp->frames);
