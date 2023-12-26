@@ -150,6 +150,9 @@ void MainWindow::tabCurrentChanged(int index)
 
 	///printf("[prev %d cur %d]\n", prev_index, index);
 
+	if (index == -1)
+		return;
+
 	auto previousTab = m_vectorTabViews.at(prev_index);
     auto currentTab = m_vectorTabViews.at(index);
 

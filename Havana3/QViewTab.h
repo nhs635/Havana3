@@ -98,6 +98,7 @@ private slots:
 	void measureArea(bool);
 	void autoContouring(bool);
 	void lumenContourDetection();
+	void calculateStatistics(bool);
 	void setDiameterView(bool);
 	void changeVisualizationMode(int);
 	void changeEmissionChannel(int);
@@ -167,6 +168,9 @@ public: // for post processing
 	std::vector<int> m_gwVecDiff;
 	bool m_bRePrediction;
 
+	np::FloatArray2 m_peakLifetime;
+	np::FloatArray2 m_avgLifetime;
+
 	std::vector<np::FloatArray2> m_vectorPulseCrop;
 	std::vector<np::FloatArray2> m_vectorPulseBgSub;
 	std::vector<np::FloatArray2> m_vectorPulseMask;
@@ -235,7 +239,10 @@ private:
 	QPushButton *m_pToggleButton_MeasureArea;
 	QPushButton *m_pToggleButton_AutoContour;
 	QPushButton *m_pPushButton_LumenDetection;
+	QPushButton *m_pToggleButton_Statistics;
 	QPushButton *m_pToggleButton_DiameterView;
+
+	QLabel *m_pLabel_Statistics;
 
     QComboBox *m_pComboBox_FLImParameters;
 	QComboBox *m_pComboBox_MLPrediction;

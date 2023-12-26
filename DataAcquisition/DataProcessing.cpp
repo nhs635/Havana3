@@ -88,7 +88,7 @@ void DataProcessing::startProcessing(QString fileName, int frame)
 #endif
 				///m_pConfigTemp->frames -= m_pConfigTemp->interFrameSync;
 
-				if ((m_pConfigTemp->quantitationRange.max == 0) && (m_pConfigTemp->quantitationRange.min == 0))
+				if ((m_pConfigTemp->quantitationRange.max == -1) && (m_pConfigTemp->quantitationRange.min == -1))
 				{
 					m_pConfigTemp->quantitationRange.max = m_pConfigTemp->frames - 1;
 					m_pConfigTemp->quantitationRange.min = 0;
@@ -410,6 +410,14 @@ void DataProcessing::flimProcessing(FLImProcess* pFLIm, Configuration* pConfig)
 		ippiCopy_32f_C1R(&lifetime_map1(pViewTab->m_lifetimeMap.at(i).size(0), 0), sizeof(float) * lifetime_map1.size(0),
 			pViewTab->m_lifetimeMap.at(i), sizeof(float) * pViewTab->m_lifetimeMap.at(i).size(0),
 			{ lifetime_map1.size(0) / 3, lifetime_map1.size(1) });
+
+		Uint8Array2 zero_lifetime0(lifetime_map1.size(0) / 3, lifetime_map1.size(1));
+		FloatArray2 zero_lifetime(lifetime_map1.size(0) / 3, lifetime_map1.size(1));
+		ippiCompareC_32f_C1R(pViewTab->m_lifetimeMap.at(i), sizeof(float) * pViewTab->m_lifetimeMap.at(i).size(0),
+			0.0f, zero_lifetime0, sizeof(uint8_t) * zero_lifetime0.size(0), { zero_lifetime0.size(0), zero_lifetime0.size(1) }, ippCmpGreater);
+		ippsConvert_8u32f(zero_lifetime0, zero_lifetime, zero_lifetime.length());
+		ippsDivC_32f_I(255.0f, zero_lifetime, zero_lifetime.length());
+		ippsMul_32f_I(zero_lifetime, pViewTab->m_intensityMap.at(i), zero_lifetime.length());
 	}
 	
 	// Calculate other FLIm parameters

@@ -1023,7 +1023,7 @@ void ViewOptionTab::adjustFlimContrast()
 			}
 			else if (m_pConfig->flimIntensityRatioRange[m_pConfig->flimEmissionChannel - 1].max == m_pLineEdit_IntensityRatioMax->text().toFloat())
 			{
-				// ±¸Çö ÇÊ¿ä°¡ ¾øÀ½.
+				// ï¿½ï¿½ï¿½ï¿½ ï¿½Ê¿ä°¡ ï¿½ï¿½ï¿½ï¿½.
 			}
 		}		
 

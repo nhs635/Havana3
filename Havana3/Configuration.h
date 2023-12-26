@@ -112,8 +112,8 @@
 #define PIXEL_RESOLUTION_DOTTER		4.9425 // micrometers
 #define OUTER_SHEATH_POSITION		515.7475 // (int)((150 * 1.45 + 230.75 * 1 + 50.75 * 1.33) / PIXEL_RESOLUTION) // 0.034 inch OD
 
-// ID: 1000 * 0.026*25.4 = 660.4 ¥ìm
-// OD : 1000 * 0.034*25.4 = 863.6 ¥ìm
+// ID: 1000 * 0.026*25.4 = 660.4 ï¿½ï¿½m
+// OD : 1000 * 0.034*25.4 = 863.6 ï¿½ï¿½m
 
 
 

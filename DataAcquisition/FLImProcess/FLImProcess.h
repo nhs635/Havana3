@@ -249,11 +249,12 @@ public:
 				int shift = (pParams.ch_start_ind[0] + pParams.ch_end_ind[0]) / 2 - irf_center;
 				ippsConvert_16u32f(&src(rmin - shift, i), &crop_src(0, i), nx);
 
-				//// 3. Determined whether saturated
-				//ippsThreshold_32f(&crop_src(0, i), &sat_src(0, i), sat_src.size(0), 60000, ippCmpLess);
-				//ippsSubC_32f_I(60000, &sat_src(0, i), sat_src.size(0));
-				//int roi_len = (int)round(pulse_roi_length / ActualFactor);
-
+				// 3. Determined whether saturated
+				ippsThreshold_32f(&crop_src(0, i), &sat_src(0, i), sat_src.size(0), 60000, ippCmpLess);
+				ippsSubC_32f_I(60000, &sat_src(0, i), sat_src.size(0));
+				for (int c = 0; c < 4; c++)
+					ippsSum_32f(&sat_src(ch_start_ind0[c], i), ch_end_ind0[c] - ch_start_ind0[c], &saturated(i, c), ippAlgHintFast);
+				
 				// 4. BG removal (first stage)
 				ippsSubC_32f_I(pParams.bg, &crop_src(0, i), crop_src.size(0));
 				memcpy(&bgsb_src(0, i), &crop_src(0, i), sizeof(float) * crop_src.size(0));
@@ -269,21 +270,8 @@ public:
 				// 6. RJ artifact removal
 				ippsSet_32f(0.0f, &mask_src(ch_end_ind0[3], i), ch_start_ind0[2] - ch_end_ind0[3]);
 				ippsSet_32f(0.0f, &mask_src(ch_end_ind0[2], i), ch_start_ind0[1] - ch_end_ind0[2]);
-				
-				//% bg removal(second)
-				//	bg1 = mean(pulse1(channel_rois1(2, 1) + 1:end));
-				//bg2 = mean(pulse1(channel_rois1(2, 3) + 1:channel_rois1(1, 2)));
-				//pulse1(channel_rois1(1, 1) :end) = pulse1(channel_rois1(1, 1) :end) - bg1;
-				//pulse1(1:channel_rois1(1, 1) - 1) = pulse1(1:channel_rois1(1, 1) - 1) - bg2;
-
-				//% rj artifact removal
-				//	pulse1(channel_rois1(2, 4) + 1:channel_rois1(1, 3)) = 0;
-				//pulse1(channel_rois1(2, 3) + 1:channel_rois1(1, 2)) = 0;
-
-				//% normalize
-				//	pulse1 = pulse1 / 65535;
-				
-				// 5. Up-sampling by cubic natural spline interpolation
+										
+				// 7. Up-sampling by cubic natural spline interpolation
 				DFTaskPtr task1;
 				dfsNewTask1D(&task1, nx, x, DF_UNIFORM_PARTITION, 1, &mask_src(0, (int)i), DF_MATRIX_STORAGE_ROWS);
 				dfsEditPPSpline1D(task1, DF_PP_CUBIC, DF_PP_NATURAL, DF_BC_NOT_A_KNOT, 0, DF_NO_IC, 0, scoeff + (int)i * (nx - 1) * DF_PP_CUBIC, DF_NO_HINT);
@@ -292,7 +280,7 @@ public:
 					DF_NO_APRIORI_INFO, &ext_src(0, (int)i), DF_MATRIX_STORAGE_ROWS, NULL);
 				dfDeleteTask(&task1);
 
-				// 6. Software broadening by FIR Gaussian filtering
+				// 8. Software broadening by FIR Gaussian filtering
 				_filter(&filt_src(0, (int)i), &ext_src(0, (int)i), (int)i);
 			}
 		});
@@ -535,7 +523,7 @@ public:
         int start;
 
         mean_delay = (float)maxIdx;
-
+		float mean_delay0 = mean_delay;
         for (int i = 0; i < 10; i++)
         {
 			if (!isnan(mean_delay))
@@ -577,6 +565,10 @@ public:
 					mean_delay = 0;
 					break;
 				}
+
+				if (abs(mean_delay - mean_delay0) < 1e-5)
+					break;
+				mean_delay0 = mean_delay;
 			}
         }
     }

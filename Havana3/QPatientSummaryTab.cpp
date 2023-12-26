@@ -476,17 +476,28 @@ void QPatientSummaryTab::import()
 				QFile file(fileName);
 				if (file.open(QFile::ReadOnly))
 				{
-					QString rpdname = record_info.filename;
-					rpdname.replace(".xml", ".rpd");
-					record_info.date = QFileInfo(rpdname).lastModified().toString("yyyy-MM-dd hh:mm:ss");
+					QStringList filenames = record_info.filename.split("/");
+					QString date = filenames.at(filenames.size() - 1).left(19);
+					date.replace("_", ":");
+					record_info.date = date.left(10) + " " + date.right(8);
 
 					QTextStream stream(&file);
-					QStringList info = stream.readLine().split(" ");
+					QStringList info_list = stream.readLine().split(" ");
 
-					QString procedure = info.at(4).split("=").at(1); procedure.remove("\"");
-					record_info.procedure = procedure.toInt();
-					QString vessel = info.at(8).split("=").at(1); vessel.remove("\"");
-					record_info.vessel = vessel.toInt();
+					foreach(QString info, info_list)
+					{
+						QStringList features = info.split("=");
+						if (features.at(0) == "vessel_id")
+						{
+							QString vessel = features.at(1); vessel.remove("\"");
+							record_info.vessel = vessel.toInt();
+						}
+						if (features.at(0) == "procedure_id")
+						{
+							QString procedure = features.at(1); procedure.remove("\"");
+							record_info.procedure = procedure.toInt();
+						}
+					}
 
 					record_info.is_dotter = true;
 
@@ -562,12 +573,48 @@ void QPatientSummaryTab::editContents(int row, int column)
 				connect(pTextEdit_Comment, &QTextEdit::textChanged, [&, pTextEdit_Comment]() { m_pTableWidget_RecordInformation->item(row, column)->setText(pTextEdit_Comment->toPlainText()); });
 				connect(pDialog, &QDialog::finished, [&, pTextEdit_Comment]() {
 					QString comment = pTextEdit_Comment->toPlainText();
-					QString command = QString("UPDATE records SET comment='%1' WHERE id=%2").arg(comment).arg(m_pTableWidget_RecordInformation->item(row, 0)->toolTip());
-					m_pHvnSqlDataBase->queryDatabase(command);
+					{
+						QString command = QString("UPDATE records SET comment='%1' WHERE id=%2").arg(comment).arg(m_pTableWidget_RecordInformation->item(row, 0)->toolTip());
+						m_pHvnSqlDataBase->queryDatabase(command);
+						if (command.contains("[HIDDEN]"))
+							loadRecordDatabase();
+					}
+					{
+						QString recordId = m_pTableWidget_RecordInformation->item(row, 0)->toolTip();
+						QString command = QString("SELECT * FROM records WHERE id=%1").arg(recordId);
+						m_pHvnSqlDataBase->queryDatabase(command, [&](QSqlQuery& _sqlQuery) {
+							while (_sqlQuery.next())
+							{
+								QString filename0 = _sqlQuery.value(9).toString();
+								int idx = filename0.indexOf("record");
+								QString filename = m_pConfig->dbPath + filename0.remove(0, idx - 1);
+
+								QStringList filenames = filename.split("/");
+								QString last = filenames.last(); filenames.pop_back();
+								if (last.split(".").at(1) == "xml")
+								{
+									last.replace(".xml", "");
+									filenames.append(last);
+																		
+									QString filepath = filenames.join("/");
+									if (!QDir().exists(filepath))
+										QDir().mkdir(filepath);
+								}
+								filenames.append("comments.txt");
+								filename = filenames.join("/");
+								
+								QFile text(filename);
+								if (text.open(QFile::WriteOnly))
+								{
+									QTextStream out(&text);
+									out << comment;
+								}
+								text.close();
+							}
+						});
+					}
 					m_pConfig->writeToLog(QString("Record comment updated: %1 (ID: %2): %3 : record id: %4")
-						.arg(m_patientInfo.patientName).arg(m_patientInfo.patientId).arg(m_pTableWidget_RecordInformation->item(row, 2)->text()).arg(m_pTableWidget_RecordInformation->item(row, 0)->toolTip()));
-					if (command.contains("[HIDDEN]"))
-						loadRecordDatabase();
+						.arg(m_patientInfo.patientName).arg(m_patientInfo.patientId).arg(m_pTableWidget_RecordInformation->item(row, 2)->text()).arg(m_pTableWidget_RecordInformation->item(row, 0)->toolTip()));					
 				});
 
 				QVBoxLayout *pVBoxLayout = new QVBoxLayout;
@@ -598,8 +645,8 @@ void QPatientSummaryTab::editContents(int row, int column)
 					m_pTableWidget_RecordInformation->item(row, column)->setText(pTextEdit_Title->toPlainText()); 
 				});
 				connect(pDialog, &QDialog::finished, [&, pTextEdit_Title]() {
-					QString comment = pTextEdit_Title->toPlainText();
-					QString command = QString("UPDATE records SET title='%1' WHERE id=%2").arg(comment).arg(m_pTableWidget_RecordInformation->item(row, 0)->toolTip());
+					QString title = pTextEdit_Title->toPlainText();
+					QString command = QString("UPDATE records SET title='%1' WHERE id=%2").arg(title).arg(m_pTableWidget_RecordInformation->item(row, 0)->toolTip());
 					m_pHvnSqlDataBase->queryDatabase(command);
 					m_pConfig->writeToLog(QString("Record title updated: %1 (ID: %2): %3 : record id: %4")
 						.arg(m_patientInfo.patientName).arg(m_patientInfo.patientId).arg(m_pTableWidget_RecordInformation->item(row, 2)->text()).arg(m_pTableWidget_RecordInformation->item(row, 0)->toolTip()));
@@ -684,15 +731,18 @@ void QPatientSummaryTab::editContents(int row, int column)
 					QString filename = m_pConfig->dbPath + filename0.remove(0, idx - 1);
 
 					QClipboard *pClipBoard = QApplication::clipboard();
-					for (int i = filename.size() - 1; i >= 0; i--)
+					QStringList filenames = filename.split("/");
+					QString last = filenames.last(); filenames.pop_back();
+					if (last.split(".").at(1) == "xml")
 					{
-						int slash_pos = i;
-						if (filename.at(i) == '/')
-						{
-							filename = filename.left(slash_pos);
-							break;
-						}
+						last.replace(".xml", "");
+						filenames.append(last);
+
+						QString filepath = filenames.join("/");
+						if (!QDir().exists(filepath))
+							QDir().mkdir(filepath);
 					}
+					filename = filenames.join("/");
 					pClipBoard->setText(filename);
 
 					QMessageBox MsgBox(QMessageBox::Information, "Path Copy", QString("Data path was copied to the clipboard: \n%1").arg(filename));
@@ -866,12 +916,35 @@ void QPatientSummaryTab::loadRecordDatabase()
 			QString procedure = m_pHvnSqlDataBase->getProcedure(_sqlQuery.value(11).toInt());
 			if (procedure.contains("Follow Up"))
 			{
-				//pVesselItem->setTextColor(QColor(235, 235, 174));
+				///pVesselItem->setTextColor(QColor(235, 235, 174));
 				pProcedureItem->setTextColor(QColor(235, 235, 174));
-				//pCommentItem->setTextColor(QColor(235, 235, 174));
+				///pCommentItem->setTextColor(QColor(235, 235, 174));
 			}
 
-			QString comment = _sqlQuery.value(8).toString();
+			QString comment;
+			{
+				QString filename0 = _sqlQuery.value(9).toString();
+				int idx = filename0.indexOf("record");
+				QString filename = m_pConfig->dbPath + filename0.remove(0, idx - 1);;
+				QStringList filenames = filename.split("/");
+				QString last = filenames.last(); filenames.pop_back();
+				if (last.split(".").at(1) == "xml")
+				{
+					last.replace(".xml", "");
+					filenames.append(last);
+				}
+				filenames.append("comments.txt");
+				filename = filenames.join("/");
+
+				QFile text(filename);
+				if (text.open(QFile::ReadOnly))
+				{
+					QTextStream in(&text);
+					comment = in.readAll();
+				}
+				text.close();
+			}
+
 			if (comment.contains("[HIDDEN]"))
 			{
 				if (!m_pToggleButton_ShowHiddenData->isChecked())

@@ -202,6 +202,15 @@ void QViewTab::createViewTabWidgets(bool is_streaming)
 		m_pToggleButton_AutoContour->setText("Auto Contour");
 		m_pToggleButton_AutoContour->setFixedWidth(120);
 
+		m_pToggleButton_Statistics = new QPushButton(this);
+		m_pToggleButton_Statistics->setCheckable(true);
+		m_pToggleButton_Statistics->setText("Statistics");
+		m_pToggleButton_Statistics->setFixedWidth(120);		
+
+		m_pLabel_Statistics = new QLabel(this);
+		m_pLabel_Statistics->setFixedSize(256, 78);
+		m_pLabel_Statistics->setStyleSheet("QLabel{font-size:8pt}");
+
 		m_pToggleButton_DiameterView = new QPushButton(this);
 		m_pToggleButton_DiameterView->setCheckable(true);
 		m_pToggleButton_DiameterView->setText("Diameter View");
@@ -383,7 +392,8 @@ void QViewTab::createViewTabWidgets(bool is_streaming)
 		pGridLayout2->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed), 1, 0);
 		pGridLayout2->addWidget(m_pPushButton_LumenDetection, 1, 1);
 		pGridLayout2->addWidget(m_pToggleButton_AutoContour, 1, 2);
-		pGridLayout2->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed), 2, 0, 1, 2);
+		pGridLayout2->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed), 2, 0);
+		pGridLayout2->addWidget(m_pToggleButton_Statistics, 2, 1);
 		pGridLayout2->addWidget(m_pToggleButton_DiameterView, 2, 2);
 				
 		QGridLayout *pGridLayout3 = new QGridLayout;
@@ -399,6 +409,7 @@ void QViewTab::createViewTabWidgets(bool is_streaming)
 		QVBoxLayout *pVBoxLayout23 = new QVBoxLayout;
 		pVBoxLayout23->setSpacing(4);
 
+		pVBoxLayout23->addWidget(m_pLabel_Statistics);
 		pVBoxLayout23->addWidget(m_pImageView_EnFace);
 		pVBoxLayout23->addItem(new QSpacerItem(0, 0, QSizePolicy::Fixed, QSizePolicy::Maximum));
 		pVBoxLayout23->addItem(pGridLayout2);
@@ -449,6 +460,7 @@ void QViewTab::createViewTabWidgets(bool is_streaming)
 		connect(m_pToggleButton_MeasureArea, SIGNAL(toggled(bool)), this, SLOT(measureArea(bool)));
 		connect(m_pPushButton_LumenDetection, SIGNAL(clicked(bool)), this, SLOT(lumenContourDetection()));
 		connect(m_pToggleButton_AutoContour, SIGNAL(toggled(bool)), this, SLOT(autoContouring(bool)));
+		connect(m_pToggleButton_Statistics, SIGNAL(toggled(bool)), this, SLOT(calculateStatistics(bool)));
 		connect(m_pToggleButton_DiameterView, SIGNAL(toggled(bool)), this, SLOT(setDiameterView(bool)));
 
 		connect(m_pButtonGroup_VisualizationMode, SIGNAL(buttonClicked(int)), this, SLOT(changeVisualizationMode(int)));
@@ -485,12 +497,111 @@ void QViewTab::invalidate()
 	
 	if (vis_mode == VisualizationMode::_FLIM_PARAMETERS_)
 	{
-		m_pImageView_EnFace->setShadingRegion(-1, -1);
-		m_pImageView_Longi->setShadingRegion(-1, -1);
+		m_pImageView_EnFace->setShadingRegion(m_pConfigTemp->quantitationRange.min + 1, m_pConfigTemp->quantitationRange.max + 1);
+		m_pImageView_Longi->setShadingRegion(m_pConfigTemp->quantitationRange.min + 1, m_pConfigTemp->quantitationRange.max + 1);
 
-		if (m_pDialog_SetRange) m_pDialog_SetRange->close();
-        QString menu_name("");
-        m_pImageView_ColorBar->setCustomContextMenu(menu_name, []() {});
+		if (!m_pDialog_SetRange)
+		{
+			QString menu_name("Set Range");
+			m_pImageView_ColorBar->setCustomContextMenu(menu_name, [&]() {
+
+				if (m_pDialog_SetRange == nullptr)
+				{
+					m_pDialog_SetRange = new QDialog(this);
+					{
+						QLineEdit *pLineEdit_Start = new QLineEdit(this);
+						pLineEdit_Start->setAlignment(Qt::AlignCenter);
+						pLineEdit_Start->setFixedWidth(40);
+						pLineEdit_Start->setText(QString::number(m_pConfigTemp->quantitationRange.min + 1));
+
+						QLineEdit *pLineEdit_End = new QLineEdit(this);
+						pLineEdit_End->setAlignment(Qt::AlignCenter);
+						pLineEdit_End->setFixedWidth(40);
+						pLineEdit_End->setText(QString::number(m_pConfigTemp->quantitationRange.max + 1));
+
+						QPushButton *pPushButton_Apply = new QPushButton(this);
+						pPushButton_Apply->setText("Apply");
+						pPushButton_Apply->setFixedWidth(55);
+
+						QPushButton *pPushButton_Pick = new QPushButton(this);
+						pPushButton_Pick->setText("Pick");
+						pPushButton_Pick->setFixedWidth(55);
+
+						QGridLayout *pGridLayout = new QGridLayout;
+						pGridLayout->addWidget(new QLabel("Start", this), 0, 0);
+						pGridLayout->addWidget(pLineEdit_Start, 0, 1);
+						pGridLayout->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed), 0, 2);
+						pGridLayout->addWidget(pPushButton_Pick, 0, 3);
+
+						pGridLayout->addWidget(new QLabel("End", this), 1, 0);
+						pGridLayout->addWidget(pLineEdit_End, 1, 1);
+						pGridLayout->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed), 1, 2);
+						pGridLayout->addWidget(pPushButton_Apply, 1, 3);
+
+						m_pDialog_SetRange->setLayout(pGridLayout);
+
+						// Connect
+						connect(pLineEdit_Start, &QLineEdit::editingFinished, [&, pLineEdit_Start]()
+						{
+							int val = pLineEdit_Start->text().toInt() - 1;
+							if (val < 1) val = 0;
+							if (val > m_pConfigTemp->quantitationRange.max) val = m_pConfigTemp->quantitationRange.max;
+							m_pConfigTemp->quantitationRange.min = val;
+							if (val + 1 != pLineEdit_Start->text().toInt())
+								pLineEdit_Start->setText(QString::number(val + 1));
+
+							m_pImageView_EnFace->setShadingRegion(m_pConfigTemp->quantitationRange.min + 1, m_pConfigTemp->quantitationRange.max + 1);
+							m_pImageView_EnFace->update();
+							m_pImageView_Longi->setShadingRegion(m_pConfigTemp->quantitationRange.min + 1, m_pConfigTemp->quantitationRange.max + 1);
+							m_pImageView_Longi->update();
+						});
+						connect(pLineEdit_End, &QLineEdit::editingFinished, [&, pLineEdit_End]()
+						{
+							int val = pLineEdit_End->text().toInt() - 1;
+							if (val > m_pConfigTemp->frames) val = m_pConfigTemp->frames - 1;
+							if (val < m_pConfigTemp->quantitationRange.min) val = m_pConfigTemp->quantitationRange.min;
+							m_pConfigTemp->quantitationRange.max = val;
+							if (val + 1 != pLineEdit_End->text().toInt())
+								pLineEdit_End->setText(QString::number(val + 1));
+
+							m_pImageView_EnFace->setShadingRegion(m_pConfigTemp->quantitationRange.min + 1, m_pConfigTemp->quantitationRange.max + 1);
+							m_pImageView_EnFace->update();
+							m_pImageView_Longi->setShadingRegion(m_pConfigTemp->quantitationRange.min + 1, m_pConfigTemp->quantitationRange.max + 1);
+							m_pImageView_Longi->update();
+						});
+
+						connect(pPushButton_Pick, &QPushButton::clicked, [&, pLineEdit_Start, pLineEdit_End]()
+						{
+							static int which = 0;
+							if (!(which++ % 2))
+							{
+								pLineEdit_Start->setText(QString::number(getCurrentFrame() + 1));
+								emit pLineEdit_Start->editingFinished();
+							}
+							else
+							{
+								pLineEdit_End->setText(QString::number(getCurrentFrame() + 1));
+								emit pLineEdit_End->editingFinished();
+							}
+						});
+						connect(pPushButton_Apply, &QPushButton::clicked, [&]()
+						{
+							invalidate();
+						});
+						connect(m_pDialog_SetRange, &QDialog::finished, [&]()
+						{
+							m_pDialog_SetRange->deleteLater();
+							m_pDialog_SetRange = nullptr;
+						});
+					}
+					m_pDialog_SetRange->setWindowTitle("Set Range");
+					m_pDialog_SetRange->setFixedSize(170, 75);
+					m_pDialog_SetRange->show();
+				}
+				m_pDialog_SetRange->raise();
+				m_pDialog_SetRange->activateWindow();
+			});
+		}
 
 		disconnect(m_pComboBox_FLImParameters, SIGNAL(currentIndexChanged(int)), 0, 0);
 		m_pComboBox_FLImParameters->setCurrentIndex(3 * m_pConfig->flimParameterMode + m_pConfig->flimEmissionChannel - 1);
@@ -699,7 +810,7 @@ void QViewTab::invalidate()
 					msg_box.show();
 
 					// Make prediction		
-					m_plaqueCompositionProbMap.at(0) = np::FloatArray2(ML_N_CATS * m_pConfig->flimAlines, m_pConfigTemp->frames);
+					m_plaqueCompositionProbMap.at(0) = np::FloatArray2(ML_N_CATS * m_pConfigTemp->flimAlines, m_pConfigTemp->frames);
 					m_plaqueCompositionMap.at(0) = np::FloatArray2(3 * m_pConfigTemp->flimAlines, m_pConfigTemp->frames);
 					m_pForest->predict(m_featVectors, m_plaqueCompositionProbMap.at(0)); // RF prediction for plaque composition classification		
 
@@ -762,7 +873,7 @@ void QViewTab::invalidate()
 					// Make prediction	
 					for (int c = 1; c < 3; c++)
 					{
-						m_plaqueCompositionProbMap.at(c) = np::FloatArray2(ML_N_CATS * m_pConfig->flimAlines, m_pConfigTemp->frames);
+						m_plaqueCompositionProbMap.at(c) = np::FloatArray2(ML_N_CATS * m_pConfigTemp->flimAlines, m_pConfigTemp->frames);
 						m_plaqueCompositionMap.at(c) = np::FloatArray2(3 * m_pConfigTemp->flimAlines, m_pConfigTemp->frames);
 					}
 					m_pSVM->predict(m_featVectors, m_plaqueCompositionProbMap.at(1), m_plaqueCompositionProbMap.at(2)); // SVM prediction for plaque composition classification	
@@ -806,17 +917,17 @@ void QViewTab::invalidate()
 		{
 			// Aggregated intensity map for weighting
 			int range_length = m_pConfigTemp->quantitationRange.max - m_pConfigTemp->quantitationRange.min + 1;
-			np::FloatArray overallIntensityVector(m_pConfig->flimAlines * range_length);
+			np::FloatArray overallIntensityVector(m_pConfigTemp->flimAlines * range_length);
 			memset(overallIntensityVector, 0, sizeof(float) * overallIntensityVector.length());
 			ippsAdd_32f_I(&m_grayMap.at(0, m_pConfigTemp->quantitationRange.min), overallIntensityVector, overallIntensityVector.length());
 
 			Ipp32f denumerator;
 			ippsSum_32f(overallIntensityVector, overallIntensityVector.length(), &denumerator, ippAlgHintAccurate);
 
-			np::FloatArray2 plaqueCompositionProbVector(&m_plaqueCompositionProbMap.at(ml_mode)(0, m_pConfigTemp->quantitationRange.min), ML_N_CATS, m_pConfig->flimAlines * range_length);
+			np::FloatArray2 plaqueCompositionProbVector(&m_plaqueCompositionProbMap.at(ml_mode)(0, m_pConfigTemp->quantitationRange.min), ML_N_CATS, m_pConfigTemp->flimAlines * range_length);
 			for (int i = 0; i < ML_N_CATS; i++)
 			{
-				np::FloatArray weightMulVector(m_pConfig->flimAlines * range_length);
+				np::FloatArray weightMulVector(m_pConfigTemp->flimAlines * range_length);
 				ippiMul_32f_C1R(&plaqueCompositionProbVector(i, 0), sizeof(float) * ML_N_CATS, 
 					overallIntensityVector, sizeof(float) * 1, weightMulVector, sizeof(float) * 1,
 					{ 1, weightMulVector.length() });
@@ -897,6 +1008,10 @@ void QViewTab::invalidate()
 	}
 	m_pImageView_ColorBar->update();
 	
+	// Statistcs initialization
+	m_peakLifetime = np::FloatArray2();
+	m_avgLifetime = np::FloatArray2();
+
 	// Visualization
 	visualizeEnFaceMap(true);
 	visualizeImage(getCurrentFrame());
@@ -1512,6 +1627,9 @@ void QViewTab::visualizeImage(int frame) // Post-processing mode
 			m_pPushButton_Pick->setIcon(style()->standardIcon(QStyle::SP_DialogApplyButton));
 		else
 			m_pPushButton_Pick->setIcon(style()->standardIcon(QStyle::SP_DialogCancelButton));
+
+		if (m_pToggleButton_Statistics->isChecked())
+			calculateStatistics(true);
     }
 }
 
@@ -2083,6 +2201,96 @@ void QViewTab::lumenContourDetection()
 	m_pToggleButton_DiameterView->setEnabled(true);
 
 	invalidate();
+}
+
+void QViewTab::calculateStatistics(bool toggled)
+{
+	if (toggled)
+	{
+		if (m_peakLifetime.length() == 0)
+		{
+			m_peakLifetime = np::FloatArray2(m_pConfigTemp->flimAlines, 3);
+			m_avgLifetime = np::FloatArray2(m_pConfigTemp->flimAlines, 3);
+
+			for (int ch = 0; ch < 3; ch++)
+			{
+				// intensity & lifetime map at certain channel
+				np::FloatArray2& intensity = m_intensityMap.at(ch);
+				np::FloatArray2& lifetime = m_lifetimeMap.at(ch);
+
+				// norm intensity to calculate weighted average lifetime
+				np::Uint8Array2 norm_intensity0(intensity.size(0), intensity.size(1));
+				np::FloatArray2 norm_intensity(intensity.size(0), intensity.size(1));
+
+				ippiScale_32f8u_C1R(intensity, sizeof(float) * intensity.size(0), norm_intensity0, sizeof(uint8_t) * norm_intensity0.size(0),
+				{ intensity.size(0), intensity.size(1) }, m_pConfig->flimIntensityRange[ch].min, m_pConfig->flimIntensityRange[ch].max);
+				ippsConvert_8u32f(norm_intensity0, norm_intensity, norm_intensity.length());
+				ippsDivC_32f_I(255.0f, norm_intensity, norm_intensity.length());
+
+				np::FloatArray2 weighted_lifetime(lifetime.size(0), lifetime.size(1));
+				ippsMul_32f(norm_intensity, lifetime, weighted_lifetime, lifetime.length());
+
+				// sort lifetime to calculate peak lifetime
+				np::FloatArray2 sort_lifetime(lifetime.size(0), lifetime.size(1));
+				memcpy(sort_lifetime, lifetime, sizeof(float) * lifetime.length());
+				
+				float mask_thres = 0.5f;
+				np::Uint8Array2 weight_mask0(intensity.size(0), intensity.size(1));
+				np::FloatArray2 weight_mask(intensity.size(0), intensity.size(1));				
+				ippiCompareC_32f_C1R(norm_intensity, sizeof(float) * norm_intensity.size(0), mask_thres,
+					weight_mask0, sizeof(uint8_t) * weight_mask0.size(0), { norm_intensity.size(0), norm_intensity.size(1) }, ippCmpGreaterEq);
+				ippsConvert_8u32f(weight_mask0, weight_mask, weight_mask.length());
+				ippsDivC_32f_I(255.0f, weight_mask, weight_mask.length());
+				ippsMul_32f_I(weight_mask, sort_lifetime, sort_lifetime.length());
+
+				for (int i = 0; i < lifetime.size(1); i++)
+				{
+					// Find peak lifetime at certain frame
+					ippsSortDescend_32f_I(&sort_lifetime(0, i), sort_lifetime.size(0));
+					ippsMean_32f(&sort_lifetime(0, i), 10, &m_peakLifetime(i, ch), ippAlgHintAccurate);
+
+					// Find average lifetime at certain frame
+					float sum_temp;
+					ippsSum_32f(&weighted_lifetime(0, i), lifetime.size(0), &m_avgLifetime(i, ch), ippAlgHintAccurate);
+					ippsSum_32f(&norm_intensity(0, i), intensity.size(0), &sum_temp, ippAlgHintAccurate);
+					m_avgLifetime(i, ch) /= sum_temp;
+				}
+			}
+		}
+
+		int range_start = m_pConfigTemp->quantitationRange.min;
+		int range_length = m_pConfigTemp->quantitationRange.max - m_pConfigTemp->quantitationRange.min + 1;
+
+		QString str = QString("[Statistics] - %1 (%2, %3)\n\tpeak\tavg\tpeakavg\tavgpeak\n")
+			.arg(getCurrentFrame() + 1)
+			.arg(m_pConfigTemp->quantitationRange.min + 1).arg(m_pConfigTemp->quantitationRange.max + 1);
+		for (int ch = 0; ch < 3; ch++)
+		{
+			float peak_avg;
+			np::FloatArray avg_lifetime(range_length);
+			memcpy(avg_lifetime, &m_avgLifetime(range_start, ch), sizeof(float) * range_length);
+			ippsSortDescend_32f_I(avg_lifetime, avg_lifetime.length());
+			ippsMean_32f(avg_lifetime, 10, &peak_avg, ippAlgHintAccurate);
+
+			float avg_peak;
+			ippsMean_32f(&m_peakLifetime(m_pConfigTemp->quantitationRange.min, ch),
+				range_length, &avg_peak, ippAlgHintAccurate);
+
+			str += QString("ch%1 lt :\t%2\t%3\t%4\t%5\tns\n").arg(ch + 1)
+				.arg(m_peakLifetime(getCurrentFrame(), ch), 4, 'f', 3)
+				.arg(m_avgLifetime(getCurrentFrame(), ch), 4, 'f', 3)
+				.arg(peak_avg, 4, 'f', 3).arg(avg_peak, 4, 'f', 3);
+		}
+		m_pLabel_Statistics->setText(str);
+
+		QString pt_name = m_pResultTab->getRecordInfo().patientName;
+		QString acq_date = m_pResultTab->getRecordInfo().date;
+
+		QString label = QString("[%1] %2\n").arg(pt_name).arg(acq_date) + str;
+		QApplication::clipboard()->setText(label);
+	}
+	else
+		m_pLabel_Statistics->setText("");
 }
 
 void QViewTab::setDiameterView(bool toggled)

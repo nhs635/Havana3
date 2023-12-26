@@ -273,15 +273,58 @@ void QResultTab::loadRecordInfo()
 			m_recordInfo.procedure = _sqlQuery.value(11).toInt();
 			m_recordInfo.filename0 = _sqlQuery.value(9).toString();
 			int idx = m_recordInfo.filename0.indexOf("record");
-			m_recordInfo.filename = m_pConfig->dbPath + m_recordInfo.filename0.remove(0, idx - 1);;
-			m_recordInfo.comment = _sqlQuery.value(8).toString();
+			m_recordInfo.filename = m_pConfig->dbPath + m_recordInfo.filename0.remove(0, idx - 1);;			
+			QString comment;
+			{
+				QStringList filenames = m_recordInfo.filename.split("/");
+				QString last = filenames.last(); filenames.pop_back();
+				if (last.split(".").at(1) == "xml")
+				{
+					last.replace(".xml", "");
+					filenames.append(last);
+				}
+				filenames.append("comments.txt");
+				QString filename = filenames.join("/");
+
+				QFile text(filename);
+				if (text.open(QFile::ReadOnly))
+				{
+					QTextStream in(&text);
+					comment = in.readAll();
+				}
+				text.close();
+			}
+			m_recordInfo.comment = comment;
 			
 			QStringList date_list;			
 			QString command = QString("SELECT * FROM records WHERE patient_id=%1").arg(m_recordInfo.patientId);
 			m_pHvnSqlDataBase->queryDatabase(command, [&, _sqlQuery](QSqlQuery& __sqlQuery) {
 				while (__sqlQuery.next())
-				{
-					QString comment = __sqlQuery.value(8).toString();
+				{					
+					QString comment;
+					{
+						QString filename0 = __sqlQuery.value(9).toString();
+						int idx = filename0.indexOf("record");
+						QString filename = m_pConfig->dbPath + filename0.remove(0, idx - 1);;
+						QStringList filenames = filename.split("/");
+						QString last = filenames.last(); filenames.pop_back();
+						if (last.split(".").at(1) == "xml")
+						{
+							last.replace(".xml", "");
+							filenames.append(last);
+						}
+						filenames.append("comments.txt");
+						filename = filenames.join("/");
+
+						QFile text(filename);
+						if (text.open(QFile::ReadOnly))
+						{
+							QTextStream in(&text);
+							comment = in.readAll();
+						}
+						text.close();
+					}
+
 					if (!comment.contains("[HIDDEN]"))
 					{					
 						QString date_ = __sqlQuery.value(3).toString();
@@ -429,8 +472,32 @@ void QResultTab::createCommentDlg()
 
 void QResultTab::updateComment()
 {
-	QString command = QString("UPDATE records SET comment='%1' WHERE id=%2").arg(m_recordInfo.comment).arg(m_recordInfo.recordId);
-	m_pHvnSqlDataBase->queryDatabase(command);
+	{
+		QString command = QString("UPDATE records SET comment='%1' WHERE id=%2").arg(m_recordInfo.comment).arg(m_recordInfo.recordId);
+		m_pHvnSqlDataBase->queryDatabase(command);
+	}
+	{
+		QString comment = m_recordInfo.comment;		
+		{
+			QStringList filenames = m_recordInfo.filename.split("/");
+			QString last = filenames.last(); filenames.pop_back();
+			if (last.split(".").at(1) == "xml")
+			{
+				last.replace(".xml", "");
+				filenames.append(last);
+			}
+			filenames.append("comments.txt");
+			QString filename = filenames.join("/");
+
+			QFile text(filename);
+			if (text.open(QFile::WriteOnly))
+			{
+				QTextStream out(&text);
+				out << comment;
+			}
+			text.close();
+		}
+	}
 
 	m_pConfig->writeToLog(QString("Record comment updated: %1 (ID: %2): %3 : record id: %4")
 		.arg(m_recordInfo.patientName).arg(m_recordInfo.patientId).arg(m_recordInfo.date).arg(m_recordInfo.recordId));
