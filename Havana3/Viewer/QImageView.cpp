@@ -22,6 +22,9 @@ ColorTable::ColorTable()
 	m_cNameVector.push_back("hsv2"); // 13
 	m_cNameVector.push_back("compo"); // 14
 	m_cNameVector.push_back("redgreen"); // 15
+	m_cNameVector.push_back("new_ch1"); // 16
+	m_cNameVector.push_back("new_ch2"); // 17
+	m_cNameVector.push_back("new_ch3"); // 18
 	// ���ο� ���� �̸� �߰� �ϱ�
 
 	for (int i = 0; i < m_cNameVector.size(); i++)
@@ -805,7 +808,7 @@ void QRenderImage::paintEvent(QPaintEvent *)
 			
 			QFont font; font.setBold(true); font.setPointSizeF(11.5);
 			painter.setFont(font);
-			painter.drawText(x, h / 2 - 15 + offset, QString::fromLocal8Bit("")); // ▼"));
+			painter.drawText(x, h / 2 - 15 + offset, QString::fromLocal8Bit("▼")); // "));
 		}
 	}
 

@@ -489,12 +489,12 @@ void QPatientSummaryTab::import()
 						QStringList features = info.split("=");
 						if (features.at(0) == "vessel_id")
 						{
-							QString vessel = features.at(1); vessel.remove("\"");
+							QString vessel = features.at(1); vessel.remove("\""); vessel.remove(">");
 							record_info.vessel = vessel.toInt();
 						}
 						if (features.at(0) == "procedure_id")
 						{
-							QString procedure = features.at(1); procedure.remove("\"");
+							QString procedure = features.at(1); procedure.remove("\""); procedure.remove(">");
 							record_info.procedure = procedure.toInt();
 						}
 					}
@@ -636,11 +636,11 @@ void QPatientSummaryTab::editContents(int row, int column)
 				pTextEdit_Title->setPlainText(m_pTableWidget_RecordInformation->item(row, column)->text());
 				connect(pTextEdit_Title, &QTextEdit::textChanged, [&, pTextEdit_Title]() { 					
 					QString title = pTextEdit_Title->toPlainText();
-					//if (title.contains(QString::fromLocal8Bit("")))  // ★
-					//	m_pTableWidget_RecordInformation->item(row, column)->setTextColor(QColor(255, 0, 0));
-					//else if (title.contains(QString::fromLocal8Bit("")))  // ☆
-					//	m_pTableWidget_RecordInformation->item(row, column)->setTextColor(QColor(0, 255, 255));
-					//else
+					if (title.contains(QString::fromLocal8Bit("★")))  // 
+						m_pTableWidget_RecordInformation->item(row, column)->setTextColor(QColor(255, 0, 0));
+					else if (title.contains(QString::fromLocal8Bit("☆")))  // 
+						m_pTableWidget_RecordInformation->item(row, column)->setTextColor(QColor(0, 255, 255));
+					else
 						m_pTableWidget_RecordInformation->item(row, column)->setTextColor(QColor(255, 255, 255));
 					m_pTableWidget_RecordInformation->item(row, column)->setText(pTextEdit_Title->toPlainText()); 
 				});
@@ -908,10 +908,10 @@ void QPatientSummaryTab::loadRecordDatabase()
 			pWidget_Delete->setLayout(pHBoxLayout_Delete);
 
 			QString title = _sqlQuery.value(7).toString();
-			//if (title.contains(QString::fromLocal8Bit("")))  // ★
-			//	pTitleItem->setTextColor(QColor(255, 0, 0));
-			//else if (title.contains(QString::fromLocal8Bit("")))  // ☆
-			//	pTitleItem->setTextColor(QColor(0, 255, 255));
+			if (title.contains(QString::fromLocal8Bit("★")))
+				pTitleItem->setTextColor(QColor(255, 0, 0));
+			else if (title.contains(QString::fromLocal8Bit("☆")))
+				pTitleItem->setTextColor(QColor(0, 255, 255));
 
 			QString procedure = m_pHvnSqlDataBase->getProcedure(_sqlQuery.value(11).toInt());
 			if (procedure.contains("Follow Up"))
@@ -935,14 +935,22 @@ void QPatientSummaryTab::loadRecordDatabase()
 				}
 				filenames.append("comments.txt");
 				filename = filenames.join("/");
-
-				QFile text(filename);
-				if (text.open(QFile::ReadOnly))
+								
+				QFileInfo check_file(filename);
+				if (check_file.exists())
 				{
-					QTextStream in(&text);
-					comment = in.readAll();
+					QFile text(filename);
+					if (!text.open(QFile::ReadOnly))
+					{
+						QTextStream in(&text);
+						comment = in.readAll();
+					}
+					text.close();
 				}
-				text.close();
+				else
+				{
+					comment = _sqlQuery.value(8).toString();
+				}				
 			}
 
 			if (comment.contains("[HIDDEN]"))

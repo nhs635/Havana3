@@ -81,6 +81,7 @@ public:
 	void setBuffers(Configuration* pConfig);
 	void setObjects(Configuration* pConfig);
     void setWidgets(Configuration* pConfig);
+	void resetImgObjLifetime(Configuration* pConfig);
 	void setCircImageViewClickedMouseCallback(const std::function<void(void)> &slot);
 	void setEnFaceImageViewClickedMouseCallback(const std::function<void(void)> &slot);
 	void setLongiImageViewClickedMouseCallback(const std::function<void(void)> &slot);

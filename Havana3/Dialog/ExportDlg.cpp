@@ -352,7 +352,9 @@ void ExportDlg::saveCrossSections()
 			std::vector<ImageObject*> vectorLifetimeMap;
 			for (int i = 0; i < 3; i++)
 			{
-				ImageObject* pImgObjLifetimeMap = new ImageObject(frames4, alines, temp_ctable.m_colorTableVector.at(LIFETIME_COLORTABLE));
+				ImageObject* pImgObjLifetimeMap = new ImageObject(frames4, alines, m_pConfig->flimColormapType == FlimColormapType::_HSV_ ? 
+					temp_ctable.m_colorTableVector.at(LIFETIME_COLORTABLE) :
+					temp_ctable.m_colorTableVector.at(NEW_LIFETIME_COLORTABLE + i));
 				m_pViewTab->scaleFLImEnFaceMap(pImgObjIntensityMap, pImgObjLifetimeMap, nullptr, nullptr, nullptr, VisualizationMode::_FLIM_PARAMETERS_, i, FLImParameters::_LIFETIME_, 0);
 
 				// Push to the vector
@@ -600,7 +602,9 @@ void ExportDlg::saveEnFaceMaps()
 				if (checkList.bCh[i])
 				{
 					// Intensity-weight lifetime map
-					ImageObject* pImgObjLifetimeMap = new ImageObject(frame4, alines, temp_ctable.m_colorTableVector.at(LIFETIME_COLORTABLE));
+					ImageObject* pImgObjLifetimeMap = new ImageObject(frame4, alines, 
+						m_pConfig->flimColormapType == FlimColormapType::_HSV_ ? temp_ctable.m_colorTableVector.at(LIFETIME_COLORTABLE) : 
+						temp_ctable.m_colorTableVector.at(NEW_LIFETIME_COLORTABLE + i));
 					memset(pImgObjLifetimeMap->arr, 0, sizeof(uint8_t) * frame4 * alines);
 
 					m_pViewTab->scaleFLImEnFaceMap(pImgObjIntensityMap, pImgObjLifetimeMap, nullptr, nullptr, nullptr, VisualizationMode::_FLIM_PARAMETERS_, i, FLImParameters::_LIFETIME_, 0);
@@ -608,7 +612,8 @@ void ExportDlg::saveEnFaceMaps()
 					pImgObjLifetimeMap->qrgbimg.copy(start - 1, 0, end - start + 1, roi_flimproj.width)
 						.save(enFacePath + QString("flim_map_range[%1 %2]_ch%3_i[%4 %5]_t[%6 %7].bmp").arg(start).arg(end).arg(i + 1)
 							.arg(m_pConfig->flimIntensityRange[i].min, 2, 'f', 1).arg(m_pConfig->flimIntensityRange[i].max, 2, 'f', 1)
-							.arg(m_pConfig->flimLifetimeRange[i].min, 2, 'f', 1).arg(m_pConfig->flimLifetimeRange[i].max, 2, 'f', 1), "bmp");
+							.arg(m_pConfig->flimColormapType == FlimColormapType::_HSV_ ? m_pConfig->flimLifetimeRange[i].min : m_pConfig->flimLifetimeRangeNew[i].min, 2, 'f', 1)
+							.arg(m_pConfig->flimColormapType == FlimColormapType::_HSV_ ? m_pConfig->flimLifetimeRange[i].max : m_pConfig->flimLifetimeRangeNew[i].max, 2, 'f', 1), "bmp");
 
 					delete pImgObjLifetimeMap;
 				}
@@ -858,11 +863,17 @@ void ExportDlg::scaling(std::vector<np::FloatArray2>& vectorOctImage, std::vecto
 			// Image objects for OCT Images
 			pImgObjVec->push_back(new ImageObject(roi_oct.width, roi_oct.height, temp_ctable.m_colorTableVector.at(OCT_COLORTABLE)));
 			// Image objects for Ch1 FLIM
-			pImgObjVec->push_back(new ImageObject(ring_thickness, roi_oct.height / 4, temp_ctable.m_colorTableVector.at(LIFETIME_COLORTABLE)));
+			pImgObjVec->push_back(new ImageObject(ring_thickness, roi_oct.height / 4, m_pConfig->flimColormapType == FlimColormapType::_HSV_ ?
+				temp_ctable.m_colorTableVector.at(LIFETIME_COLORTABLE) :
+				temp_ctable.m_colorTableVector.at(NEW_LIFETIME_COLORTABLE)));
 			// Image objects for Ch2 FLIM		
-			pImgObjVec->push_back(new ImageObject(ring_thickness, roi_oct.height / 4, temp_ctable.m_colorTableVector.at(LIFETIME_COLORTABLE)));
+			pImgObjVec->push_back(new ImageObject(ring_thickness, roi_oct.height / 4, m_pConfig->flimColormapType == FlimColormapType::_HSV_ ?
+				temp_ctable.m_colorTableVector.at(LIFETIME_COLORTABLE) :
+				temp_ctable.m_colorTableVector.at(NEW_LIFETIME_COLORTABLE + 1)));
 			// Image objects for Ch3 FLIM
-			pImgObjVec->push_back(new ImageObject(ring_thickness, roi_oct.height / 4, temp_ctable.m_colorTableVector.at(LIFETIME_COLORTABLE)));
+			pImgObjVec->push_back(new ImageObject(ring_thickness, roi_oct.height / 4, m_pConfig->flimColormapType == FlimColormapType::_HSV_ ?
+				temp_ctable.m_colorTableVector.at(LIFETIME_COLORTABLE) :
+				temp_ctable.m_colorTableVector.at(NEW_LIFETIME_COLORTABLE + 2)));
 
 			// OCT Visualization
 			np::FloatArray2 scale_temp(roi_oct.width, roi_oct.height);
@@ -1167,12 +1178,14 @@ void ExportDlg::circularizing(CrossSectionCheckList checkList) // with longitudi
 						longiPath[i] = m_exportPath + QString("/longi_image[%1 %2]_gray[%3 %4]_ch%5_i[%6 %7]_t[%8 %9]/")
 							.arg(start).arg(end).arg(m_pConfigTemp->octGrayRange.min).arg(m_pConfigTemp->octGrayRange.max)
 							.arg(i + 1).arg(m_pConfig->flimIntensityRange[i].min, 2, 'f', 1).arg(m_pConfig->flimIntensityRange[i].max, 2, 'f', 1)
-							.arg(m_pConfig->flimLifetimeRange[i].min, 2, 'f', 1).arg(m_pConfig->flimLifetimeRange[i].max, 2, 'f', 1);
+							.arg(m_pConfig->flimColormapType == FlimColormapType::_HSV_ ? m_pConfig->flimLifetimeRange[i].min : m_pConfig->flimLifetimeRangeNew[i].min, 2, 'f', 1)
+							.arg(m_pConfig->flimColormapType == FlimColormapType::_HSV_ ? m_pConfig->flimLifetimeRange[i].max : m_pConfig->flimLifetimeRangeNew[i].max, 2, 'f', 1);
 #else
 						longiPath[i] = m_exportPath + QString("/longi_image[%1 %2]_dB[%3 %4]_ch%5_i[%6 %7]_t[%8 %9]/")
 							.arg(start).arg(end).arg(m_pConfig->axsunDbRange.min).arg(m_pConfig->axsunDbRange.max)
 							.arg(i + 1).arg(m_pConfig->flimIntensityRange[i].min, 2, 'f', 1).arg(m_pConfig->flimIntensityRange[i].max, 2, 'f', 1)
-							.arg(m_pConfig->flimLifetimeRange[i].min, 2, 'f', 1).arg(m_pConfig->flimLifetimeRange[i].max, 2, 'f', 1);
+							.arg(m_pConfig->flimColormapType == FlimColormapType::_HSV_ ? m_pConfig->flimLifetimeRange[i].min : m_pConfig->flimLifetimeRangeNew[i].min, 2, 'f', 1)
+							.arg(m_pConfig->flimColormapType == FlimColormapType::_HSV_ ? m_pConfig->flimLifetimeRange[i].max : m_pConfig->flimLifetimeRangeNew[i].max, 2, 'f', 1);
 #endif
 
 						if (checkList.bLongi) QDir().mkdir(longiPath[i]);
@@ -1324,7 +1337,8 @@ void ExportDlg::circWriting(CrossSectionCheckList checkList)
 					circPath[i] = m_exportPath + QString("/circ_image_gray[%1 %2]_ch%3_i[%4 %5]_t[%6 %7]/")
 					.arg(m_pConfigTemp->octGrayRange.min).arg(m_pConfigTemp->octGrayRange.max)
 					.arg(i + 1).arg(m_pConfig->flimIntensityRange[i].min, 2, 'f', 1).arg(m_pConfig->flimIntensityRange[i].max, 2, 'f', 1)
-					.arg(m_pConfig->flimLifetimeRange[i].min, 2, 'f', 1).arg(m_pConfig->flimLifetimeRange[i].max, 2, 'f', 1);			
+					.arg(m_pConfig->flimColormapType == FlimColormapType::_HSV_ ? m_pConfig->flimLifetimeRange[i].min : m_pConfig->flimLifetimeRangeNew[i].min, 2, 'f', 1)
+					.arg(m_pConfig->flimColormapType == FlimColormapType::_HSV_ ? m_pConfig->flimLifetimeRange[i].max : m_pConfig->flimLifetimeRangeNew[i].max, 2, 'f', 1);
 #else
 					circPath[i] = m_exportPath + QString("/circ_image_dB[%1 %2]_ch%3_i[%4 %5]_t[%6 %7]/")
 						.arg(m_pConfig->axsunDbRange.min).arg(m_pConfig->axsunDbRange.max)

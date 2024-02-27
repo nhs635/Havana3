@@ -349,11 +349,11 @@ void QResultTab::loadRecordInfo()
 			m_recordInfo.is_dotter = m_recordInfo.filename0.split(".").at(1) == "xml";
 
 			QString title_color;
-			//if (m_recordInfo.title.contains(QString::fromLocal8Bit(""))) // ★
-			//	title_color = "red";
-			//else if (m_recordInfo.title.contains(QString::fromLocal8Bit("")))  // ☆
-			//	title_color = "cyan";
-			//else
+			if (m_recordInfo.title.contains(QString::fromLocal8Bit("★"))) // 
+				title_color = "red";
+			else if (m_recordInfo.title.contains(QString::fromLocal8Bit("☆")))  // 
+				title_color = "cyan";
+			else
 				title_color = "white";
 
 			m_pLabel_RecordInformation->setText(QString("<b><font size=6><font color=%1>%2</font></font></b><br>"
@@ -436,15 +436,22 @@ void QResultTab::changeProcedureInfo(int info)
 
 void QResultTab::openContainingFolder()
 {
-	QString folderPath = m_recordInfo.filename;
-	for (int i = folderPath.size() - 1; i >= 0; i--)
+	QString folderPath = m_recordInfo.filename;	
+	if (folderPath.split(".").at(1) != "xml")
 	{
-		int slash_pos = i;
-		if (folderPath.at(i) == '/')
+		for (int i = folderPath.size() - 1; i >= 0; i--)
 		{
-			folderPath = folderPath.left(slash_pos);
-			break;
+			int slash_pos = i;
+			if (folderPath.at(i) == '/')
+			{
+				folderPath = folderPath.left(slash_pos);
+				break;
+			}
 		}
+	}
+	else
+	{
+		folderPath.replace(".xml", "");
 	}
 	QDesktopServices::openUrl(QUrl("file:///" + folderPath));
 }

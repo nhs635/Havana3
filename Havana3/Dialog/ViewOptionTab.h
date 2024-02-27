@@ -14,6 +14,12 @@ class QResultTab;
 class QViewTab;
 class QImageView;
 
+enum FlimColormapType
+{
+	_HSV_ = 0,
+	_TCT_NEW_ = 1
+};
+
 enum VisualizationMode
 {
 	_FLIM_PARAMETERS_ = 0,
@@ -77,6 +83,7 @@ public slots:
     // FLIm visualization option control
 	void changeVisualizationMode(int);
 	void changeEmissionChannel(int);
+	void changeFlimColormapType(int);
 	void changeFLImParameters(int);
 	void changeMLPrediction(int);
 
@@ -122,6 +129,7 @@ private:
 	
     QLabel *m_pLabel_EmissionChannel;
     QComboBox *m_pComboBox_EmissionChannel;
+	QComboBox *m_pComboBox_FlimColormap;
 
 	QLabel *m_pLabel_FLImParameters;
 	QRadioButton *m_pRadioButton_Lifetime;

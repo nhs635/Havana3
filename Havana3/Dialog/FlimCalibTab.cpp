@@ -6,6 +6,7 @@
 #include <Havana3/QStreamTab.h>
 
 #include <Havana3/Dialog/SettingDlg.h>
+#include <Havana3/Dialog/ViewOptionTab.h>
 
 #include <DataAcquisition/DataAcquisition.h>
 #include <DataAcquisition/SignatecDAQ/SignatecDAQ.h>
@@ -313,11 +314,15 @@ void FlimCalibTab::createHistogram()
 
     m_pLabel_FluLifetimeMin = new QLabel(this);
 	m_pLabel_FluLifetimeMin->setFixedWidth(90);
-    m_pLabel_FluLifetimeMin->setText(QString::number(m_pConfig->flimLifetimeRange[m_pConfig->flimEmissionChannel - 1].min, 'f', 1));
+    m_pLabel_FluLifetimeMin->setText(QString::number(m_pConfig->flimColormapType == FlimColormapType::_HSV_ ? 
+		m_pConfig->flimLifetimeRange[m_pConfig->flimEmissionChannel - 1].min :
+		m_pConfig->flimLifetimeRangeNew[m_pConfig->flimEmissionChannel - 1].min, 'f', 1));
     m_pLabel_FluLifetimeMin->setAlignment(Qt::AlignLeft);
     m_pLabel_FluLifetimeMax = new QLabel(this);
 	m_pLabel_FluLifetimeMax->setFixedWidth(90);
-    m_pLabel_FluLifetimeMax->setText(QString::number(m_pConfig->flimLifetimeRange[m_pConfig->flimEmissionChannel - 1].max, 'f', 1));
+    m_pLabel_FluLifetimeMax->setText(QString::number(m_pConfig->flimColormapType == FlimColormapType::_HSV_ ?
+		m_pConfig->flimLifetimeRange[m_pConfig->flimEmissionChannel - 1].max :
+		m_pConfig->flimLifetimeRangeNew[m_pConfig->flimEmissionChannel - 1].max, 'f', 1));
     m_pLabel_FluLifetimeMax->setAlignment(Qt::AlignRight);
 
 	for (int i = 0; i < 3; i++)
@@ -401,7 +406,8 @@ void FlimCalibTab::drawRoiPulse(int aline)
 		(*m_pHistogramIntensity)(scanIntensity, m_pRenderArea_FluIntensity->m_pData[i],
 			m_pConfig->flimIntensityRange[i].min, m_pConfig->flimIntensityRange[i].max);
 		(*m_pHistogramLifetime)(scanLifetime, m_pRenderArea_FluLifetime->m_pData[i],
-			m_pConfig->flimLifetimeRange[i].min, m_pConfig->flimLifetimeRange[i].max);
+			m_pConfig->flimColormapType == FlimColormapType::_HSV_ ? m_pConfig->flimLifetimeRange[i].min : m_pConfig->flimLifetimeRangeNew[i].min,
+			m_pConfig->flimColormapType == FlimColormapType::_HSV_ ? m_pConfig->flimLifetimeRange[i].max : m_pConfig->flimLifetimeRangeNew[i].max);
 		
 		Ipp32f mean, stdev;
 		auto res = ippsMeanStdDev_32f(scanIntensity, m_pConfig->flimAlines, &mean, &stdev, ippAlgHintFast);
@@ -414,8 +420,16 @@ void FlimCalibTab::drawRoiPulse(int aline)
 	
 	m_pLabel_FluIntensityMin->setText(QString::number(std::min(m_pConfig->flimIntensityRange[0].min, std::min(m_pConfig->flimIntensityRange[1].min, m_pConfig->flimIntensityRange[2].min)), 'f', 1));
 	m_pLabel_FluIntensityMax->setText(QString::number(std::max(m_pConfig->flimIntensityRange[0].max, std::max(m_pConfig->flimIntensityRange[1].max, m_pConfig->flimIntensityRange[2].max)), 'f', 1));
-	m_pLabel_FluLifetimeMin->setText(QString::number(std::min(m_pConfig->flimLifetimeRange[0].min, std::min(m_pConfig->flimLifetimeRange[1].min, m_pConfig->flimLifetimeRange[2].min)), 'f', 1));
-	m_pLabel_FluLifetimeMax->setText(QString::number(std::max(m_pConfig->flimLifetimeRange[0].max, std::max(m_pConfig->flimLifetimeRange[1].max, m_pConfig->flimLifetimeRange[2].max)), 'f', 1));
+	if (m_pConfig->flimColormapType == FlimColormapType::_HSV_)
+	{
+		m_pLabel_FluLifetimeMin->setText(QString::number(std::min(m_pConfig->flimLifetimeRange[0].min, std::min(m_pConfig->flimLifetimeRange[1].min, m_pConfig->flimLifetimeRange[2].min)), 'f', 1));
+		m_pLabel_FluLifetimeMax->setText(QString::number(std::max(m_pConfig->flimLifetimeRange[0].max, std::max(m_pConfig->flimLifetimeRange[1].max, m_pConfig->flimLifetimeRange[2].max)), 'f', 1));
+	}
+	else if (m_pConfig->flimColormapType == FlimColormapType::_TCT_NEW_)
+	{
+		m_pLabel_FluLifetimeMin->setText(QString::number(std::min(m_pConfig->flimLifetimeRangeNew[0].min, std::min(m_pConfig->flimLifetimeRangeNew[1].min, m_pConfig->flimLifetimeRangeNew[2].min)), 'f', 1));
+		m_pLabel_FluLifetimeMax->setText(QString::number(std::max(m_pConfig->flimLifetimeRangeNew[0].max, std::max(m_pConfig->flimLifetimeRangeNew[1].max, m_pConfig->flimLifetimeRangeNew[2].max)), 'f', 1));
+	}
 
 	m_pColorbar_FluLifetime->resetColormap(ColorTable::colortable(LIFETIME_COLORTABLE));
 }

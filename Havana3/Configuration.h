@@ -1,7 +1,7 @@
 #ifndef CONFIGURATION_H
 #define CONFIGURATION_H
 
-#define VERSION						"2.1.6.0"
+#define VERSION						"2.1.6.1"
 
 #define POWER_2(x)					(1 << x)
 #define NEAR_2_POWER(x)				(int)(1 << (int)ceil(log2(x)))
@@ -79,6 +79,7 @@
 #define INTENSITY_PROP_COLORTABLE	6 // fire
 #define INTENSITY_RATIO_COLORTABLE	12 // bwr
 #define LIFETIME_COLORTABLE         13 // hsv2 ==> Viewer/QImageView.cpp
+#define NEW_LIFETIME_COLORTABLE		16 // new_ch1
 #define IVUS_COLORTABLE				0 // gray
 #define COMPOSITION_COLORTABLE		14 // compo
 
@@ -137,7 +138,7 @@ class Configuration
 {
 public:
 	explicit Configuration() : dbPath(""), ivusPath(""), 
-		octRadius(0), circOffset(0), reflectionRemoval(false), reflectionDistance(REFLECTION_DISTANCE), reflectionLevel(REFLECTION_LEVEL),
+		flimColormapType(0), octRadius(0), circOffset(0), reflectionRemoval(false), reflectionDistance(REFLECTION_DISTANCE), reflectionLevel(REFLECTION_LEVEL),
 		mergeNorFib(false), mergeMacTcfa(true), normalizeLogistics(true), playInterval(100),
 		rotatedAlines(0), verticalMirroring(false), intraFrameSync(0), interFrameSync(0), flimDelaySync(0), is_dotter(false)
 	{
@@ -147,6 +148,10 @@ public:
 		memset(showPlaqueComposition, 1, sizeof(bool) * ML_N_CATS);
 		octGrayRange.min = 0;
 		octGrayRange.max = 255;
+
+		flimLifetimeRangeNew[0].min = 3.5; flimLifetimeRangeNew[0].max = 6.0;
+		flimLifetimeRangeNew[1].min = 2.5; flimLifetimeRangeNew[1].max = 4.0;
+		flimLifetimeRangeNew[2].min = 4.0; flimLifetimeRangeNew[2].max = 7.0;
 	}
 	~Configuration() {}
 
@@ -411,11 +416,13 @@ public:
 	///int clfAnnYNode;
 	
 	// Visualization    
+	int flimColormapType;
     int flimEmissionChannel;
 	int flimParameterMode;
 	int mlPredictionMode;
     ContrastRange<float> flimIntensityRange[3];
     ContrastRange<float> flimLifetimeRange[3];
+	ContrastRange<float> flimLifetimeRangeNew[3];
 	ContrastRange<float> flimIntensityPropRange[3];
     ContrastRange<float> flimIntensityRatioRange[3];
 	float flimIntensityComp[3];

@@ -31,6 +31,7 @@ public:
     inline QResultTab* getResultTab() const { return m_pResultTab; }
     inline FLImProcess* getFLImProcess() const { return m_pFLIm; }
 	inline QString getResFolder() const { return m_resFolder; }
+	inline QString getIniName() const { return m_iniName; }
 
 public:
     void startProcessing(QString, int frame = -1);

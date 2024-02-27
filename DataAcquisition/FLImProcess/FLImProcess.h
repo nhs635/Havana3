@@ -109,7 +109,8 @@ private:
 struct RESIZE
 {
 public:
-    RESIZE() : scoeff(nullptr), pSeq(nullptr), pMask(nullptr), nx(-1), initiated(false)
+    RESIZE() : scoeff(nullptr), pSeq(nullptr), pMask(nullptr), nx(-1), 
+		initiated(false), reverse_order(false)
     {
         memset(start_ind, 0, sizeof(int) * 4);
         memset(end_ind, 0, sizeof(int) * 4);
@@ -291,6 +292,7 @@ public:
     void initialize(const FLIM_PARAMS& pParams, int _nx, int _upSampleFactor, int _alines)
     {
         /* Parameters */
+		reverse_order = pParams.irf != 0.0f;
         nx = _nx; ny = _alines;
         upSampleFactor = _upSampleFactor;
         nsite = nx * upSampleFactor;
@@ -302,11 +304,8 @@ public:
         /* Find pulse roi length for mean delay calculation */
 		int rmin;
 		ippsMin_32s(pParams.ch_start_ind, 5, &rmin);
-		for (int i = 0; i < 4; i++)
-		{
-			ch_start_ind0[i] = pParams.ch_start_ind[i] - rmin;
-			ch_end_ind0[i] = pParams.ch_end_ind[i] - rmin;
-		}
+		ippsSubC_32s_Sfs(pParams.ch_start_ind, rmin, ch_start_ind0, 5, 0);
+		ippsSubC_32s_Sfs(pParams.ch_end_ind, rmin, ch_end_ind0, 4, 0);		
 		
 		for (int i = 0; i < 5; i++)
 			ch_start_ind1[i] = (int)round((float)ch_start_ind0[i] * ActualFactor);
@@ -314,7 +313,7 @@ public:
 		for (int i = 0; i < 4; i++)
 			ch_end_ind1[i] = (int)round((float)ch_end_ind0[i] * ActualFactor);
 		
-		if (pParams.irf == 0.0f)
+		if (!reverse_order)
 		{		
 			int diff_ind[4];
 			for (int i = 0; i < 4; i++)
@@ -335,8 +334,8 @@ public:
 
         /* sequence for mean delay caculation */
         if (pSeq) { ippsFree(pSeq); pSeq = nullptr; }
-        pSeq = ippsMalloc_32f(pulse_roi_length);
-        ippsVectorSlope_32f(pSeq, pulse_roi_length, 0, 1);
+        pSeq = ippsMalloc_32f(nsite);
+        ippsVectorSlope_32f(pSeq, nsite, 0, 1);
 
         /* mask for removal of rotary junction artifacts */
         if (pMask) { ippsFree(pMask); pMask = nullptr; }
@@ -376,11 +375,12 @@ private:
 
 public:
     bool initiated;
+	bool reverse_order;
 
     MKL_INT nx, ny; // original data length, dimension
     MKL_INT nsite; // interpolated data length
 
-	int ch_start_ind0[4], ch_end_ind0[4];
+	int ch_start_ind0[5], ch_end_ind0[4];
 	int ch_start_ind1[5], ch_end_ind1[4];
     int upSampleFactor;
     Ipp32f ActualFactor;
@@ -421,16 +421,16 @@ public:
             _ny = resize.ny;
         }
 
-        int offset;
+        int offset, win_len;
         for (int i = 0; i < 4; i++)
-        {
-			offset = resize.ch_start_ind1[i]; // -resize.ch_start_ind1[0];
+		{
+			offset = resize.ch_start_ind1[i];  /// -resize.ch_start_ind1[0];
+			win_len = !resize.reverse_order ? resize.ch_start_ind1[i + 1] - offset - 1 : resize.ch_end_ind1[i] - offset;
             for (int j = 0; j < intensity.size(0); j++)
             {
                 intensity(j, i) = 0;
-                if (resize.saturated(j, i) <= 3)
-                    ippsSum_32f(&resize.ext_src(offset, j), resize.pulse_roi_length, &intensity(j, i), ippAlgHintFast);
-				//printf("%d\n", intensity(j, i));
+				if (resize.saturated(j, i) <= 3)
+					ippsSum_32f(&resize.ext_src(offset, j), win_len, &intensity(j, i), ippAlgHintFast);
             }
         }
 
@@ -464,18 +464,21 @@ public:
             {
                 for (int j = 0; j < 4; j++)
                 {
-                    int offset, width, left, maxIdx;
+					int offset, win_len;
+					int width, left, maxIdx;
 					float md_temp;
-					offset = resize.ch_start_ind1[j]; // -resize.ch_start_ind1[0];
+					offset = resize.ch_start_ind1[j];  /// -resize.ch_start_ind1[0];
+					win_len = !resize.reverse_order ? resize.ch_start_ind1[j + 1] - offset - 1 : resize.ch_end_ind1[j] - offset;
 
                     // 1. Get IRF width
                     const float* pulse = &resize.filt_src(offset, (int)i);
-                    WidthIndex_32f(pulse, 0.5f, resize.pulse_roi_length, maxIdx, width);
+                    WidthIndex_32f(pulse, 0.5f, win_len, resize.filt_src.size(0) - offset, maxIdx, width);					
                     roiWidth[j] = (int)round(pParams.width_factor * width);
-                    left = (int)floor(roiWidth[j] / 2);
+                    left = (int)floor(roiWidth[j] / 2);				
+					//md_temp = maxIdx;
 
                     // 2. Get mean delay of each channel (iterative process)
-                    MeanDelay_32f(pulse, resize.pSeq, offset, resize.pulse_roi_length, maxIdx, roiWidth[j], left, md_temp);
+                    MeanDelay_32f(pulse, resize.pSeq, offset, resize.filt_src.size(0), maxIdx, roiWidth[j], left, md_temp);   /// resize.pulse_roi_length
                     mean_delay((int)i, j) = (md_temp + (float)resize.ch_start_ind1[j]) / resize.ActualFactor;
                 }
 
@@ -491,12 +494,12 @@ public:
         });
     }
 
-    void WidthIndex_32f(const Ipp32f* src, Ipp32f th, Ipp32s length, Ipp32s& maxIdx, Ipp32s& width)
+    void WidthIndex_32f(const Ipp32f* src, Ipp32f th, Ipp32s win_len, Ipp32s seq_len, Ipp32s& maxIdx, Ipp32s& width)
     {
         Ipp32s left0 = 0, right0 = 0;
         Ipp32f maxVal;
 
-        ippsMaxIndx_32f(src, length, &maxVal, &maxIdx);
+        ippsMaxIndx_32f(src, win_len, &maxVal, &maxIdx);
 
         for (Ipp32s i = maxIdx; i >= 0; i--)
         {
@@ -506,7 +509,7 @@ public:
                 break;
             }
         }
-        for (Ipp32s i = maxIdx; i < length; i++)
+        for (Ipp32s i = maxIdx; i < seq_len; i++)
         {
             if (src[i] < maxVal * th)
             {
@@ -530,7 +533,7 @@ public:
 			{
 				start = (int)round(mean_delay) - left;
 
-				if ((start < 0) || (start + width > length))
+				if ((start < 0) || (offset + start + width > length))
 				{
 					mean_delay = 0;
 					break;

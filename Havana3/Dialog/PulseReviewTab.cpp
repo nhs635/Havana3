@@ -776,7 +776,10 @@ void PulseReviewTab::updateDelayOffset()
 	}
 	m_pResultTab->getDataProcessing()->calculateFlimParameters();
 	m_pViewTab->invalidate();
-	m_pConfigTemp->setConfigFile(m_pResultTab->getDataProcessing()->getIniName());
+	if (!m_pConfigTemp->is_dotter)
+		m_pConfigTemp->setConfigFile(m_pResultTab->getDataProcessing()->getIniName());
+	else
+		m_pConfigTemp->setConfigFile(m_pResultTab->getDataProcessingDotter()->getIniName());
 }
 
 void PulseReviewTab::addRoi(bool toggled)

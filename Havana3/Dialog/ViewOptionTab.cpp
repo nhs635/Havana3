@@ -109,6 +109,13 @@ void ViewOptionTab::createFlimVisualizationOptionTab()
     m_pComboBox_EmissionChannel->setFixedWidth(60);
 	m_pComboBox_EmissionChannel->setDisabled(m_pConfig->flimParameterMode == FLImParameters::_NONE_);
 
+	m_pComboBox_FlimColormap = new QComboBox(this);
+	m_pComboBox_FlimColormap->addItem("HSV");
+	m_pComboBox_FlimColormap->addItem("NEW");
+	m_pComboBox_FlimColormap->setCurrentIndex(m_pConfig->flimColormapType);
+	m_pComboBox_FlimColormap->setFixedWidth(60);
+	m_pComboBox_FlimColormap->setDisabled(m_pConfig->flimParameterMode == FLImParameters::_NONE_);
+
     m_pLabel_EmissionChannel = new QLabel("Emission Channel  ", this);
     m_pLabel_EmissionChannel->setAlignment(Qt::AlignVCenter | Qt::AlignRight);
     m_pLabel_EmissionChannel->setBuddy(m_pComboBox_EmissionChannel);
@@ -126,7 +133,8 @@ void ViewOptionTab::createFlimVisualizationOptionTab()
 		m_pRadioButton_IntensityProp->setText("Intensity Proportion");
 		m_pRadioButton_IntensityProp->setChecked(m_pConfig->flimParameterMode == FLImParameters::_INTENSITY_PROP_);
 		m_pRadioButton_IntensityRatio = new QRadioButton(this);
-		m_pRadioButton_IntensityRatio->setText(QString("Intensity Ratio (%1/%2)").arg(m_pConfig->flimEmissionChannel).arg((m_pConfig->flimEmissionChannel == 1) ? 3 : m_pConfig->flimEmissionChannel - 1));
+		m_pRadioButton_IntensityRatio->setText(QString("Intensity Ratio (%1/%2)").arg(m_pConfig->flimEmissionChannel)
+			.arg((m_pConfig->flimEmissionChannel == 1) ? 3 : m_pConfig->flimEmissionChannel - 1));
 		m_pRadioButton_IntensityRatio->setChecked(m_pConfig->flimParameterMode == FLImParameters::_INTENSITY_RATIO_);
 		m_pRadioButton_None = new QRadioButton(this);
 		m_pRadioButton_None->setText("None");
@@ -177,11 +185,15 @@ void ViewOptionTab::createFlimVisualizationOptionTab()
 	m_pLineEdit_IntensityMin->setAlignment(Qt::AlignCenter);
 	m_pLineEdit_LifetimeMax = new QLineEdit(this);
     m_pLineEdit_LifetimeMax->setFixedWidth(35);
-	m_pLineEdit_LifetimeMax->setText(QString::number(m_pConfig->flimLifetimeRange[m_pConfig->flimEmissionChannel - 1].max, 'f', 1));
+	m_pLineEdit_LifetimeMax->setText(QString::number(m_pConfig->flimColormapType == FlimColormapType::_HSV_ ? 
+		m_pConfig->flimLifetimeRange[m_pConfig->flimEmissionChannel - 1].max :
+		m_pConfig->flimLifetimeRangeNew[m_pConfig->flimEmissionChannel - 1].max, 'f', 1));
 	m_pLineEdit_LifetimeMax->setAlignment(Qt::AlignCenter);
 	m_pLineEdit_LifetimeMin = new QLineEdit(this);
     m_pLineEdit_LifetimeMin->setFixedWidth(35);
-	m_pLineEdit_LifetimeMin->setText(QString::number(m_pConfig->flimLifetimeRange[m_pConfig->flimEmissionChannel - 1].min, 'f', 1));
+	m_pLineEdit_LifetimeMin->setText(QString::number(m_pConfig->flimColormapType == FlimColormapType::_HSV_ ?
+		m_pConfig->flimLifetimeRange[m_pConfig->flimEmissionChannel - 1].min :
+		m_pConfig->flimLifetimeRangeNew[m_pConfig->flimEmissionChannel - 1].min, 'f', 1));
 	m_pLineEdit_LifetimeMin->setAlignment(Qt::AlignCenter);
 	if (!m_pStreamTab)
 	{
@@ -291,6 +303,7 @@ void ViewOptionTab::createFlimVisualizationOptionTab()
     pHBoxLayout_FlimVisualization1->addWidget(m_pLabel_EmissionChannel);
 	pHBoxLayout_FlimVisualization1->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Fixed));
     pHBoxLayout_FlimVisualization1->addWidget(m_pComboBox_EmissionChannel);
+	pHBoxLayout_FlimVisualization1->addWidget(m_pComboBox_FlimColormap);
 
 	QHBoxLayout *pHBoxLayout_IntensityColorbar = new QHBoxLayout;
 	QHBoxLayout *pHBoxLayout_LifetimeColorbar = new QHBoxLayout;
@@ -389,6 +402,7 @@ void ViewOptionTab::createFlimVisualizationOptionTab()
 
     // Connect signal and slot
     connect(m_pComboBox_EmissionChannel, SIGNAL(currentIndexChanged(int)), this, SLOT(changeEmissionChannel(int)));
+	connect(m_pComboBox_FlimColormap, SIGNAL(currentIndexChanged(int)), this, SLOT(changeFlimColormapType(int)));
 	if (!m_pStreamTab)
 	{
 		connect(m_pButtonGroup_VisualizationMode, SIGNAL(buttonClicked(int)), this, SLOT(changeVisualizationMode(int)));
@@ -711,6 +725,7 @@ void ViewOptionTab::changeVisualizationMode(int mode)
 
 				m_pLabel_EmissionChannel->setEnabled(true);
 				m_pComboBox_EmissionChannel->setEnabled(true);
+				m_pComboBox_FlimColormap->setEnabled(true);
 
 				m_pLabel_FLImParameters->setEnabled(true);
 				m_pRadioButton_Lifetime->setEnabled(true);
@@ -732,6 +747,7 @@ void ViewOptionTab::changeVisualizationMode(int mode)
 
 				m_pLabel_EmissionChannel->setDisabled(true);
 				m_pComboBox_EmissionChannel->setDisabled(true);
+				m_pComboBox_FlimColormap->setDisabled(true);
 
 				m_pLabel_FLImParameters->setDisabled(true);
 				m_pRadioButton_Lifetime->setDisabled(true);
@@ -765,11 +781,23 @@ void ViewOptionTab::changeEmissionChannel(int ch)
 	
 	m_pLabel_NormIntensity->setText(QString("Ch%1 Intensity (AU) ").arg(ch0 + 1));
 	m_pLabel_Lifetime->setText(QString("Ch%1 Lifetime (nsec) ").arg(ch0 + 1));
-
+	
 	m_pLineEdit_IntensityMin->setText(QString::number(m_pConfig->flimIntensityRange[ch0].min, 'f', 2));
 	m_pLineEdit_IntensityMax->setText(QString::number(m_pConfig->flimIntensityRange[ch0].max, 'f', 2));
-	m_pLineEdit_LifetimeMin->setText(QString::number(m_pConfig->flimLifetimeRange[ch0].min, 'f', 1));
-	m_pLineEdit_LifetimeMax->setText(QString::number(m_pConfig->flimLifetimeRange[ch0].max, 'f', 1));
+
+	if (m_pConfig->flimColormapType == FlimColormapType::_HSV_)
+	{
+		m_pLineEdit_LifetimeMin->setText(QString::number(m_pConfig->flimLifetimeRange[ch0].min, 'f', 1));
+		m_pLineEdit_LifetimeMax->setText(QString::number(m_pConfig->flimLifetimeRange[ch0].max, 'f', 1));
+	}
+	else if (m_pConfig->flimColormapType == FlimColormapType::_TCT_NEW_)
+	{
+		m_pImageView_LifetimeColorbar->resetColormap(ColorTable::colortable(NEW_LIFETIME_COLORTABLE + m_pConfig->flimEmissionChannel - 1));
+		m_pViewTab->resetImgObjLifetime(m_pConfigTemp);
+
+		m_pLineEdit_LifetimeMin->setText(QString::number(m_pConfig->flimLifetimeRangeNew[ch0].min, 'f', 1));
+		m_pLineEdit_LifetimeMax->setText(QString::number(m_pConfig->flimLifetimeRangeNew[ch0].max, 'f', 1));		
+	}
 
 	if (m_pStreamTab)
 	{
@@ -823,6 +851,33 @@ void ViewOptionTab::changeEmissionChannel(int ch)
 //	}
 }
 
+void ViewOptionTab::changeFlimColormapType(int type)
+{
+	m_pConfig->flimColormapType = type;
+	{
+		if (m_pViewTab)
+		{
+			if (type == FlimColormapType::_HSV_)
+			{
+				m_pImageView_LifetimeColorbar->resetColormap(ColorTable::colortable(LIFETIME_COLORTABLE));
+			}
+			else if(type == FlimColormapType::_TCT_NEW_)
+			{
+				m_pImageView_LifetimeColorbar->resetColormap(ColorTable::colortable(NEW_LIFETIME_COLORTABLE + m_pConfig->flimEmissionChannel - 1));
+				changeEmissionChannel(m_pConfig->flimEmissionChannel - 1);
+			}
+
+			m_pLineEdit_LifetimeMin->setEnabled(type == FlimColormapType::_HSV_);
+			m_pLineEdit_LifetimeMax->setEnabled(type == FlimColormapType::_HSV_);
+
+			m_pViewTab->resetImgObjLifetime(m_pConfigTemp);
+			m_pViewTab->invalidate();
+
+			m_pConfig->writeToLog(QString("FLIm colormap changed: %1").arg(type));
+		}
+	}
+}
+
 
 void ViewOptionTab::changeFLImParameters(int mode)
 {
@@ -831,7 +886,7 @@ void ViewOptionTab::changeFLImParameters(int mode)
 	m_pImageView_IntensityColorbar->setVisible(true);
 	m_pLineEdit_IntensityMax->setVisible(true);
 
-	m_pComboBox_EmissionChannel->setEnabled(true);
+	m_pComboBox_EmissionChannel->setEnabled(true);	
 
 	if (mode == FLImParameters::_LIFETIME_)
 	{
@@ -856,6 +911,8 @@ void ViewOptionTab::changeFLImParameters(int mode)
 		m_pCheckBox_NormalFibrousMerge->setVisible(false);
 		m_pCheckBox_MacTcfaMerge->setVisible(false);
 		m_pCheckBox_LogisticsNormalize->setVisible(false);
+
+		m_pComboBox_FlimColormap->setEnabled(true);
 	}
 	else if (mode == FLImParameters::_INTENSITY_PROP_)
 	{
@@ -880,6 +937,8 @@ void ViewOptionTab::changeFLImParameters(int mode)
 		m_pCheckBox_NormalFibrousMerge->setVisible(false);
 		m_pCheckBox_MacTcfaMerge->setVisible(false);
 		m_pCheckBox_LogisticsNormalize->setVisible(false);
+
+		m_pComboBox_FlimColormap->setDisabled(true);
 	}
 	else if (mode == FLImParameters::_INTENSITY_RATIO_)
 	{
@@ -904,6 +963,8 @@ void ViewOptionTab::changeFLImParameters(int mode)
 		m_pCheckBox_NormalFibrousMerge->setVisible(false);
 		m_pCheckBox_MacTcfaMerge->setVisible(false);
 		m_pCheckBox_LogisticsNormalize->setVisible(false);
+
+		m_pComboBox_FlimColormap->setDisabled(true);
 	}
 	else if (mode == FLImParameters::_NONE_)
 	{
@@ -931,6 +992,7 @@ void ViewOptionTab::changeFLImParameters(int mode)
 
 		m_pConfig->flimEmissionChannel = 1;
 		m_pComboBox_EmissionChannel->setDisabled(true);
+		m_pComboBox_FlimColormap->setDisabled(true);
 	}
 
 	changeEmissionChannel(m_pConfig->flimEmissionChannel - 1);
@@ -993,8 +1055,16 @@ void ViewOptionTab::adjustFlimContrast()
 	{
 		m_pConfig->flimIntensityRange[m_pConfig->flimEmissionChannel - 1].min = m_pLineEdit_IntensityMin->text().toFloat();
 		m_pConfig->flimIntensityRange[m_pConfig->flimEmissionChannel - 1].max = m_pLineEdit_IntensityMax->text().toFloat();
-		m_pConfig->flimLifetimeRange[m_pConfig->flimEmissionChannel - 1].min = m_pLineEdit_LifetimeMin->text().toFloat();
-		m_pConfig->flimLifetimeRange[m_pConfig->flimEmissionChannel - 1].max = m_pLineEdit_LifetimeMax->text().toFloat();
+		if (m_pConfig->flimColormapType == FlimColormapType::_HSV_)
+		{
+			m_pConfig->flimLifetimeRange[m_pConfig->flimEmissionChannel - 1].min = m_pLineEdit_LifetimeMin->text().toFloat();
+			m_pConfig->flimLifetimeRange[m_pConfig->flimEmissionChannel - 1].max = m_pLineEdit_LifetimeMax->text().toFloat();
+		}
+		else if (m_pConfig->flimColormapType == FlimColormapType::_TCT_NEW_)
+		{
+			//m_pConfig->flimLifetimeRangeNew[m_pConfig->flimEmissionChannel - 1].min = m_pLineEdit_LifetimeMin->text().toFloat();
+			//m_pConfig->flimLifetimeRangeNew[m_pConfig->flimEmissionChannel - 1].max = m_pLineEdit_LifetimeMax->text().toFloat();
+		}
 
 ///		visualizeImage(m_visImage.raw_ptr(), m_visIntensity.raw_ptr(), m_visLifetime.raw_ptr());
 	}
@@ -1004,8 +1074,16 @@ void ViewOptionTab::adjustFlimContrast()
 		{
 			m_pConfig->flimIntensityRange[m_pConfig->flimEmissionChannel - 1].min = m_pLineEdit_IntensityMin->text().toFloat();
 			m_pConfig->flimIntensityRange[m_pConfig->flimEmissionChannel - 1].max = m_pLineEdit_IntensityMax->text().toFloat();
-			m_pConfig->flimLifetimeRange[m_pConfig->flimEmissionChannel - 1].min = m_pLineEdit_LifetimeMin->text().toFloat();
-			m_pConfig->flimLifetimeRange[m_pConfig->flimEmissionChannel - 1].max = m_pLineEdit_LifetimeMax->text().toFloat();
+			if (m_pConfig->flimColormapType == FlimColormapType::_HSV_)
+			{
+				m_pConfig->flimLifetimeRange[m_pConfig->flimEmissionChannel - 1].min = m_pLineEdit_LifetimeMin->text().toFloat();
+				m_pConfig->flimLifetimeRange[m_pConfig->flimEmissionChannel - 1].max = m_pLineEdit_LifetimeMax->text().toFloat();
+			}
+			else if (m_pConfig->flimColormapType == FlimColormapType::_TCT_NEW_)
+			{
+				//m_pConfig->flimLifetimeRangeNew[m_pConfig->flimEmissionChannel - 1].min = m_pLineEdit_LifetimeMin->text().toFloat();
+				//m_pConfig->flimLifetimeRangeNew[m_pConfig->flimEmissionChannel - 1].max = m_pLineEdit_LifetimeMax->text().toFloat();
+			}
 		}
 		else if (m_pRadioButton_IntensityProp->isChecked())
 		{
@@ -1034,8 +1112,10 @@ void ViewOptionTab::adjustFlimContrast()
 		.arg(m_pConfig->flimEmissionChannel)
 		.arg(m_pConfig->flimIntensityRange[m_pConfig->flimEmissionChannel - 1].min)
 		.arg(m_pConfig->flimIntensityRange[m_pConfig->flimEmissionChannel - 1].max)
-		.arg(m_pConfig->flimLifetimeRange[m_pConfig->flimEmissionChannel - 1].min)
-		.arg(m_pConfig->flimLifetimeRange[m_pConfig->flimEmissionChannel - 1].max)
+		.arg(m_pConfig->flimColormapType == FlimColormapType::_HSV_ ? m_pConfig->flimLifetimeRange[m_pConfig->flimEmissionChannel - 1].min 
+			: m_pConfig->flimLifetimeRangeNew[m_pConfig->flimEmissionChannel - 1].min)
+		.arg(m_pConfig->flimColormapType == FlimColormapType::_HSV_ ? m_pConfig->flimLifetimeRange[m_pConfig->flimEmissionChannel - 1].max 
+			: m_pConfig->flimLifetimeRangeNew[m_pConfig->flimEmissionChannel - 1].max)
 		.arg(m_pConfig->flimIntensityPropRange[m_pConfig->flimEmissionChannel - 1].min)
 		.arg(m_pConfig->flimIntensityPropRange[m_pConfig->flimEmissionChannel - 1].max)
 		.arg(m_pConfig->flimIntensityRatioRange[m_pConfig->flimEmissionChannel - 1].min)
@@ -1082,6 +1162,47 @@ void ViewOptionTab::setCircOffset(int offset)
 
 	if (m_pViewTab) m_pViewTab->invalidate();
 	
+	// Find lumen area
+	{
+		np::FloatArray2 contourMap1(m_pConfigTemp->octAlines - 1, m_pConfigTemp->frames);
+		np::FloatArray2 contourMap2(m_pConfigTemp->octAlines - 1, m_pConfigTemp->frames);
+
+		ippiCopy_32f_C1R(&m_pViewTab->m_contourMap(0, 0), sizeof(float) * m_pViewTab->m_contourMap.size(0),
+			contourMap1, sizeof(float) * contourMap1.size(0), { m_pConfigTemp->octAlines - 1, m_pConfigTemp->frames });
+		ippiCopy_32f_C1R(&m_pViewTab->m_contourMap(1, 0), sizeof(float) * m_pViewTab->m_contourMap.size(0),
+			contourMap2, sizeof(float) * contourMap2.size(0), { m_pConfigTemp->octAlines - 1, m_pConfigTemp->frames });
+
+		ippsAddC_32f_I((float)m_pConfigTemp->circOffset, contourMap1, contourMap1.length());
+		ippsAddC_32f_I((float)m_pConfigTemp->circOffset, contourMap2, contourMap1.length());
+
+		ippsMul_32f_I(contourMap1, contourMap2, contourMap2.length());
+
+		np::FloatArray lumen_area(m_pConfigTemp->frames);
+		for (int i = 0; i < m_pConfigTemp->frames; i++)
+			ippsSum_32f(&contourMap2(0, i), contourMap2.size(0), &lumen_area(i), ippAlgHintAccurate);
+
+		ippsMulC_32f_I(0.5 * sin(IPP_2PI / m_pConfigTemp->octAlines), lumen_area, lumen_area.length());
+		ippsMulC_32f_I(m_pViewTab->getCircImageView()->getRender()->m_dPixelResol / 1000.0, lumen_area, lumen_area.length());
+		ippsMulC_32f_I(m_pViewTab->getCircImageView()->getRender()->m_dPixelResol / 1000.0, lumen_area, lumen_area.length());
+
+
+		QString area_path = m_pResultTab->getRecordInfo().filename;
+		if (!m_pConfigTemp->is_dotter)
+			area_path.replace("pullback.data", "lumen_area.csv");
+		else
+			area_path.replace(".xml", "/lumen_area.csv");
+
+		QFile area_file(area_path);
+		if (area_file.open(QFile::WriteOnly))
+		{
+			QTextStream stream(&area_file);
+			for (int i = 0; i < lumen_area.size(0); i++)
+				stream << i + 1 << "\t" << lumen_area.at(i) << "\n";
+			area_file.close();
+		}
+	}
+
+
 	m_pConfig->writeToLog(QString("Circ offset set: %1").arg(offset));
 }
 

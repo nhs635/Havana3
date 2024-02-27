@@ -240,7 +240,7 @@ void QStreamTab::createLiveStreamingViewWidgets()
 	m_pLabel_LaserStatus->setFixedSize(200, 220);
 	m_pLabel_LaserStatus->setAlignment(Qt::AlignBottom | Qt::AlignLeft);
 	m_pLabel_LaserStatus->setStyleSheet("QLabel{font-size:10; color:#a0a0a0}");
-	m_pLabel_LaserStatus->setText(QString::fromLocal8Bit("[FLIm Laser Set/Monitor]\nDiode Current: 0.00 / 0.00 A\nDiode Temp: 0.00 / 0.00 ¡ÆC\nChipset Temp: 0.00 / 0.00 ¡ÆC"));
+	m_pLabel_LaserStatus->setText(QString::fromLocal8Bit("[FLIm Laser Set/Monitor]\nDiode Current: 0.00 / 0.00 A\nDiode Temp: 0.00 / 0.00 ï¿½ï¿½C\nChipset Temp: 0.00 / 0.00 ï¿½ï¿½C"));
 	
 	m_pSyncMonitorTimer = new QTimer(this);
 	m_pSyncMonitorTimer->start(1000);
@@ -459,7 +459,7 @@ bool QStreamTab::enableDeviceControl(bool enabled)
 		else
 		{
 			m_pDeviceControl->getElforlightLaser()->UpdateState += [&](double* value) {
-				emit setLaserStatusLabel(QString::fromLocal8Bit("[FLIm Laser Set/Monitor]\nDiode Current: %1 / %2 A\nDiode Temp: %3 / %4 ¡ÆC\nChipset Temp: %5 / %6 ¡ÆC")
+				emit setLaserStatusLabel(QString::fromLocal8Bit("[FLIm Laser Set/Monitor]\nDiode Current: %1 / %2 A\nDiode Temp: %3 / %4 ï¿½ï¿½C\nChipset Temp: %5 / %6 ï¿½ï¿½C")
 						.arg(value[0], 3, 'f', 2).arg(value[1], 3, 'f', 2).arg(value[2], 3, 'f', 2)
 						.arg(value[3], 3, 'f', 2).arg(value[4], 3, 'f', 2).arg(value[5], 3, 'f', 2));
 			};

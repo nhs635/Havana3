@@ -23,7 +23,8 @@ public:
 	explicit ColorTable();
 
 public:
-	enum colortable { gray = 0, invgray, sepia, jet, parula, hot, fire, hsv, hsv1, clf, graysb, viridis, bwr, hsv2, compo, redgreen }; // »õ·Î ¸¸µç colortable ÀÌ¸§ Ãß°¡ÇÏ±â
+	enum colortable { gray = 0, invgray, sepia, jet, parula, hot, fire, hsv, hsv1, 
+		clf, graysb, viridis, bwr, hsv2, compo, redgreen, new_ch1, new_ch2, new_ch3 }; // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ colortable ï¿½Ì¸ï¿½ ï¿½ß°ï¿½ï¿½Ï±ï¿½
 	QVector<QString> m_cNameVector;
 	ColorTableVector m_colorTableVector;
 };

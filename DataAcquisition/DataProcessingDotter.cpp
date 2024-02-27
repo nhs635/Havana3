@@ -360,9 +360,16 @@ void DataProcessingDotter::flimProcessing(FLImProcess* pFLIm, Configuration* pCo
 			//for (int i = 0; i < 3; i++)
 				//ippsDivC_32f_I(pConfig->flimIntensityComp[i], &itn(0, i + 1), pConfig->flimAlines);
 
-			//QFile file("pulse.data");
-			//file.open(QIODevice::WriteOnly);
-			//file.write(reinterpret_cast<const char*>(pFLIm->_resize.mask_src.raw_ptr()), sizeof(float) * pFLIm->_resize.mask_src.length());
+			//{
+			//	QFile file(QString("pulse/pulse_%1.data").arg(frameCount));
+			//	file.open(QIODevice::WriteOnly);
+			//	file.write(reinterpret_cast<const char*>(pFLIm->_resize.ext_src.raw_ptr()), sizeof(float) * pFLIm->_resize.ext_src.length());
+			//}
+			//{
+			//	QFile file(QString("intensity/intensity_%1.data").arg(frameCount));
+			//	file.open(QIODevice::WriteOnly);
+			//	file.write(reinterpret_cast<const char*>(itn.raw_ptr()), sizeof(float) * itn.length());
+			//}
 
 			// Copy for Intensity & Lifetime	
 			memcpy(pp, pFLIm->_resize.pulse_power, sizeof(float) * pp.length());
@@ -403,6 +410,10 @@ void DataProcessingDotter::flimProcessing(FLImProcess* pFLIm, Configuration* pCo
 	// Normalized intensity & lifetime
 	for (int i = 0; i < 3; i++)
 	{
+		//QFile file(QString("intensity/intensity_%1.data").arg(i + 1));
+		//file.open(QIODevice::WriteOnly);
+		//file.write(reinterpret_cast<const char*>(pViewTab->m_intensityMap.at(i).raw_ptr()), sizeof(float) * pViewTab->m_intensityMap.at(i).length());
+
 		FloatArray2 intensity_map1(3 * pViewTab->m_intensityMap.at(i).size(0), pViewTab->m_intensityMap.at(i).size(1));
 		for (int j = 0; j < 3; j++)
 			ippiCopy_32f_C1R(pViewTab->m_intensityMap.at(i), sizeof(float) * pViewTab->m_intensityMap.at(i).size(0),
@@ -431,7 +442,7 @@ void DataProcessingDotter::flimProcessing(FLImProcess* pFLIm, Configuration* pCo
 		ippsDivC_32f_I(255.0f, zero_lifetime, zero_lifetime.length());
 		ippsMul_32f_I(zero_lifetime, pViewTab->m_intensityMap.at(i), zero_lifetime.length());
 	}
-	
+		
 	// Calculate other FLIm parameters
 	calculateFlimParameters();
 }
